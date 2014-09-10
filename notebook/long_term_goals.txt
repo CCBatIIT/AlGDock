@@ -1,0 +1,23 @@
+# TO DO: Use netcdf for grid data files?
+
+# TO DO: Fourier transform docking for initial state.
+# TO DO: Use pybel or openbabel to calculate symmetry-corrected RMSD?
+
+# Ideas from Prodock by Trosset & Scheraga
+# TO DO: Grid interpolation with Bezier splines,
+# which provides second derivatives
+# [Oberlin, D.,Jr.; Scheraga, H. A. J Comput Chem 1998, 19, 71:85.].
+# This could allow for layer sampling.
+
+# TO DO: Scaled collective variable Monte Carlo
+# for dihedral angle moves
+# [Noguti, T.; Go, N. Biopolymers 1985, 24, 527:546.]
+
+# Ideas from QXP by McMartin and Bohacek
+# TO DO: Dihedral angle moves using cylindrical coordinates
+# (makes energy evalulations faster?)
+
+# Ideas from Ribodock by Morley and Afshar
+# TO DO: Scale number of MC trials by number of rotatable bonds
+
+# TO DO: Genetic Monte Carlo

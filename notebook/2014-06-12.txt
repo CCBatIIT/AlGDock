@@ -1,0 +1,11 @@
+* Using a threshold rather than grid scaling seems to be slower and no more efficent, so it was removed.
+
+The following code in _set_universe_force_field() uses theenergy threshold in AlGDock:
+
+          elif scalable=='sLJr':
+            from ForceFields.Grid.TrilinearThreshGrid import TrilinearThreshGridForceField
+            self._forceFields[scalable] = TrilinearThreshGridForceField(grid_FN,
+              grid_conversion*lambda_n[scalable], grid_scaling_factor,
+              grid_name=scalable, max_val=-1, Ethresh=50.)
+
+* So that there are sufficient samples to estimate the thermodynamic length, there are now at least 25 saved samples per autocorrelation time.

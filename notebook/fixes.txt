@@ -1,0 +1,14 @@
+Bugs:
+'rmsd' and 'acc_MC" are not calculated in the initial docking (or cooling?)
+
+Errors:
+
+Tests:
+*Interruption in the middle of initial cooling or docking
+*Compare different Lennard-Jones grid transformations
+
+Efficiency improvements:
+
+Other:
+*Set up for open science grid
+*Clean up documentation

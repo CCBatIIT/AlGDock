@@ -1,0 +1,59 @@
+These are tools to prepare a target and receptor for use with AlGDock.
+
+By default, files should be organized in the following directory tree:
+
+[TARGET]/
+	receptor/
+		search_options.py				Options for MODELLER and ProDy
+		1-search/
+			seq.ali				The amino acid sequence, for input into MODELLER
+			profile.ali			Sequence alignment output from MODELLER
+			profile.prf			Sequence alignment output from MODELLER
+			reference.pdb			The reference structure, for ProDy
+			selected.ens.npz		ProDy ensemble object
+			mappings.pkl			ProDy mappings onto the reference
+			selected.pca.npz		ProDy PCA object
+			pdb_original/			Original files downloaded from the PDB
+			chains_original/		PDB files split out into relevant chains
+			chains_aligned/			The chains aligned to the reference structure
+			figures/
+				hist_seq_id.png		Histogram of sequence identities in build_profile.prf
+				hist_seq_id_high.png	(same as above, but for values 
+					 		greater than or equal to min_seq_identity)
+		2-binding_site/
+			../ligand_selection.py			Describes ligands to exclude or include in binding site analysis
+			measured_binding_site.py	Parameters of the measured binding site
+			ligand_aligned/			ligand_trans/			receptor_trans/
+			complex_trans/
+			figures/			
+				clusters.png		Colors ligand centers of mass by cluster
+		3-models/
+			sequence_alignment/		Alignments between the reference and PDB amino acid sequences
+			pdb_noH/			Homology models from UCSF Modeller, in pdb format
+			chimera_H/			pdb and mol2 files with hydrogens and charges from UCSF Chimera
+			dock_prep/			Intermediate files for preparing UCSF DOCK 6 input
+							The molecular surface is omitted.
+		dock_in/				Input files for UCSF DOCK 6, including mol2, spheres, boxes, grids.
+
+!		4-MD/
+!			starting_points.txt
+!			[TRAJ]
+!		AMBER/
+!			receptor.prmtop
+!		inpcrd/
+!			[R_ID].inpcrd.gz
+!		grids/
+!			[R_ID]/
+!				LJa.nc
+!				LJr.nc
+!				pbsa.nc
+	ligand/
+		[LIG_SOURCE]/
+			[LIG_SOURCE].ism
+			[LIG_SOURCE]-[LIG_ID].mol2
+			{LIGAND COOLING}
+	dock/
+		[LIG_ID]/[R_ID]/[REP]/
+			{DOCKING}
+	analysis/
+		

@@ -1,0 +1,3 @@
+The number of files is reduced by storing most information in 'cool_progress.pkl.gz' or 'dock_progress.pkl.gz'.
+
+The integrated autocorrelation time is now calculated and used in replica exchange.

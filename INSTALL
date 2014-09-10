@@ -1,0 +1,47 @@
+--- Requirements ---
+
+AlGDock is a third-party python extension.
+The required programs and extensions should be installed and tested prior to AlGDock. It is recommended to use a scientific distribution of python, including:
+
+Enthought Canopy Python (tested with version 2.7.6)
+https://www.enthought.com/products/epd/
+
+or
+
+Anaconda Scientific Python
+https://store.continuum.io/cshop/anaconda/
+
+After installing a scientific python distribution, the following extensions are also required:
+
+Scientific Python (tested with version 2.9.2)
+http://dirac.cnrs-orleans.fr/plone/software/scientificpython/
+
+Molecular Modeling ToolKit (MMTK) (tested with version 2.7.9)
+http://dirac.cnrs-orleans.fr/MMTK
+
+pymbar (tested with version 2.0beta)
+https://github.com/choderalab/pymbar
+
+Finally, AlGDock requires the following external programs:
+Not Another Molecular Dynamics (NAMD), tested with version 2.9
+http://www.ks.uiuc.edu/Research/namd/
+
+--- Installation ---
+
+To install AlGDock, first modify AlGDock/_external_paths.py to point to the locations of the relevant programs. In AlGDock/_external_paths.py, search_paths['MMTK'] should point to the source directory that contains the Include subdirectory.
+
+Then run the commands:
+python setup.py build
+python setup.py install
+
+--- Testing ---
+
+In the AlGDock/Example/ subdirectory, you may test the program with:
+
+test_python.py
+
+or
+
+test_terminal.sh
+
+It should generate output in the dock and cool subdirectories. The dock and cool subdirectories should be removed before testing.

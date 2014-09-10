@@ -1,0 +1,1 @@
+The pyinstaller version can be compiled on dscr and works on dscr, ccb, and the open science grid.
