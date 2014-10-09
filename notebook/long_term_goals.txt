@@ -1,4 +1,4 @@
-# TO DO: Use netcdf for grid data files?
+# TO DO: Cap the SUM of LJ repulsive and attractive energies at each atom.
 
 # TO DO: Fourier transform docking for initial state.
 # TO DO: Use pybel or openbabel to calculate symmetry-corrected RMSD?

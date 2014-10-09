@@ -23,7 +23,7 @@ while not os.path.exists('dock/f_RL.pkl.gz'):
     steps_per_sweep=100, cool_repX_cycles=3, dock_repX_cycles=2, \
     site='Sphere', site_center=[1.80624, 1.80624, 1.80624], \
     site_max_R=0.01, site_density=10., do_calc_random_dock_stats=False, \
-    receptor_NAMD_GBSA=-9053.10071, receptor_NAMD_Gas=0.00000, \
-    MCMC_moves=0, 
+    receptor_NAMD_GBSA=[-9053.10071], receptor_NAMD_Gas=[0.00000], \
+    MCMC_moves=1, \
     run_type='one_step')
   del self

@@ -37,7 +37,6 @@ term_map = {
   'Lennard-Jones':'MM',
   'site':'site',
   'sLJr':'sLJr',
-  'sELE':'sELE',
   'sLJa':'sLJa',
   'LJr':'LJr',
   'LJa':'LJa',
@@ -99,14 +98,14 @@ def merge_dictionaries(dicts, required_consistency=[], print_inconsistent=False)
     if not isinstance(dicts[a],dict):
       continue
     for key in dicts[a].keys():
-      if isinstance(dicts[a][key],dict): # item is a dictionary
+      if dicts[a][key] is None:
+        if not key in merged.keys():
+          merged[key] = None
+      elif isinstance(dicts[a][key],dict):
         merged[key] = merge_dictionaries(
           [dicts[n][key] for n in range(len(dicts)) if key in dicts[n].keys()],
           required_consistency=required_consistency)
-      elif (not key in merged.keys()) or (merged[key] is None):
-        # Merged dictionary will contain value from first dictionary where
-        # key appears, except None may be replaced.
-        merged[key] = dicts[a][key]
+      else:
         # Check for consistency with other dictionaries
         for b in (range(a) + range(a+1,len(dicts))):
           if isinstance(dicts[b],dict) and (key in dicts[b].keys()) and (dicts[b][key] is not None):
@@ -116,11 +115,12 @@ def merge_dictionaries(dicts, required_consistency=[], print_inconsistent=False)
               inconsistent_items = (dicts[b][key]!=dicts[a][key])
             if inconsistent_items:
               if print_inconsistent:
-                print 'Dictionary items for %s are inconsistent:'%key
+                print 'Dictionary items are inconsistent:'
                 print dicts[a][key]
                 print dicts[b][key]
               if key in required_consistency:
                 raise Exception('Items must be consistent!')
+        merged[key] = dicts[a][key]
   return merged
 
 def convert_dictionary_relpath(d, relpath_o=None, relpath_n=None):
@@ -345,8 +345,6 @@ last modified {2}
         abspath(join(dir_lig,'ligand.frcmod'))])
       if frcmod is not None:
         self._FNs['frcmodList'] = [frcmod]
-    elif isinstance(self._FNs['frcmodList'],str):
-      self._FNs['frcmodList'] = [self._FNs['frcmodList']]
 
     print self._FNs
     
@@ -396,7 +394,7 @@ last modified {2}
     self.params = {}
     for p in ['cool','dock']:
       self.params[p] = merge_dictionaries(
-        [args[src] for src in ['new_'+p,'default_'+p,p]])
+        [args[src] for src in ['default_'+p,'new_'+p,p]])
 
     # Allow updates of receptor energies
     for phase in allowed_phases:
@@ -421,7 +419,7 @@ last modified {2}
       else:
         self.original_Es[0][0]['R'+phase] = None
         
-    self._scalables = ['sLJr','sELE','LJr','LJa','ELE']
+    self._scalables = ['sLJr','LJr','LJa','ELE']
 
     self.lambda_full = {'T':T_HIGH,'MM':True,'site':True}
     self.lambda_scalables = {'T':T_HIGH}
@@ -1427,7 +1425,6 @@ last modified {2}
       site - True, to turn on the binding site
       sLJr - scaling of the soft Lennard-Jones repulsive grid
       sLJa - scaling of the soft Lennard-Jones attractive grid
-      sELE - scaling of the soft electrostatic grid
       LJr - scaling of the Lennard-Jones repulsive grid
       LJa - scaling of the Lennard-Jones attractive grid
       ELE - scaling of the electrostatic grid
@@ -1453,11 +1450,9 @@ last modified {2}
         if not scalable in self._forceFields.keys():
           import time
           loading_start_time = time.time()
-          grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
-            'LJr':'LJr','LJa':'LJa','ELE':'ELE'}[scalable]]
+          grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','LJr':'LJr','LJa':'LJa','ELE':'ELE'}[scalable]]
           grid_scaling_factor = 'scaling_factor_' + \
-            {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
-             'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
+            {'sLJr':'LJr','sLJa':'LJa','LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
           if scalable=='ELE' and self._FNs['grids']['ELE'].find('pbsa')>0:
             apbs_grid = ' (APBS)'
             # APBS reports electrostatic grid potential energies in kBT e_c^{-1}
@@ -1473,28 +1468,11 @@ last modified {2}
               grid_conversion*lambda_n[scalable], grid_scaling_factor,
               grid_name=scalable, max_val=-1)
           else:
-            if scalable=='sLJr':
-              max_val = 10.0
-            elif scalable=='sELE':
-              # The maximum value is set so that the electrostatic energy
-              # less than or equal to the Lennard-Jones repulsive energy
-              # for every heavy atom at every grid point
-              scaling_factors_ELE = np.array([ \
-                self.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
-                  for a in self.molecule.atomList()],dtype=float)
-              scaling_factors_LJr = np.array([ \
-                self.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
-                  for a in self.molecule.atomList()],dtype=float)
-              scaling_factors_ELE = scaling_factors_ELE[scaling_factors_LJr>10]
-              scaling_factors_LJr = scaling_factors_LJr[scaling_factors_LJr>10]
-              max_val = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
-            else:
-              max_val = -1
-              
             from ForceFields.Grid.TrilinearGrid import TrilinearGridForceField
             self._forceFields[scalable] = TrilinearGridForceField(grid_FN,
               grid_conversion*lambda_n[scalable], grid_scaling_factor,
-              grid_name=scalable, max_val=max_val)
+              grid_name=scalable,
+              max_val=10. if scalable[0]=='s' else -1)
           self.tee('  %s grid%s loaded from %s in %s'%(scalable, apbs_grid, grid_FN, HMStime(time.time()-loading_start_time)))
 
         # Set the force field strength to the desired value
@@ -1831,7 +1809,7 @@ last modified {2}
       self.tee("\n>>> Replica exchange sampling for the {0}ing process".format(process), process=process)
       import time
       repEx_start_time = time.time()
-      start_cycle = getattr(self,'_%s_total_cycle'%process)
+      start_cycle = getattr(self,'_%s_cycle'%process)
       while ((getattr(self,'_%s_total_cycle'%process) < self.params[process]['repX_cycles']) or (getattr(self,'_%s_cycle'%process)==0)):
         self._replica_exchange(process)
         self.cycles_run += 1
@@ -1841,8 +1819,7 @@ last modified {2}
          (getattr(self,'_%s_total_cycle'%process)-start_cycle), \
          HMStime((time.time()-repEx_start_time))), process=process)
 
-    # Do additional replica exchange on the cooling process
-    #   if there are not enough configurations
+    # Do additional replica exchange on the cooling process if there are not enough configurations
     if (process=='cool'):
       E_MM = []
       for k in range(len(self.cool_Es[0])):
@@ -2092,11 +2069,11 @@ last modified {2}
       da_sg_da = -8*(a-0.5)
       da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
-      Psi_sg = self._u_kln([E], [{'sLJr':1,'sELE':1}], noBeta=True)
+      Psi_sg = self._u_kln([E], [{'sLJr':1}], noBeta=True)
       Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
       U_RL_g = self._u_kln([E],
-        [{'MM':True, 'site':True, 'T':T,\
-        'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
+        [{'MM':True,'site':True,'T':T,\
+        'sLJr':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
       return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
              np.abs(da_g_da)*Psi_g.std()/(R*T) + \
              np.abs(T_TARGET-T_HIGH)*U_RL_g.std()/(R*T*T)
@@ -2116,7 +2093,6 @@ last modified {2}
         a_g=0
       lambda_n['a'] = a
       lambda_n['sLJr'] = a_sg
-      lambda_n['sELE'] = a_sg
       lambda_n['LJr'] = a_g
       lambda_n['LJa'] = a_g
       lambda_n['ELE'] = a_g

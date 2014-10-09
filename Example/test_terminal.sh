@@ -22,5 +22,5 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --score prmtopcrd/anchor_and_grow_scored.mol2 \
   --rmsd \
   --receptor_NAMD_GBSA -9053.10071 --receptor_NAMD_Gas 0.00000 \
-  --MCMC_moves 0
+  --MCMC_moves 1
 #  --do_calc_random_dock_stats \

@@ -173,7 +173,7 @@ elif os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
     modules += 'module load chimera/1.8.1\n'
 
   if command.find('modeller')>-1:
-    modules += 'module load modeller/9.13\n'
+    modules += 'module load modeller/9.14\n'
 
   if args.ambertools:
     modules += 'module load ambertools/14\n'
