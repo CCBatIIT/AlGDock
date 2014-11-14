@@ -88,7 +88,7 @@ def random_rotate():
 #    beginIndicies.sort()
 #    return beginIndicies
 
-def merge_dictionaries(dicts, required_consistency=[], print_inconsistent=False):
+def merge_dictionaries(dicts, required_consistency=[]):
   """
   Merges a list of dictionaries, giving priority to items in descending order.
   Items in the required_consistency list must be consistent with one another.
@@ -103,24 +103,26 @@ def merge_dictionaries(dicts, required_consistency=[], print_inconsistent=False)
         merged[key] = merge_dictionaries(
           [dicts[n][key] for n in range(len(dicts)) if key in dicts[n].keys()],
           required_consistency=required_consistency)
-      elif (not key in merged.keys()) or (merged[key] is None):
-        # Merged dictionary will contain value from first dictionary where
-        # key appears, except None may be replaced.
+      elif (key not in merged.keys()):
+        # Merged dictionary will contain value from
+        # first dictionary where key appears
         merged[key] = dicts[a][key]
         # Check for consistency with other dictionaries
         for b in (range(a) + range(a+1,len(dicts))):
-          if isinstance(dicts[b],dict) and (key in dicts[b].keys()) and (dicts[b][key] is not None):
+          if isinstance(dicts[b],dict) and (key in dicts[b].keys()) \
+              and (dicts[a][key] is not None) and (dicts[b][key] is not None):
             if (isinstance(dicts[b][key],np.ndarray)):
               inconsistent_items = (dicts[b][key]!=dicts[a][key]).any()
             else:
               inconsistent_items = (dicts[b][key]!=dicts[a][key])
             if inconsistent_items:
-              if print_inconsistent:
+              if key in required_consistency:
                 print 'Dictionary items for %s are inconsistent:'%key
                 print dicts[a][key]
                 print dicts[b][key]
-              if key in required_consistency:
                 raise Exception('Items must be consistent!')
+      elif (merged[key] is None): # Replace None
+        merged[key] = dicts[a][key]
   return merged
 
 def convert_dictionary_relpath(d, relpath_o=None, relpath_n=None):
@@ -332,8 +334,7 @@ last modified {2}
 
     self._FNs = merge_dictionaries(
       [FNs[src] for src in ['new','cool','dock']],
-      required_consistency=['L','R','RL','ligand_database'],
-      print_inconsistent=True)
+      required_consistency=['L','R','RL','ligand_database'])
   
     # Default: a force field modification is in the same directory as the ligand
     if (self._FNs['frcmodList'] is None):
@@ -1458,7 +1459,7 @@ last modified {2}
           grid_scaling_factor = 'scaling_factor_' + \
             {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
              'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
-          if scalable=='ELE' and self._FNs['grids']['ELE'].find('pbsa')>0:
+          if scalable.endswith('ELE') and self._FNs['grids']['ELE'].find('pbsa')>0:
             apbs_grid = ' (APBS)'
             # APBS reports electrostatic grid potential energies in kBT e_c^{-1}
             # The others are in kcal/mol e_c^{-1}

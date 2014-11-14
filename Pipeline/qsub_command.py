@@ -43,7 +43,65 @@ err_FN = os.path.join(curdir,'jobs','%s-%d.err'%(args.name,n))
 # Sets up the submission and execution scripts
 submit_script = ''
 execute_script = ''
-if os.path.exists('/home/daveminh/stash'):   # Open Science Grid
+if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
+  cluster = 'CCB'
+  
+  # Split the command onto multiple lines
+  command_list = args.command.split(';')
+  command = '\n'.join([c.strip() for c in command_list])
+
+  # By default, use Enthought Canopy python
+  if command.find('python')>-1:
+    modules = 'module load canopy/1.2.0\n'
+  else:
+    modules = ''
+
+  if command.find('chimera')>-1:
+    modules += 'module load chimera/1.8.1\n'
+
+  if command.find('modeller')>-1:
+    modules += 'module load modeller/9.14\n'
+
+  if args.ambertools:
+    modules += 'module load ambertools/14\n'
+
+  # Write script
+  submit_script = '''#!/bin/bash
+#
+#PBS -S /bin/bash
+#PBS -N {0}
+#PBS -l mem={1}GB,nodes={2}:ppn={3},walltime=168:00:00
+#PBS -d {4}
+#PBS -o {5}
+#PBS -e {6}
+
+{7}
+{8}
+
+# {9}
+'''.format(args.name, args.mem, args.nodes, args.ppn, \
+           curdir, out_FN, err_FN, \
+           modules, command, args.comment)
+elif os.path.exists('/home/dbchem/dm225/scripts/qsub_command.py'): # DSCR Cluster
+  cluster = 'DSCR'
+  if not (args.nodes==1):
+    nodes = "\n#$ -pe threaded %s\n"%args.nodes
+  else:
+    nodes = ""
+
+  submit_script = '''#!/bin/bash
+#
+#$ -S /bin/bash -cwd
+#$ -N {0}
+#$ -l mem_free={1}G{2}
+#$ -o {3} -j y
+
+{4}
+
+# {5}
+'''.format(args.name, args.mem, nodes,
+           out_FN, args.command, args.comment)
+elif os.path.exists('/stash'):   # Open Science Grid
   cluster = 'OSG'
   
   # Split the command onto multiple lines
@@ -156,64 +214,6 @@ echo Directory after command:
 ls
 
 """
-elif os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
-  cluster = 'CCB'
-  
-  # Split the command onto multiple lines
-  command_list = args.command.split(';')
-  command = '\n'.join([c.strip() for c in command_list])
-
-  # By default, use Enthought Canopy python
-  if command.find('python')>-1:
-    modules = 'module load canopy/1.2.0\n'
-  else:
-    modules = ''
-
-  if command.find('chimera')>-1:
-    modules += 'module load chimera/1.8.1\n'
-
-  if command.find('modeller')>-1:
-    modules += 'module load modeller/9.14\n'
-
-  if args.ambertools:
-    modules += 'module load ambertools/14\n'
-
-  # Write script
-  submit_script = '''#!/bin/bash
-#
-#PBS -S /bin/bash
-#PBS -N {0}
-#PBS -l mem={1}GB,nodes={2}:ppn={3},walltime=168:00:00
-#PBS -d {4}
-#PBS -o {5}
-#PBS -e {6}
-
-{7}
-{8}
-
-# {9}
-'''.format(args.name, args.mem, args.nodes, args.ppn, \
-           curdir, out_FN, err_FN, \
-           modules, command, args.comment)
-elif os.path.exists('/home/dbchem/dm225/scripts/qsub_command.py'): # DSCR Cluster
-  cluster = 'DSCR'
-  if not (args.nodes==1):
-    nodes = "\n#$ -pe threaded %s\n"%args.nodes
-  else:
-    nodes = ""
-
-  submit_script = '''#!/bin/bash
-#
-#$ -S /bin/bash -cwd
-#$ -N {0}
-#$ -l mem_free={1}G{2}
-#$ -o {3} -j y
-
-{4}
-
-# {5}
-'''.format(args.name, args.mem, nodes,
-           out_FN, args.command, args.comment)
 else:
   cluster = None
   submit_script = args.command

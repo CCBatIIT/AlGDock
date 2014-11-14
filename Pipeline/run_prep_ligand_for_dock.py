@@ -27,7 +27,7 @@ if len(sys.argv)==1:
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('library', default=None, \
-  help='ISM file of the library')
+  help='ISM or mol2 file of the library')
 parser.add_argument('--count', default=None, type=int, \
   help='Number of ligands to process')
 parser.add_argument('--job_block', default=job_block, type=int, \
@@ -40,13 +40,29 @@ args = parser.parse_args()
 # Load the library
 if not os.path.isfile(args.library):
   raise Exception('Library file missing!')
-  
-F = open(args.library,'r')
-lines = F.read().strip().split('\n')
+
+if args.library.endswith('.gz'):
+  import gzip
+  F = gzip.open(args.library,'r')
+  args.library = args.library[:-3]
+else:
+  F = open(args.library,'r')
+
+if args.library.endswith('.ism'):
+  ligands = F.read().strip().split('\n')
+  args.library = args.library[:-4]
+  mol2 = False
+elif args.library.endswith('.mol2'):
+  ligands = F.read().strip().split('@<TRIPOS>MOLECULE')
+  ligands.pop(0)
+  args.library = args.library[:-5]
+  mol2 = True
+else:
+  raise Exception('Unknown library type')
 F.close()
 
 # Choose ligands to prepare
-nligands = len(lines)
+nligands = len(ligands)
 if args.count is None:
   inds = range(nligands)
 else:
@@ -57,6 +73,8 @@ print 'Preparing %d ligands'%nligands
 # Submit a job for every args.job_block ligands
 if not os.path.isdir('dock_in'):
   os.makedirs('dock_in')
+if not os.path.isdir('3D'):
+  os.makedirs('3D')
 
 import subprocess
 
@@ -67,11 +85,16 @@ code_list = []
 job_count = 0
 for ind in inds:
   code_i = code(ind)
-  out_FN = 'dock_in/{0}.{1}.mol2'.format(args.library[:-4],code_i)
+  out_FN = 'dock_in/{0}.{1}.mol2'.format(args.library,code_i)
   if not os.path.exists(out_FN):
+    if mol2:
+      threeD_FN = '3D/{0}.{1}.mol2'.format(args.library,code_i)
+      F = open(threeD_FN,'w')
+      F.write("@<TRIPOS>MOLECULE"+ligands[ind])
+      F.close()
     command = 'python {0} {1} "{2}"'.format(\
       os.path.join(dirs['script'],'prep_ligand_for_dock.py'), \
-      out_FN, lines[ind].split()[0])
+      out_FN, ligands[ind].split()[0])
     command_list.append(command)
     out_FNs.append(out_FN)
     out_remaps.append(os.path.basename(out_FN))
@@ -80,7 +103,7 @@ for ind in inds:
   ncommands = len(command_list)
   if ncommands==args.job_block or ((ncommands>0) and (ind==inds[-1])):
     command = '; '.join(command_list)
-    name = args.library[:-4] + '.' + '.'.join(code_list)
+    name = args.library + '.' + '.'.join(code_list)
     print 'Submitting: ' + command
     os.system(' '.join(['python',command_paths['qsub_command'],\
       name, "'"+command+"'",\
