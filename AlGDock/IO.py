@@ -19,6 +19,7 @@ class Grid:
   def read(self, FN, multiplier=None):
     """
     Reads a grid in dx or netcdf format
+    The multiplier affects the origin and spacing.
     """
     if FN is None:
       raise Exception('File is not defined')
@@ -95,7 +96,9 @@ class Grid:
 
   def write(self, FN, data, multiplier=None):
     """
-    Writes a grid in dx or netcdf format
+    Writes a grid in dx or netcdf format.
+    The multiplier affects the origin and spacing.
+
     """
     if multiplier is not None:
       data_n = {'origin':multiplier*data['origin'],

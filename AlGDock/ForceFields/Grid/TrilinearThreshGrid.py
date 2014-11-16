@@ -4,7 +4,7 @@
 from MMTK.ForceFields.ForceField import ForceField, EnergyTerm
 from MMTK import ParticleScalar, ParticleVector, SymmetricPairTensor
 
-from Scientific_vector import Vector
+from Scientific._vector import Vector
 from MMTK_trilinear_thresh_grid import TrilinearThreshGridTerm
 
 # Exactly the same as in the pure python version

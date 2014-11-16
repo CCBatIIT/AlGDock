@@ -201,6 +201,7 @@ To prepare the 50 top-scoring active molecules and 150 top-scoring decoys, execu
 python $ALGDOCKHOME/Pipeline/run_prep_ligand_and_complex_for_AlGDock.py --complex_list analysis/DUDE.active_dock6_scores.txt --prepare_first 50
 python $ALGDOCKHOME/Pipeline/run_prep_ligand_and_complex_for_AlGDock.py --complex_list analysis/DUDE.decoy_dock6_scores.txt --prepare_first 150
 
-To run AlGDock, execute
+To run AlGDock, from [TARGET]/AlGDock/, execute
 python $ALGDOCKHOME/Pipeline/run_AlGDock.py
+
 on the group cluster or on the open science grid submit node

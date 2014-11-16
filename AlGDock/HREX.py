@@ -17,7 +17,7 @@ import MMTK.Units
 from MMTK.ParticleProperties import Configuration
 
 import Scientific
-from Scientific_vector import Vector  # @UnresolvedImport
+from Scientific._vector import Vector  # @UnresolvedImport
 
 import AlGDock as a
 import pymbar.timeseries
@@ -1459,19 +1459,10 @@ last modified {2}
           grid_scaling_factor = 'scaling_factor_' + \
             {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
              'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
-          if scalable.endswith('ELE') and self._FNs['grids']['ELE'].find('pbsa')>0:
-            apbs_grid = ' (APBS)'
-            # APBS reports electrostatic grid potential energies in kBT e_c^{-1}
-            # The others are in kcal/mol e_c^{-1}
-            # At 300 K, 1 kBT ~ 0.596 kcal/mol
-            grid_conversion = RT_TARGET/(MMTK.Units.kcal/MMTK.Units.mol)
-          else:
-            apbs_grid = ''
-            grid_conversion = 1.0
           if scalable=='LJr':
             from ForceFields.Grid.TrilinearISqrtGrid import TrilinearISqrtGridForceField
             self._forceFields[scalable] = TrilinearISqrtGridForceField(grid_FN,
-              grid_conversion*lambda_n[scalable], grid_scaling_factor,
+              lambda_n[scalable], grid_scaling_factor,
               grid_name=scalable, max_val=-1)
           else:
             if scalable=='sLJr':
@@ -1494,9 +1485,9 @@ last modified {2}
               
             from ForceFields.Grid.TrilinearGrid import TrilinearGridForceField
             self._forceFields[scalable] = TrilinearGridForceField(grid_FN,
-              grid_conversion*lambda_n[scalable], grid_scaling_factor,
+              lambda_n[scalable], grid_scaling_factor,
               grid_name=scalable, max_val=max_val)
-          self.tee('  %s grid%s loaded from %s in %s'%(scalable, apbs_grid, grid_FN, HMStime(time.time()-loading_start_time)))
+          self.tee('  %s grid loaded from %s in %s'%(scalable, grid_FN, HMStime(time.time()-loading_start_time)))
 
         # Set the force field strength to the desired value
         self._forceFields[scalable].strength = lambda_n[scalable]
