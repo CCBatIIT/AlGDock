@@ -199,7 +199,18 @@ export ALGDOCK=$WORK_DIR/AlGDock/HREX
 # Clear empty gzip files
 find *.gz -size 0 -delete
 
-""" + command
+""" + command + """
+
+rm -rf AlGDock namd2
+rm *.out *.namd *.dcd
+rm .lock
+"""
+    if command.find('one_step')!=-1:
+      command += """
+if [ ! -f f_RL.pkl.gz ]
+  then
+    exit 100
+fi"""
 
   execute_script = """#!/bin/bash
 
