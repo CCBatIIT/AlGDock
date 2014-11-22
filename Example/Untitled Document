@@ -1,0 +1,6 @@
+import AlGDock.HREX_plots
+self._FNs['vmd']
+self.show_samples()
+self = AlGDock.HREX_plots.BindingPMF_plots()
+self = AlGDock.HREX_plots()
+

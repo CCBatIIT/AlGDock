@@ -63,9 +63,11 @@ if not mmtk_ok:
 
 # Configure compile arguments and include directories 
 compile_args = []
-include_dirs = [os.path.join(findPath(search_paths['MMTK']),'Include'),
-                os.path.join(findPath(search_paths['MMTK']),'include',
-                             'python%d.%d'%sys.version_info[:2],'MMTK')]
+include_dirs = ['/home/xin/DevelopmentTool/MMTK-2.7.9/Include',
+		#os.path.join(findPath(search_paths['MMTK']),'Include'),
+		'/home/xin/DevelopmentTool/MMTK-2.7.9/MMTK']
+                #os.path.join(findPath(search_paths['MMTK']),'include',
+                #             'python%d.%d'%sys.version_info[:2],'MMTK')]
 
 from Scientific import N
 assert N.package == "NumPy"

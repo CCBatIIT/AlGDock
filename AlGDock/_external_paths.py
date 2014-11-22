@@ -53,7 +53,8 @@ search_paths = {
               '/home/dbchem/dm225/.local/installers/AlGDock-0.0.1/Data/gaff.dat',
               '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat'],
              # For postprocessing snapshots
-      'namd':['/Users/dminh/Installers/NAMD_2.9_Source/MacOSX-x86_64-g++/namd2',
+      'namd':['/home/xin/DevelopmentTool/NAMD_2.9_Linux-x86_64-multicore/namd2',
+	     							 #'/Users/dminh/Installers/NAMD_2.9_Source/MacOSX-x86_64-g++/namd2',
               '/home/dbchem/dm225/.local/bin/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2'],
              # For postprocessing snapshots
@@ -61,11 +62,12 @@ search_paths = {
               '/home/dbchem/dm225/.local/installers/amber14/bin/sander',
               '/share/apps/amber/14/bin/sander'],
              # HREX.py is built on MMTK
-      'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
+      'MMTK':['/home/xin/DevelopmentTool/MMTK-2.7.9',
               '/home/dbchem/dm225/.local/installers/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],
              # For visualizing (not essential)
-       'vmd':['/Applications/VMD 1.9.1.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',
+       'vmd':['/usr/local/bin/vmd'
+					#'/Applications/VMD 1.9.1.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',
               '/home/dbchem/dm225/.local/bin/vmd',
               '/share/apps/vmd/1.9.1/bin/vmd']}
 
