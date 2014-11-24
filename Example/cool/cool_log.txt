@@ -1,0 +1,38 @@
+
+>>> Initial cooling of the ligand from 600 K to 300 K
+  generated 50 configurations (tau_ac=1.836558, dt=0.002187 ps) at 600 K in 0.756 s
+  generated 50 configurations (tau_ac=1.497460, dt=0.001341 ps) at 516 K in 0.763 s
+  estimated replica exchange acceptance rate is 0.463969
+
+  generated 50 configurations (tau_ac=1.961287, dt=0.001858 ps) at 445 K in 0.770 s
+  estimated replica exchange acceptance rate is 0.449752
+
+  generated 50 configurations (tau_ac=1.610655, dt=0.001711 ps) at 368 K in 0.774 s
+  estimated replica exchange acceptance rate is 0.439454
+
+  generated 50 configurations (tau_ac=1.920895, dt=0.001794 ps) at 311 K in 0.765 s
+  estimated replica exchange acceptance rate is 0.325697
+
+  generated 50 configurations (tau_ac=1.514126, dt=0.002316 ps) at 300 K in 0.770 s
+  estimated replica exchange acceptance rate is 0.831261
+
+  wrote to /home/xin/DevelopmentTool/AlGDock_xl/AlGDock/Example/cool/cool_progress.pkl.gz
+
+Elapsed time for initial cooling: 6.887 s
+
+>>> Replica exchange sampling for the cooling process
+  storing 50 configurations for 6 replicas in cycle 1 (tau2=0.896205, tau_ac=0.424000) with 0.000 s for MC in 7.530 s
+  wrote to /home/xin/DevelopmentTool/AlGDock_xl/AlGDock/Example/cool/cool_progress.pkl.gz
+  storing 50 configurations for 6 replicas in cycle 2 (tau2=1.201074, tau_ac=0.213714) with 0.000 s for MC in 7.424 s
+  wrote to /home/xin/DevelopmentTool/AlGDock_xl/AlGDock/Example/cool/cool_progress.pkl.gz
+Elapsed time for 2 total cycles of replica exchange was 16.321 s
+
+  wrote to /home/xin/DevelopmentTool/AlGDock_xl/AlGDock/Example/cool/cool_progress.pkl.gz
+  postprocessed data in 1.413 s
+  calculated NAMD_GBSA solvation free energy of -3.700487 RT using cycles 0 to 0
+  calculated NAMD_GBSA solvation free energy of -3.757625 RT using cycles 0 to 1
+  calculated NAMD_GBSA solvation free energy of -3.756098 RT using cycles 0 to 2
+  calculated cooling free energy of 58.436087 RT using cycles 0 to 0
+  calculated cooling free energy of 66.007178 RT using cycles 0 to 1
+  calculated cooling free energy of 68.417544 RT using cycles 0 to 2
+  wrote to /home/xin/DevelopmentTool/AlGDock_xl/AlGDock/Example/cool/f_L.pkl.gz
