@@ -2,8 +2,15 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6e590f3f-227c-454a-a44a-88df9561ee1f" name="Default" comment="">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/cool/cool_log.txt" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/cool/cool_progress.pkl.gz" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/cool/cool_progress.pkl.gz.BAK" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/cool/f_L.pkl.gz" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/dock/dock_log.txt" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/dock/dock_progress.pkl.gz" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/dock/dock_progress.pkl.gz.BAK" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/Example/dock/f_RL.pkl.gz" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AlGDock/HREX.py" afterPath="$PROJECT_DIR$/AlGDock/HREX.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Example/test_python.py" afterPath="$PROJECT_DIR$/Example/test_python.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="AlGDock.iws" />
@@ -30,8 +37,8 @@
       <file leaf-file-name="HREX.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AlGDock/HREX.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.5106732" vertical-offset="27391" max-vertical-offset="56520">
-              <caret line="1539" column="53" selection-start-line="1539" selection-start-column="42" selection-end-line="1539" selection-end-column="53" />
+            <state vertical-scroll-proportion="1.1527094" vertical-offset="50112" max-vertical-offset="53946">
+              <caret line="2823" column="90" selection-start-line="2823" selection-start-column="90" selection-end-line="2823" selection-end-column="90" />
               <folding>
                 <element signature="e#22#57#0" expanded="true" />
               </folding>
@@ -42,7 +49,7 @@
       <file leaf-file-name="test_python.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Example/test_python.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="648">
+            <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="612">
               <caret line="30" column="12" selection-start-line="30" selection-start-column="12" selection-end-line="30" selection-end-column="12" />
               <folding />
             </state>
@@ -270,7 +277,7 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="71" y="24" width="1295" height="744" extended-state="6" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -284,11 +291,11 @@
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.44822484" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
     </layout>
   </component>
   <component name="Vcs.Log.UiProperties">
@@ -313,6 +320,24 @@
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/AlGDock/HREX.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="27702" max-vertical-offset="56520">
+          <caret line="1539" column="53" selection-start-line="1539" selection-start-column="42" selection-end-line="1539" selection-end-column="53" />
+          <folding>
+            <element signature="e#22#57#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Example/test_python.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="648">
+          <caret line="30" column="12" selection-start-line="30" selection-start-column="12" selection-end-line="30" selection-end-column="12" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/AlGDock/HREX.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="30253" max-vertical-offset="56538">
@@ -683,8 +708,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AlGDock/HREX.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.5106732" vertical-offset="27391" max-vertical-offset="56520">
-          <caret line="1539" column="53" selection-start-line="1539" selection-start-column="42" selection-end-line="1539" selection-end-column="53" />
+        <state vertical-scroll-proportion="1.1527094" vertical-offset="50112" max-vertical-offset="53946">
+          <caret line="2823" column="90" selection-start-line="2823" selection-start-column="90" selection-end-line="2823" selection-end-column="90" />
           <folding>
             <element signature="e#22#57#0" expanded="true" />
           </folding>

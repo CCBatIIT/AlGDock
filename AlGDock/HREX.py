@@ -1,34 +1,6 @@
 #!/usr/bin/env python
 from multiprocessing import Process
-from multiprocessing import Pool
 import multiprocessing
-import threading
-
-from functools import partial
-
-from copy_reg import pickle
-from types import MethodType
-import copy_reg
-
-def _pickle_method(method):
-     func_name = method.im_func.__name__
-     obj = method.im_self
-     cls = method.im_class
-     return _unpickle_method, (func_name, obj, cls)
-
-
-def _unpickle_method(func_name, obj, cls):
-     try:
-         for cls in cls.mro():
-             try:
-                 func = cls.__dict__[func_name]
-             except KeyError:
-                 pass
-             else:
-                 break
-     except AttributeError:
-         func = cls.__dict__[func_name]
-     return func.__get__(obj, cls)
 
 import os  # Miscellaneous operating system interfaces
 from os.path import abspath
@@ -1663,7 +1635,7 @@ last modified {2}
         for var in ['confs', 'state_inds', 'energies']:
             storage[var] = []
 
-        # Do replica exchange
+        # do replica exchange
         MC_time = 0
         state_inds = range(K)
         inv_state_inds = range(K)
@@ -1679,8 +1651,9 @@ last modified {2}
 
 ###########################################
 
+            #print "I have " + str(multiprocessing.cpu_count()) + " cores"
+
             # spawns some processes to do this function call
-            print "this is process " + str(os.getpid()) + " sending a task"
 
             k_array = range(K)
 
@@ -1715,117 +1688,7 @@ last modified {2}
                     E['MM'][i] = results[i]['E_MM_k']
                 Ht[i] = results[i]['Ht_k']
 
-####################################################
-            """
-            # use threadPool + partial, but give "instance method cannot pickle" error
 
-            pool = Pool()
-
-            k_array = range(K)
-
-            # these two lines try to pickle this instance method
-
-            copy_reg.pickle(MethodType, _pickle_method, _unpickle_method)
-            new_func = pickle.loads(pickle.dumps(self.foo))
-
-            partial_sample = partial(self.sample_with_each_state, my_state_inds=state_inds,
-                                                                    my_lambdas=lambdas,
-                                                                    my_confs=confs,
-                                                                    my_process=process,
-                                                                    my_params=self.params,
-                                                                    my_MC_time=MC_time,
-                                                                    my_sampler=self.sampler,
-                                                                    my_T=self.T,
-                                                                    my_delta_t=self.delta_t,
-                                                                    my_Ht=Ht)
-
-            results = pool.map(new_func, k_array)
-
-            pool.close()
-
-            pool.join(2)
-
-            for i in range(K):
-                if process == 'dock' and self.params['dock']['MCMC_moves'] > 0 and lambdas[state_inds[i]]['a'] < 0.1:
-                    E['acc_MC'][i] = results[i]['E_acc_MC_k']
-                    MC_time += results[i]['my_MC_time']
-                confs[i] = results[i]['confs_k']
-                if process == 'cool':
-                    E['MM'][i] = results[i]['E_MM_k']
-                Ht[i] = results[i]['Ht_k']
-            """
-##############################################################3
-
-            """
-
-            # call original function, this function works when directly called in the for loop
-            for k in range(K):
-
-                id = os.getpid()
-                print "this is process " + str(id) + " sending a task"
-
-                result_queue = multiprocessing.Queue()
-
-                p = Process(target = self.sample_with_each_state, args=(result_queue, state_inds, lambdas, confs, process, self.params,
-                                                                        k, MC_time, self.sampler, self.T, self.delta_t, Ht))
-                p.start()
-
-                output = result_queue.get()
-
-                p.join()
-
-
-                output = self.sample_with_each_state(my_state_inds=state_inds, \
-                                            my_lambdas=lambdas, \
-                                            my_confs = confs, \
-                                            my_process = process, \
-                                            my_params = self.params, \
-                                            my_k = k, \
-                                            my_MC_time = MC_time, \
-                                            my_sampler = self.sampler, \
-                                            my_T = self.T, \
-                                            my_delta_t = self.delta_t, \
-                                            my_Ht = Ht)
-
-
-                if process == 'dock' and self.params['dock']['MCMC_moves'] > 0 and lambdas[state_inds[k]]['a'] < 0.1:
-                    E['acc_MC'][k] = output['E_acc_MC_k']
-                    MC_time = output['my_MC_time']
-                confs[k] = output['confs_k']
-                if process == 'cool':
-                    E['MM'][k] = output['E_MM_k']
-                Ht[k] = output['Ht_k']
-
-            """
-
-##############################################################################################
-            """
-            # this version use joblib package, but the problem is "generator cannot pickle"
-
-            k_array = range(K)
-
-            output_array = Parallel(n_jobs=num_cores)(delayed(self.sample_with_each_state(state_inds,
-                                                                                          lambdas,
-                                                                                          confs,
-                                                                                          process,
-                                                                                          self.params,
-                                                                                          k,
-                                                                                          MC_time,
-                                                                                          self.sampler,
-                                                                                          self.T,
-                                                                                          self.delta_t,
-                                                                                          Ht) for k in k_array))
-            print output_array
-
-            for i in range(K):
-                if process == 'dock' and self.params['dock']['MCMC_moves'] > 0 and lambdas[state_inds[i]]['a'] < 0.1:
-                    E['acc_MC'][i] = output_array[i]['E_acc_MC_k']
-                    MC_time += output_array[i]['my_MC_time']
-                confs[i] = output_array[i]['confs_k']
-                if process == 'cool':
-                    E['MM'][i] = output_array[i]['E_MM_k']
-                Ht[i] = output_array[i]['Ht_k']
-            """
 #########################################################################################
 
             """
@@ -2942,8 +2805,6 @@ last modified {2}
                                my_delta_t,
                                my_Ht):
 
-        #print "this is process " + str(os.getpid()) + " running the process"
-
         output_dic = {}
         self._set_universe_force_field(my_lambdas[my_state_inds[my_k]])
         self.universe.setConfiguration(Configuration(self.universe, my_confs[my_k]))
@@ -2960,11 +2821,7 @@ last modified {2}
             output_dic['E_MM_k'] = potEs_k[-1]
         output_dic['Ht_k'] = my_Ht[my_k] + Hs_k
 
-        q.put(output_dic)
-        #return output_dic
-
-    def foo(self, x):
-        return x ** x
+        q.put(output_dic)  # put this result into result_queue for the main process to use
 
 if __name__ == '__main__':
     import argparse
