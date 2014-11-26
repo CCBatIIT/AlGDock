@@ -52,7 +52,7 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 
   # By default, use Enthought Canopy python
   if command.find('python')>-1:
-    modules = 'module load canopy/1.2.0\n'
+    modules = 'module load canopy/1.5.0\n'
   else:
     modules = ''
 

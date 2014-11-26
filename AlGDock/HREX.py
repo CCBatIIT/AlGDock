@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os
+import os # Miscellaneous operating system interfaces
 from os.path import abspath
 from os.path import exists
 from os.path import isfile
@@ -22,12 +22,15 @@ from Scientific._vector import Vector  # @UnresolvedImport
 import AlGDock as a
 import pymbar.timeseries
 
+from multiprocessing import Process
+import multiprocessing
+
 # Constants
-R = 8.3144621*MMTK.Units.J/MMTK.Units.mol/MMTK.Units.K
-T_HIGH = 600.0*MMTK.Units.K
-T_TARGET = 300.0*MMTK.Units.K
-RT_HIGH = R*T_HIGH
-RT_TARGET = R*T_TARGET
+R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
+T_HIGH = 600.0 * MMTK.Units.K
+T_TARGET = 300.0 * MMTK.Units.K
+RT_HIGH = R * T_HIGH
+RT_TARGET = R * T_TARGET
 
 term_map = {
   'cosine dihedral angle':'MM',
@@ -244,7 +247,12 @@ Molecular docking with adaptively scaled alchemical interaction grids
 version {0}
 in {1}
 last modified {2}
-    """.format(a.__version__, mod_path, time.ctime(os.path.getmtime(mod_path)))
+
+available CPUs: {3}
+    """.format(a.__version__, mod_path, \
+      time.ctime(os.path.getmtime(mod_path)), multiprocessing.cpu_count())
+    self._do_multiprocess = False
+    # (multiprocessing.cpu_count()>1)
     
     self.confs = {'cool':{}, 'dock':{}}
     
@@ -1424,7 +1432,7 @@ last modified {2}
     """
     Sets the force field parameters of the universe to values appropriate for the given lambda_n dictionary.
     The elements in the dictionary lambda_n can be:
-      MM - True, to turn on Generalized AMBER force field
+      MM - True, to turn on the Generalized AMBER force field
       site - True, to turn on the binding site
       sLJr - scaling of the soft Lennard-Jones repulsive grid
       sLJa - scaling of the soft Lennard-Jones attractive grid
@@ -1606,6 +1614,11 @@ last modified {2}
         lower_inds += range(lowest_index,K-interval,interval)
       upper_inds = np.array(lower_inds) + interval
       pairs_to_swap += zip(lower_inds,upper_inds)
+
+    # Setting the force field will load grids
+    # before multiple processes are spawned
+    for k in range(K):
+      self._set_universe_force_field(lambdas[k])
     
     storage = {}
     for var in ['confs','state_inds','energies']:
@@ -1622,26 +1635,38 @@ last modified {2}
       if process=='dock':
         MC_start_time = time.time()
         E['acc_MC'] = np.zeros(K, dtype=float)
-        MC_time += (time.time()-MC_start_time)
       Ht = np.zeros(K, dtype=int)
       # Sample within each state
+      results = []
+      if self._do_multiprocess:
+        result_queue = multiprocessing.Queue()
+        processes = []
+        for k in range(K):
+            p = multiprocessing.Process(target=self._sample_state, \
+              args=(result_queue, process, lambdas[state_inds[k]], \
+                    Configuration(self.universe, confs[k])))
+            processes.append(p)
+        for pro in processes:
+            pro.start()
+        for pro in processes:
+            pro.join()
+        for k in range(K):
+            results.append(result_queue.get())
+        for pro in processes:
+            pro.terminate()
+      else:
+        for k in range(K):
+          results.append(self._sample_state(None, process, \
+            lambdas[state_inds[k]], Configuration(self.universe, confs[k])))
+      # Store results
       for k in range(K):
-        self._set_universe_force_field(lambdas[state_inds[k]])
-        self.universe.setConfiguration(Configuration(self.universe, confs[k]))
-        if process=='dock' and self.params['dock']['MCMC_moves']>0 \
-            and lambdas[state_inds[k]]['a']<0.1:
-          MC_start_time = time.time()
-          E['acc_MC'][k] = self._MC_translate_rotate(25)/25.
-          MC_time += (time.time()-MC_start_time)
-        # By far, this step takes the most time within the cycle
-        (confs_k, potEs_k, Hs_k, delta_t) = self.sampler[process](\
-          steps = self.params[process]['steps_per_sweep'],\
-          T=self.T, delta_t=self.delta_t,\
-          normalize=(process=='cool'), adapt=False)
-        confs[k] = np.copy(confs_k[-1])
-        if process=='cool':
-          E['MM'][k] = potEs_k[-1]
-        Ht[k] += Hs_k
+        if 'acc_MC' in results[k].keys():
+          E['acc_MC'][k] = results[k]['acc_MC']
+          MC_time += results[k]['MC_time']
+        confs[k] = results[k]['confs']
+        if process == 'cool':
+            E['MM'][k] = results[k]['E_MM']
+        Ht[k] += results[k]['Ht']
       if process=='dock':
         E = self._calc_E(confs, E) # Get energies
         # Get rmsd values
@@ -1796,6 +1821,43 @@ last modified {2}
       getattr(self,'_%s_total_cycle'%process) + 1)
     self._save_progress(process)
     self._clear_lock(process)
+
+  def _sample_state(self, results_queue, process, lambda_k, initial_conf):
+    self._set_universe_force_field(lambda_k)
+    self.universe.setConfiguration(initial_conf)
+
+    T = lambda_k['T']
+    
+    if 'delta_t' in lambda_k.keys():
+      delta_t = lambda_k['delta_t']
+    else:
+      delta_t = 1.5*MMTK.Units.fs
+    
+    results = {}
+    # Perform MCMC moves
+    if (process == 'dock') and (self.params['dock']['MCMC_moves'] > 0) and \
+        (lambda_k['a'] < 0.1):
+      MC_start_time = time.time()
+      results['acc_MC'] = self._MC_translate_rotate(25)/25.
+      results['MC_time'] = (time.time() - MC_start_time)
+
+    # Execute sampler
+    (confs_k, potEs_k, Hs_k, delta_t) = self.sampler[process](\
+      steps=self.params[process]['steps_per_sweep'], \
+      T=lambda_k['T'], delta_t=delta_t, \
+      normalize=(process=='cool'),
+      adapt=False)
+
+    # Store results in dictionary
+    results['confs'] = np.copy(confs_k[-1])
+    if process == 'cool':
+      results['E_MM'] = potEs_k[-1]
+    results['Ht'] = Hs_k
+
+    if results_queue is not None:
+      results_queue.put(results)  # put the result into the result_queue
+    else:
+      return results
 
   def _sim_process(self, process):
     """
