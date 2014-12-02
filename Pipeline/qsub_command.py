@@ -19,7 +19,7 @@ parser.add_argument('--output_files', default=[], nargs='+', help='Output files 
 parser.add_argument('--output_remaps', default=[], nargs='+', help='New output file names')
 parser.add_argument('--min_job_time', default=20, type=int, \
   help='Will resubmit job if there is an error and the job takes less than this time (in minutes)')
-parser.add_argument('--max_job_time', default=18, type=int, \
+parser.add_argument('--max_job_time', default=12, type=int, \
   help='Will hold job that takes longer than this time (in hours)')
 # For CCB and DSCR
 parser.add_argument('--nodes', type=int, default=1, help='Number of nodes to run the job on')
@@ -142,6 +142,12 @@ elif os.path.exists('/stash'):   # Open Science Grid
       '; '.join(['%s = %s'%(FNo,FNn) for (FNo,FNn) in zip(\
         args.output_remaps[::2],args.output_remaps[1::2])]) + '"'
 
+  if command.find('$ALGDOCK')!=-1:
+    hold_string = 'on_exit_hold = (ExitCode == 100)'
+  else:
+    hold_string = '(ExitCode != 0) && ' + \
+      '((CurrentTime - JobStartDate) < ({0}*60))'.format(args.min_job_time)
+
   release_string = {True:'',
     False:'periodic_release = ((CurrentTime - EnteredCurrentStatus) > 60)'}[\
       args.no_release]
@@ -159,19 +165,19 @@ should_transfer_files = YES
 transfer_input_files = {4}
 {5}
 when_to_transfer_output = ON_EXIT_OR_EVICT
-want_graceful_removal = True
+want_graceful_removal = (ExitCode == 100)
 
 # stay in queue if there was an error and the job ran for less than min_job_time minutes
-on_exit_hold = (ExitCode != 0) && ((CurrentTime - JobStartDate) < ({6}*60))
+{6}
 # protect against hung jobs (taking more than max_job_time hours)
-periodic_remove = (JobStatus==2) && ((CurrentTime - EnteredCurrentStatus) > {7}*60*60)
+periodic_hold = (JobStatus==2) && ((CurrentTime - EnteredCurrentStatus) > {7}*60*60)
 # make sure the job is being retried and rematched
 {8}
 +ProjectName="AlGDock"
 Queue 1
 """.format(sh_FN, args.name, 1000*args.mem, args.disk, \
     transfer_input_files, transfer_output_files, \
-    args.min_job_time, args.max_job_time, release_string)
+    hold_string, args.max_job_time, release_string)
 
   if command.find('$ALGDOCK')!=-1:
     command = """
@@ -196,35 +202,33 @@ search_paths = {
 mv AlGDock/AlGDock/paths.py AlGDock/AlGDock/_external_paths.py
 export ALGDOCK=$WORK_DIR/AlGDock/HREX
 
-# Clear empty gzip files
-find *.gz -size 0 -delete
-
 """ + command + """
 
 rm -rf AlGDock namd2
 rm *.out *.namd *.dcd
 rm .lock
 """
-    if command.find('one_step')!=-1:
-      command += """
-if [ ! -f f_RL.pkl.gz ]
-  then
-    exit 100
-fi"""
-
   execute_script = """#!/bin/bash
 
 WORK_DIR=`pwd`
 echo Working in $WORK_DIR
 echo Directory before command:
-ls
+ls -ltr
 
 """+command+"""
 
 echo Directory after command:
-ls
+ls -ltr
 
 """
+
+  if command.find('$ALGDOCK')!=-1 and command.find('one_step')!=-1:
+      # -s means file is not zero size
+      execute_script += """
+if [ ! -s f_RL.pkl.gz ]
+  then
+    exit 100
+fi"""
 else:
   cluster = None
   submit_script = args.command

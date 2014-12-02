@@ -205,3 +205,7 @@ To run AlGDock, from [TARGET]/AlGDock/, execute
 python $ALGDOCKHOME/Pipeline/run_AlGDock.py
 
 on the group cluster or on the open science grid submit node
+
+After the BPMF calculations are complete, running
+python $ALGDOCKHOME/Pipeline/analyze_scores.py
+again will generate ROC plots based on BPMF estimates.

@@ -31,6 +31,7 @@ parser.add_argument('--tree_dock', default='dock/',
 parser.add_argument('--reps', default=[0,1], nargs=2, type=int, \
   help='Range of repetitions')
 parser.add_argument('--max_jobs', default=None, type=int)
+parser.add_argument('--max_ligands', default=None, type=int)
 parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')
 parser.add_argument('--no_release', action='store_true', default=False, \
@@ -413,16 +414,31 @@ for ligand_FN in ligand_FNs:
           ['--comment', interactive_command.replace(' \\\n','')] + \
           {True:['--dry'],False:[]}[args_in.dry] + \
           {True:['--no_release'],False:[]}[args_in.no_release])
-          
+      
       job_status['submitted'] += 1
+
+      num_ligands = sum(job_status.values())
       if (args_in.max_jobs is not None) and \
          (job_status['submitted']>=args_in.max_jobs):
         break
+      if (args_in.max_ligands is not None) and \
+         (num_ligands>=args_in.max_ligands):
+        break
+
+    num_ligands = sum(job_status.values())
     if (args_in.max_jobs is not None) and \
        (job_status['submitted']>=args_in.max_jobs):
       break
+    if (args_in.max_ligands is not None) and \
+       (num_ligands>=args_in.max_ligands):
+      break
+      
+  num_ligands = sum(job_status.values())
   if (args_in.max_jobs is not None) and \
      (job_status['submitted']>=args_in.max_jobs):
+    break
+  if (args_in.max_ligands is not None) and \
+     (num_ligands>=args_in.max_ligands):
     break
 
 print "Jobs: {submitted} submitted, {no_complex} without complex files, {no_dock6} without dock6 files, {missing_file} missing other files, {onq} on the queue, {complete} complete".format(**job_status)
