@@ -253,8 +253,8 @@ available CPUs: {3}
     """.format(a.__version__, mod_path, \
       time.ctime(os.path.getmtime(mod_path)), multiprocessing.cpu_count())
       
-    self._do_multiprocess = (nodes is not None) and (nodes>1) and \
-      (multiprocessing.cpu_count()>1)
+    self._do_multiprocess = (multiprocessing.cpu_count()>1) and \
+      ((nodes is None) or ((nodes is not None) and (nodes>1)))
     
     self.confs = {'cool':{}, 'dock':{}}
     
@@ -703,7 +703,6 @@ available CPUs: {3}
     # Minimize and ramp the temperature from 0 to the desired high temperature
     from MMTK.Minimization import ConjugateGradientMinimizer # @UnresolvedImport
     minimizer = ConjugateGradientMinimizer(self.universe)
-    # TO DO: Make sure minimizer doesn't crash
     for rep in range(50):
       x_o = np.copy(self.universe.configuration().array)
       e_o = self.universe.energy()
@@ -937,6 +936,134 @@ available CPUs: {3}
   ###########
   # Docking #
   ###########
+  def random_dock(self):
+    # Select samples from the first cooling state and make sure there are enough
+    E_MM = []
+    confs = []
+    for k in range(len(self.cool_Es[0])):
+      E_MM += list(self.cool_Es[0][k]['MM'])
+      confs += list(self.confs['cool']['samples'][0][k])
+    while len(E_MM)<self.params['dock']['seeds_per_state']:
+      self.tee("More samples from high temperature ligand simulation needed")
+      self._replica_exchange('cool')
+      E_MM = []
+      confs = []
+      for k in range(len(self.cool_Es[0])):
+        E_MM += list(self.cool_Es[0][k]['MM'])
+        confs += list(self.confs['cool']['samples'][0][k])
+
+    random_dock_inds = np.array(np.linspace(0,len(E_MM), \
+      self.params['dock']['seeds_per_state'],endpoint=False),dtype=int)
+    cool0_Es_MM = [E_MM[ind]  for ind in random_dock_inds]
+    cool0_confs = [confs[ind] for ind in random_dock_inds]
+
+    # Do the random docking
+    self.tee("\n>>> Initial docking")
+
+    # Set up the force field with full interaction grids
+    self._set_universe_force_field(self.lambda_scalables)
+  
+    lambda_o = {'T':T_HIGH, 'MM':True, 'site':True, \
+                'crossed':False, 'a':0.0}
+    for scalable in self._scalables:
+      lambda_o[scalable] = 0
+    self.dock_protocol = [lambda_o]
+
+    # Either loads or generates the random translations and rotations for the first state of docking
+    if not (hasattr(self,'_random_trans') and hasattr(self,'_random_rotT')):
+      self._max_n_trans = 10000
+      # Default density of points is 50 per nm**3
+      self._n_trans = max(min(np.int(np.ceil(self._forceFields['site'].volume*self.params['dock']['site_density'])),self._max_n_trans),5)
+      self._random_trans = np.ndarray((self._max_n_trans), dtype=Vector)
+      for ind in range(self._max_n_trans):
+        self._random_trans[ind] = Vector(self._forceFields['site'].randomPoint())
+      self._max_n_rot = 100
+      self._n_rot = 100
+      self._random_rotT = np.ndarray((self._max_n_rot,3,3))
+      for ind in range(self._max_n_rot):
+        self._random_rotT[ind,:,:] = np.transpose(random_rotate())
+    else:
+      self._max_n_trans = self._random_trans.shape[0]
+      self._n_rot = self._random_rotT.shape[0]
+
+    # Get interaction energies.
+    # Loop over configurations, random rotations, and random translations
+    E = {}
+    for term in (['MM','site']+self._scalables):
+      # Large array creation may cause MemoryError
+      E[term] = np.zeros((self.params['dock']['seeds_per_state'], \
+        self._max_n_rot,self._n_trans))
+    self.tee("  allocated memory for interaction energies")
+
+    converged = False
+    n_trans_o = 0
+    n_trans_n = self._n_trans
+    while not converged:
+      for c in range(self.params['dock']['seeds_per_state']):
+        E['MM'][c,:,:] = cool0_Es_MM[c]
+        for i_rot in range(self._n_rot):
+          conf_rot = Configuration(self.universe,\
+            np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]))
+          for i_trans in range(n_trans_o, n_trans_n):
+            self.universe.setConfiguration(conf_rot)
+            self.universe.translateBy(self._random_trans[i_trans])
+            eT = self.universe.energyTerms()
+            for (key,value) in eT.iteritems():
+              E[term_map[key]][c,i_rot,i_trans] += value
+      E_c = {}
+      for term in E.keys():
+        # Large array creation may cause MemoryError
+        E_c[term] = np.ravel(E[term][:,:self._n_rot,:n_trans_n])
+      self.tee("  allocated memory for %d translations"%n_trans_n)
+      (u_kln,N_k) = self._u_kln([E_c],\
+        [lambda_o,self._next_dock_state(E=E_c, lambda_o=lambda_o)])
+      du = u_kln[0,1,:] - u_kln[0,0,:]
+      bootstrap_reps = 50
+      f_grid0 = np.zeros(bootstrap_reps)
+      for b in range(bootstrap_reps):
+        du_b = du[np.random.randint(0, len(du), len(du))]
+        f_grid0[b] = -np.log(np.exp(-du_b+min(du_b)).mean()) + min(du_b)
+      f_grid0_std = f_grid0.std()
+      converged = f_grid0_std<0.1
+      if not converged:
+        self.tee("  with %s translations "%n_trans_n + \
+                 "the predicted free energy difference is %f (%f)"%(\
+                 f_grid0.mean(),f_grid0_std))
+        if n_trans_n == self._max_n_trans:
+          break
+        n_trans_o = n_trans_n
+        n_trans_n = min(n_trans_n + 25, self._max_n_trans)
+        for term in (['MM','site']+self._scalables):
+          # Large array creation may cause MemoryError
+          # Has not been tested
+          E[term] = np.dstack(E[term], \
+            np.zeros((self.params['dock']['seeds_per_state'], \
+            self._max_n_rot,25)))
+
+    if self._n_trans != n_trans_n:
+      self._n_trans = n_trans_n
+      
+    self.tee("  %d ligand configurations "%len(cool0_Es_MM) + \
+             "were randomly docked into the binding site using "+ \
+             "%d translations and %d rotations "%(n_trans_n,self._n_rot))
+    self.tee("  the predicted free energy difference between the" + \
+             " first and second docking states is " + \
+             "%f (%f)"%(f_grid0.mean(),f_grid0_std))
+
+    ravel_start_time = time.time()
+    for term in E.keys():
+      E[term] = np.ravel(E[term][:,:self._n_rot,:self._n_trans])
+    self.tee("  raveled energy terms in " + \
+      HMStime(time.time()-ravel_start_time))
+
+    stats_start_time = time.time()
+    if self.params['dock']['do_calc_random_dock_stats']:
+      self.calc_random_dock_stats(E)
+      self.tee("  calculated random dock stats in " + \
+        HMStime(time.time()-stats_start_time))
+
+    return (cool0_confs, E)
+
   def initial_dock(self, randomOnly=False):
     """
       Docks the ligand into the receptor
@@ -955,142 +1082,19 @@ available CPUs: {3}
     dock_start_time = time.time()
 
     if self.dock_protocol==[]:
-      # Select samples from the first cooling state and make sure there are enough
-      E_MM = []
-      confs = []
-      for k in range(len(self.cool_Es[0])):
-        E_MM += list(self.cool_Es[0][k]['MM'])
-        confs += list(self.confs['cool']['samples'][0][k])
-      while len(E_MM)<self.params['dock']['seeds_per_state']:
-        self.tee("More samples from high temperature ligand simulation needed")
-        self._replica_exchange('cool')
-        E_MM = []
-        confs = []
-        for k in range(len(self.cool_Es[0])):
-          E_MM += list(self.cool_Es[0][k]['MM'])
-          confs += list(self.confs['cool']['samples'][0][k])
-
-      random_dock_inds = np.array(np.linspace(0,len(E_MM), \
-        self.params['dock']['seeds_per_state'],endpoint=False),dtype=int)
-      cool0_Es_MM = [E_MM[ind]  for ind in random_dock_inds]
-      cool0_confs = [confs[ind] for ind in random_dock_inds]
-
-      # Do the random docking
-      self.tee("\n>>> Initial docking")
-
-      # Set up the force field with full interaction grids
-      self._set_universe_force_field(self.lambda_scalables)
-    
-      lambda_o = {'T':T_HIGH, 'MM':True, 'site':True, \
-                  'crossed':False, 'a':0.0}
-      for scalable in self._scalables:
-        lambda_o[scalable] = 0
-      self.dock_protocol = [lambda_o]
-
-      # Either loads or generates the random translations and rotations for the first state of docking
-      if not (hasattr(self,'_random_trans') and hasattr(self,'_random_rotT')):
-        self._max_n_trans = 10000
-        # Default density of points is 50 per nm**3
-        self._n_trans = max(min(np.int(np.ceil(self._forceFields['site'].volume*self.params['dock']['site_density'])),self._max_n_trans),5)
-        self._random_trans = np.ndarray((self._max_n_trans), dtype=Vector)
-        for ind in range(self._max_n_trans):
-          self._random_trans[ind] = Vector(self._forceFields['site'].randomPoint())
-        self._max_n_rot = 100
-        self._n_rot = 100
-        self._random_rotT = np.ndarray((self._max_n_rot,3,3))
-        for ind in range(self._max_n_rot):
-          self._random_rotT[ind,:,:] = np.transpose(random_rotate())
-      else:
-        self._max_n_trans = self._random_trans.shape[0]
-        self._n_rot = self._random_rotT.shape[0]
-
-      # Get interaction energies.
-      # Loop over configurations, random rotations, and random translations
-      E = {}
-      for term in (['MM','site']+self._scalables):
-        # Large array creation may cause MemoryError
-        E[term] = np.zeros((self.params['dock']['seeds_per_state'], \
-          self._max_n_rot,self._n_trans))
-      self.tee("  allocated memory for interaction energies")
-
-      # TO DO: Optimize this loop
-      converged = False
-      n_trans_o = 0
-      n_trans_n = self._n_trans
-      while not converged:
-        for c in range(self.params['dock']['seeds_per_state']):
-          E['MM'][c,:,:] = cool0_Es_MM[c]
-          for i_rot in range(self._n_rot):
-            conf_rot = Configuration(self.universe,\
-              np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]))
-            for i_trans in range(n_trans_o, n_trans_n):
-              self.universe.setConfiguration(conf_rot)
-              self.universe.translateBy(self._random_trans[i_trans])
-              eT = self.universe.energyTerms()
-              for (key,value) in eT.iteritems():
-                E[term_map[key]][c,i_rot,i_trans] += value
-        E_c = {}
-        for term in E.keys():
-          # Large array creation may cause MemoryError
-          E_c[term] = np.ravel(E[term][:,:self._n_rot,:n_trans_n])
-        self.tee("  allocated memory for %d translations"%n_trans_n)
-        (u_kln,N_k) = self._u_kln([E_c],\
-          [lambda_o,self._next_dock_state(E=E_c, lambda_o=lambda_o)])
-        du = u_kln[0,1,:] - u_kln[0,0,:]
-        bootstrap_reps = 50
-        f_grid0 = np.zeros(bootstrap_reps)
-        for b in range(bootstrap_reps):
-          du_b = du[np.random.randint(0, len(du), len(du))]
-          f_grid0[b] = -np.log(np.exp(-du_b+min(du_b)).mean()) + min(du_b)
-        f_grid0_std = f_grid0.std()
-        converged = f_grid0_std<0.1
-        if not converged:
-          self.tee("  with %s translations "%n_trans_n + \
-                   "the predicted free energy difference is %f (%f)"%(\
-                   f_grid0.mean(),f_grid0_std))
-          if n_trans_n == self._max_n_trans:
-            break
-          n_trans_o = n_trans_n
-          n_trans_n = min(n_trans_n + 25, self._max_n_trans)
-          for term in (['MM','site']+self._scalables):
-            # Large array creation may cause MemoryError
-            # Has not been tested
-            E[term] = np.dstack(E[term], \
-              np.zeros((self.params['dock']['seeds_per_state'], \
-              self._max_n_rot,25)))
-
-      if self._n_trans != n_trans_n:
-        self._n_trans = n_trans_n
-        
-      self.tee("  %d ligand configurations "%len(cool0_Es_MM) + \
-               "were randomly docked into the binding site using "+ \
-               "%d translations and %d rotations "%(n_trans_n,self._n_rot) + \
-               "in " + HMStime(time.time()-dock_start_time))
-      self.tee("  the predicted free energy difference between the" + \
-               " first and second docking states is " + \
-               "%f (%f)"%(f_grid0.mean(),f_grid0_std))
-
-      ravel_start_time = time.time()
-      for term in E.keys():
-        E[term] = np.ravel(E[term][:,:self._n_rot,:self._n_trans])
-      self.tee("  raveled energy terms in " + \
-        HMStime(time.time()-ravel_start_time))
-
-      stats_start_time = time.time()
-      if self.params['dock']['do_calc_random_dock_stats']:
-        self.calc_random_dock_stats(E)
-        self.tee("  calculated random dock stats in " + \
-          HMStime(time.time()-stats_start_time))
-
+      (cool0_confs, E) = self.random_dock()
+      self.tee("  random docking complete in " + \
+               HMStime(time.time()-dock_start_time))
       if randomOnly:
         self._clear_lock('dock')
         return
-    else: # if self.dock_protocol==[]:
+    else:
       # Continuing from a previous docking instance
       self.tee("\n>>> Initial docking, continued")
-      lambda_o = self.dock_protocol[-1]
       confs = self.confs['dock']['samples'][-1][0]
       E = self.dock_Es[-1][0]
+
+    lambda_o = self.dock_protocol[-1]
 
     # Main loop for initial docking:
     # choose new thermodynamic variables,

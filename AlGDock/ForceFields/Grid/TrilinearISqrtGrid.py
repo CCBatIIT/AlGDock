@@ -28,7 +28,8 @@ class TrilinearISqrtGridForceField(ForceField):
         """
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
-        self.arguments = (FN, strength, scaling_property, grid_name, max_val)
+        self.arguments = (FN, strength,
+          scaling_property, scaling_prefactor, grid_name, max_val)
         # Initialize the ForceField class, giving a name to this one.
         ForceField.__init__(self, grid_name)
         # Store the parameters for later use.
@@ -45,17 +46,19 @@ class TrilinearISqrtGridForceField(ForceField):
           raise Exception('Trilinear grid origin in %s not at (0, 0, 0)!'%self.FN)
 
         # Make sure all grid values are positive
-        n_positive = sum(self.grid_data['vals']>0)
-        n_negative = sum(self.grid_data['vals']<0)
-        if n_positive>0 and n_negative>0:
-          raise Exception('All of the grid points do not have the same sign')
-        if n_negative>0:
+        if (self.grid_data['vals']>0).any():
+          if (self.grid_data['vals']<0).any():
+            raise Exception('All of the grid points do not have the same sign')
+          else:
+            neg_vals = False
+        else:
+          neg_vals = True
           self.grid_data['vals'] = -1*self.grid_data['vals']
 
         if scaling_prefactor is not None:
           self.scaling_prefactor = scaling_prefactor
         else:
-          self.scaling_prefactor = -1. if n_negative>0 else 1.
+          self.scaling_prefactor = -1. if neg_vals else 1.
 
     # The following method is called by the energy evaluation engine
     # to inquire if this force field term has all the parameters it

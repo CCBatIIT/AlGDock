@@ -13,7 +13,8 @@ class TrilinearThreshGridForceField(ForceField):
     Force field based on trilinear interpolation between points on the 3D grid
     """
 
-    def __init__(self, FN, strength, scaling_property, scaling_prefactor=None,
+    def __init__(self, FN, strength,
+      scaling_property, scaling_prefactor=None,
       grid_name='trilinear grid', max_val=-1.0, Ethresh=-1.0):
         """
         @param strength: the electric field vector
@@ -31,7 +32,8 @@ class TrilinearThreshGridForceField(ForceField):
         """
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
-        self.arguments = (FN, strength, scaling_property, grid_name, max_val)
+        self.arguments = (FN, strength,
+          scaling_property, scaling_prefactor, grid_name, max_val)
         # Initialize the ForceField class, giving a name to this one.
         ForceField.__init__(self, grid_name)
         # Store the parameters for later use.

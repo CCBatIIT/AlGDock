@@ -13,7 +13,8 @@ class TrilinearGridForceField(ForceField):
     Force field based on trilinear interpolation between points on the 3D grid
     """
 
-    def __init__(self, FN, strength, scaling_property, scaling_prefactor=None,
+    def __init__(self, FN, strength, scaling_property,
+      scaling_prefactor=None,
       grid_name='trilinear grid', max_val=-1.0):
         """
         @param strength: the electric field vector
@@ -29,7 +30,8 @@ class TrilinearGridForceField(ForceField):
         """
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
-        self.arguments = (FN, strength, scaling_property, grid_name, max_val)
+        self.arguments = (FN, strength,
+          scaling_property, scaling_prefactor, grid_name, max_val)
         # Initialize the ForceField class, giving a name to this one.
         ForceField.__init__(self, grid_name)
         # Store the parameters for later use.
@@ -38,7 +40,8 @@ class TrilinearGridForceField(ForceField):
         self.scaling_property = scaling_property
         self.grid_name = grid_name
         self.max_val = max_val
-  
+
+
         import AlGDock.IO
         IO_Grid = AlGDock.IO.Grid()
         self.grid_data = IO_Grid.read(self.FN, multiplier=0.1)
