@@ -205,6 +205,7 @@ class BindingPMF:
       cool_repX_cycles=None,
       dock_repX_cycles=None,
       run_type=None,
+      nodes=None,
       #   Defaults for dir_cool and dir_dock
       protocol=None, no_protocol_refinement=None, therm_speed=None,
       sampler=None, MCMC_moves=1,
@@ -251,8 +252,9 @@ last modified {2}
 available CPUs: {3}
     """.format(a.__version__, mod_path, \
       time.ctime(os.path.getmtime(mod_path)), multiprocessing.cpu_count())
-    self._do_multiprocess = False
-    # (multiprocessing.cpu_count()>1)
+      
+    self._do_multiprocess = (nodes is not None) and (nodes>1) and \
+      (multiprocessing.cpu_count()>1)
     
     self.confs = {'cool':{}, 'dock':{}}
     
@@ -1592,8 +1594,6 @@ available CPUs: {3}
     if not process in ['dock','cool']:
       raise Exception('Process must be dock or cool')
 
-    cycle_start_time = time.time()
-
     self._set_lock(process)
 
     if process=='cool':
@@ -1623,6 +1623,8 @@ available CPUs: {3}
     storage = {}
     for var in ['confs','state_inds','energies']:
       storage[var] = []
+    
+    cycle_start_time = time.time()
     
     # Do replica exchange
     MC_time = 0
@@ -2824,6 +2826,8 @@ if __name__ == '__main__':
              'store_params','free_energies', 'postprocess',
              'redo_postprocess', 'clear_intermediates', None],
     help='Type of calculation to run')
+  parser.add_argument('--nodes', type=int,
+    help='Number of CPU cores to use')
   #   Defaults
   parser.add_argument('--protocol', choices=['Adaptive','Set'],
     help='Approach to determining series of thermodynamic states')
