@@ -8,7 +8,10 @@
 *.egg-info
 dist
 build
+cool
+dock
 eggs
+laurentiu
 parts
 bin
 var

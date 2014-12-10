@@ -22,8 +22,8 @@ from Scientific._vector import Vector  # @UnresolvedImport
 import AlGDock as a
 import pymbar.timeseries
 
-from multiprocessing import Process
 import multiprocessing
+from multiprocessing import Process
 
 # Constants
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
@@ -205,7 +205,7 @@ class BindingPMF:
       cool_repX_cycles=None,
       dock_repX_cycles=None,
       run_type=None,
-      nodes=None,
+      cores=None,
       #   Defaults for dir_cool and dir_dock
       protocol=None, no_protocol_refinement=None, therm_speed=None,
       sampler=None, MCMC_moves=1,
@@ -249,13 +249,24 @@ version {0}
 in {1}
 last modified {2}
 
-available CPUs: {3}
     """.format(a.__version__, mod_path, \
-      time.ctime(os.path.getmtime(mod_path)), multiprocessing.cpu_count())
-      
-    self._do_multiprocess = (multiprocessing.cpu_count()>1) and \
-      ((nodes is None) or ((nodes is not None) and (nodes>1)))
+      time.ctime(os.path.getmtime(mod_path)))
     
+    # Multiprocessing options.
+    # Default is to use all availalbe cores.
+    # If cores is a number, then that number (or the maximum number)
+    # of cores will be used.
+    
+    # Default
+    available_cores = multiprocessing.cpu_count()
+    if (cores is None):
+      self._cores = available_cores
+    elif (cores==-1):
+      self._cores = available_cores
+    else:
+      self._cores = min(cores, available_cores)
+    print "using %d/%d available cores\n\n"%(self._cores, available_cores)
+  
     self.confs = {'cool':{}, 'dock':{}}
     
     print '*** Directories ***'
@@ -721,8 +732,7 @@ available CPUs: {3}
     state_start_time = time.time()
     conf = self.universe.configuration().array
     (confs, Es_MM, tau_ac) = self._initial_sim_state('cool', \
-      [conf for n in range(self.params['cool']['seeds_per_state'])], \
-      normalize=True)
+      [conf for n in range(self.params['cool']['seeds_per_state'])])
     self.confs['cool']['replicas'] = [confs[np.argmin(Es_MM)]]
     self.confs['cool']['samples'] = [[confs]]
     self.cool_Es = [[{'MM':Es_MM}]]
@@ -766,7 +776,7 @@ available CPUs: {3}
 
       state_start_time = time.time()
       (confs, Es_MM, tau_ac) = self._initial_sim_state('cool', \
-        [confs[ind] for ind in seedIndicies], normalize=True)
+        [confs[ind] for ind in seedIndicies])
       self.cool_protocol[-1]['delta_t'] = self.delta_t
       self.cool_protocol[-1]['tau_ac'] = tau_ac
       self.tee("  generated %d configurations "%len(confs) + \
@@ -937,6 +947,12 @@ available CPUs: {3}
   # Docking #
   ###########
   def random_dock(self):
+    """
+      Randomly places the ligand into the receptor and evaluates energies
+      
+      The first state of docking is sampled by randomly placing configurations
+      from the high temperature ligand simulation into the binding site.
+    """
     # Select samples from the first cooling state and make sure there are enough
     E_MM = []
     confs = []
@@ -1064,12 +1080,25 @@ available CPUs: {3}
 
     return (cool0_confs, E)
 
+  def FFT_dock(self):
+    """
+      Systemically places the ligand into the receptor grids 
+      along grid points using a Fast Fourier Transform
+    """
+
+    # UNDER CONSTRUCTION
+    # Loop over conformers
+    #   Loop over rotations
+    #     Generate ligand grids
+    #     Compute the cross-correlation with FFT
+    #     Accumulate results into the running BPMF estimator
+    #     Keep the lowest-energy conformers
+    # Estimate the BPMF
+
   def initial_dock(self, randomOnly=False):
     """
       Docks the ligand into the receptor
       
-      The first state of docking is sampled by randomly placing configurations 
-      from the high temperature ligand simulation into the binding site.
       Intermediate thermodynamic states are chosen such that
       thermodynamic length intervals are approximately constant.
       Configurations from each state are subsampled to seed the next simulation.
@@ -1144,8 +1173,7 @@ available CPUs: {3}
       # Simulate
       sim_start_time = time.time()
       self._set_universe_force_field(lambda_n)
-      (confs, Es_tot, tau_ac) = self._initial_sim_state('dock', seeds, \
-        normalize=False, doMC=True)
+      (confs, Es_tot, tau_ac) = self._initial_sim_state('dock', seeds)
       
       # Store data
       self.dock_protocol[-1]['delta_t'] = self.delta_t
@@ -1206,8 +1234,8 @@ available CPUs: {3}
         rejectStage = 0
         lambda_o = lambda_n
       
-      self._save_progress('dock')
-      self.tee("")
+#      self._save_progress('dock')
+#      self.tee("")
 
     K = len(self.dock_protocol)
     self.tee("  %d states in the docking process sampled in %s"%(K,\
@@ -1541,7 +1569,7 @@ available CPUs: {3}
 
     return acc
 
-  def _initial_sim_state(self, process, seeds, normalize=False, doMC=False):
+  def _initial_sim_state(self, process, seeds):
     """
     Initializes a state, returning the configurations and potential energy.
     """
@@ -1549,23 +1577,48 @@ available CPUs: {3}
     all_confs = []
     all_potEs = []
     Hs = []
+    
+    doMC = (process=='dock' and self.params['dock']['MCMC_moves']>0)
 
+    results = []
+    # For an unknown reason, the code below freezes
+#    if self._cores>1:
+#      # Multiprocessing code
+#      task_queue = multiprocessing.Queue()
+#      done_queue = multiprocessing.Queue()
+#      for seed in seeds:
+#        task_queue.put((process, seed, doMC))
+#      processes = [multiprocessing.Process(target=self._initial_sim_worker, \
+#          args=(task_queue, done_queue)) for p in range(self._cores)]
+#      for p in range(self._cores):
+#        task_queue.put('STOP')
+#      for p in processes:
+#        p.start()
+#    
+#      for n in range(50):
+#        time.sleep(0.1)
+#        print [p.is_alive() for p in processes]
+#        print task_queue.empty(), done_queue.empty()
+#
+#      results = [done_queue.get() for seed in seeds]
+#      print len(results)
+#      
+#      for p in processes:
+#        p.join()
+#      results = [done_queue.get() for seed in seeds]
+#      for p in processes:
+#        p.terminate()
+#    else:
+    # Single process code
     for seed in seeds:
-      self.universe.setConfiguration(Configuration(self.universe,seed))
-      if doMC and process=='dock' and self.params['dock']['MCMC_moves']>0:
-        self._MC_translate_rotate()
-      (confs_s, potEs_s, Hs_s, self.delta_t) = self.sampler['init'](
-        steps = self.params[process]['steps_per_seed'],
-        T=self.T, delta_t=self.delta_t,
-        steps_per_trial = self.params[process]['steps_per_seed']/10,
-        normalize=normalize, adapt=True)
-      # Restrict the range of the time step
-      self.delta_t = min(max(self.delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
-      all_confs.append(confs_s)
-      all_potEs.append(np.array(potEs_s))
-      Hs.append(Hs_s)
-    Hs = np.mean(np.array(Hs))
+      results.append(self._initial_sim_from_seed(process, seed, doMC))
 
+    all_confs = [result['confs'] for result in results]
+    all_potEs = [np.array(result['potEs']) for result in results]
+    Hs = np.mean(np.array([result['Hs'] for result in results]))
+    delta_t = np.median(np.array([results['delta_t'] for results in results]))
+    self.delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
+    
     import sys
     original_stderr = sys.stderr
     sys.stderr = NullDevice()
@@ -1590,7 +1643,27 @@ available CPUs: {3}
       potEs.extend([all_potEs[s][i] for i in uncorr_indicies])
 
     return (confs, np.array(potEs), tau_ac)
-    
+
+  def _initial_sim_worker(self, input, output):
+    """
+    Executes a task from the queue
+    """
+    for args in iter(input.get, 'STOP'):
+      result = self._initial_sim_from_seed(*args)
+      output.put(result)
+
+  def _initial_sim_from_seed(self, process, initial_conf, doMC):
+    self.universe.setConfiguration(Configuration(self.universe, initial_conf))
+    if doMC:
+      self._MC_translate_rotate(25)
+    (confs, potEs, Hs, delta_t) = self.sampler['init'](
+      steps = self.params[process]['steps_per_seed'],
+      T=self.T, delta_t=self.delta_t,
+      steps_per_trial = self.params[process]['steps_per_seed']/10,
+      normalize=(process=='cool'), adapt=True)
+    # print initial_conf[0][0], confs[-1][0][0]
+    return {'confs':confs, 'potEs':potEs, 'Hs':Hs, 'delta_t':delta_t}
+
   def _replica_exchange(self, process):
     """
     Performs a cycle of replica exchange
@@ -1629,7 +1702,7 @@ available CPUs: {3}
       storage[var] = []
     
     cycle_start_time = time.time()
-    
+
     # Do replica exchange
     MC_time = 0
     state_inds = range(K)
@@ -1644,26 +1717,29 @@ available CPUs: {3}
       Ht = np.zeros(K, dtype=int)
       # Sample within each state
       results = []
-      if self._do_multiprocess:
-        result_queue = multiprocessing.Queue()
-        processes = []
+      if self._cores>1:
+        # Multiprocessing code
+        task_queue = multiprocessing.Queue()
+        done_queue = multiprocessing.Queue()
         for k in range(K):
-            p = multiprocessing.Process(target=self._sample_state, \
-              args=(result_queue, process, lambdas[state_inds[k]], \
-                    Configuration(self.universe, confs[k])))
-            processes.append(p)
-        for pro in processes:
-            pro.start()
-        for pro in processes:
-            pro.join()
-        for k in range(K):
-            results.append(result_queue.get())
-        for pro in processes:
-            pro.terminate()
+          task_queue.put((k, process, lambdas[state_inds[k]], confs[k]))
+        processes = [multiprocessing.Process(target=self._replica_exchange_worker, \
+            args=(task_queue, done_queue)) for p in range(self._cores)]
+        for p in range(self._cores):
+          task_queue.put('STOP')
+        for p in processes:
+          p.start()
+        for p in processes:
+          p.join()
+        unordered_results = [done_queue.get() for k in range(K)]
+        results = sorted(unordered_results, key=lambda d: d['index'])
+        for p in processes:
+          p.terminate()
       else:
+        # Single process code
         for k in range(K):
-          results.append(self._sample_state(None, process, \
-            lambdas[state_inds[k]], Configuration(self.universe, confs[k])))
+          results.append(self._replica_exchange_sim_state(k, process, \
+            lambdas[state_inds[k]], confs[k]))
       # Store results
       for k in range(K):
         if 'acc_MC' in results[k].keys():
@@ -1828,9 +1904,17 @@ available CPUs: {3}
     self._save_progress(process)
     self._clear_lock(process)
 
-  def _sample_state(self, results_queue, process, lambda_k, initial_conf):
+  def _replica_exchange_worker(self, input, output):
+    """
+    Executes a task from the queue
+    """
+    for args in iter(input.get, 'STOP'):
+      result = self._replica_exchange_sim_state(*args)
+      output.put(result)
+
+  def _replica_exchange_sim_state(self, index, process, lambda_k, initial_conf):
     self._set_universe_force_field(lambda_k)
-    self.universe.setConfiguration(initial_conf)
+    self.universe.setConfiguration(Configuration(self.universe, initial_conf))
 
     T = lambda_k['T']
     
@@ -1855,15 +1939,13 @@ available CPUs: {3}
       adapt=False)
 
     # Store results in dictionary
+    results['index'] = index # To help sort results
     results['confs'] = np.copy(confs_k[-1])
     if process == 'cool':
       results['E_MM'] = potEs_k[-1]
     results['Ht'] = Hs_k
 
-    if results_queue is not None:
-      results_queue.put(results)  # put the result into the result_queue
-    else:
-      return results
+    return results
 
   def _sim_process(self, process):
     """
@@ -2203,11 +2285,15 @@ available CPUs: {3}
     Saves both MMTK and NAMD energies after NAMD energies are estimated.
     """
     updated = []
+    toClean = []
     crd_FN_o = ''
     if phases is None:
       phases = self.params['dock']['phases']
 
     postprocess_start_time = time.time()
+    
+    task_queue = multiprocessing.Queue()
+    done_queue = multiprocessing.Queue()
 
     # state == -1 means the last state
     # cycle == -1 means all cycles
@@ -2241,8 +2327,10 @@ available CPUs: {3}
                  'dock':self.dir['dock']}[p]
           
           label = moiety+phase
-          AMBER_mdcrd_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
-          dcd_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
+          if phase in ['NAMD_Gas','NAMD_GBSA']:
+            traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
+          else:
+            traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
           outputname = join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
           
           # Skip NAMD
@@ -2269,25 +2357,39 @@ available CPUs: {3}
               confs = self.confs['receptor']
             else:
               confs = self.confs[p]['samples'][state][c]
-          
-            if phase in ['NAMD_Gas','NAMD_GBSA']:
-              E = self._NAMD_Energy(confs, moiety, phase, \
-                dcd_FN, outputname, debug=debug)
-            else:
-              E = self._sander_Energy(confs, moiety, phase, \
-                AMBER_mdcrd_FN, outputname, debug=debug)
 
-            getattr(self,p+'_Es')[state][c][label] = E
-          
+            task_queue.put((confs, moiety, phase, traj_FN, outputname, debug, \
+              (p,state,c,label)))
+            if not traj_FN in toClean:
+              toClean.append(traj_FN)
+
             # Updated
             if not p in updated:
               updated.append(p)
 
-        # Clean up
-        if (not debug) and isfile(dcd_FN):
-          os.remove(dcd_FN)
-        if (not debug) and isfile(AMBER_mdcrd_FN):
-          os.remove(AMBER_mdcrd_FN)
+    processes = [multiprocessing.Process(target=self._energy_worker, \
+        args=(task_queue, done_queue)) for p in range(self._cores)]
+    for p in range(self._cores):
+      task_queue.put('STOP')
+    for p in processes:
+      p.start()
+    for p in processes:
+      p.join()
+    results = []
+    while not done_queue.empty():
+      results.append(done_queue.get())
+    for p in processes:
+      p.terminate()
+
+    # Store energies
+    for (E,(p,state,c,label)) in results:
+      getattr(self,p+'_Es')[state][c][label] = E
+
+    # Clean up files
+    if not debug:
+      for FN in toClean:
+        if isfile(FN):
+          os.remove(FN)
 
     # Save data
     if 'original' in updated:
@@ -2305,6 +2407,14 @@ available CPUs: {3}
     if len(updated)>0:
       self.tee("  postprocessed data in " + \
         HMStime(time.time()-postprocess_start_time))
+
+  def _energy_worker(self, input, output):
+    for args in iter(input.get, 'STOP'):
+      if args[2] in ['NAMD_Gas','NAMD_GBSA']:
+        E = self._NAMD_Energy(*args)
+      else:
+        E = self._sander_Energy(*args)
+      output.put((E,args[-1]))
 
   def _calc_E(self, confs, E=None, type='sampling', prefix='confs'):
     """
@@ -2338,7 +2448,8 @@ available CPUs: {3}
             E[moiety+phase] = self._sander_Energy(confs, moiety, phase, mdcrd_FN, outputname)
     return E
   
-  def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN, outputname=None, debug=False):
+  def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN,
+      outputname=None, debug=False, reference=None):
     if not isfile(AMBER_mdcrd_FN):
       self._write_mdcrd(AMBER_mdcrd_FN, confs,
         includeReceptor=(moiety.find('R')>-1),
@@ -2458,7 +2569,8 @@ available CPUs: {3}
     # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL 5. EGB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT
     # 9. ESURF
 
-  def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname, debug=False):
+  def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,
+      debug=False, reference=None):
     """
     Uses NAMD to calculate the energy of a set of configurations
     Units are the MMTK standard, kJ/mol
@@ -2830,7 +2942,7 @@ if __name__ == '__main__':
              'store_params','free_energies', 'postprocess',
              'redo_postprocess', 'clear_intermediates', None],
     help='Type of calculation to run')
-  parser.add_argument('--nodes', type=int,
+  parser.add_argument('--cores', type=int,
     help='Number of CPU cores to use')
   #   Defaults
   parser.add_argument('--protocol', choices=['Adaptive','Set'],
