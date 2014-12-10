@@ -731,16 +731,15 @@ last modified {2}
     # Run at high temperature
     state_start_time = time.time()
     conf = self.universe.configuration().array
-    (confs, Es_MM, tau_ac) = self._initial_sim_state('cool', \
-      [conf for n in range(self.params['cool']['seeds_per_state'])])
+    (confs, Es_MM) = self._initial_sim_state(\
+      [conf for n in range(self.params['cool']['seeds_per_state'])], \
+      'cool', self.cool_protocol[-1])
     self.confs['cool']['replicas'] = [confs[np.argmin(Es_MM)]]
     self.confs['cool']['samples'] = [[confs]]
     self.cool_Es = [[{'MM':Es_MM}]]
     self.cool_protocol[-1]['delta_t'] = self.delta_t
-    self.cool_protocol[-1]['tau_ac'] = tau_ac
     self.tee("  generated %d configurations "%len(confs) + \
-             "(tau_ac=%f, "%self.cool_protocol[-1]['tau_ac'] + \
-             "dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
+             "(dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
              "at %d K "%self.cool_protocol[-1]['T'] + \
              "in " + HMStime(time.time()-state_start_time))
     tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
@@ -775,13 +774,11 @@ last modified {2}
       Es_MM_o = Es_MM
 
       state_start_time = time.time()
-      (confs, Es_MM, tau_ac) = self._initial_sim_state('cool', \
-        [confs[ind] for ind in seedIndicies])
+      (confs, Es_MM) = self._initial_sim_state(\
+        [confs[ind] for ind in seedIndicies], 'cool', lambda_n)
       self.cool_protocol[-1]['delta_t'] = self.delta_t
-      self.cool_protocol[-1]['tau_ac'] = tau_ac
       self.tee("  generated %d configurations "%len(confs) + \
-               "(tau_ac=%f, "%self.cool_protocol[-1]['tau_ac'] + \
-               "dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
+               "(dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + (HMStime(time.time()-state_start_time)))
 
@@ -1173,15 +1170,13 @@ last modified {2}
       # Simulate
       sim_start_time = time.time()
       self._set_universe_force_field(lambda_n)
-      (confs, Es_tot, tau_ac) = self._initial_sim_state('dock', seeds)
+      (confs, Es_tot) = self._initial_sim_state(seeds, 'dock', lambda_n)
       
       # Store data
       self.dock_protocol[-1]['delta_t'] = self.delta_t
-      self.dock_protocol[-1]['tau_ac'] = tau_ac
 
       self.tee("  generated %d configurations "%len(confs) + \
-               "(tau_ac=%f, "%self.dock_protocol[-1]['tau_ac'] + \
-               "dt=%f ps) "%self.dock_protocol[-1]['delta_t'] + \
+               "(dt=%f ps) "%self.dock_protocol[-1]['delta_t'] + \
                "with progress %f "%self.dock_protocol[-1]['a'] + \
                "in " + HMStime(time.time()-sim_start_time))
 
@@ -1233,9 +1228,7 @@ last modified {2}
         self.dock_protocol[-1]['delta_t'] = self.delta_t
         rejectStage = 0
         lambda_o = lambda_n
-      
-#      self._save_progress('dock')
-#      self.tee("")
+      self.tee("")
 
     K = len(self.dock_protocol)
     self.tee("  %d states in the docking process sampled in %s"%(K,\
@@ -1569,100 +1562,43 @@ last modified {2}
 
     return acc
 
-  def _initial_sim_state(self, process, seeds):
+  def _initial_sim_state(self, seeds, process, lambda_k):
     """
     Initializes a state, returning the configurations and potential energy.
     """
     
-    all_confs = []
-    all_potEs = []
-    Hs = []
-    
     doMC = (process=='dock' and self.params['dock']['MCMC_moves']>0)
 
     results = []
-    # For an unknown reason, the code below freezes
-#    if self._cores>1:
-#      # Multiprocessing code
-#      task_queue = multiprocessing.Queue()
-#      done_queue = multiprocessing.Queue()
-#      for seed in seeds:
-#        task_queue.put((process, seed, doMC))
-#      processes = [multiprocessing.Process(target=self._initial_sim_worker, \
-#          args=(task_queue, done_queue)) for p in range(self._cores)]
-#      for p in range(self._cores):
-#        task_queue.put('STOP')
-#      for p in processes:
-#        p.start()
-#    
-#      for n in range(50):
-#        time.sleep(0.1)
-#        print [p.is_alive() for p in processes]
-#        print task_queue.empty(), done_queue.empty()
-#
-#      results = [done_queue.get() for seed in seeds]
-#      print len(results)
-#      
-#      for p in processes:
-#        p.join()
-#      results = [done_queue.get() for seed in seeds]
-#      for p in processes:
-#        p.terminate()
-#    else:
-    # Single process code
-    for seed in seeds:
-      results.append(self._initial_sim_from_seed(process, seed, doMC))
+    if self._cores>1:
+      # Multiprocessing code
+      task_queue = multiprocessing.Queue()
+      done_queue = multiprocessing.Queue()
+      for seed in seeds:
+        task_queue.put((seed, process, lambda_k, doMC, True, None))
+      processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
+          args=(task_queue, done_queue)) for p in range(self._cores)]
+      for p in range(self._cores):
+        task_queue.put('STOP')
+      for p in processes:
+        p.start()
+      for p in processes:
+        p.join()
+      results = [done_queue.get() for seed in seeds]
+      for p in processes:
+        p.terminate()
+    else:
+      # Single process code
+      results = [self._sim_one_state(\
+        seed, process, lambda_k, doMC, True, None) for seed in seeds]
 
-    all_confs = [result['confs'] for result in results]
-    all_potEs = [np.array(result['potEs']) for result in results]
-    Hs = np.mean(np.array([result['Hs'] for result in results]))
+    confs = [result['confs'] for result in results]
+    potEs = [result['E_MM'] for result in results]
+    Ht = np.mean(np.array([result['Ht'] for result in results]))
     delta_t = np.median(np.array([results['delta_t'] for results in results]))
     self.delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
-    
-    import sys
-    original_stderr = sys.stderr
-    sys.stderr = NullDevice()
 
-    # Decorrelation
-    if len(seeds)>1:
-      tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(all_potEs)
-    else:
-      tau_ac = pymbar.timeseries.integratedAutocorrelationTime(all_potEs)
-    # stride = max(int(np.ceil(1+2*tau_ac)),1)
-    
-    sys.stderr = original_stderr
-
-    confs = []
-    potEs = []
-    for s in range(len(seeds)):
-      nsnaps = len(all_confs[s])
-      # uncorr_indicies = range(min(stride-1, nsnaps-1), nsnaps, stride)
-      # Only use the last configuration from each seed
-      uncorr_indicies = [nsnaps-1]
-      confs.extend([all_confs[s][i] for i in uncorr_indicies])
-      potEs.extend([all_potEs[s][i] for i in uncorr_indicies])
-
-    return (confs, np.array(potEs), tau_ac)
-
-  def _initial_sim_worker(self, input, output):
-    """
-    Executes a task from the queue
-    """
-    for args in iter(input.get, 'STOP'):
-      result = self._initial_sim_from_seed(*args)
-      output.put(result)
-
-  def _initial_sim_from_seed(self, process, initial_conf, doMC):
-    self.universe.setConfiguration(Configuration(self.universe, initial_conf))
-    if doMC:
-      self._MC_translate_rotate(25)
-    (confs, potEs, Hs, delta_t) = self.sampler['init'](
-      steps = self.params[process]['steps_per_seed'],
-      T=self.T, delta_t=self.delta_t,
-      steps_per_trial = self.params[process]['steps_per_seed']/10,
-      normalize=(process=='cool'), adapt=True)
-    # print initial_conf[0][0], confs[-1][0][0]
-    return {'confs':confs, 'potEs':potEs, 'Hs':Hs, 'delta_t':delta_t}
+    return (confs, np.array(potEs))
 
   def _replica_exchange(self, process):
     """
@@ -1712,18 +1648,18 @@ last modified {2}
       for term in terms:
         E[term] = np.zeros(K, dtype=float)
       if process=='dock':
-        MC_start_time = time.time()
         E['acc_MC'] = np.zeros(K, dtype=float)
       Ht = np.zeros(K, dtype=int)
       # Sample within each state
-      results = []
+      doMC = [(process == 'dock') and (self.params['dock']['MCMC_moves']>0)
+        and (lambdas[state_inds[k]]['a'] < 0.1) for k in range(K)]
       if self._cores>1:
         # Multiprocessing code
         task_queue = multiprocessing.Queue()
         done_queue = multiprocessing.Queue()
         for k in range(K):
-          task_queue.put((k, process, lambdas[state_inds[k]], confs[k]))
-        processes = [multiprocessing.Process(target=self._replica_exchange_worker, \
+          task_queue.put((confs[k], process, lambdas[state_inds[k]], doMC[k], False, k))
+        processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
             args=(task_queue, done_queue)) for p in range(self._cores)]
         for p in range(self._cores):
           task_queue.put('STOP')
@@ -1732,22 +1668,21 @@ last modified {2}
         for p in processes:
           p.join()
         unordered_results = [done_queue.get() for k in range(K)]
-        results = sorted(unordered_results, key=lambda d: d['index'])
+        results = sorted(unordered_results, key=lambda d: d['reference'])
         for p in processes:
           p.terminate()
       else:
         # Single process code
-        for k in range(K):
-          results.append(self._replica_exchange_sim_state(k, process, \
-            lambdas[state_inds[k]], confs[k]))
+        results = [self._sim_one_state(confs[k], process, \
+            lambdas[state_inds[k]], doMC[k], False, k) for k in range(K)]
       # Store results
       for k in range(K):
         if 'acc_MC' in results[k].keys():
           E['acc_MC'][k] = results[k]['acc_MC']
           MC_time += results[k]['MC_time']
-        confs[k] = results[k]['confs']
+        confs[k] = results[k]['confs'] # [-1]
         if process == 'cool':
-            E['MM'][k] = results[k]['E_MM']
+            E['MM'][k] = results[k]['E_MM'] # [-1]
         Ht[k] += results[k]['Ht']
       if process=='dock':
         E = self._calc_E(confs, E) # Get energies
@@ -1904,47 +1839,54 @@ last modified {2}
     self._save_progress(process)
     self._clear_lock(process)
 
-  def _replica_exchange_worker(self, input, output):
+  def _sim_one_state_worker(self, input, output):
     """
     Executes a task from the queue
     """
     for args in iter(input.get, 'STOP'):
-      result = self._replica_exchange_sim_state(*args)
+      result = self._sim_one_state(*args)
       output.put(result)
 
-  def _replica_exchange_sim_state(self, index, process, lambda_k, initial_conf):
-    self._set_universe_force_field(lambda_k)
-    self.universe.setConfiguration(Configuration(self.universe, initial_conf))
+  def _sim_one_state(self, seed, process, lambda_k, doMC,
+      initialize=False, reference=None):
+    self.universe.setConfiguration(Configuration(self.universe, seed))
 
-    T = lambda_k['T']
-    
+    self._set_universe_force_field(lambda_k)
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
       delta_t = 1.5*MMTK.Units.fs
     
     results = {}
+    
     # Perform MCMC moves
-    if (process == 'dock') and (self.params['dock']['MCMC_moves'] > 0) and \
-        (lambda_k['a'] < 0.1):
+    if doMC:
       MC_start_time = time.time()
       results['acc_MC'] = self._MC_translate_rotate(25)/25.
       results['MC_time'] = (time.time() - MC_start_time)
 
     # Execute sampler
-    (confs_k, potEs_k, Hs_k, delta_t) = self.sampler[process](\
-      steps=self.params[process]['steps_per_sweep'], \
+    if initialize:
+      sampler = self.sampler['init']
+      steps = self.params[process]['steps_per_seed']
+      steps_per_trial = self.params[process]['steps_per_seed']/10 # TO DO: Finish this
+    else:
+      sampler = self.sampler[process]
+      steps = self.params[process]['steps_per_sweep']
+      steps_per_trial = steps
+    (confs, potEs, Ht, delta_t) = sampler(\
+      steps=steps, \
+      steps_per_trial=steps_per_trial, \
       T=lambda_k['T'], delta_t=delta_t, \
       normalize=(process=='cool'),
-      adapt=False)
+      adapt=initialize)
 
-    # Store results in dictionary
-    results['index'] = index # To help sort results
-    results['confs'] = np.copy(confs_k[-1])
-    if process == 'cool':
-      results['E_MM'] = potEs_k[-1]
-    results['Ht'] = Hs_k
-
+    # Store and return results
+    results['confs'] = np.copy(confs[-1])
+    results['E_MM'] = potEs[-1]
+    results['Ht'] = Ht
+    results['delta_t'] = delta_t
+    results['reference'] = reference
     return results
 
   def _sim_process(self, process):
@@ -2544,8 +2486,6 @@ last modified {2}
         if isfile(self._FNs[key][moiety]+'.gz'):
           os.remove(self._FNs[key][moiety])
           self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
-
-    print out_FN
 
     F = open(out_FN,'r')
     dat = F.read().strip().split(' BOND')
