@@ -56,6 +56,8 @@ parser.add_argument('--run_type',
            'store_params','free_energies', 'postprocess',
            'redo_postprocess', 'clear_intermediates', None],
   help='Type of calculation to run')
+parser.add_argument('--cores', type=int, \
+    help='Number of CPU cores to use')
 #   Defaults
 parser.add_argument('--protocol', choices=['Adaptive','Set'],
   help='Approach to determining series of thermodynamic states')
@@ -226,7 +228,7 @@ general_sim_arg_keys = ['protocol','no_protocol_refinement','therm_speed',\
 sim_arg_keys = general_sim_arg_keys + \
   ['cool_'+a for a in general_sim_arg_keys] + \
   ['dock_'+a for a in general_sim_arg_keys] + \
-  ['MCMC_moves', 'score', 'rmsd', 'run_type'] + \
+  ['MCMC_moves', 'score', 'rmsd', 'run_type', 'cores'] + \
   ['site', 'site_center', 'site_direction', \
    'site_max_X', 'site_max_R', 'site_density']
 

@@ -1572,8 +1572,9 @@ last modified {2}
     results = []
     if self._cores>1:
       # Multiprocessing code
-      task_queue = multiprocessing.Queue()
-      done_queue = multiprocessing.Queue()
+      m = multiprocessing.Manager()
+      task_queue = m.Queue()
+      done_queue = m.Queue()
       for seed in seeds:
         task_queue.put((seed, process, lambda_k, doMC, True, None))
       processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
@@ -1639,6 +1640,12 @@ last modified {2}
     
     cycle_start_time = time.time()
 
+    if self._cores>1:
+      # Multiprocessing setup
+      m = multiprocessing.Manager()
+      task_queue = m.Queue()
+      done_queue = m.Queue()
+
     # Do replica exchange
     MC_time = 0
     state_inds = range(K)
@@ -1654,15 +1661,12 @@ last modified {2}
       doMC = [(process == 'dock') and (self.params['dock']['MCMC_moves']>0)
         and (lambdas[state_inds[k]]['a'] < 0.1) for k in range(K)]
       if self._cores>1:
-        # Multiprocessing code
-        task_queue = multiprocessing.Queue()
-        done_queue = multiprocessing.Queue()
         for k in range(K):
           task_queue.put((confs[k], process, lambdas[state_inds[k]], doMC[k], False, k))
-        processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
-            args=(task_queue, done_queue)) for p in range(self._cores)]
         for p in range(self._cores):
           task_queue.put('STOP')
+        processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
+            args=(task_queue, done_queue)) for p in range(self._cores)]
         for p in processes:
           p.start()
         for p in processes:
@@ -2234,8 +2238,9 @@ last modified {2}
 
     postprocess_start_time = time.time()
     
-    task_queue = multiprocessing.Queue()
-    done_queue = multiprocessing.Queue()
+    m = multiprocessing.Manager()
+    task_queue = m.Queue()
+    done_queue = m.Queue()
 
     # state == -1 means the last state
     # cycle == -1 means all cycles
@@ -2882,7 +2887,7 @@ if __name__ == '__main__':
              'store_params','free_energies', 'postprocess',
              'redo_postprocess', 'clear_intermediates', None],
     help='Type of calculation to run')
-  parser.add_argument('--cores', type=int,
+  parser.add_argument('--cores', type=int, \
     help='Number of CPU cores to use')
   #   Defaults
   parser.add_argument('--protocol', choices=['Adaptive','Set'],
