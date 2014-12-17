@@ -77,20 +77,6 @@ def random_rotate():
                      q[0]*q[0] - q[1]*q[1] - q[2]*q[2] + q[3]*q[3]]])
   return rotMat
 
-#  def choice(N, weights=None):
-#    """
-#    Weighted random number selection of N values 
-#    """
-#    weights /= np.sum(weights)
-#    cumweights = np.cumsum(weights)
-#    beginIndicies = np.zeros(N, dtype=int)
-#    randVals = np.random.uniform(size=N)
-#
-#    for (bI_idx,randVal) in zip(range(N),randVals):
-#      beginIndicies[bI_idx] = sum(cumweights < randVal)
-#    beginIndicies.sort()
-#    return beginIndicies
-
 def merge_dictionaries(dicts, required_consistency=[]):
   """
   Merges a list of dictionaries, giving priority to items in descending order.
@@ -175,7 +161,7 @@ class NullDevice():
 # Main Class #
 ##############
 
-class BindingPMF:
+class BPMF:
   def __init__(self,
       # Arguments are either constant or run-dependent.
       # Constant arguments are stored in the dir_cool and dir_dock directories
@@ -253,14 +239,14 @@ last modified {2}
       time.ctime(os.path.getmtime(mod_path)))
     
     # Multiprocessing options.
-    # Default is to use all availalbe cores.
+    # Default is to use 1 core.
     # If cores is a number, then that number (or the maximum number)
     # of cores will be used.
     
     # Default
     available_cores = multiprocessing.cpu_count()
     if (cores is None):
-      self._cores = available_cores
+      self._cores = 1
     elif (cores==-1):
       self._cores = available_cores
     else:
@@ -2529,7 +2515,12 @@ last modified {2}
     
     # Write the configurations
     if not isfile(dcd_FN):
-      self._write_dcd(dcd_FN, confs,
+      import AlGDock.IO
+      IO_dcd = AlGDock.IO.dcd(self.molecule,
+        ligand_atom_order = self.molecule.prmtop_atom_order, \
+        receptorConf = self.confs['receptor'], \
+        ligand_first_atom = self._ligand_first_atom)
+      IO_dcd.write(dcd_FN, confs,
         includeReceptor=(moiety.find('R')>-1),
         includeLigand=(moiety.find('L')>-1))
     
@@ -2628,62 +2619,6 @@ last modified {2}
       crds.append(np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
         dtype=float)[self.molecule.inv_prmtop_atom_order,:]/10.)
     return (crds,E)
-
-  def _write_dcd(self, dcd_file_name, confs,
-      includeLigand=True, includeReceptor=False,
-      factor=1.0/MMTK.Units.Ang,
-      delta_t=0.1):
-    """
-    Writes a DCD file for a trajectory.
-    If includeReceptor==True, the receptor coordinates are included.
-    """
-    import MMTK_DCD  # @UnresolvedImport
-    from Scientific import N
-
-    i_start = 0       # always start at frame 0
-    n_savc  = 1       # save every frame
-    
-    if not isinstance(confs,list):
-      confs = [confs]
-    
-    n_atoms = 0
-    if includeReceptor:
-      receptor_x0 = factor*self.confs['receptor'][:self._ligand_first_atom,0]
-      receptor_y0 = factor*self.confs['receptor'][:self._ligand_first_atom,1]
-      receptor_z0 = factor*self.confs['receptor'][:self._ligand_first_atom,2]
-      receptor_x1 = factor*self.confs['receptor'][self._ligand_first_atom:,0]
-      receptor_y1 = factor*self.confs['receptor'][self._ligand_first_atom:,1]
-      receptor_z1 = factor*self.confs['receptor'][self._ligand_first_atom:,2]
-      n_atoms += self.confs['receptor'].shape[0]
-    if includeLigand:
-      n_atoms += len(self.molecule.atoms)
-    n_snaps = len(confs)
-
-    fd = MMTK_DCD.writeOpenDCD(dcd_file_name, n_atoms, n_snaps,
-                               i_start, n_savc, delta_t)
-
-    if includeReceptor and includeLigand:
-      for array in confs:
-        array = factor*array
-        x = N.concatenate((receptor_x0,N.take(array[:,0],self.molecule.prmtop_atom_order),receptor_x1)).astype(N.Float16)
-        y = N.concatenate((receptor_y0,N.take(array[:,1],self.molecule.prmtop_atom_order),receptor_y1)).astype(N.Float16)
-        z = N.concatenate((receptor_z0,N.take(array[:,2],self.molecule.prmtop_atom_order),receptor_z1)).astype(N.Float16)
-        MMTK_DCD.writeDCDStep(fd, x, y, z)
-      MMTK_DCD.writeCloseDCD(fd)
-    elif includeLigand:
-      for array in confs:
-        array = factor*array
-        x = N.take(array[:,0], self.molecule.prmtop_atom_order).astype(N.Float16)
-        y = N.take(array[:,1], self.molecule.prmtop_atom_order).astype(N.Float16)
-        z = N.take(array[:,2], self.molecule.prmtop_atom_order).astype(N.Float16)
-        MMTK_DCD.writeDCDStep(fd, x, y, z)
-      MMTK_DCD.writeCloseDCD(fd)
-    else:
-      x = N.concatenate((receptor_x0,receptor_x1)).astype(N.Float16)
-      y = N.concatenate((receptor_y0,receptor_y1)).astype(N.Float16)
-      z = N.concatenate((receptor_z0,receptor_z1)).astype(N.Float16)
-      MMTK_DCD.writeDCDStep(fd, x, y, z)
-      MMTK_DCD.writeCloseDCD(fd)
 
   def _load_pkl_gz(self, FN):
     if isfile(FN) and os.path.getsize(FN)>0:
@@ -2991,4 +2926,4 @@ if __name__ == '__main__':
     help='Receptor potential energies in NAMD GBSA implicit solvent (in units of kJ/mol)')
   
   args = parser.parse_args()
-  self = BindingPMF(**vars(args))
+  self = BPMF(**vars(args))

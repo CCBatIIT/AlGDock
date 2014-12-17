@@ -1,5 +1,3 @@
-#!/usr/local/bin/env python
-
 """
 
 A python wrapper for NAMD 2.9

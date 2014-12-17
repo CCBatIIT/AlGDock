@@ -1,10 +1,10 @@
-from AlGDock import HREX
+import AlGDock
 import os, shutil, glob
 
 # Run the AlGDock job
 while not os.path.exists('dock/f_RL.pkl.gz'):
 # if True:
-  self = HREX.BindingPMF(\
+  self = AlGDock.BindingPMF.BPMF(\
     dir_dock='dock', dir_cool='cool',\
     ligand_database='prmtopcrd/ligand.db', \
     forcefield='prmtopcrd/gaff.dat', \
@@ -25,5 +25,6 @@ while not os.path.exists('dock/f_RL.pkl.gz'):
     site_max_R=0.01, site_density=10., do_calc_random_dock_stats=False, \
     receptor_NAMD_GBSA=[-9053.10071], receptor_NAMD_Gas=[0.00000], \
     MCMC_moves=1, \
+    cores=-1, \
     run_type='one_step')
   del self

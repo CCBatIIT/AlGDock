@@ -1,6 +1,8 @@
+#!/usr/bin/env python
+
 from AlGDock.HREX import *
 
-class BindingPMF_plots(BindingPMF):
+class BindingPMF_plots(BPMF):
   def plot_energies(self, process='cool', firstCycle=0, toCycle=None):
     """
     Plots timeseries and histograms of the energies for each state.

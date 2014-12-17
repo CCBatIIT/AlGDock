@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-
 import os
 import numpy as np
+import MMTK
 
 class Grid:
   """
@@ -296,6 +295,76 @@ class crd:
           F.write(''.join(['%8.3f'%val for val in flattened[n:n+10]]) + '\n')
 
     F.close()
+
+class dcd:
+  """
+  Class to write DCD files
+  """
+  def __init__(self, molecule, ligand_atom_order=None, \
+      receptorConf=None, ligand_first_atom=0):
+    self.molecule = molecule
+    self.receptorConf = receptorConf
+    self.ligand_first_atom = ligand_first_atom
+    if ligand_atom_order is None:
+      self.ligand_atom_order = range(len(self.molecule.atoms))
+    else:
+      self.ligand_atom_order = ligand_atom_order
+    pass
+
+  def write(self, FN, confs,
+      includeLigand=True, includeReceptor=False,
+      factor=1.0/MMTK.Units.Ang,
+      delta_t=0.1):
+    """
+    Writes a DCD file for a trajectory.
+    If includeReceptor==True, the receptor coordinates are included.
+    """
+    import MMTK_DCD  # @UnresolvedImport
+    from Scientific import N
+
+    if not isinstance(confs,list):
+      confs = [confs]
+    
+    if includeReceptor and (self.receptorConf is None):
+      raise Exception("Missing receptor configuration")
+    
+    n_atoms = 0
+    if includeReceptor:
+      receptor_x0 = factor*self.receptorConf[:self.ligand_first_atom,0]
+      receptor_y0 = factor*self.receptorConf[:self.ligand_first_atom,1]
+      receptor_z0 = factor*self.receptorConf[:self.ligand_first_atom,2]
+      receptor_x1 = factor*self.receptorConf[self.ligand_first_atom:,0]
+      receptor_y1 = factor*self.receptorConf[self.ligand_first_atom:,1]
+      receptor_z1 = factor*self.receptorConf[self.ligand_first_atom:,2]
+      n_atoms += self.receptorConf.shape[0]
+    if includeLigand:
+      n_atoms += len(self.molecule.atoms)
+    n_snaps = len(confs)
+
+    fd = MMTK_DCD.writeOpenDCD(FN, n_atoms, n_snaps, 1, 1, delta_t)
+
+    if includeReceptor and includeLigand:
+      for array in confs:
+        array = factor*array
+        x = N.concatenate((receptor_x0,N.take(array[:,0],self.ligand_atom_order),receptor_x1)).astype(N.Float16)
+        y = N.concatenate((receptor_y0,N.take(array[:,1],self.ligand_atom_order),receptor_y1)).astype(N.Float16)
+        z = N.concatenate((receptor_z0,N.take(array[:,2],self.ligand_atom_order),receptor_z1)).astype(N.Float16)
+        MMTK_DCD.writeDCDStep(fd, x, y, z)
+      MMTK_DCD.writeCloseDCD(fd)
+    elif includeLigand:
+      for array in confs:
+        array = factor*array
+        x = N.take(array[:,0], self.ligand_atom_order).astype(N.Float16)
+        y = N.take(array[:,1], self.ligand_atom_order).astype(N.Float16)
+        z = N.take(array[:,2], self.ligand_atom_order).astype(N.Float16)
+        MMTK_DCD.writeDCDStep(fd, x, y, z)
+      MMTK_DCD.writeCloseDCD(fd)
+    else:
+      x = N.concatenate((receptor_x0,receptor_x1)).astype(N.Float16)
+      y = N.concatenate((receptor_y0,receptor_y1)).astype(N.Float16)
+      z = N.concatenate((receptor_z0,receptor_z1)).astype(N.Float16)
+      MMTK_DCD.writeDCDStep(fd, x, y, z)
+      MMTK_DCD.writeCloseDCD(fd)
 
 class prmtop:
   """

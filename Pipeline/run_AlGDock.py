@@ -388,7 +388,7 @@ for ligand_FN in ligand_FNs:
         for key in outputFNs.keys() \
           for f in (lambda x:key,lambda x:outputFNs[key])]
 
-      interactive_command = "self = AlGDock.HREX.BindingPMF(" + \
+      interactive_command = "self = AlGDock.BindingPMF.BPMF(" + \
         ', \\\n  '.join(interactive_to_pass) + \
         ")"
       if algdock_path is None:
