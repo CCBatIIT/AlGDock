@@ -4,7 +4,11 @@
 from MMTK.ForceFields.ForceField import ForceField, EnergyTerm
 from MMTK import ParticleScalar, ParticleVector, SymmetricPairTensor
 
-from Scientific._vector import Vector
+try:
+  from Scientific._vector import Vector
+except:
+  from Scientific.Geometry.VectorModule import Vector
+
 from MMTK_trilinear_transform_grid import TrilinearTransformGridTerm
 
 #  class TrilinearTransformGridTerm(EnergyTerm):

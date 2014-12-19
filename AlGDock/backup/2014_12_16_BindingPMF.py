@@ -17,7 +17,7 @@ import MMTK.Units
 from MMTK.ParticleProperties import Configuration
 
 import Scientific
-from Scientific._vector import Vector  # @UnresolvedImport
+from Scientific.Geometry.VectorModule import Vector  # @UnresolvedImport
 
 import AlGDock as a
 import pymbar.timeseries

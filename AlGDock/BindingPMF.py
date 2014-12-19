@@ -17,8 +17,11 @@ import MMTK.Units
 from MMTK.ParticleProperties import Configuration
 
 import Scientific
-from Scientific._vector import Vector  # @UnresolvedImport
-
+try:
+  from Scientific._vector import Vector
+except:
+  from Scientific.Geometry.VectorModule import Vector
+  
 import AlGDock as a
 import pymbar.timeseries
 
@@ -217,14 +220,13 @@ class BPMF:
       site=None, site_center=None, site_direction=None, # Site parameters
       site_max_X=None, site_max_R=None, # Site parameters
       site_density=None,
-      do_calc_random_dock_stats=None,
       receptor_Gas=None,
       receptor_GBSA=None,
       receptor_NAMD_Gas=None,
       receptor_NAMD_GBSA=None): # Energy values
     """Parses the input arguments and runs the requested docking calculation"""
     
-    mod_path = join(os.path.dirname(a.__file__),'HREX.py')
+    mod_path = join(os.path.dirname(a.__file__),'BindingPMF.py')
     print """
 ###########
 # AlGDock #
@@ -377,7 +379,6 @@ last modified {2}
       'site_max_X':None, 'site_max_R':None,
       'site_density':50.,
       'MCMC_moves':1,
-      'do_calc_random_dock_stats':False,
       'rmsd':False,
       'score':False}.items() + \
       [('receptor_'+phase,None) for phase in allowed_phases])
@@ -829,16 +830,15 @@ last modified {2}
     if redo:
       if isfile(f_L_FN):
         os.remove(f_L_FN)
-      dat = None
+      self.f_L = None
     else:
-      dat = self._load_pkl_gz(f_L_FN)
-    if (dat is not None):
-      (self.f_L_solvation, self.f_cool, self.cool_equilibrated_cycle, \
-       self.cool_mean_acc) = dat
-    else:
-      for var in ['f_L_solvation', 'f_cool', \
-                  'cool_equilibrated_cycle', 'cool_mean_acc']:
-        setattr(self,var,[])
+      self.f_L = self._load_pkl_gz(f_L_FN)
+    if (self.f_L is None):
+      self.f_L = {}
+      for var in ['cool_BAR', 'cool_MBAR', 'equilibrated_cycle', 'mean_acc']:
+        self.f_L[var] = []
+      for phase in self.params['cool']['phases']:
+        self.f_L[phase+'_solv'] = []
     if readOnly:
       return
     
@@ -858,46 +858,42 @@ last modified {2}
       for c in range(self._cool_cycle)]
     mean_u_Ks = np.array([np.mean(u_K) for u_K in u_Ks])
     std_u_Ks = np.array([np.std(u_K) for u_K in u_Ks])
-    for c in range(len(self.cool_equilibrated_cycle), self._cool_cycle):
+    for c in range(len(self.f_L['equilibrated_cycle']), self._cool_cycle):
       nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
       for (item, ind) in zip(nearMean, range(len(nearMean))):
         if item:
-          self.cool_equilibrated_cycle.append(ind)
+          self.f_L['equilibrated_cycle'].append(ind)
           break
 
     updated = False
     
     # Calculate solvation free energies that have not already been calculated,
     # in units of RT
-    for c in range(len(self.f_L_solvation), self._cool_cycle):
-      fromCycle = self.cool_equilibrated_cycle[c]
-      toCycle = c + 1
-      
-      # Arbitrarily, solvation is the
-      # 'forward' direction and desolvation the 'reverse'
-      u_F = {}
-      for key in ['L'+phase for phase in self.params['cool']['phases']]+['MM']:
-        u_F[key] = np.concatenate(\
-          [self.cool_Es[-1][n][key] for n in range(fromCycle,toCycle)])
-
-      # Single step FEP
-      f_L_solvation = {}
-      for phase in self.params['cool']['phases']:
-        du_F = (u_F['L'+phase][:,-1] - u_F['MM'])/RT_TARGET
+    for phase in self.params['cool']['phases']:
+      for c in range(len(self.f_L[phase+'_solv']), self._cool_cycle):
+        fromCycle = self.f_L['equilibrated_cycle'][c]
+        toCycle = c + 1
+        
+        # Arbitrarily, solvation is the
+        # 'forward' direction and desolvation the 'reverse'
+        u_phase = np.concatenate([\
+          self.cool_Es[-1][n]['L'+phase] for n in range(fromCycle,toCycle)])
+        u_MM = np.concatenate([\
+          self.cool_Es[-1][n]['MM'] for n in range(fromCycle,toCycle)])
+        du_F = (u_phase[:,-1] - u_MM)/RT_TARGET
         min_du_F = min(du_F)
-        f_L_solvation[phase] = -np.log(np.exp(-du_F+min_du_F).mean()) + min_du_F
+        f_L_solv = -np.log(np.exp(-du_F+min_du_F).mean()) + min_du_F
 
-      self.f_L_solvation.append(f_L_solvation)
-      self.tee("  calculated %s solvation free energy of %f RT "%(\
-                  self.params['cool']['phases'][-1],
-                  self.f_L_solvation[-1][self.params['cool']['phases'][-1]])+\
-               "using cycles %d to %d"%(fromCycle, toCycle-1))
-      updated = True
+        self.f_L[phase+'_solv'].append(f_L_solv)
+        self.tee("  calculated " + phase + " solvation free energy of " + \
+                 "%f RT "%(f_L_solv) + \
+                 "using cycles %d to %d"%(fromCycle, toCycle-1))
+        updated = True
 
     # Calculate cooling free energies that have not already been calculated,
     # in units of RT
-    for c in range(len(self.f_cool), self._cool_cycle):
-      fromCycle = self.cool_equilibrated_cycle[c]
+    for c in range(len(self.f_L['cool_BAR']), self._cool_cycle):
+      fromCycle = self.f_L['equilibrated_cycle'][c]
       toCycle = c + 1
 
       # Cooling free energy
@@ -905,26 +901,26 @@ last modified {2}
       for cool_Es_state in self.cool_Es:
         cool_Es.append(cool_Es_state[fromCycle:toCycle])
       (u_kln,N_k) = self._u_kln(cool_Es,self.cool_protocol)
-      self.f_cool.append(self._run_MBAR(u_kln,N_k))
+      (BAR,MBAR) = self._run_MBAR(u_kln,N_k)
+      self.f_L['cool_BAR'].append(BAR)
+      self.f_L['cool_MBAR'].append(MBAR)
 
       # Average acceptance probabilities
       cool_mean_acc = np.zeros(K-1)
       for k in range(0, K-1):
-        (u_kln,N_k) = self._u_kln(cool_Es[k:k+2],self.cool_protocol[k:k+2])
+        (u_kln, N_k) = self._u_kln(cool_Es[k:k+2],self.cool_protocol[k:k+2])
         N = min(N_k)
         acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
         cool_mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      self.cool_mean_acc.append(cool_mean_acc)
+      self.f_L['mean_acc'].append(cool_mean_acc)
 
       self.tee("  calculated cooling free energy of %f RT "%(\
-                  self.f_cool[-1][-1])+\
-               "using cycles %d to %d"%(fromCycle, toCycle-1))
+                  self.f_L['cool_BAR'][-1][-1])+\
+               "using BAR for cycles %d to %d"%(fromCycle, toCycle-1))
       updated = True
 
     if updated:
-      self._write_pkl_gz(f_L_FN, \
-        (self.f_L_solvation, self.f_cool, \
-         self.cool_equilibrated_cycle, self.cool_mean_acc))
+      self._write_pkl_gz(f_L_FN, self.f_L)
 
   ###########
   # Docking #
@@ -1054,12 +1050,6 @@ last modified {2}
       E[term] = np.ravel(E[term][:,:self._n_rot,:self._n_trans])
     self.tee("  raveled energy terms in " + \
       HMStime(time.time()-ravel_start_time))
-
-    stats_start_time = time.time()
-    if self.params['dock']['do_calc_random_dock_stats']:
-      self.calc_random_dock_stats(E)
-      self.tee("  calculated random dock stats in " + \
-        HMStime(time.time()-stats_start_time))
 
     return (cool0_confs, E)
 
@@ -1252,11 +1242,18 @@ last modified {2}
     else:
       dat = self._load_pkl_gz(f_RL_FN)
     if (dat is not None):
-      (self.f_cool, self.f_L_solvation, self.Psi, self.f_grid, \
-       self.B, self.dock_equilibrated_cycle, self.dock_mean_acc) = dat
+      (self.Psi, self.f_L, self.f_RL, self.B) = dat
     else:
-      for var in ['Psi', 'f_grid', 'B', 'dock_equilibrated_cycle', 'dock_mean_acc']:
-        setattr(self,var,[])
+      self.Psi = {}
+      for type in ['MM','grid']+self.params['dock']['phases']:
+        self.Psi[type] = []
+      self.f_RL = {'grid_BAR':[], 'grid_MBAR':[], \
+         'equilibrated_cycle':[], 'mean_acc':[]}
+      self.B = {}
+      for phase in self.params['dock']['phases']:
+        self.f_RL[phase+'_solv'] = []
+        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
+          self.B[phase+'_'+method] = []
     if readOnly:
       return
 
@@ -1265,47 +1262,40 @@ last modified {2}
       if len(self.dock_Es[-1][c].keys())==0:
         self.tee("  skipping the binding PMF calculation")
         return
-    for var in ['f_L_solvation', 'f_cool', \
-                'cool_equilibrated_cycle', 'cool_mean_acc']:
-      if (not hasattr(self,var)) or (getattr(self,var)==[]):
-        self.tee("  skipping the binding PMF calculation")
-        return
+    if not hasattr(self,'f_L'):
+      self.tee("  skipping the binding PMF calculation")
+      return
 
     K = len(self.dock_protocol)
   
     # Calculate interaction energies
-    for c in range(self._dock_cycle):
-      while len(self.Psi) <= c:
-        self.Psi.append({})
-      if not 'MM' in self.Psi[c].keys():
-        self.Psi[c]['MM'] = self.dock_Es[-1][c]['MM']/RT_TARGET
-      if not 'grid' in self.Psi[c].keys():
-        self.Psi[c]['grid'] = \
+    for c in range(len(self.Psi['MM']), self._dock_cycle):
+      self.Psi['MM'].append(self.dock_Es[-1][c]['MM']/RT_TARGET)
+      self.Psi['grid'].append(
           (self.dock_Es[-1][c]['LJr'] + \
-          self.dock_Es[-1][c]['LJa'] + \
-          self.dock_Es[-1][c]['ELE'])/RT_TARGET
+           self.dock_Es[-1][c]['LJa'] + \
+           self.dock_Es[-1][c]['ELE'])/RT_TARGET)
       for phase in self.params['dock']['phases']:
-        if not phase in self.Psi[c].keys():
-          self.Psi[c][phase] = \
-            (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
-            self.dock_Es[-1][c]['L'+phase][:,-1] - \
-            self.params['dock']['receptor_'+phase][-1])/RT_TARGET
+        self.Psi[phase].append(
+          (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
+          self.dock_Es[-1][c]['L'+phase][:,-1] - \
+          self.params['dock']['receptor_'+phase][-1])/RT_TARGET)
 
     # Estimate cycle at which simulation has equilibrated
     u_Ks = [self._u_kln([self.dock_Es[-1][c]],[self.dock_protocol[-1]]) for c in range(self._dock_cycle)]
     mean_u_Ks = np.array([np.mean(u_K) for u_K in u_Ks])
     std_u_Ks = np.array([np.std(u_K) for u_K in u_Ks])
-    for c in range(len(self.dock_equilibrated_cycle), self._dock_cycle):
+    for c in range(len(self.f_RL['equilibrated_cycle']), self._dock_cycle):
       nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
       for (item, ind) in zip(nearMean, range(len(nearMean))):
         if item:
-          self.dock_equilibrated_cycle.append(ind)
+          self.f_RL['equilibrated_cycle'].append(ind)
           break
 
     # Calculate docking free energies that have not already been calculated
     updated = False
-    for c in range(len(self.f_grid), self._dock_cycle):
-      fromCycle = self.dock_equilibrated_cycle[c]
+    for c in range(len(self.f_RL['grid_MBAR']), self._dock_cycle):
+      fromCycle = self.f_RL['equilibrated_cycle'][c]
       toCycle = c + 1
       
       # Extract energies between fromCycle and toCycle
@@ -1313,11 +1303,11 @@ last modified {2}
       
       # Use MBAR for the grid scaling free energy estimate
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
-      f_grid = self._run_MBAR(u_kln,N_k)
-      self.f_grid.append(f_grid)
+      (BAR,MBAR) = self._run_MBAR(u_kln,N_k)
+      self.f_RL['grid_MBAR'].append(MBAR)
+      self.f_RL['grid_BAR'].append(BAR)
 
       # Binding PMF
-      B = {'grid':(-self.f_cool[-1][-1] + f_grid[-1])}
       u_K = self._u_kln([dock_Es[-1]],[self.dock_protocol[-1]])
 
 # How to estimate the change in potential energy for GBSA:
@@ -1341,12 +1331,12 @@ last modified {2}
 # du = (RGBSAflex + LGBSA + PsiGBSA) - (RMMTK + LMMTK + PsiMMTK)
 #
 # in code this is,
-# du = self.dock_Es[-1][c]['L'+phase][:,-1]/RT_TARGET+self.Psi[c][phase] - u_K
+# du = self.dock_Es[-1][c]['L'+phase][:,-1]/RT_TARGET+self.Psi[phase][c] - u_K
 # which gives the same numbers for c = 0
 #
 # Alternatively, assuming LGBSA~LMMTK
 # du = PsiGBSA - PsiMMTK
-# du = np.concatenate([self.Psi[c][phase] - self.Psi[c]['grid'] for c in range(fromCycle,toCycle)])
+# du = np.concatenate([self.Psi[phase][c] - self.Psi['grid'][c] for c in range(fromCycle,toCycle)])
 
       for phase in self.params['dock']['phases']:
         du = np.concatenate([self.dock_Es[-1][c]['RL'+phase][:,-1] \
@@ -1357,85 +1347,36 @@ last modified {2}
         B_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
         weight = np.exp(-du+min_du)
         weight = weight/sum(weight)
-        Psi = np.concatenate([self.Psi[c][phase] \
+        Psi = np.concatenate([self.Psi[phase][c] \
           for c in range(fromCycle,toCycle)])
         min_Psi = min(Psi)
         
-        B[phase+'_RL_solv'] = B_RL_solv
-        B[phase+'_MBAR_based'] = -self.f_L_solvation[-1][phase] - \
-           self.f_cool[-1][-1] + f_grid[-1] + B_RL_solv
-        B[phase+'_mean_Psi'] = np.mean(Psi)
-        B[phase+'_min_Psi'] = min_Psi
-        B[phase+'_inverse_FEP'] = \
-          np.log(sum(weight*np.exp(Psi-min_Psi))) + min_Psi
-      
-      self.B.append(B)
+        self.f_RL[phase+'_solv'].append(B_RL_solv)
+        self.B[phase+'_min_Psi'].append(min_Psi)
+        self.B[phase+'_mean_Psi'].append(np.mean(Psi))
+        self.B[phase+'_inverse_FEP'].append(\
+          np.log(sum(weight*np.exp(Psi-min_Psi))) + min_Psi)
+        self.B[phase+'_BAR'].append(-self.f_L[phase+'_solv'][-1] - \
+           self.f_L['cool_BAR'][-1][-1] + \
+           self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
+        self.B[phase+'_MBAR'].append(-self.f_L[phase+'_solv'][-1] - \
+           self.f_L['cool_MBAR'][-1][-1] + \
+           self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
 
       # Average acceptance probabilities
-      dock_mean_acc = np.zeros(K-1)
+      mean_acc = np.zeros(K-1)
       for k in range(0, K-1):
         (u_kln,N_k) = self._u_kln(dock_Es[k:k+2],self.dock_protocol[k:k+2])
         N = min(N_k)
         acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
-        dock_mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      self.dock_mean_acc.append(dock_mean_acc)
+        mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
+      self.f_RL['mean_acc'].append(mean_acc)
 
-      self.tee("  calculated %s binding PMF of %f RT using cycles %d to %d"%(\
-        self.params['dock']['phases'][-1], B[self.params['dock']['phases'][-1]+'_MBAR_based'], fromCycle, toCycle-1))
+      self.tee("  calculated %s binding PMF of %f RT using BAR with cycles %d to %d"%(phase, self.B[phase+'_BAR'][-1], fromCycle, toCycle-1))
       updated = True
 
     if updated:
-      self._write_pkl_gz(f_RL_FN, (self.f_cool, self.f_L_solvation, self.Psi, \
-        self.f_grid, self.B, self.dock_equilibrated_cycle, self.dock_mean_acc))
-
-  ##############################
-  # Analysis and Visualization #
-  ##############################
-  def calc_random_dock_stats(self, E):
-    """
-    Examines the convergence of the interaction energy 
-    in the first docking state, looking at how the minimum, 
-    mean, standard deviation, and other statistics vary as
-    a function of the number of rotations and translations.
-    """
-    
-    # Initiate variables
-    interval = 5
-    keys = ['min','mean','std','lambda_n','f_grid0','f_grid']
-
-    r_range = range(interval, self._n_rot, interval)
-    t_range = range(interval, self._n_trans, interval)
-    
-    random_dock_stats = {}
-    for key in keys:
-      random_dock_stats[key] = np.zeros((len(r_range),len(t_range)))
-
-    Psi = np.reshape(E['ELE'],(-1,self._n_rot,self._n_trans)) + \
-          np.reshape(E['LJr'],(-1,self._n_rot,self._n_trans)) + \
-          np.reshape(E['LJa'],(-1,self._n_rot,self._n_trans))
-    w = np.exp((-1/RT_TARGET+1/RT_HIGH)*np.reshape(E['MM'] - min(E['MM']),(-1,self._n_rot,self._n_trans)))
-    
-    for r in range(len(r_range)):
-      for t in range(len(t_range)):
-        Psi_c = np.ravel(Psi[:,:r_range[r],:t_range[t]])
-        Psi_c_std = Psi_c.std()
-        lambda_c = (self.params['dock']['therm_speed']*RT_HIGH)/Psi_c_std
-        random_dock_stats['min'][r][t] = Psi_c.min()
-        random_dock_stats['mean'][r][t] = Psi_c.mean()
-        random_dock_stats['std'][r][t] = Psi_c_std
-        random_dock_stats['lambda_n'][r][t] = lambda_c
-
-        du = lambda_c*Psi_c/RT_HIGH
-        min_du = min(du)
-        random_dock_stats['f_grid0'][r][t] = -RT_HIGH*(np.log(np.mean(np.exp(-du+min_du))) + min_du)
-
-        w_c = np.ravel(w[:,:r_range[r],:t_range[t]])
-
-        du = Psi_c/RT_TARGET
-        min_du = min(du)
-        random_dock_stats['f_grid'][r][t] = -RT_TARGET*(np.log(np.sum(w_c*np.exp(-du+min_du))/np.sum(w_c)) + min_du)
-    
-    self._write_pkl_gz(join(self.dir['dock'],'random_dock_stats.pkl.gz'), random_dock_stats)
+      self._write_pkl_gz(f_RL_FN, (self.Psi, self.f_L, self.f_RL, self.B))
   
   ######################
   # Internal Functions #
@@ -2006,7 +1947,7 @@ last modified {2}
 
   def _run_MBAR(self,u_kln,N_k):
     """
-    Estimates the free energy of a transition using MBAR
+    Estimates the free energy of a transition using BAR and MBAR
     """
     import pymbar
     K = len(N_k)
@@ -2028,13 +1969,13 @@ last modified {2}
     f_k_FEPR = np.cumsum(f_k_FEPR)
     f_k_BAR = np.cumsum(f_k_BAR)
     try:
-      f_k = pymbar.MBAR(u_kln, N_k,
+      f_k_MBAR = pymbar.MBAR(u_kln, N_k,
         verbose = False, method = 'adaptive',
         initial_f_k = f_k_BAR,
         maximum_iterations = 20).f_k
     except:
-      f_k = f_k_BAR
-    return f_k
+      f_k_MBAR = f_k_BAR
+    return (f_k_BAR,f_k_MBAR)
 
   def _u_kln(self,eTs,lambdas,noBeta=False):
     """
@@ -2913,9 +2854,6 @@ if __name__ == '__main__':
   parser.add_argument('--site_density', type=float,
     help='Density of center-of-mass points in the first docking state')
   # Additional calculations
-  parser.add_argument('--do_calc_random_dock_stats', action='store_true',
-    default=None,
-    help='Calculate convergence statistics for random placement of the ligand into the active site')
   parser.add_argument('--receptor_Gas', type=float, nargs='+',
     help='Receptor potential energies in AMBER Gas implicit solvent (in units of kJ/mol)')
   parser.add_argument('--receptor_GBSA', type=float, nargs='+',

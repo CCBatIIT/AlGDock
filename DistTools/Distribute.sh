@@ -11,7 +11,7 @@ cd $WORK_DIR
 rm -rf dist build
 
 # Run pyinstaller
-pyinstaller HREX.spec
+pyinstaller BindingPMF.spec
 
 # Compress the final results
 cd dist

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from AlGDock.HREX import *
+from AlGDock.BindingPMF import *
 
-class BindingPMF_plots(BPMF):
+class BPMF_plots(BPMF):
   def plot_energies(self, process='cool', firstCycle=0, toCycle=None):
     """
     Plots timeseries and histograms of the energies for each state.
@@ -63,10 +63,17 @@ class BindingPMF_plots(BPMF):
       e_ratio.append(e_ratio_k)
     plt.plot(np.transpose(e_ratio))
 
-  def show_samples(self, process='dock', state=-1,
-      show_original_ligand=True, quit=False):
+  def show_samples(self, process='dock', state=-1, \
+      show_original_ligand=True, show_receptor=False, \
+      save_image=False, execute=True, quit=False):
     if state==-1:
       state = len(self.confs[process]['samples'])-1
+    import AlGDock.IO
+    IO_dcd = AlGDock.IO.dcd(self.molecule,
+      ligand_atom_order = self.molecule.prmtop_atom_order, \
+      receptorConf = self.confs['receptor'], \
+      ligand_first_atom = self._ligand_first_atom)
+      
     # Gather and write ligand coordinates
     confs = []
     for c in range(len(self.confs[process]['samples'][state])):
@@ -75,8 +82,11 @@ class BindingPMF_plots(BPMF):
           self.confs[process]['samples'][state][c] = \
             [self.confs[process]['samples'][state][c]]
         confs += self.confs[process]['samples'][state][c]
-    ligand_dcd_FN = '%s-%05d.dcd'%(process,state)
-    self._write_dcd(ligand_dcd_FN, confs, includeLigand=True)
+    rep = 0
+    while os.path.isfile('%s-%05d-%d.dcd'%(process,state,rep)):
+      rep += 1
+    ligand_dcd_FN = '%s-%05d-%d.dcd'%(process,state,rep)
+    IO_dcd.write(ligand_dcd_FN, confs, includeLigand=True, includeReceptor=False)
     
     script  =  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
     script += 'mol addfile '+ligand_dcd_FN+' type dcd waitfor all\n'
@@ -85,7 +95,7 @@ class BindingPMF_plots(BPMF):
     # Show the original ligand position
     if show_original_ligand:
       original_ligand_dcd_FN = 'L.dcd'
-      self._write_dcd(original_ligand_dcd_FN, self.confs['ligand'], \
+      IO_dcd.write(original_ligand_dcd_FN, self.confs['ligand'], \
         includeLigand=True, includeReceptor=False)
       script += 'set original_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
       script += 'mol addfile '+original_ligand_dcd_FN+' type dcd waitfor all\n'
@@ -93,9 +103,9 @@ class BindingPMF_plots(BPMF):
                 'Licorice 0.300000 10.000000 10.000000\n'
     
     # For docking, write receptor coordinates
-    if process=='dock':
+    if show_receptor:
       receptor_dcd_FN = 'R.dcd'
-      self._write_dcd(receptor_dcd_FN, self.confs['receptor'], \
+      IO_dcd.write(receptor_dcd_FN, self.confs['receptor'], \
         includeLigand=False, includeReceptor=True)
       script += 'set receptor [mol new '+self._FNs['prmtop']['R']+']\n'
       script += 'mol addfile '+receptor_dcd_FN+' type dcd waitfor all\n'
@@ -111,24 +121,26 @@ class BindingPMF_plots(BPMF):
     
     script += 'scale to 0.07\n'
     
-#    script += 'rotate y by -25.000000\n'
-#    script += 'scale by 2.0\n'
     script += 'axes location Off\n'
-    script += 'render snapshot %s-%05d.tga\n'%(process,state)
+
+    if save_image:
+      script += 'render snapshot %s-%05d.tga\n'%(process,state)
     if quit:
       script += 'quit\n'
-    
-    script_FN = 'show_samples.vmd'
-    script_F = open('show_samples.vmd','w')
-    script_F.write(script)
-    script_F.close()
+    if execute:
+      script_FN = 'show_samples.vmd'
+      script_F = open('show_samples.vmd','w')
+      script_F.write(script)
+      script_F.close()
 
-    import subprocess
-    subprocess.call([self._FNs['vmd'], '-e', script_FN, '-size', '800', '800'])
-    for FN in [ligand_dcd_FN, original_ligand_dcd_FN, \
-               receptor_dcd_FN, 'show_samples.vmd']:
-      if os.path.isfile(FN):
-        os.remove(FN)
+      import subprocess
+      subprocess.call([self._FNs['vmd'], '-e', script_FN, '-size', '800', '800'])
+      for FN in [ligand_dcd_FN, original_ligand_dcd_FN, \
+                 receptor_dcd_FN, 'show_samples.vmd']:
+        if os.path.isfile(FN):
+          os.remove(FN)
+
+    return script
 
   def show_all_samples(self, process='dock', stride=1):
     for state_ind in range(0,len(self.confs[process]['samples']),stride):

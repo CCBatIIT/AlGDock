@@ -92,9 +92,9 @@ search_paths = {
                 '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
                 '/home/daveminh/algdock_data/gaff.dat'],
                # AlGDock
-     'algdock':['/Users/dminh/Library/Enthought/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/HREX.py',
-                '/home/dbchem/dm225/.local/Canopy_64bit/System/lib/python2.7/site-packages/AlGDock/HREX.py',
-                '/share/apps/canopy/1.2.0/Canopy_64bit/System/lib/python2.7/site-packages/AlGDock/HREX.py']}
+     'algdock':['/Users/dminh/Library/Enthought/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
+                '/home/dbchem/dm225/.local/Canopy_64bit/System/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
+                '/share/apps/canopy/1.2.0/Canopy_64bit/System/lib/python2.7/site-packages/AlGDock/BindingPMF.py']}
 
 algdock_setup = '''
 # Modify paths
@@ -108,7 +108,7 @@ search_paths = {
   'vmd':['$WORK_DIR/vmd/bin/vmd']}
 " | cat AlGDock/AlGDock/_external_paths.py - > paths.py
 mv paths.py AlGDock/AlGDock/_external_paths.py
-export ALGDOCK=$WORK_DIR/AlGDock/HREX
+export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF
 '''
 
 # The file to download, special installation commands, and the final location
@@ -119,4 +119,4 @@ download_paths = {
     'chimera-1.9/bin/chimera'),
   'dock6':('dock6.tar.gz','','dock6/bin/dock6'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs'),
-  'algdock':('algdock.tar.gz',algdock_setup,'AlGDock/HREX')}
+  'algdock':('algdock.tar.gz',algdock_setup,'AlGDock/BindingPMF')}

@@ -3,7 +3,11 @@ from Cylinder import CylinderForceField
 from MMTK.ForceFields.ForceFieldTest import gradientTest, forceConstantTest
 
 import numpy as N
-from Scientific._vector import Vector
+
+try:
+  from Scientific._vector import Vector
+except:
+  from Scientific.Geometry.VectorModule import Vector
 
 universe = InfiniteUniverse()
 universe.atom1 = Atom('C', position=Vector((-0.1, -1., 2.)))

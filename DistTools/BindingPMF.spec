@@ -41,7 +41,7 @@ for pkg in ['Scientific','MMTK','AlGDock']:
 
 del os, sys, glob, Scientific, MMTK, AlGDock
 
-a = Analysis(['../AlGDock/HREX.py'],
+a = Analysis(['../AlGDock/BindingPMF.py'],
              pathex=['../AlGDock'],
              hiddenimports=['scipy.special._ufuncs_cxx','netCDF4_utils','netcdftime'],
              hookspath=None,
@@ -62,7 +62,7 @@ pyz = PYZ(a.pure)
 exe = EXE(pyz,
           a.scripts,
           exclude_binaries=True,
-          name='HREX',
+          name='BindingPMF',
           debug=False,
           strip=None,
           upx=False,

@@ -47,7 +47,7 @@ def findPaths(keys):
 # Defined for
 # David's IIT MacBook Pro, DSCR cluster, and CCB cluster
 search_paths = {
-# These files/programs are used in HREX.py
+# These files/programs are used in BindingPMF.py
              # Generalized AMBER force field
   'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/data/gaff.dat',
               '/home/dbchem/dm225/.local/installers/AlGDock-0.0.1/Data/gaff.dat',
@@ -60,7 +60,7 @@ search_paths = {
     'sander':['/Users/dminh/Installers/amber14/bin/sander',
               '/home/dbchem/dm225/.local/installers/amber14/bin/sander',
               '/share/apps/amber/14/bin/sander'],
-             # HREX.py is built on MMTK
+             # BindingPMF.py is built on MMTK
       'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
               '/home/dbchem/dm225/.local/installers/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],

@@ -200,7 +200,7 @@ search_paths = {
   'vmd':[None]}
 " | cat AlGDock/AlGDock/_external_paths.py - > AlGDock/AlGDock/paths.py
 mv AlGDock/AlGDock/paths.py AlGDock/AlGDock/_external_paths.py
-export ALGDOCK=$WORK_DIR/AlGDock/HREX
+export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF
 
 """ + command + """
 
