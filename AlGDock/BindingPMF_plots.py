@@ -65,7 +65,7 @@ class BPMF_plots(BPMF):
 
   def show_samples(self, process='dock', state=-1, \
       show_original_ligand=True, show_receptor=False, \
-      save_image=False, execute=True, quit=False):
+      save_image=False, scale=True, execute=True, quit=False):
     if state==-1:
       state = len(self.confs[process]['samples'])-1
     import AlGDock.IO
@@ -88,13 +88,11 @@ class BPMF_plots(BPMF):
     ligand_dcd_FN = '%s-%05d-%d.dcd'%(process,state,rep)
     IO_dcd.write(ligand_dcd_FN, confs, includeLigand=True, includeReceptor=False)
     
-    script  =  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-    script += 'mol addfile '+ligand_dcd_FN+' type dcd waitfor all\n'
-    script += 'mol drawframes $ligand 0 {0:%d}\n'%len(confs)
-
+    script = ''
+    
     # Show the original ligand position
+    original_ligand_dcd_FN = 'L.dcd'
     if show_original_ligand:
-      original_ligand_dcd_FN = 'L.dcd'
       IO_dcd.write(original_ligand_dcd_FN, self.confs['ligand'], \
         includeLigand=True, includeReceptor=False)
       script += 'set original_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
@@ -103,25 +101,23 @@ class BPMF_plots(BPMF):
                 'Licorice 0.300000 10.000000 10.000000\n'
     
     # For docking, write receptor coordinates
+    receptor_dcd_FN = 'R.dcd'
     if show_receptor:
-      receptor_dcd_FN = 'R.dcd'
       IO_dcd.write(receptor_dcd_FN, self.confs['receptor'], \
         includeLigand=False, includeReceptor=True)
       script += 'set receptor [mol new '+self._FNs['prmtop']['R']+']\n'
       script += 'mol addfile '+receptor_dcd_FN+' type dcd waitfor all\n'
       script += 'mol modstyle 0 $receptor NewCartoon 0.300000 10.000000 4.100000 0\n'
       script += 'mol modmaterial 0 $receptor Transparent\n'
-    
-    center_matrix = '[[[1 0 0 {0[0]}] [0 1 0 {0[1]}] [0 1 0 {0[2]}] [0 0 0 1]]]'
-    center_matrix = center_matrix.format(-10*self._forceFields['site'].center)
-    center_matrix = center_matrix.replace('[','{').replace(']','}')
-    
-    script += 'molinfo 0 set center_matrix '+center_matrix+'\n'
-    script += 'molinfo 1 set center_matrix '+center_matrix+'\n'
-    
-    script += 'scale to 0.07\n'
-    
-    script += 'axes location Off\n'
+
+    # Show samples
+    script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+    script += 'mol addfile '+ligand_dcd_FN+' type dcd waitfor all\n'
+    script += 'mol drawframes $ligand 0 {0:%d}\n'%len(confs)
+
+    if scale:
+      script += 'scale to 0.07\n'
+      script += 'axes location Off\n'
 
     if save_image:
       script += 'render snapshot %s-%05d.tga\n'%(process,state)

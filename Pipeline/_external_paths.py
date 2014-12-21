@@ -50,51 +50,40 @@ def findPaths(keys):
 search_paths = {
 # These files/programs are used in the pipeline
      'balloon':['/Users/dminh/Installers/Balloon-1.5.0.1143/balloon',
-                '/home/dbchem/dm225/.local/installers/Balloon-1.5.0.1143/balloon',
                 '/share/apps/balloon/1.5.0.1143/balloon'],
                # For adding hydrogens and charges to receptors
      'pdb2pqr':['/Users/dminh/Applications/pdb2pqr-osx-bin-1.9.0/pdb2pqr',
-                '/home/dbchem/dm225/.local/installers/pdb2pqr-1.9.0/pdb2pqr',
                 '/share/apps/pdb2pqr/1.9.0/pdb2pqr'],
                # For adding hydrogens and charges to ligands
      'chimera':['/Applications/Chimera.app/Contents/MacOS/chimera',
-                '/home/dbchem/dm225/.local/installers/chimera-1.9/bin/chimera',
                 '/share/apps/chimera/1.9/bin/chimera'],
                # For initial ligand pose
        'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
-                '/home/dbchem/dm225/.local/installers/dock6/bin/dock6',
                 '/share/apps/dock/6/bin/dock6'],
                # For homology modelling
     'modeller':['/Library/modeller-9.13/bin/mod9.14',
-                '/home/dbchem/dm225/.local/bin/modeller9.14/bin/mod9.14',
                 '/share/apps/modeller/9.13/bin/mod9.14'],
                # Submits a command to the queue
 'qsub_command':['/Users/dminh/Documents/scripts/qsub_command.py',
                 '~/scripts/qsub_command.py',
-                '/home/dbchem/dm225/scripts/qsub_command.py',
                 '/home/dminh/scripts/qsub_command.py',
                 '/home/daveminh/scripts/qsub_command.py'],
                # Spheres for UCSF DOCK 6
   'sphgen_cpp':['/Users/dminh/Applications/sphgen_cpp.1.2/sphgen_cpp',
-                '/NOT_INSTALLED',
                 '/share/apps/sphgen_cpp/1.2/sphgen_cpp'],
                # Preparing the system for AMBER
       'sander':['/Users/dminh/Installers/amber14/bin/sander',
-                '/home/dbchem/dm225/.local/installers/amber14/bin/sander',
                 '/share/apps/amber/14/bin/sander'],
                # Calculating a Poisson-Boltzmann Grid
         'apbs':['/Users/dminh/Installers/APBS-1.4-osx/bin/apbs',
-                '/home/dbchem/dm225/.local/installers/APBS-1.4-linux-static-x86_64/bin/apbs',
                 '/share/apps/apbs/1.4/bin/apbs'],
              # Generalized AMBER force field
     'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
-                '/home/dbchem/dm225/.local/installers/AlGDock-0.0.1/Data/gaff.dat',
                 '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
                 '/home/daveminh/algdock_data/gaff.dat'],
                # AlGDock
      'algdock':['/Users/dminh/Library/Enthought/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
-                '/home/dbchem/dm225/.local/Canopy_64bit/System/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
-                '/share/apps/canopy/1.2.0/Canopy_64bit/System/lib/python2.7/site-packages/AlGDock/BindingPMF.py']}
+                '/share/apps/canopy/1.5.0/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py']}
 
 algdock_setup = '''
 # Modify paths

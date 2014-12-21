@@ -405,7 +405,7 @@ last modified {2}
     self.params = {}
     for p in ['cool','dock']:
       self.params[p] = merge_dictionaries(
-        [args[src] for src in ['new_'+p,'default_'+p,p]])
+        [args[src] for src in [p,'new_'+p,'default_'+p]])
 
     # Allow updates of receptor energies
     for phase in allowed_phases:
@@ -718,13 +718,13 @@ last modified {2}
     # Run at high temperature
     state_start_time = time.time()
     conf = self.universe.configuration().array
-    (confs, Es_MM) = self._initial_sim_state(\
+    (confs, Es_MM, self.cool_protocol[-1]['delta_t']) = \
+      self._initial_sim_state(\
       [conf for n in range(self.params['cool']['seeds_per_state'])], \
       'cool', self.cool_protocol[-1])
     self.confs['cool']['replicas'] = [confs[np.argmin(Es_MM)]]
     self.confs['cool']['samples'] = [[confs]]
     self.cool_Es = [[{'MM':Es_MM}]]
-    self.cool_protocol[-1]['delta_t'] = self.delta_t
     self.tee("  generated %d configurations "%len(confs) + \
              "(dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
              "at %d K "%self.cool_protocol[-1]['T'] + \
@@ -745,10 +745,9 @@ last modified {2}
           crossed = True
       else:
         raise Exception('No variance in configuration energies')
-      lambda_n = {'T':T, 'a':(T_HIGH-T)/(T_HIGH-T_TARGET), 'MM':True,
-                  'crossed':crossed}
-      self.cool_protocol.append(lambda_n)
-      self._set_universe_force_field(lambda_n)
+      self.cool_protocol.append(\
+        {'T':T, 'a':(T_HIGH-T)/(T_HIGH-T_TARGET), 'MM':True, 'crossed':crossed})
+      self._set_universe_force_field(self.cool_protocol[-1])
 
       # Randomly select seeds for new trajectory
       w = np.exp(-Es_MM/R*(1/T-1/To))
@@ -761,9 +760,9 @@ last modified {2}
       Es_MM_o = Es_MM
 
       state_start_time = time.time()
-      (confs, Es_MM) = self._initial_sim_state(\
-        [confs[ind] for ind in seedIndicies], 'cool', lambda_n)
-      self.cool_protocol[-1]['delta_t'] = self.delta_t
+      (confs, Es_MM, self.cool_protocol[-1]['delta_t']) = \
+        self._initial_sim_state(\
+        [confs[ind] for ind in seedIndicies], 'cool', self.cool_protocol[-1])
       self.tee("  generated %d configurations "%len(confs) + \
                "(dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
@@ -789,8 +788,7 @@ last modified {2}
         # If the acceptance probability is too low,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.argmin(Es_MM)]
-        self.cool_protocol.pop()
-        self.cool_protocol[-1] = lambda_n
+        self.cool_protocol.pop(-2)
         tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
         self.tee("  rejected previous state, as estimated replica exchange acceptance rate of %f is too high"%mean_acc)
       else:
@@ -830,21 +828,20 @@ last modified {2}
     if redo:
       if isfile(f_L_FN):
         os.remove(f_L_FN)
-      self.f_L = None
+      dat = None
     else:
-      self.f_L = self._load_pkl_gz(f_L_FN)
-    if (self.f_L is None):
-      self.f_L = {}
-      for var in ['cool_BAR', 'cool_MBAR', 'equilibrated_cycle', 'mean_acc']:
-        self.f_L[var] = []
-      for phase in self.params['cool']['phases']:
-        self.f_L[phase+'_solv'] = []
-    if readOnly:
+      dat = self._load_pkl_gz(f_L_FN)
+    if dat is not None:
+      (self.stats_L, self.f_L) = dat
+    else:
+      self.stats_L = dict(\
+        [(item,[]) for item in ['equilibrated_cycle','mean_acc']])
+      self.stats_L['protocol'] = self.cool_protocol
+      self.f_L = dict([(key,[]) for key in ['cool_BAR','cool_MBAR'] + \
+        [phase+'_solv' for phase in self.params['cool']['phases']]])
+    if readOnly or self.cool_protocol==[]:
       return
-    
-    if self.cool_protocol==[]:
-      return # Initial cooling is incomplete
-      
+
     K = len(self.cool_protocol)
 
     # Make sure all the energies are available
@@ -858,20 +855,18 @@ last modified {2}
       for c in range(self._cool_cycle)]
     mean_u_Ks = np.array([np.mean(u_K) for u_K in u_Ks])
     std_u_Ks = np.array([np.std(u_K) for u_K in u_Ks])
-    for c in range(len(self.f_L['equilibrated_cycle']), self._cool_cycle):
-      nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
-      for (item, ind) in zip(nearMean, range(len(nearMean))):
-        if item:
-          self.f_L['equilibrated_cycle'].append(ind)
-          break
+    for c in range(len(self.stats_L['equilibrated_cycle']), self._cool_cycle):
+      nearMean = list((mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]).index(True)
+      if c>0: # If possible, reject burn-in
+        nearMean = max(nearMean,1)
+      self.stats_L['equilibrated_cycle'].append(nearMean)
 
-    updated = False
-    
     # Calculate solvation free energies that have not already been calculated,
     # in units of RT
+    updated = False
     for phase in self.params['cool']['phases']:
       for c in range(len(self.f_L[phase+'_solv']), self._cool_cycle):
-        fromCycle = self.f_L['equilibrated_cycle'][c]
+        fromCycle = self.stats_L['equilibrated_cycle'][c]
         toCycle = c + 1
         
         # Arbitrarily, solvation is the
@@ -893,7 +888,7 @@ last modified {2}
     # Calculate cooling free energies that have not already been calculated,
     # in units of RT
     for c in range(len(self.f_L['cool_BAR']), self._cool_cycle):
-      fromCycle = self.f_L['equilibrated_cycle'][c]
+      fromCycle = self.stats_L['equilibrated_cycle'][c]
       toCycle = c + 1
 
       # Cooling free energy
@@ -912,15 +907,15 @@ last modified {2}
         N = min(N_k)
         acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
         cool_mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      self.f_L['mean_acc'].append(cool_mean_acc)
+      self.stats_L['mean_acc'].append(cool_mean_acc)
 
       self.tee("  calculated cooling free energy of %f RT "%(\
                   self.f_L['cool_BAR'][-1][-1])+\
-               "using BAR for cycles %d to %d"%(fromCycle, toCycle-1))
+               "using BAR for cycles %d to %d"%(fromCycle, c))
       updated = True
 
     if updated:
-      self._write_pkl_gz(f_L_FN, self.f_L)
+      self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L))
 
   ###########
   # Docking #
@@ -1146,14 +1141,11 @@ last modified {2}
       # Simulate
       sim_start_time = time.time()
       self._set_universe_force_field(lambda_n)
-      (confs, Es_tot) = self._initial_sim_state(seeds, 'dock', lambda_n)
-      
-      # Store data
-      self.dock_protocol[-1]['delta_t'] = self.delta_t
-
+      (confs, Es_tot, lambda_n['delta_t']) = \
+        self._initial_sim_state(seeds, 'dock', lambda_n)
       self.tee("  generated %d configurations "%len(confs) + \
-               "(dt=%f ps) "%self.dock_protocol[-1]['delta_t'] + \
-               "with progress %f "%self.dock_protocol[-1]['a'] + \
+               "(dt=%f ps) "%lambda_n['delta_t'] + \
+               "with progress %f "%lambda_n['a'] + \
                "in " + HMStime(time.time()-sim_start_time))
 
       # Get state energies
@@ -1180,8 +1172,7 @@ last modified {2}
           # reject the previous state and restart
           self.confs['dock']['replicas'][-1] = confs[np.argmin(Es_tot)]
           self.dock_protocol.pop()
-          self.dock_protocol[-1] = lambda_n
-          self.dock_protocol[-1]['delta_t'] = self.delta_t
+          self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
           lambda_o = lambda_n
           self.tee("  rejected previous state, as estimated replica exchange acceptance rate of %f is too high"%mean_acc)
@@ -1192,7 +1183,7 @@ last modified {2}
           if (not self.params['dock']['keep_intermediate']):
             self.confs['dock']['samples'][-2] = []
           self.dock_Es.append([E])
-          self.dock_protocol[-1]['delta_t'] = self.delta_t
+          self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
           lambda_o = lambda_n
           self.tee("  the estimated replica exchange acceptance rate is %f"%mean_acc)
@@ -1201,7 +1192,7 @@ last modified {2}
         self.confs['dock']['replicas'].append(confs[np.argmin(Es_tot)])
         self.confs['dock']['samples'].append([confs])
         self.dock_Es.append([E])
-        self.dock_protocol[-1]['delta_t'] = self.delta_t
+        self.dock_protocol[-1] = copy.deepcopy(lambda_n)
         rejectStage = 0
         lambda_o = lambda_n
       self.tee("")
@@ -1242,16 +1233,27 @@ last modified {2}
     else:
       dat = self._load_pkl_gz(f_RL_FN)
     if (dat is not None):
-      (self.Psi, self.f_L, self.f_RL, self.B) = dat
+      (self.f_L, self.stats_RL, self.f_RL, self.B) = dat
     else:
-      self.Psi = {}
-      for type in ['MM','grid']+self.params['dock']['phases']:
-        self.Psi[type] = []
-      self.f_RL = {'grid_BAR':[], 'grid_MBAR':[], \
-         'equilibrated_cycle':[], 'mean_acc':[]}
+      # stats_RL will include internal energies, interaction energies,
+      # the cycle by which the bound state is equilibrated,
+      # the mean acceptance probability between replica exchange neighbors,
+      # and the rmsd, if applicable
+      stats_RL = [('u_K_'+FF,[]) \
+        for FF in ['ligand','sampled']+self.params['dock']['phases']]
+      stats_RL += [('Psi_'+FF,[]) \
+        for FF in ['grid']+self.params['dock']['phases']]
+      stats_RL += [(item,[]) \
+        for item in ['equilibrated_cycle','mean_acc','rmsd']]
+      self.stats_RL = dict(stats_RL)
+      self.stats_RL['protocol'] = self.dock_protocol
+      # TO DO: Store NUTS acceptance statistic
+      # Free energy components
+      self.f_RL = dict([(key,[]) for key in ['grid_BAR','grid_MBAR'] + \
+        [phase+'_solv' for phase in self.params['dock']['phases']]])
+      # Binding PMF estimates
       self.B = {}
       for phase in self.params['dock']['phases']:
-        self.f_RL[phase+'_solv'] = []
         for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
           self.B[phase+'_'+method] = []
     if readOnly:
@@ -1268,38 +1270,65 @@ last modified {2}
 
     K = len(self.dock_protocol)
   
-    # Calculate interaction energies
-    for c in range(len(self.Psi['MM']), self._dock_cycle):
-      self.Psi['MM'].append(self.dock_Es[-1][c]['MM']/RT_TARGET)
-      self.Psi['grid'].append(
+    # Store stats_RL
+    # Internal energies
+    self.stats_RL['u_K_ligand'] = \
+      [self.dock_Es[-1][c]['MM']/RT_TARGET for c in range(self._dock_cycle)]
+    self.stats_RL['u_K_sampled'] = \
+      [self._u_kln([self.dock_Es[-1][c]],[self.dock_protocol[-1]]) \
+        for c in range(self._dock_cycle)]
+    for phase in self.params['dock']['phases']:
+      self.stats_RL['u_K_'+phase] = \
+        [self.dock_Es[-1][c]['RL'+phase][:,-1]/RT_TARGET \
+          for c in range(self._dock_cycle)]
+
+    # Interaction energies
+    for c in range(len(self.stats_RL['Psi_grid']), self._dock_cycle):
+      self.stats_RL['Psi_grid'].append(
           (self.dock_Es[-1][c]['LJr'] + \
            self.dock_Es[-1][c]['LJa'] + \
            self.dock_Es[-1][c]['ELE'])/RT_TARGET)
-      for phase in self.params['dock']['phases']:
-        self.Psi[phase].append(
+    for phase in self.params['dock']['phases']:
+      for c in range(len(self.stats_RL['Psi_'+phase]), self._dock_cycle):
+        self.stats_RL['Psi_'+phase].append(
           (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
-          self.dock_Es[-1][c]['L'+phase][:,-1] - \
-          self.params['dock']['receptor_'+phase][-1])/RT_TARGET)
+           self.dock_Es[-1][c]['L'+phase][:,-1] - \
+           self.params['dock']['receptor_'+phase][-1])/RT_TARGET)
 
     # Estimate cycle at which simulation has equilibrated
-    u_Ks = [self._u_kln([self.dock_Es[-1][c]],[self.dock_protocol[-1]]) for c in range(self._dock_cycle)]
-    mean_u_Ks = np.array([np.mean(u_K) for u_K in u_Ks])
-    std_u_Ks = np.array([np.std(u_K) for u_K in u_Ks])
-    for c in range(len(self.f_RL['equilibrated_cycle']), self._dock_cycle):
-      nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
-      for (item, ind) in zip(nearMean, range(len(nearMean))):
-        if item:
-          self.f_RL['equilibrated_cycle'].append(ind)
-          break
+    mean_u_Ks = np.array([np.mean(u_K) for u_K in self.stats_RL['u_K_sampled']])
+    std_u_Ks = np.array([np.std(u_K) for u_K in self.stats_RL['u_K_sampled']])
+    for c in range(len(self.stats_RL['equilibrated_cycle']), self._dock_cycle):
+      nearMean = list((mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]).index(True)
+      if c>0: # If possible, reject burn-in
+        nearMean = max(nearMean,1)
+      self.stats_RL['equilibrated_cycle'].append(nearMean)
+
+    # Store NUTS acceptance statistic
+    self.stats_RL['Ht'] = [self.dock_Es[0][c]['Ht'] \
+      if 'Ht' in self.dock_Es[-1][c].keys() else [] \
+      for c in range(self._dock_cycle)]
+      
+    # Autocorrelation time for all replicas
+    paths = np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
+      for c in range(len(self.dock_Es[0])) \
+      if 'repXpath' in self.dock_Es[0][c].keys()]))
+    self.stats_RL['tau_ac'] = \
+      pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
+    
+    # Store rmsd values
+    self.stats_RL['rmsd'] = [self.dock_Es[-1][c]['rmsd'] \
+      if 'rmsd' in self.dock_Es[-1][c].keys() else [] \
+      for c in range(self._dock_cycle)]
 
     # Calculate docking free energies that have not already been calculated
     updated = False
     for c in range(len(self.f_RL['grid_MBAR']), self._dock_cycle):
-      fromCycle = self.f_RL['equilibrated_cycle'][c]
-      toCycle = c + 1
+      extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
       
-      # Extract energies between fromCycle and toCycle
-      dock_Es = [Es[fromCycle:toCycle] for Es in self.dock_Es]
+      # Extract relevant energies
+      dock_Es = [Es[self.stats_RL['equilibrated_cycle'][c]:c+1] \
+        for Es in self.dock_Es]
       
       # Use MBAR for the grid scaling free energy estimate
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
@@ -1307,48 +1336,27 @@ last modified {2}
       self.f_RL['grid_MBAR'].append(MBAR)
       self.f_RL['grid_BAR'].append(BAR)
 
-      # Binding PMF
-      u_K = self._u_kln([dock_Es[-1]],[self.dock_protocol[-1]])
-
 # How to estimate the change in potential energy for GBSA:
-# RLGBSAflex = RLGBSAfixedR - RGBSAfixedR + RGBSAflex
-#                                           ^ This is assumed to cancel out
+#              This is the NAMD result
+#              v
+# RLGBSAflex = RLGBSAfixedR + RMM
 # RLMMTK = RMMTK + LMMTK + PsiMMTK
-#          ^ This is assumed to be zero
-# du = (RLGBSAfixedR - RGBSAfixedR + RGBSAflex) - (LMMTK + PsiMMTK)
 #
-# in code this is,
-# du = \
-#    (np.concatenate([self.dock_Es[-1][c]['RL'+phase][:,-1] \
-#                      for c in range(fromCycle,toCycle)]) - \
-#        self.params['dock']['receptor_'+phase])/RT_TARGET - \
-#    u_K
+# du = (RLGBSAfixedR + RMM) - (RMMTK + LMMTK + PsiMMTK)
 #
-# Alternatively,
-# RLGBSAflex = RGBSAflex + LGBSA + PsiGBSA
-#              ^ this has been missing
-#            = RGBSAflex + LGBSA + (RLGBSAflex - RGBSAflex - LGBSA)
-# du = (RGBSAflex + LGBSA + PsiGBSA) - (RMMTK + LMMTK + PsiMMTK)
-#
-# in code this is,
-# du = self.dock_Es[-1][c]['L'+phase][:,-1]/RT_TARGET+self.Psi[phase][c] - u_K
-# which gives the same numbers for c = 0
-#
-# Alternatively, assuming LGBSA~LMMTK
-# du = PsiGBSA - PsiMMTK
-# du = np.concatenate([self.Psi[phase][c] - self.Psi['grid'][c] for c in range(fromCycle,toCycle)])
+# Because RMM and RMMTK are both zero,
+# du = (RLGBSAfixedR) - (LMMTK + PsiMMTK)
 
       for phase in self.params['dock']['phases']:
-        du = np.concatenate([self.dock_Es[-1][c]['RL'+phase][:,-1] \
-                            for c in range(fromCycle,toCycle)] - \
-             self.params['dock']['receptor_'+phase][-1])/RT_TARGET - u_K
+        du = np.concatenate([self.stats_RL['u_K_'+phase][c] - \
+          self.stats_RL['u_K_sampled'][c] for c in extractCycles])
         min_du = min(du)
         # Complex solvation
         B_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
         weight = np.exp(-du+min_du)
         weight = weight/sum(weight)
-        Psi = np.concatenate([self.Psi[phase][c] \
-          for c in range(fromCycle,toCycle)])
+        Psi = np.concatenate([self.stats_RL['Psi_'+phase][c] \
+          for c in extractCycles])
         min_Psi = min(Psi)
         
         self.f_RL[phase+'_solv'].append(B_RL_solv)
@@ -1356,10 +1364,14 @@ last modified {2}
         self.B[phase+'_mean_Psi'].append(np.mean(Psi))
         self.B[phase+'_inverse_FEP'].append(\
           np.log(sum(weight*np.exp(Psi-min_Psi))) + min_Psi)
-        self.B[phase+'_BAR'].append(-self.f_L[phase+'_solv'][-1] - \
+        self.B[phase+'_BAR'].append(\
+          -self.f_L[phase+'_solv'][-1] - \
+           self.params['dock']['receptor_'+phase][-1]/RT_TARGET - \
            self.f_L['cool_BAR'][-1][-1] + \
            self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
-        self.B[phase+'_MBAR'].append(-self.f_L[phase+'_solv'][-1] - \
+        self.B[phase+'_MBAR'].append(\
+          -self.f_L[phase+'_solv'][-1] - \
+           self.params['dock']['receptor_'+phase][-1]/RT_TARGET - \
            self.f_L['cool_MBAR'][-1][-1] + \
            self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
 
@@ -1370,13 +1382,14 @@ last modified {2}
         N = min(N_k)
         acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
         mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      self.f_RL['mean_acc'].append(mean_acc)
+      self.stats_RL['mean_acc'].append(mean_acc)
 
-      self.tee("  calculated %s binding PMF of %f RT using BAR with cycles %d to %d"%(phase, self.B[phase+'_BAR'][-1], fromCycle, toCycle-1))
+      self.tee("  calculated %s binding PMF of %f RT based on MBAR with cycles %d to %d"%(phase, self.B[phase+'_MBAR'][-1], \
+               self.stats_RL['equilibrated_cycle'][c], c))
       updated = True
 
     if updated:
-      self._write_pkl_gz(f_RL_FN, (self.Psi, self.f_L, self.f_RL, self.B))
+      self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
   
   ######################
   # Internal Functions #
@@ -1494,7 +1507,8 @@ last modified {2}
     Initializes a state, returning the configurations and potential energy.
     """
     
-    doMC = (process=='dock' and self.params['dock']['MCMC_moves']>0)
+    doMC = (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
+      and (lambda_k['a'] < 0.01)
 
     results = []
     if self._cores>1:
@@ -1524,9 +1538,9 @@ last modified {2}
     potEs = [result['E_MM'] for result in results]
     Ht = np.mean(np.array([result['Ht'] for result in results]))
     delta_t = np.median(np.array([results['delta_t'] for results in results]))
-    self.delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
+    delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
 
-    return (confs, np.array(potEs))
+    return (confs, np.array(potEs), delta_t)
 
   def _replica_exchange(self, process):
     """
@@ -1583,7 +1597,7 @@ last modified {2}
         E[term] = np.zeros(K, dtype=float)
       if process=='dock':
         E['acc_MC'] = np.zeros(K, dtype=float)
-      Ht = np.zeros(K, dtype=int)
+      Ht = np.zeros(K, dtype=float)
       # Sample within each state
       doMC = [(process == 'dock') and (self.params['dock']['MCMC_moves']>0)
         and (lambdas[state_inds[k]]['a'] < 0.1) for k in range(K)]
@@ -1640,9 +1654,6 @@ last modified {2}
       storage['state_inds'].append(list(state_inds))
       storage['energies'].append(copy.deepcopy(E))
 
-    Ht = Ht/self.params[process]['sweeps_per_cycle']
-    storage['Ht'] = Ht
-
     # Estimate relaxation time from empirical state transition matrix
     state_inds = np.array(storage['state_inds'])
     Nij = np.zeros((K,K),dtype=int)
@@ -1691,6 +1702,7 @@ last modified {2}
       E_state = {}
       if state==0:
         E_state['repXpath'] = storage['state_inds']
+        E_state['Ht'] = Ht
       for term in terms:
         E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][state]] for snap in range(nsaved)])
       Es.append([E_state])
@@ -2090,10 +2102,14 @@ last modified {2}
         tL_tensor = tL_tensor*(1.25**pow)
       if tL_tensor>0:
         dL = self.params['dock']['therm_speed']/tL_tensor
-        a = min(lambda_o['a'] + dL, 1)
-        return self._lambda(a)
+        # Halve the thermodynamic speed for 0.9<a<1
+        if lambda_o['a']<0.9:
+          a = min(lambda_o['a'] + dL, 1)
+        else:
+          a = min(lambda_o['a'] + dL/2, 1)
         if a == 1:
           lambda_n['crossed'] = True
+        return self._lambda(a)
       else:
         raise Exception("No variance in stage")
 
