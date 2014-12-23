@@ -32,8 +32,7 @@ except:
   # Define search paths for external programs
   # Defined for David's IIT MacBook Pro, DSCR cluster, and CCB cluster
   search_paths = {
-    'namd':['/Users/dminh/Installers/NAMD_2.9_Source/MacOSX-x86_64-g++/namd2',
-            '/home/dbchem/dm225/.local/bin/namd2',
+    'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
             '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
             None]}
 

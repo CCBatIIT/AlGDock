@@ -50,7 +50,7 @@ term_map = {
   'ELE':'ELE',
   'electrostatic':'misc'}
 
-allowed_phases = ['Gas','GBSA','NAMD_Gas','NAMD_GBSA']
+allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA']
 
 ########################
 # Auxilliary functions #
@@ -222,6 +222,7 @@ class BPMF:
       site_density=None,
       receptor_Gas=None,
       receptor_GBSA=None,
+      receptor_PBSA=None,
       receptor_NAMD_Gas=None,
       receptor_NAMD_GBSA=None): # Energy values
     """Parses the input arguments and runs the requested docking calculation"""
@@ -1264,6 +1265,11 @@ last modified {2}
       if len(self.dock_Es[-1][c].keys())==0:
         self.tee("  skipping the binding PMF calculation")
         return
+      for phase in self.params['dock']['phases']:
+        for prefix in ['L','RL']:
+          if not prefix+phase in self.dock_Es[-1][c].keys():
+            self.tee("  postprocessed energies for %s unavailable"%phase)
+            return
     if not hasattr(self,'f_L'):
       self.tee("  skipping the binding PMF calculation")
       return
@@ -2349,7 +2355,24 @@ last modified {2}
     out_FN = '%s%s.out'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
 
     script_F = open(script_FN,'w')
-    if phase=='GBSA':
+    if phase=='PBSA':
+      script_F.write('''Calculate PBSA energies
+&cntrl
+  imin=5,    ! read trajectory in for analysis
+  ntx=1,     ! input is read formatted with no velocities
+  irest=0,
+  ntb=0,     ! no periodicity and no PME
+  idecomp=0, ! no decomposition
+  ntc=1,     ! No SHAKE
+  ntf=1,     ! Complete interaction is calculated
+  cut=9999., !
+  ipb=2,     ! Default PB dielectric model
+  inp=1,     ! Only surface area
+/
+''')
+    #  inp=2,     ! Default PB nonpolar solvation free energy
+    #  radiopt=0, ! Use atomic radii from the prmtop file (not compatible with inp=2)
+    elif phase=='GBSA':
       script_F.write('''Calculate GBSA energies
 &cntrl
   imin=5,    ! read trajectory in for analysis
@@ -2362,8 +2385,6 @@ last modified {2}
   cut=9999., !
   igb=8,     ! Most recent AMBER GBn model, best agreement with PB
   gbsa=2,    ! recursive surface area algorithm
-#  alpb=1,    ! Analytical Linearized Poisson-Boltzmann
-#  arad=24.7  ! Electrostatic size
 /
 ''')
     elif phase=='ALPB':
@@ -2372,7 +2393,7 @@ last modified {2}
       #        run ambpdb to generate a pqr file
       #        run elsize
       #        save elsize as a parameter
-      script_F.write('''Calculate GBSA energies
+      script_F.write('''Calculate analyical linearized Poisson-Boltzmann energies
 &cntrl
   imin=5,    ! read trajectory in for analysis
   ntx=1,     ! input is read formatted with no velocities
@@ -2420,12 +2441,12 @@ last modified {2}
     import subprocess
     p = subprocess.Popen([self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
       '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
-      '-y',AMBER_mdcrd_FN])
+      '-y',AMBER_mdcrd_FN, '-r',script_FN+'.restrt'])
     p.wait()
     if not debug and isfile(script_FN):
       os.remove(script_FN)
-    if isfile('restrt'):
-      os.remove('restrt')
+    if isfile(script_FN+'.restrt'):
+      os.remove(script_FN+'.restrt')
     os.chdir(self.dir['start'])
 
     # Clear decompressed files
@@ -2443,11 +2464,11 @@ last modified {2}
     if len(dat)>0:
       E = np.array([rec[:rec.find('\nminimization')].replace('1-4 ','1-4').split()[1::3] for rec in dat],dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
       E = np.hstack((E,np.sum(E,1)[...,None]))
+
+      if not debug and isfile(out_FN):
+        os.remove(out_FN)
     else:
       E = np.array([np.inf]*11)
-
-    if not debug and isfile(out_FN):
-      os.remove(out_FN)
 
     return E
     # AMBER ENERGY FIELDS:
@@ -2874,6 +2895,8 @@ if __name__ == '__main__':
     help='Receptor potential energies in AMBER Gas implicit solvent (in units of kJ/mol)')
   parser.add_argument('--receptor_GBSA', type=float, nargs='+',
     help='Receptor potential energies in AMBER GBSA implicit solvent (in units of kJ/mol)')
+  parser.add_argument('--receptor_PBSA', type=float, nargs='+',
+    help='Receptor potential energies in AMBER PBSA implicit solvent (in units of kJ/mol)')
   parser.add_argument('--receptor_NAMD_Gas', type=float, nargs='+',
     help='Receptor potential energies in gas phase (in units of kJ/mol)')
   parser.add_argument('--receptor_NAMD_GBSA', type=float, nargs='+',

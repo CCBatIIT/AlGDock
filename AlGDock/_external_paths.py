@@ -52,11 +52,14 @@ search_paths = {
   'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/data/gaff.dat',
               '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat'],
              # For postprocessing snapshots
-      'namd':['/Users/dminh/Installers/NAMD_2.9_Source/MacOSX-x86_64-g++/namd2',
+      'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2'],
              # For postprocessing snapshots
     'sander':['/Users/dminh/Installers/amber14/bin/sander',
               '/share/apps/amber/14/bin/sander'],
+             # Calculating a Poisson-Boltzmann Grid
+      'apbs':['/Users/dminh/Applications/APBS-1.4-osx/bin/apbs',
+              '/share/apps/apbs/1.4/bin/apbs'],
              # BindingPMF.py is built on MMTK
       'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],
@@ -65,4 +68,5 @@ search_paths = {
               '/share/apps/vmd/1.9.1/bin/vmd']}
 
 download_paths = {
-  'namd':('namd.tar.gz','','namd2')}
+  'namd':('namd.tar.gz','','namd2'),
+  'sander':('sander.tar.gz','','sander')}

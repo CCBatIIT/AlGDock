@@ -75,9 +75,9 @@ search_paths = {
       'sander':['/Users/dminh/Installers/amber14/bin/sander',
                 '/share/apps/amber/14/bin/sander'],
                # Calculating a Poisson-Boltzmann Grid
-        'apbs':['/Users/dminh/Installers/APBS-1.4-osx/bin/apbs',
+        'apbs':['/Users/dminh/Applications/APBS-1.4-osx/bin/apbs',
                 '/share/apps/apbs/1.4/bin/apbs'],
-             # Generalized AMBER force field
+               # Generalized AMBER force field
     'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
                 '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
                 '/home/daveminh/algdock_data/gaff.dat'],
@@ -91,7 +91,7 @@ echo "
 search_paths = {
   'gaff.dat':[None],
   'catdcd':[None],
-  'namd':['$WORK_DIR/namd2'],
+  'namd':[None],
   'sander':[None],
   'MMTK':['$WORK_DIR/AlGDock/MMTK'],
   'vmd':['$WORK_DIR/vmd/bin/vmd']}

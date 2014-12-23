@@ -19,6 +19,7 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --steps_per_sweep 100 --cool_repX_cycles 3 --dock_repX_cycles 2 \
   --site Sphere --site_center 1.80624 1.80624 1.80624 --site_max_R 0.01 --site_density 10. \
   --run_type all \
+  --phases Gas GBSA PBSA NAMD_Gas NAMD_GBSA \
   --cores -1 \
   --score prmtopcrd/anchor_and_grow_scored.mol2 \
   --rmsd \
