@@ -476,14 +476,7 @@ last modified {2}
     self.run_type = run_type
     self.cycles_run = 0
     if run_type=='pose_energies':
-      (unique_confs, unique_conf_Es) = self._get_dock_score_confs()
-      if self.params['dock']['score'] is True:
-        prefix = 'xtal'
-      else:
-        prefix = os.path.basename(self.params['dock']['score']).split('.')[0]
-      E = self._calc_E(confs=unique_confs, E=unique_conf_Es, type='all', \
-        prefix=prefix)
-      self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),E)
+      self.pose_energies()
     elif run_type=='one_step':
       # Does one of the following:
       # 1. Initial cooling
@@ -751,10 +744,10 @@ last modified {2}
       self._set_universe_force_field(self.cool_protocol[-1])
 
       # Randomly select seeds for new trajectory
-      w = np.exp(-Es_MM/R*(1/T-1/To))
+      weight = np.exp(-Es_MM/R*(1/T-1/To))
       seedIndicies = np.random.choice(len(Es_MM),
         size = self.params['cool']['seeds_per_state'],
-        p = w/sum(w))
+        p = weight/sum(weight))
 
       # Simulate and store data
       confs_o = confs
@@ -1111,10 +1104,10 @@ last modified {2}
       u_o = self._u_kln([E],[lambda_o])
       u_n = self._u_kln([E],[lambda_n])
       du = u_n-u_o
-      w = np.exp(-du+min(du))
+      weight = np.exp(-du+min(du))
       seedIndicies = np.random.choice(len(u_o), \
         size = self.params['dock']['seeds_per_state'], \
-        p=w/sum(w))
+        p=weight/sum(weight))
 
       if len(self.dock_protocol)==2: # Cooling state 0 configurations, randomly oriented
         # Use the lowest energy configuration in the first docking state for replica exchange
@@ -1396,7 +1389,39 @@ last modified {2}
 
     if updated:
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
-  
+
+  def pose_energies(self):
+    """
+    Calculates the energy for poses from self.params['dock']['score']
+    """
+    # Load the poses
+    if isinstance(self.params['dock']['score'],bool):
+      confs = [self.confs['ligand']]
+      E = {}
+      prefix = 'xtal'
+    elif self.params['dock']['score'].endswith('.mol2') or \
+       self.params['dock']['score'].endswith('.mol2.gz'):
+      (confs,E) = self._read_dock6(self.params['dock']['score'])
+      prefix = os.path.basename(self.params['dock']['score']).split('.')[0]
+    E = self._calc_E(confs, E, type='all', prefix=prefix)
+
+    # Try different grid transformations
+    from ForceFields.Grid.TrilinearTransformGrid \
+      import TrilinearTransformGridForceField
+    for type in ['LJa','LJr']:
+      E[type+'_transformed'] = np.zeros((12,len(confs)),dtype=np.float)
+      for p in range(12):
+        FF = TrilinearTransformGridForceField(self._FNs['grids'][type], 1.0, \
+          'scaling_factor_'+type, grid_name='%f'%(p+1), \
+          inv_power=-float(p+1), max_val=-1)
+        self.universe.setForceField(FF)
+        for c in range(len(confs)):
+          self.universe.setConfiguration(Configuration(self.universe,confs[c]))
+          E[type+'_transformed'][p,c] = self.universe.energy()
+
+    # Store the data
+    self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),E)
+
   ######################
   # Internal Functions #
   ######################
@@ -1427,7 +1452,8 @@ last modified {2}
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
       fflist.append(self._forceFields['gaff'])
-    if ('site' in lambda_n.keys()) and lambda_n['site']:
+    if ('site' in lambda_n.keys()) and lambda_n['site'] and \
+        ('site' in self._forceFields.keys()):
       fflist.append(self._forceFields['site'])
     for scalable in self._scalables:
       if (scalable in lambda_n.keys()) and lambda_n[scalable]>0:
@@ -1569,7 +1595,7 @@ last modified {2}
     # A list of pairs of replica indicies
     K = len(lambdas)
     pairs_to_swap = []
-    for interval in range(1,min(5,K)):
+    for interval in range(1,min(10,K)):
       lower_inds = []
       for lowest_index in range(interval):
         lower_inds += range(lowest_index,K-interval,interval)
@@ -1859,7 +1885,7 @@ last modified {2}
       if (process=='dock') and \
          (self._dock_cycle==1) and (self._dock_total_cycle==1) and \
          (self.params['dock']['score'] is not False):
-        self._get_dock_score_confs()
+        self._minimize_dock_score_confs()
 
       self.tee("\n>>> Replica exchange sampling for the {0}ing process".format(process), process=process)
       import time
@@ -1897,69 +1923,70 @@ last modified {2}
         self.calc_f_RL()
     self._clear_lock(process)
 
-  def _get_dock_score_confs(self):
+  def _minimize_dock_score_confs(self):
     """
     Gets configurations to score from another program.
     Returns unique configurations and corresponding energies (if applicable).
     The final results are stored in self.confs['dock']['replicas'].
     """
     self._set_lock('dock')
-    minimized_confs = []
-    minimized_conf_Es = []
     unique_confs = []
-    if self.params['dock']['score'] is True:
+    if isinstance(self.params['dock']['score'],bool):
       unique_confs = [self.confs['ligand']]
       self.confs['dock']['replicas'] = [np.copy(self.confs['ligand']) \
         for k in range(len(self.dock_protocol))]
       self.tee("\n>>> Rescoring default configuration")
-    elif self.params['dock']['score'] is False:
-      raise Exception('Error running _get_dock_score_confs with score==False')
+      self._clear_lock('dock')
+      return (unique_confs, [])
+    
+    count = {'dock6':0, 'initial_dock':0, 'duplicated':0}
+    
+    if self.params['dock']['score'].endswith('.mol2') or \
+       self.params['dock']['score'].endswith('.mol2.gz'):
+      (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
+      # Add configurations where the ligand is in the binding site
+      self._set_universe_force_field({'site':True,'T':T_TARGET})
+      for ind in range(len(confs_dock6)):
+        self.universe.setConfiguration(Configuration(self.universe, confs_dock6[ind]))
+        if self.universe.energy()<1.:
+          unique_confs.append(confs_dock6[ind])
+      count['dock6'] = len(unique_confs)
     else:
-      count = {'dock6':0, 'initial_dock':0, 'duplicated':0}
-      
-      if self.params['dock']['score'].endswith('.mol2') or \
-         self.params['dock']['score'].endswith('.mol2.gz'):
-        (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
-        # Add configurations where the ligand is in the binding site
-        self._set_universe_force_field({'site':True,'T':T_TARGET})
-        for ind in range(len(confs_dock6)):
-          self.universe.setConfiguration(Configuration(self.universe, confs_dock6[ind]))
-          if self.universe.energy()<1.:
-            unique_confs.append(confs_dock6[ind])
-        count['dock6'] = len(unique_confs)
-      else:
-        raise Exception('Unrecognized file type for configurations')
+      raise Exception('Unrecognized file type for configurations')
 
-      if self.confs['dock']['seeds'] is not None:
-        unique_confs = unique_confs + self.confs['dock']['seeds']
-        count['initial_dock'] = len(self.confs['dock']['seeds'])
-      
-      # Minimize each configuration
-      self._set_universe_force_field(self._lambda(1.0,process='dock'))
-      from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
-      minimizer = SteepestDescentMinimizer(self.universe)
+    if self.confs['dock']['seeds'] is not None:
+      unique_confs = unique_confs + self.confs['dock']['seeds']
+      count['initial_dock'] = len(self.confs['dock']['seeds'])
+    
+    # Minimize each configuration
+    self._set_universe_force_field(self._lambda(1.0,process='dock'))
+    from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
+    minimizer = SteepestDescentMinimizer(self.universe)
 
-      self.tee("\n>>> Minimizing seed configurations")
-      min_start_time = time.time()
-      for conf in unique_confs:
-        self.universe.setConfiguration(Configuration(self.universe, conf))
-        minimizer(steps = 1000)
-        minimized_confs.append(np.copy(self.universe.configuration().array))
-        minimized_conf_Es.append(self.universe.energy())
-      self.tee("\nElapsed time for minimization: " + \
-        HMStime(time.time()-min_start_time))
+    minimized_confs = []
+    minimized_conf_Es = []
 
-      # Sort minimized configurations
-      minimized_conf_Es, minimized_confs = \
-        (list(l) for l in zip(*sorted(zip(minimized_conf_Es, minimized_confs), \
-          key=lambda p:p[0], reverse=True)))
-  
-      self.confs['dock']['replicas'] = minimized_confs[-len(self.dock_protocol):]
-      while len(self.confs['dock']['replicas'])<len(self.dock_protocol):
-        self.confs['dock']['replicas'].append(self.confs['dock']['replicas'][-1])
-        count['duplicated'] += 1
-      self.tee("\n>>> Rescoring configurations:")
-      self.tee("  {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated".format(**count))
+    self.tee("\n>>> Minimizing seed configurations")
+    min_start_time = time.time()
+    for conf in unique_confs:
+      self.universe.setConfiguration(Configuration(self.universe, conf))
+      minimizer(steps = 1000)
+      minimized_confs.append(np.copy(self.universe.configuration().array))
+      minimized_conf_Es.append(self.universe.energy())
+    self.tee("\nElapsed time for minimization: " + \
+      HMStime(time.time()-min_start_time))
+
+    # Sort minimized configurations
+    minimized_conf_Es, minimized_confs = \
+      (list(l) for l in zip(*sorted(zip(minimized_conf_Es, minimized_confs), \
+        key=lambda p:p[0], reverse=True)))
+
+    self.confs['dock']['replicas'] = minimized_confs[-len(self.dock_protocol):]
+    while len(self.confs['dock']['replicas'])<len(self.dock_protocol):
+      self.confs['dock']['replicas'].append(self.confs['dock']['replicas'][-1])
+      count['duplicated'] += 1
+    self.tee("\n>>> Rescoring configurations:")
+    self.tee("  {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated".format(**count))
     self._clear_lock('dock')
     return (minimized_confs, minimized_conf_Es)
 
@@ -2108,11 +2135,7 @@ last modified {2}
         tL_tensor = tL_tensor*(1.25**pow)
       if tL_tensor>0:
         dL = self.params['dock']['therm_speed']/tL_tensor
-        # Halve the thermodynamic speed for 0.9<a<1
-        if lambda_o['a']<0.9:
-          a = min(lambda_o['a'] + dL, 1)
-        else:
-          a = min(lambda_o['a'] + dL/2, 1)
+        a = min(lambda_o['a'] + dL, 1)
         if a == 1:
           lambda_n['crossed'] = True
         return self._lambda(a)
@@ -2332,6 +2355,7 @@ last modified {2}
           E[term_map[key]][c] += value
 
     if type=='all':
+      toClear = []
       for phase in self.params['dock']['phases']:
         E['R'+phase] = self.params['dock']['receptor_'+phase]
         for moiety in ['L','RL']:
@@ -2342,8 +2366,12 @@ last modified {2}
             E[moiety+phase] = self._NAMD_Energy(confs, moiety, phase, dcd_FN, outputname)
           else:
             E[moiety+phase] = self._sander_Energy(confs, moiety, phase, mdcrd_FN, outputname)
+          toClear.extend([dcd_FN, mdcrd_FN])
+      for FN in set(toClear):
+        if os.path.isfile(FN):
+          os.remove(FN)
     return E
-  
+
   def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN,
       outputname=None, debug=False, reference=None):
     if not isfile(AMBER_mdcrd_FN):
@@ -2630,7 +2658,7 @@ last modified {2}
         dirN = os.path.dirname(FN)
         if dirN!='' and (not os.path.isdir(dirN)):
           os.system('mkdir -p '+dirN)
-        open(FN, 'a').close()
+        # open(FN, 'a').close()
       else:
         print '  loaded '+FN
         break

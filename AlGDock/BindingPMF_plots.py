@@ -63,6 +63,53 @@ class BPMF_plots(BPMF):
       e_ratio.append(e_ratio_k)
     plt.plot(np.transpose(e_ratio))
 
+  def show_replicas(self, process='dock'):
+    import AlGDock.IO
+    IO_dcd = AlGDock.IO.dcd(self.molecule,
+      ligand_atom_order = self.molecule.prmtop_atom_order, \
+      receptorConf = self.confs['receptor'], \
+      ligand_first_atom = self._ligand_first_atom)
+      
+    dcd_FN = 'replicas.dcd'
+    confs = self.confs['dock']['replicas']
+    IO_dcd.write(dcd_FN, confs, includeLigand=True, includeReceptor=False)
+    
+    script = ''
+    
+    # Show the original ligand position
+    original_ligand_dcd_FN = 'L.dcd'
+    IO_dcd.write(original_ligand_dcd_FN, self.confs['ligand'], \
+      includeLigand=True, includeReceptor=False)
+    script += 'set original_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+    script += 'mol addfile '+original_ligand_dcd_FN+' type dcd waitfor all\n'
+    script += 'mol modstyle 0 $original_ligand ' + \
+              'Licorice 0.300000 10.000000 10.000000\n'
+    
+    # Show receptor coordinates
+    receptor_dcd_FN = 'R.dcd'
+    IO_dcd.write(receptor_dcd_FN, self.confs['receptor'], \
+      includeLigand=False, includeReceptor=True)
+    script += 'set receptor [mol new '+self._FNs['prmtop']['R']+']\n'
+    script += 'mol addfile '+receptor_dcd_FN+' type dcd waitfor all\n'
+    script += 'mol modstyle 0 $receptor NewCartoon 0.300000 10.000000 4.100000 0\n'
+    script += 'mol modmaterial 0 $receptor Transparent\n'
+
+    # Show samples
+    script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+    script += 'mol addfile '+dcd_FN+' type dcd waitfor all\n'
+
+    script_FN = 'show_samples.vmd'
+    script_F = open('show_samples.vmd','w')
+    script_F.write(script)
+    script_F.close()
+
+    import subprocess
+    subprocess.call([self._FNs['vmd'], '-e', script_FN, '-size', '800', '800'])
+    for FN in [ligand_dcd_FN, original_ligand_dcd_FN, \
+               receptor_dcd_FN, 'show_samples.vmd']:
+      if os.path.isfile(FN):
+        os.remove(FN)
+
   def show_samples(self, process='dock', state=-1, \
       show_original_ligand=True, show_receptor=False, \
       save_image=False, scale=True, execute=True, quit=False):
