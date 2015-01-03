@@ -15,6 +15,7 @@ import numpy as np
 import MMTK
 import MMTK.Units
 from MMTK.ParticleProperties import Configuration
+from MMTK.ForceFields import ForceField
 
 import Scientific
 try:
@@ -27,6 +28,8 @@ import pymbar.timeseries
 
 import multiprocessing
 from multiprocessing import Process
+
+from psutil import virtual_memory
 
 # Constants
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
@@ -586,7 +589,8 @@ last modified {2}
 
     self.universe = MMTK.Universe.InfiniteUniverse()
     self.universe.addObject(self.molecule)
-    self._set_universe_force_field({'MM':True, 'T':T_HIGH})
+    self._evaluators = {} # Store evaluators
+    self._set_universe_evaluator({'MM':True, 'T':T_HIGH})
     self._ligand_natoms = self.universe.numberOfAtoms()
 
     from Integrators.VelocityVerlet.VelocityVerlet \
@@ -690,7 +694,7 @@ last modified {2}
     self.cool_protocol = [{'MM':True, 'T':T_HIGH, \
                           'delta_t':1.5*MMTK.Units.fs,
                           'a':0.0, 'crossed':False}]
-    self._set_universe_force_field(self.cool_protocol[-1])
+    self._set_universe_evaluator(self.cool_protocol[-1])
 
     # Minimize and ramp the temperature from 0 to the desired high temperature
     from MMTK.Minimization import ConjugateGradientMinimizer # @UnresolvedImport
@@ -741,7 +745,7 @@ last modified {2}
         raise Exception('No variance in configuration energies')
       self.cool_protocol.append(\
         {'T':T, 'a':(T_HIGH-T)/(T_HIGH-T_TARGET), 'MM':True, 'crossed':crossed})
-      self._set_universe_force_field(self.cool_protocol[-1])
+      self._set_universe_evaluator(self.cool_protocol[-1])
 
       # Randomly select seeds for new trajectory
       weight = np.exp(-Es_MM/R*(1/T-1/To))
@@ -945,7 +949,7 @@ last modified {2}
     self.tee("\n>>> Initial docking")
 
     # Set up the force field with full interaction grids
-    self._set_universe_force_field(self.lambda_scalables)
+    self._set_universe_evaluator(self.lambda_scalables)
   
     lambda_o = {'T':T_HIGH, 'MM':True, 'site':True, \
                 'crossed':False, 'a':0.0}
@@ -1134,7 +1138,7 @@ last modified {2}
 
       # Simulate
       sim_start_time = time.time()
-      self._set_universe_force_field(lambda_n)
+      self._set_universe_evaluator(lambda_n)
       (confs, Es_tot, lambda_n['delta_t']) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
       self.tee("  generated %d configurations "%len(confs) + \
@@ -1426,9 +1430,9 @@ last modified {2}
   # Internal Functions #
   ######################
 
-  def _set_universe_force_field(self,lambda_n):
+  def _set_universe_evaluator(self,lambda_n):
     """
-    Sets the force field parameters of the universe to values appropriate for the given lambda_n dictionary.
+    Sets the universe evaluator to values appropriate for the given lambda_n dictionary.
     The elements in the dictionary lambda_n can be:
       MM - True, to turn on the Generalized AMBER force field
       site - True, to turn on the binding site
@@ -1448,6 +1452,16 @@ last modified {2}
       self.delta_t = lambda_n['delta_t']
     else:
       self.delta_t = 1.5*MMTK.Units.fs
+
+    # Reuse evaluators that have been stored
+    evaluator_key = '-'.join(repr(v) for v in lambda_n.values())
+    if evaluator_key in self._evaluators.keys():
+      self.universe._evaluator[(None,None,None)] = \
+        self._evaluators[evaluator_key]
+      return
+    
+    # Otherwise create a new evaluator
+    mem_start = virtual_memory().available
 
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
@@ -1505,14 +1519,31 @@ last modified {2}
       compoundFF += ff
     self.universe.setForceField(compoundFF)
 
-  def _MC_translate_rotate(self, trials=25):
+    eval = ForceField.EnergyEvaluator(\
+      self.universe, self.universe._forcefield, None, None, None, None)
+    self.universe._evaluator[(None,None,None)] = eval
+
+    # Only store evaluator if there is enough memory available
+    mem_end = virtual_memory().available
+    usage = mem_start-mem_end
+    if (mem_end>5*usage):
+      self._evaluators[evaluator_key] = eval
+    
+  def _MC_translate_rotate(self, lambda_k, trials=25):
     """
     Conducts Monte Carlo translation and rotation moves.
     """
+    # It does not seem worth creating a special evaluator
+    # for a small number of trials
+    if trials>100:
+      lambda_noMM = copy.deepcopy(lambda_k)
+      lambda_noMM['MM'] = False
+      lambda_noMM['site'] = False
+      self._set_universe_evaluator(lambda_noMM)
 
     step_size = min(\
       1.0*MMTK.Units.Ang, \
-      self._forceFields['site'].max_R*MMTK.Units.nm/10)
+      self._forceFields['site'].max_R*MMTK.Units.nm/10.)
 
     acc = 0
     xo = self.universe.copyConfiguration()
@@ -1540,7 +1571,7 @@ last modified {2}
     """
     
     doMC = (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
-      and (lambda_k['a'] < 0.01)
+      and (lambda_k['a'] > 0.0) and (lambda_k['a'] < 0.01)
 
     results = []
     if self._cores>1:
@@ -1595,7 +1626,7 @@ last modified {2}
     # A list of pairs of replica indicies
     K = len(lambdas)
     pairs_to_swap = []
-    for interval in range(1,min(10,K)):
+    for interval in range(1,min(5,K)):
       lower_inds = []
       for lowest_index in range(interval):
         lower_inds += range(lowest_index,K-interval,interval)
@@ -1605,7 +1636,7 @@ last modified {2}
     # Setting the force field will load grids
     # before multiple processes are spawned
     for k in range(K):
-      self._set_universe_force_field(lambdas[k])
+      self._set_universe_evaluator(lambdas[k])
     
     storage = {}
     for var in ['confs','state_inds','energies']:
@@ -1631,8 +1662,9 @@ last modified {2}
         E['acc_MC'] = np.zeros(K, dtype=float)
       Ht = np.zeros(K, dtype=float)
       # Sample within each state
-      doMC = [(process == 'dock') and (self.params['dock']['MCMC_moves']>0)
-        and (lambdas[state_inds[k]]['a'] < 0.1) for k in range(K)]
+      doMC = [(process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
+        and (lambdas[state_inds[k]]['a'] > 0.0) \
+        and (lambdas[state_inds[k]]['a'] < 0.01) for k in range(K)]
       if self._cores>1:
         for k in range(K):
           task_queue.put((confs[k], process, lambdas[state_inds[k]], doMC[k], False, k))
@@ -1825,20 +1857,20 @@ last modified {2}
   def _sim_one_state(self, seed, process, lambda_k, doMC,
       initialize=False, reference=None):
     self.universe.setConfiguration(Configuration(self.universe, seed))
-
-    self._set_universe_force_field(lambda_k)
-    if 'delta_t' in lambda_k.keys():
-      delta_t = lambda_k['delta_t']
-    else:
-      delta_t = 1.5*MMTK.Units.fs
     
     results = {}
     
     # Perform MCMC moves
     if doMC:
       MC_start_time = time.time()
-      results['acc_MC'] = self._MC_translate_rotate(25)/25.
+      results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=25)/25.
       results['MC_time'] = (time.time() - MC_start_time)
+
+    self._set_universe_evaluator(lambda_k)
+    if 'delta_t' in lambda_k.keys():
+      delta_t = lambda_k['delta_t']
+    else:
+      delta_t = 1.5*MMTK.Units.fs
 
     # Execute sampler
     if initialize:
@@ -1945,7 +1977,7 @@ last modified {2}
        self.params['dock']['score'].endswith('.mol2.gz'):
       (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
       # Add configurations where the ligand is in the binding site
-      self._set_universe_force_field({'site':True,'T':T_TARGET})
+      self._set_universe_evaluator({'site':True,'T':T_TARGET})
       for ind in range(len(confs_dock6)):
         self.universe.setConfiguration(Configuration(self.universe, confs_dock6[ind]))
         if self.universe.energy()<1.:
@@ -1959,7 +1991,7 @@ last modified {2}
       count['initial_dock'] = len(self.confs['dock']['seeds'])
     
     # Minimize each configuration
-    self._set_universe_force_field(self._lambda(1.0,process='dock'))
+    self._set_universe_evaluator(self._lambda(1.0,process='dock'))
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
 
@@ -2135,7 +2167,10 @@ last modified {2}
         tL_tensor = tL_tensor*(1.25**pow)
       if tL_tensor>0:
         dL = self.params['dock']['therm_speed']/tL_tensor
-        a = min(lambda_o['a'] + dL, 1)
+        if lambda_o['a']<0.9:
+          a = min(lambda_o['a'] + dL, 1)
+        else:
+          a = min(lambda_o['a'] + dL/2, 1)
         if a == 1:
           lambda_n['crossed'] = True
         return self._lambda(a)
@@ -2268,7 +2303,7 @@ last modified {2}
                  len(getattr(self,p+'_Es')[state][c][label])))):
             pass
           else:
-            # Do the calculation
+            # Queue the calculation
             # Obtain configurations
             if (moiety=='R'):
               if not 'receptor' in self.confs.keys():
@@ -2345,7 +2380,7 @@ last modified {2}
 
     if type=='sampling' or type=='all':
       # Molecular mechanics and grid interaction energies
-      self._set_universe_force_field(self.lambda_full)
+      self._set_universe_evaluator(self.lambda_full)
       for term in (['MM','site','misc'] + self._scalables):
         E[term] = np.zeros(len(confs), dtype=float)
       for c in range(len(confs)):
@@ -2598,6 +2633,14 @@ last modified {2}
     self.tee("  wrote %d configurations to %s"%(len(confs), mdcrd_FN))
 
   def _read_dock6(self, mol2FN):
+    """
+    Read output from UCSF DOCK 6.
+    The units of the DOCK suite of programs are 
+      lengths in angstroms, 
+      masses in atomic mass units, 
+      charges in electron charges units, and 
+      energies in kcal/mol
+    """
     # Specifically to read output from UCSF dock6
     if not isfile(mol2FN):
       raise Exception('mol2 file %s does not exist!'%mol2FN)

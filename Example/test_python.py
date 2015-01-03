@@ -26,6 +26,8 @@ while not os.path.exists('dock/f_RL.pkl.gz'):
     receptor_NAMD_GBSA=[-9053.10071], receptor_NAMD_Gas=[0.00000], \
     MCMC_moves=1, \
     cores=-1, \
-    phases=['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA'],
+    phases=['Gas','GBSA'],
     run_type='one_step')
   del self
+
+# phases=['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA']
