@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 import os # Miscellaneous operating system interfaces
-from os.path import abspath
-from os.path import exists
-from os.path import isfile
 from os.path import join
 import cPickle as pickle
 import gzip
@@ -135,10 +132,10 @@ def convert_dictionary_relpath(d, relpath_o=None, relpath_n=None):
         relpath_o = relpath_o, relpath_n = relpath_n)
     elif isinstance(d[key],str):
       if relpath_o is not None:
-        p = abspath(join(relpath_o,d[key]))
+        p = os.path.abspath(join(relpath_o,d[key]))
       else:
-        p = abspath(d[key])
-      if exists(p): # Only save file names for existent paths
+        p = os.path.abspath(d[key])
+      if os.path.exists(p): # Only save file names for existent paths
         if relpath_n is not None:
           converted[key] = os.path.relpath(p,relpath_n)
         else:
@@ -266,12 +263,12 @@ last modified {2}
     self.dir['start'] = os.getcwd()
     
     if dir_dock is not None:
-      self.dir['dock'] = abspath(dir_dock)
+      self.dir['dock'] = os.path.abspath(dir_dock)
     else:
-      self.dir['dock'] = abspath('.')
+      self.dir['dock'] = os.path.abspath('.')
     
     if dir_cool is not None:
-      self.dir['cool'] = abspath(dir_cool)
+      self.dir['cool'] = os.path.abspath(dir_cool)
     else:
       self.dir['cool'] = self.dir['dock'] # Default that may be
                                           # overwritten by stored directory
@@ -353,10 +350,10 @@ last modified {2}
     if (self._FNs['frcmodList'] is None):
       dir_lig = os.path.dirname(self._FNs['prmtop']['L'])
       frcmod = a.findPath([\
-        abspath(join(dir_lig, \
+        os.path.abspath(join(dir_lig, \
           os.path.basename(self._FNs['prmtop']['L'])[:-7]+'.frcmod')),\
-        abspath(join(dir_lig,'lig.frcmod')),\
-        abspath(join(dir_lig,'ligand.frcmod'))])
+        os.path.abspath(join(dir_lig,'lig.frcmod')),\
+        os.path.abspath(join(dir_lig,'ligand.frcmod'))])
       if frcmod is not None:
         self._FNs['frcmodList'] = [frcmod]
     elif isinstance(self._FNs['frcmodList'],str):
@@ -451,7 +448,7 @@ last modified {2}
                self._FNs['forcefield'],
                self._FNs['prmtop']['L'],
                self._FNs['inpcrd']['L']]:
-      if (FN is None) or (not isfile(FN)):
+      if (FN is None) or (not os.path.isfile(FN)):
         raise Exception('Required file %s is missing!'%FN)
 
     for FN in [self._FNs['prmtop']['RL'],
@@ -460,7 +457,7 @@ last modified {2}
                self._FNs['grids']['LJr'],
                self._FNs['grids']['LJa'],
                self._FNs['grids']['ELE']]:
-      if (FN is None) or (not isfile(FN)):
+      if (FN is None) or (not os.path.isfile(FN)):
         if do_dock:
           raise Exception('Missing file is required for docking!')
         else:
@@ -642,7 +639,7 @@ last modified {2}
     import AlGDock.IO
     IO_crd = AlGDock.IO.crd()
     if self._FNs['inpcrd']['R'] is not None:
-      if isfile(self._FNs['inpcrd']['L']):
+      if os.path.isfile(self._FNs['inpcrd']['L']):
         lig_crd = IO_crd.read(self._FNs['inpcrd']['L'], multiplier=0.1)
       self.confs['receptor'] = IO_crd.read(self._FNs['inpcrd']['R'], multiplier=0.1)
     elif self._FNs['inpcrd']['RL'] is not None:
@@ -652,7 +649,7 @@ last modified {2}
         (complex_crd[:self._ligand_first_atom,:],\
          complex_crd[self._ligand_first_atom + self._ligand_natoms:,:]))
     elif self._FNs['inpcrd']['L'] is not None:
-      if isfile(self._FNs['inpcrd']['L']):
+      if os.path.isfile(self._FNs['inpcrd']['L']):
         lig_crd = IO_crd.read(self._FNs['inpcrd']['L'], multiplier=0.1)
     self.confs['ligand'] = lig_crd[self.molecule.inv_prmtop_atom_order,:]
     
@@ -824,7 +821,7 @@ last modified {2}
     # Initialize variables as empty lists or by loading data
     f_L_FN = join(self.dir['cool'],'f_L.pkl.gz')
     if redo:
-      if isfile(f_L_FN):
+      if os.path.isfile(f_L_FN):
         os.remove(f_L_FN)
       dat = None
     else:
@@ -908,8 +905,8 @@ last modified {2}
       self.stats_L['mean_acc'].append(cool_mean_acc)
 
       self.tee("  calculated cooling free energy of %f RT "%(\
-                  self.f_L['cool_BAR'][-1][-1])+\
-               "using BAR for cycles %d to %d"%(fromCycle, c))
+                  self.f_L['cool_MBAR'][-1][-1])+\
+               "using MBAR for cycles %d to %d"%(fromCycle, c))
       updated = True
 
     if updated:
@@ -1225,7 +1222,7 @@ last modified {2}
     # Initialize variables as empty lists or by loading data
     f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
     if redo:
-      if isfile(f_RL_FN):
+      if os.path.isfile(f_RL_FN):
         os.remove(f_RL_FN)
       dat = None
     else:
@@ -1245,7 +1242,6 @@ last modified {2}
         for item in ['equilibrated_cycle','mean_acc','rmsd']]
       self.stats_RL = dict(stats_RL)
       self.stats_RL['protocol'] = self.dock_protocol
-      # TO DO: Store NUTS acceptance statistic
       # Free energy components
       self.f_RL = dict([(key,[]) for key in ['grid_BAR','grid_MBAR'] + \
         [phase+'_solv' for phase in self.params['dock']['phases']]])
@@ -1387,8 +1383,10 @@ last modified {2}
         mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
       self.stats_RL['mean_acc'].append(mean_acc)
 
-      self.tee("  calculated %s binding PMF of %f RT based on MBAR with cycles %d to %d"%(phase, self.B[phase+'_MBAR'][-1], \
-               self.stats_RL['equilibrated_cycle'][c], c))
+      for phase in self.params['dock']['phases']:
+        self.tee("  calculated %s binding PMF of %f RT with cycles %d to %d"%(\
+          phase, self.B[phase+'_MBAR'][-1], \
+          self.stats_RL['equilibrated_cycle'][c], c))
       updated = True
 
     if updated:
@@ -1731,13 +1729,13 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    # There will be at least 25 and up to sweeps_per_cycle saved samples
+    # There will be at least 20 and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/50)),1) is the minimum stride,
-    # which is based due to 25 samples per autocorrelation time.
-    # max(self.params['dock']['sweeps_per_cycle']/25)
-    # is the maximum stride to have 25 samples, if possible.
-    stride = min(max(int(np.ceil((1+2*tau_ac)/25.)),1), \
-                 max(int(np.ceil(self.params['dock']['sweeps_per_cycle']/25.)),1))
+    # which is based due to 20 samples per autocorrelation time.
+    # max(self.params['dock']['sweeps_per_cycle']/20)
+    # is the maximum stride to have 20 samples, if possible.
+    stride = min(max(int(np.ceil((1+2*tau_ac)/20.)),1), \
+                 max(int(np.ceil(self.params['dock']['sweeps_per_cycle']/20.)),1))
 
     store_indicies = np.array(\
       range(min(stride-1,self.params[process]['sweeps_per_cycle']-1), self.params[process]['sweeps_per_cycle'], stride), dtype=int)
@@ -1876,11 +1874,12 @@ last modified {2}
     if initialize:
       sampler = self.sampler['init']
       steps = self.params[process]['steps_per_seed']
-      steps_per_trial = self.params[process]['steps_per_seed']/10 # TO DO: Finish this
+      steps_per_trial = self.params[process]['steps_per_seed']/10
     else:
       sampler = self.sampler[process]
       steps = self.params[process]['steps_per_sweep']
       steps_per_trial = steps
+
     (confs, potEs, Ht, delta_t) = sampler(\
       steps=steps, \
       steps_per_trial=steps_per_trial, \
@@ -1906,6 +1905,10 @@ last modified {2}
     if (getattr(self,process+'_protocol')==[]) or \
        (not getattr(self,process+'_protocol')[-1]['crossed']):
       getattr(self,'initial_'+process)()
+      if process=='cool':
+        self._postprocess([('cool',-1,-1,'L')])
+      if process=='dock':
+        self._postprocess()
       self.cycles_run += 1
       if self.run_type=='one_step':
         return
@@ -1925,6 +1928,10 @@ last modified {2}
       start_cycle = getattr(self,'_%s_total_cycle'%process)
       while ((getattr(self,'_%s_total_cycle'%process) < self.params[process]['repX_cycles']) or (getattr(self,'_%s_cycle'%process)==0)):
         self._replica_exchange(process)
+        if process=='cool':
+          self._postprocess([('cool',-1,-1,'L')])
+        if process=='dock':
+          self._postprocess()
         self.cycles_run += 1
         if self.run_type=='one_step' and process=='dock':
             break
@@ -2167,11 +2174,9 @@ last modified {2}
         tL_tensor = tL_tensor*(1.25**pow)
       if tL_tensor>0:
         dL = self.params['dock']['therm_speed']/tL_tensor
-        if lambda_o['a']<0.9:
-          a = min(lambda_o['a'] + dL, 1)
-        else:
-          a = min(lambda_o['a'] + dL/2, 1)
-        if a == 1:
+        a = lambda_o['a'] + dL
+        if a > 1:
+          a = 1.0
           lambda_n['crossed'] = True
         return self._lambda(a)
       else:
@@ -2312,8 +2317,10 @@ last modified {2}
             else:
               confs = self.confs[p]['samples'][state][c]
 
-            task_queue.put((confs, moiety, phase, traj_FN, outputname, debug, \
+            task_queue.put((moiety, phase, traj_FN, outputname, debug, \
               (p,state,c,label)))
+            
+            self._write_traj(traj_FN, confs, moiety)
             if not traj_FN in toClean:
               toClean.append(traj_FN)
 
@@ -2337,12 +2344,13 @@ last modified {2}
 
     # Store energies
     for (E,(p,state,c,label)) in results:
-      getattr(self,p+'_Es')[state][c][label] = E
+      if not (E==np.inf).any():
+        getattr(self,p+'_Es')[state][c][label] = E
 
     # Clean up files
     if not debug:
       for FN in toClean:
-        if isfile(FN):
+        if os.path.isfile(FN):
           os.remove(FN)
 
     # Save data
@@ -2360,11 +2368,11 @@ last modified {2}
 
     if len(updated)>0:
       self.tee("  postprocessed data in " + \
-        HMStime(time.time()-postprocess_start_time))
+        HMStime(time.time()-postprocess_start_time) + "\n")
 
   def _energy_worker(self, input, output):
     for args in iter(input.get, 'STOP'):
-      if args[2] in ['NAMD_Gas','NAMD_GBSA']:
+      if args[1] in ['NAMD_Gas','NAMD_GBSA']:
         E = self._NAMD_Energy(*args)
       else:
         E = self._sander_Energy(*args)
@@ -2394,26 +2402,26 @@ last modified {2}
       for phase in self.params['dock']['phases']:
         E['R'+phase] = self.params['dock']['receptor_'+phase]
         for moiety in ['L','RL']:
-          dcd_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
-          mdcrd_FN = join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety))
           outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
           if phase in ['NAMD_Gas','NAMD_GBSA']:
-            E[moiety+phase] = self._NAMD_Energy(confs, moiety, phase, dcd_FN, outputname)
+            self._write_traj(
+              join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety)),
+              confs, moiety)
+            E[moiety+phase] = self._NAMD_Energy(moiety, phase, dcd_FN, outputname)
           else:
-            E[moiety+phase] = self._sander_Energy(confs, moiety, phase, mdcrd_FN, outputname)
+            self._write_traj(
+              join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety)),
+              confs, moiety)
+            E[moiety+phase] = self._sander_Energy(moiety, phase, mdcrd_FN, outputname)
           toClear.extend([dcd_FN, mdcrd_FN])
       for FN in set(toClear):
         if os.path.isfile(FN):
           os.remove(FN)
     return E
 
-  def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN,
+  def _sander_Energy(self, moiety, phase, AMBER_mdcrd_FN,
       outputname=None, debug=False, reference=None):
-    if not isfile(AMBER_mdcrd_FN):
-      self._write_mdcrd(AMBER_mdcrd_FN, confs,
-        includeReceptor=(moiety.find('R')>-1),
-        includeLigand=(moiety.find('L')>-1))
-
+    self.dir['out'] = os.path.dirname(os.path.abspath(AMBER_mdcrd_FN))
     script_FN = '%s%s.in'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
     out_FN = '%s%s.out'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
 
@@ -2430,11 +2438,12 @@ last modified {2}
   ntf=1,     ! Complete interaction is calculated
   cut=9999., !
   ipb=2,     ! Default PB dielectric model
-  inp=1,     ! Only surface area
+  inp=1,     ! SASA non-polar
+/
+&pb
+  radiopt=0, ! Use atomic radii from the prmtop file
 /
 ''')
-    #  inp=2,     ! Default PB nonpolar solvation free energy
-    #  radiopt=0, ! Use atomic radii from the prmtop file (not compatible with inp=2)
     elif phase=='GBSA':
       script_F.write('''Calculate GBSA energies
 &cntrl
@@ -2487,8 +2496,6 @@ last modified {2}
 ''')
     script_F.close()
     
-    os.chdir(os.path.dirname(out_FN))
-    
     # Decompress prmtop and inpcrd files
     decompress = (self._FNs['prmtop'][moiety].endswith('.gz')) or \
                  (self._FNs['inpcrd'][moiety].endswith('.gz'))
@@ -2501,24 +2508,13 @@ last modified {2}
           os.rename(self._FNs[key][moiety]+'.BAK', self._FNs[key][moiety])
           self._FNs[key][moiety] = self._FNs[key][moiety][:-3]
 
+    os.chdir(self.dir['out'])
     import subprocess
     p = subprocess.Popen([self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
       '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
       '-y',AMBER_mdcrd_FN, '-r',script_FN+'.restrt'])
     p.wait()
-    if not debug and isfile(script_FN):
-      os.remove(script_FN)
-    if isfile(script_FN+'.restrt'):
-      os.remove(script_FN+'.restrt')
-    os.chdir(self.dir['start'])
-
-    # Clear decompressed files
-    if decompress:
-      for key in ['prmtop','inpcrd']:
-        if isfile(self._FNs[key][moiety]+'.gz'):
-          os.remove(self._FNs[key][moiety])
-          self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
-
+    
     F = open(out_FN,'r')
     dat = F.read().strip().split(' BOND')
     F.close()
@@ -2528,11 +2524,24 @@ last modified {2}
       E = np.array([rec[:rec.find('\nminimization')].replace('1-4 ','1-4').split()[1::3] for rec in dat],dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
       E = np.hstack((E,np.sum(E,1)[...,None]))
 
-      if not debug and isfile(out_FN):
+      if not debug and os.path.isfile(script_FN):
+        os.remove(script_FN)
+      if os.path.isfile(script_FN+'.restrt'):
+        os.remove(script_FN+'.restrt')
+
+      # Clear decompressed files
+      if decompress:
+        for key in ['prmtop','inpcrd']:
+          if os.path.isfile(self._FNs[key][moiety]+'.gz'):
+            os.remove(self._FNs[key][moiety])
+            self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
+
+      if not debug and os.path.isfile(out_FN):
         os.remove(out_FN)
     else:
       E = np.array([np.inf]*11)
 
+    os.chdir(self.dir['start'])
     return E
     # AMBER ENERGY FIELDS:
     # For Gas phase:
@@ -2541,7 +2550,7 @@ last modified {2}
     # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL 5. EGB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT
     # 9. ESURF
 
-  def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,
+  def _NAMD_Energy(self, moiety, phase, dcd_FN, outputname,
       debug=False, reference=None):
     """
     Uses NAMD to calculate the energy of a set of configurations
@@ -2553,17 +2562,6 @@ last modified {2}
     # The saved fields are energyFields=[1, 2, 3, 4, 5, 6, 8, 12],
     # and thus the new indicies are
     # 0. BOND 1. ANGLE 2. DIHED 3. IMPRP 4. ELECT 5. VDW 6. MISC 7. POTENTIAL
-    
-    # Write the configurations
-    if not isfile(dcd_FN):
-      import AlGDock.IO
-      IO_dcd = AlGDock.IO.dcd(self.molecule,
-        ligand_atom_order = self.molecule.prmtop_atom_order, \
-        receptorConf = self.confs['receptor'], \
-        ligand_first_atom = self._ligand_first_atom)
-      IO_dcd.write(dcd_FN, confs,
-        includeReceptor=(moiety.find('R')>-1),
-        includeLigand=(moiety.find('L')>-1))
     
     # Decompress prmtop and inpcrd files
     decompress = (self._FNs['prmtop'][moiety].endswith('.gz')) or \
@@ -2595,43 +2593,59 @@ last modified {2}
     # Clear decompressed files
     if decompress:
       for key in ['prmtop','inpcrd']:
-        if isfile(self._FNs[key][moiety]+'.gz'):
+        if os.path.isfile(self._FNs[key][moiety]+'.gz'):
           os.remove(self._FNs[key][moiety])
           self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
 
     return np.array(E, dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
   
-  def _write_mdcrd(self, mdcrd_FN, confs, title='', \
-      includeLigand=True, includeReceptor=False, factor=1.0/MMTK.Units.Ang):
+  def _write_traj(self, traj_FN, confs, moiety, \
+      title='', factor=1.0/MMTK.Units.Ang):
     """
-    Writes an AMBER format trajectory file
+    Writes a trajectory file
     """
-    n_atoms = 0
-    if includeReceptor:
-      receptor_0 = factor*self.confs['receptor'][:self._ligand_first_atom,:]
-      receptor_1 = factor*self.confs['receptor'][self._ligand_first_atom:,:]
-      n_atoms += self.confs['receptor'].shape[0]
-    if includeLigand:
-      n_atoms += len(self.molecule.atoms)
-
-    if not isinstance(confs,list):
-      confs = [confs]
-    if includeReceptor:
-      if includeLigand:
-        confs = [np.vstack((receptor_0, \
-          conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang, \
-          receptor_1)) for conf in confs]
-      else:
-        confs = [factor*self.confs['receptor']]
-    else:
-      confs = [conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang \
-        for conf in confs]
     
-    import AlGDock.IO
-    IO_crd = AlGDock.IO.crd()
-    IO_crd.write(mdcrd_FN, confs, title, trajectory=True)
-    self.tee("  wrote %d configurations to %s"%(len(confs), mdcrd_FN))
+    if os.path.isfile(traj_FN):
+      return
 
+    import AlGDock.IO
+    if traj_FN.endswith('.dcd'):
+      IO_dcd = AlGDock.IO.dcd(self.molecule,
+        ligand_atom_order = self.molecule.prmtop_atom_order, \
+        receptorConf = self.confs['receptor'], \
+        ligand_first_atom = self._ligand_first_atom)
+      IO_dcd.write(traj_FN, confs,
+        includeReceptor=(moiety.find('R')>-1),
+        includeLigand=(moiety.find('L')>-1))
+    elif traj_FN.endswith('.mdcrd'):
+      n_atoms = 0
+      if (moiety.find('R')>-1):
+        receptor_0 = factor*self.confs['receptor'][:self._ligand_first_atom,:]
+        receptor_1 = factor*self.confs['receptor'][self._ligand_first_atom:,:]
+        n_atoms += self.confs['receptor'].shape[0]
+      if (moiety.find('L')>-1):
+        n_atoms += len(self.molecule.atoms)
+
+      if not isinstance(confs,list):
+        confs = [confs]
+      if (moiety.find('R')>-1):
+        if (moiety.find('L')>-1):
+          confs = [np.vstack((receptor_0, \
+            conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang, \
+            receptor_1)) for conf in confs]
+        else:
+          confs = [factor*self.confs['receptor']]
+      else:
+        confs = [conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang \
+          for conf in confs]
+      
+      import AlGDock.IO
+      IO_crd = AlGDock.IO.crd()
+      IO_crd.write(traj_FN, confs, title, trajectory=True)
+      self.tee("  wrote %d configurations to %s"%(len(confs), traj_FN))
+    else:
+      raise Exception('Unknown trajectory type')
+      
   def _read_dock6(self, mol2FN):
     """
     Read output from UCSF DOCK 6.
@@ -2642,7 +2656,7 @@ last modified {2}
       energies in kcal/mol
     """
     # Specifically to read output from UCSF dock6
-    if not isfile(mol2FN):
+    if not os.path.isfile(mol2FN):
       raise Exception('mol2 file %s does not exist!'%mol2FN)
     if mol2FN.endswith('.mol2'):
       mol2F = open(mol2FN,'r')
@@ -2670,7 +2684,7 @@ last modified {2}
     return (crds,E)
 
   def _load_pkl_gz(self, FN):
-    if isfile(FN) and os.path.getsize(FN)>0:
+    if os.path.isfile(FN) and os.path.getsize(FN)>0:
       F = gzip.open(FN,'r')
       try:
         data = pickle.load(F)
@@ -2684,48 +2698,64 @@ last modified {2}
       return None
 
   def _write_pkl_gz(self, FN, data):
+
     F = gzip.open(FN,'w')
     pickle.dump(data,F)
     F.close()
     self.tee("  wrote to "+FN)
 
   def _load_progress(self, p):
-    progress = None
-    progress_FN = join(self.dir[p],'%s_progress.pkl.gz'%p)
-    for FN in [progress_FN, progress_FN+'.BAK']:
-      progress = self._load_pkl_gz(FN)
-      if (progress is None):
-        print '  failed to load '+FN
-        if isfile(FN):
-          os.remove(FN)
-        dirN = os.path.dirname(FN)
-        if dirN!='' and (not os.path.isdir(dirN)):
-          os.system('mkdir -p '+dirN)
-        # open(FN, 'a').close()
+    saved = {'params':None, 'progress':None, 'data':None}
+    for key in saved.keys():
+      saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
+      for FN in [saved_FN, saved_FN+'.BAK']:
+        saved[key] = self._load_pkl_gz(FN)
+        if (saved[key] is None):
+          print '  failed to load '+FN
+          if os.path.isfile(FN):
+            os.remove(FN)
+        else:
+          print '  loaded '+FN
+          break
+
+    params = None
+    setattr(self,'%s_protocol'%p,[])
+    setattr(self,'_%s_cycle'%p,0)
+    setattr(self,'_%s_total_cycle'%p,0)
+    self.confs[p]['replicas'] = None
+    self.confs[p]['seeds'] = None
+    self.confs[p]['samples'] = None
+    setattr(self,'%s_Es'%p,None)
+
+    if saved['params'] is not None:
+      params = saved['params']
+    if saved['progress'] is not None:
+      # Deprecated
+      if len(saved['progress'])==9:
+        params = saved['progress'][0]
+        setattr(self,'%s_protocol'%p,saved['progress'][1])
+        setattr(self,'_%s_cycle'%p,saved['progress'][2])
+        setattr(self,'_%s_total_cycle'%p,saved['progress'][3])
+        if p=='dock':
+          (self._n_trans, self._max_n_trans, self._random_trans, \
+           self._n_rot, self._max_n_rot, self._random_rotT) = saved['progress'][4]
+        self.confs[p]['replicas'] = saved['progress'][5]
+        self.confs[p]['seeds'] = saved['progress'][6]
+        self.confs[p]['samples'] = saved['progress'][7]
+        setattr(self,'%s_Es'%p, saved['progress'][8])
       else:
-        print '  loaded '+FN
-        break
-    if progress is not None:
-      params = progress[0]
-      setattr(self,'%s_protocol'%p,progress[1])
-      setattr(self,'_%s_cycle'%p,progress[2])
-      setattr(self,'_%s_total_cycle'%p,progress[3])
+        setattr(self,'%s_protocol'%p,saved['progress'][0])
+        setattr(self,'_%s_cycle'%p,saved['progress'][1])
+        setattr(self,'_%s_total_cycle'%p,saved['progress'][2])
+    if saved['data'] is not None:
       if p=='dock':
         (self._n_trans, self._max_n_trans, self._random_trans, \
-         self._n_rot, self._max_n_rot, self._random_rotT) = progress[4]
-      self.confs[p]['replicas'] = progress[5]
-      self.confs[p]['seeds'] = progress[6]
-      self.confs[p]['samples'] = progress[7]
-      setattr(self,'%s_Es'%p,progress[8])
-    else:
-      params = None
-      setattr(self,'%s_protocol'%p,[])
-      setattr(self,'_%s_cycle'%p,0)
-      setattr(self,'_%s_total_cycle'%p,0)
-      self.confs[p]['replicas'] = None
-      self.confs[p]['seeds'] = None
-      self.confs[p]['samples'] = None
-      setattr(self,'%s_Es'%p,None)
+         self._n_rot, self._max_n_rot, self._random_rotT) = saved['data'][0]
+      self.confs[p]['replicas'] = saved['data'][1]
+      self.confs[p]['seeds'] = saved['data'][2]
+      self.confs[p]['samples'] = saved['data'][3]
+      setattr(self,'%s_Es'%p, saved['data'][4])
+
     return params
 
   def _save_progress(self, p):
@@ -2761,25 +2791,28 @@ last modified {2}
           relpath_o=None, relpath_n=self.dir['dock'])
     params = (fn_dict,arg_dict)
     
-    progress = (params,
-                getattr(self,'%s_protocol'%p),
-                getattr(self,'_%s_cycle'%p),
-                getattr(self,'_%s_total_cycle'%p),
-                random_orient,
-                self.confs[p]['replicas'],
-                self.confs[p]['seeds'],
-                self.confs[p]['samples'],
-                getattr(self,'%s_Es'%p))
-    progress_FN = join(self.dir[p],'%s_progress.pkl.gz'%p)
-    if isfile(progress_FN):
-      os.rename(progress_FN,progress_FN+'.BAK')
-    self._write_pkl_gz(progress_FN, progress)
+    saved = {'params':params,
+      'progress': (getattr(self,'%s_protocol'%p),
+                   getattr(self,'_%s_cycle'%p),
+                   getattr(self,'_%s_total_cycle'%p)),
+      'data': (random_orient,
+               self.confs[p]['replicas'],
+               self.confs[p]['seeds'],
+               self.confs[p]['samples'],
+               getattr(self,'%s_Es'%p))}
+    for key in saved.keys():
+      saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
+      if not os.path.isdir(self.dir[p]):
+        os.system('mkdir -p '+self.dir[p])
+      if os.path.isfile(saved_FN):
+        os.rename(saved_FN,saved_FN+'.BAK')
+      self._write_pkl_gz(saved_FN, saved[key])
 
   def _set_lock(self, p):
     if not os.path.isdir(self.dir[p]):
-      os.system('mkdir -p'+self.dir[p])
+      os.system('mkdir -p '+self.dir[p])
     lockFN = join(self.dir[p],'.lock')
-    if isfile(lockFN):
+    if os.path.isfile(lockFN):
       raise Exception(p + ' is locked')
     else:
       lockF = open(lockFN,'w')
@@ -2789,7 +2822,7 @@ last modified {2}
 
   def _clear_lock(self, p):
     lockFN = join(self.dir[p],'.lock')
-    if isfile(lockFN):
+    if os.path.isfile(lockFN):
       os.remove(lockFN)
     self.log.close()
     del self.log

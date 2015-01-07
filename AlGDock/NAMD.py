@@ -765,7 +765,7 @@ coorfile close
       dcdname = outputname+'.dcd'
     
     (integrator_script,output_script,execution_script) = self._energy_scripts(dcdname,stride=stride,test=test)
-  
+
     if (os.path.exists('%s.dat.gz'%outputname)):
       energies = self._readEnergyDatGZ('%s.dat.gz'%outputname)
     else:
