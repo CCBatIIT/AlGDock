@@ -871,6 +871,9 @@ last modified {2}
         fromCycle = self.stats_L['equilibrated_cycle'][c]
         toCycle = c + 1
         
+        if not ('L'+phase) in self.cool_Es[-1][c].keys():
+          raise Exception('L%s energies not found in cycle %d'%(phase, c))
+        
         # Arbitrarily, solvation is the
         # 'forward' direction and desolvation the 'reverse'
         u_phase = np.concatenate([\
@@ -1736,13 +1739,14 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    # There will be at least 20 and up to sweeps_per_cycle saved samples
-    # max(int(np.ceil((1+2*tau_ac)/50)),1) is the minimum stride,
-    # which is based due to 20 samples per autocorrelation time.
-    # max(self.params['dock']['sweeps_per_cycle']/20)
-    # is the maximum stride to have 20 samples, if possible.
-    stride = min(max(int(np.ceil((1+2*tau_ac)/20.)),1), \
-                 max(int(np.ceil(self.params['dock']['sweeps_per_cycle']/20.)),1))
+    per_independent = {'cool':1.0, 'dock':20.0}[process]
+    # There will be at least per_independent and up to sweeps_per_cycle saved samples
+    # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
+    # which is based on per_independent samples per autocorrelation time.
+    # max(self.params['dock']['sweeps_per_cycle']/per_independent)
+    # is the maximum stride, which gives per_independent samples if possible.
+    stride = min(max(int(np.ceil((1+2*tau_ac)/per_independent)),1), \
+                 max(int(np.ceil(self.params[process]['sweeps_per_cycle']/per_independent)),1))
 
     store_indicies = np.array(\
       range(min(stride-1,self.params[process]['sweeps_per_cycle']-1), self.params[process]['sweeps_per_cycle'], stride), dtype=int)
@@ -2252,6 +2256,7 @@ last modified {2}
     """
     updated = []
     toClean = []
+    programs = []
     crd_FN_o = ''
     if phases is None:
       phases = list(set(self.params['cool']['phases'] + self.params['dock']['phases']))
@@ -2325,10 +2330,20 @@ last modified {2}
             else:
               confs = self.confs[p]['samples'][state][c]
 
+            self.tee('  for state %d and cycle %d of %s, '%(state, c, p) + \
+              'will postprocess %s in phase %s'%(moiety, phase))
             task_queue.put((moiety, phase, traj_FN, outputname, debug, \
               (p,state,c,label)))
             
             self._write_traj(traj_FN, confs, moiety)
+
+            # Programs to locate
+            if phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
+              programs.append('namd')
+            if phase in ['Gas','GBSA','PBSA'] and not 'sander' in programs:
+              programs.append('sander')
+
+            # Files to remove later
             if not traj_FN in toClean:
               toClean.append(traj_FN)
 
@@ -2336,6 +2351,11 @@ last modified {2}
             if not p in updated:
               updated.append(p)
 
+    # Find the necessary programs, downloading them if necessary
+    for program in programs:
+      self._FNs[program] = a.findPaths([program])[program]
+
+    # Start processes
     processes = [multiprocessing.Process(target=self._energy_worker, \
         args=(task_queue, done_queue)) for p in range(self._cores)]
     for p in range(self._cores):
@@ -2517,10 +2537,14 @@ last modified {2}
           self._FNs[key][moiety] = self._FNs[key][moiety][:-3]
 
     os.chdir(self.dir['out'])
+    print ' '.join([self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
+      '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
+      '-y', AMBER_mdcrd_FN, '-r',script_FN+'.restrt'])
+      
     import subprocess
     p = subprocess.Popen([self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
       '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
-      '-y',AMBER_mdcrd_FN, '-r',script_FN+'.restrt'])
+      '-y', AMBER_mdcrd_FN, '-r',script_FN+'.restrt'])
     p.wait()
     
     F = open(out_FN,'r')

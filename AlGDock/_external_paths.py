@@ -22,13 +22,14 @@ def findPaths(keys):
       if key in download_paths.keys():
         (FN,command,path) = download_paths[key]
         # Check that it has not already been downloaded
+        import os
         if os.path.isfile(path):
           paths[key] = os.path.abspath(path)
         else:
           import time
           download_start_time = time.time()
           print 'Downloading and installing '+key
-          os.system('wget --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
+          os.system('wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
           os.system('tar -xvf %s'%FN)
           if command != '':
             os.system(command)
@@ -53,13 +54,12 @@ search_paths = {
               '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat'],
              # For postprocessing snapshots
       'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
-              '/share/apps/namd/2.9/Linux-x86_64-g++/namd2'],
+              '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
+              'namd2'],
              # For postprocessing snapshots
     'sander':['/Users/dminh/Installers/amber14/bin/sander',
-              '/share/apps/amber/14/bin/sander'],
-             # Calculating a Poisson-Boltzmann Grid
-      'apbs':['/Users/dminh/Applications/APBS-1.4-osx/bin/apbs',
-              '/share/apps/apbs/1.4/bin/apbs'],
+              '/share/apps/amber/14/bin/sander',
+              'sander'],
              # BindingPMF.py is built on MMTK
       'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],

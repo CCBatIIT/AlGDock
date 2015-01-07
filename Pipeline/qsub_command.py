@@ -183,8 +183,8 @@ Queue 1
     command = """
 
 # Download data
-wget --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
-tar xzf algdock.tar.gz
+wget --no_verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
+tar xf algdock.tar.gz
 
 # Modify paths
 echo "
