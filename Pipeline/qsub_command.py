@@ -184,17 +184,14 @@ Queue 1
 
 # Download data
 wget --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
-wget --no-check-certificate http://stash.osgconnect.net/+daveminh/namd.tar.gz
 tar xzf algdock.tar.gz
-tar xzf namd.tar.gz
-rm algdock.tar.gz namd.tar.gz
 
 # Modify paths
 echo "
 search_paths = {
   'gaff.dat':[None],
   'catdcd':[None],
-  'namd':['$WORK_DIR/namd2'],
+  'namd':[None],
   'sander':[None],
   'MMTK':['$WORK_DIR/AlGDock/MMTK'],
   'vmd':[None]}
@@ -204,7 +201,8 @@ export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF
 
 """ + command + """
 
-rm -rf AlGDock namd2
+rm -rf AlGDock namd2 sander
+rm algdock.tar.gz* namd.tar.gz* sander.tar.gz*
 rm *.out *.namd *.dcd
 rm .lock
 """

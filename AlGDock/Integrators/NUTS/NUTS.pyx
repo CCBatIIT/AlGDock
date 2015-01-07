@@ -209,6 +209,12 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     else:
       delta_t_bar = delta_t
 
+    # Seed the random number generator
+    if 'seed' in self.call_options.keys():
+      N.random.seed(self.getOption('seed'))
+    else:
+      N.random.seed()
+
     # For efficiency, the Cython code works at the array
     # level rather than at the ParticleProperty level.
     self.x = configuration.array

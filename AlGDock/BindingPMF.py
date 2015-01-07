@@ -277,7 +277,7 @@ last modified {2}
     FNs = {}
     args = {}
     for p in ['dock','cool']:
-      params = self._load_progress(p)
+      params = self._load(p)
       if params is not None:
         (fn_dict, arg_dict) = params
         FNs[p] = convert_dictionary_relpath(fn_dict,
@@ -500,8 +500,8 @@ last modified {2}
       self.cool()
       self.dock()
     elif run_type=='store_params':
-      self._save_progress('cool')
-      self._save_progress('dock')
+      self._save('cool', keys=['params'])
+      self._save('dock', keys=['params'])
     elif run_type=='free_energies':
       self.calc_f_L()
       self.calc_f_RL()
@@ -519,7 +519,7 @@ last modified {2}
         for state_ind in range(1,len(self.confs[process]['samples'])-1):
           for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
             self.confs[process]['samples'][state_ind][cycle_ind] = []
-        self._save_progress(process)
+        self._save(process, keys=['data'])
 
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
@@ -630,6 +630,7 @@ last modified {2}
         raise Exception('Ligand residue label is ambiguous')
       self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[0]] - 1
     else:
+      self._ligand_first_atom = 0
       if do_dock:
         raise Exception('Missing AMBER prmtop files for receptor')
       else:
@@ -649,8 +650,11 @@ last modified {2}
         (complex_crd[:self._ligand_first_atom,:],\
          complex_crd[self._ligand_first_atom + self._ligand_natoms:,:]))
     elif self._FNs['inpcrd']['L'] is not None:
+      self.confs['receptor'] = None
       if os.path.isfile(self._FNs['inpcrd']['L']):
         lig_crd = IO_crd.read(self._FNs['inpcrd']['L'], multiplier=0.1)
+    else:
+      lig_crd = None
     self.confs['ligand'] = lig_crd[self.molecule.inv_prmtop_atom_order,:]
     
     if self.params['dock']['rmsd'] is not False:
@@ -707,13 +711,14 @@ last modified {2}
 
     for T in np.linspace(0.,T_HIGH,33)[1:]:
       self.sampler['init'](steps = 500, T=T,\
-                           delta_t=self.delta_t, steps_per_trial = 100)
+                           delta_t=self.delta_t, steps_per_trial = 100, \
+                           seed=int(time.time()))
     self.universe.normalizePosition()
 
     # Run at high temperature
     state_start_time = time.time()
     conf = self.universe.configuration().array
-    (confs, Es_MM, self.cool_protocol[-1]['delta_t']) = \
+    (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
       self._initial_sim_state(\
       [conf for n in range(self.params['cool']['seeds_per_state'])], \
       'cool', self.cool_protocol[-1])
@@ -721,7 +726,8 @@ last modified {2}
     self.confs['cool']['samples'] = [[confs]]
     self.cool_Es = [[{'MM':Es_MM}]]
     self.tee("  generated %d configurations "%len(confs) + \
-             "(dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
+             "(dt=%f ps, Ht=%f, sigma=%f) "%(\
+              self.cool_protocol[-1]['delta_t'], Ht, Es_MM.std()) + \
              "at %d K "%self.cool_protocol[-1]['T'] + \
              "in " + HMStime(time.time()-state_start_time))
     tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
@@ -753,13 +759,14 @@ last modified {2}
       # Simulate and store data
       confs_o = confs
       Es_MM_o = Es_MM
-
+               
       state_start_time = time.time()
-      (confs, Es_MM, self.cool_protocol[-1]['delta_t']) = \
+      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
         self._initial_sim_state(\
         [confs[ind] for ind in seedIndicies], 'cool', self.cool_protocol[-1])
       self.tee("  generated %d configurations "%len(confs) + \
-               "(dt=%f ps) "%self.cool_protocol[-1]['delta_t'] + \
+               "(dt=%f ps, Ht=%f, sigma=%f) "%(\
+                self.cool_protocol[-1]['delta_t'], Ht, Es_MM.std()) + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + (HMStime(time.time()-state_start_time)))
 
@@ -799,7 +806,7 @@ last modified {2}
     # Save data
     self._cool_cycle += 1
     self._cool_total_cycle += 1
-    self._save_progress('cool')
+    self._save('cool')
     self.tee("\nElapsed time for initial cooling: " + \
       HMStime(time.time()-cool_start_time))
     self._clear_lock('cool')
@@ -1136,10 +1143,10 @@ last modified {2}
       # Simulate
       sim_start_time = time.time()
       self._set_universe_evaluator(lambda_n)
-      (confs, Es_tot, lambda_n['delta_t']) = \
+      (confs, Es_tot, lambda_n['delta_t'], Ht) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
       self.tee("  generated %d configurations "%len(confs) + \
-               "(dt=%f ps) "%lambda_n['delta_t'] + \
+               "(dt=%f ps, Ht=%f) "%(lambda_n['delta_t'],Ht) + \
                "with progress %f "%lambda_n['a'] + \
                "in " + HMStime(time.time()-sim_start_time))
 
@@ -1198,7 +1205,7 @@ last modified {2}
       
     self._dock_cycle += 1
     self._dock_total_cycle += 1
-    self._save_progress('dock')
+    self._save('dock')
     self.tee("\nElapsed time for initial docking: " + \
       HMStime(time.time()-dock_start_time))
     self._clear_lock('dock')
@@ -1577,8 +1584,8 @@ last modified {2}
       m = multiprocessing.Manager()
       task_queue = m.Queue()
       done_queue = m.Queue()
-      for seed in seeds:
-        task_queue.put((seed, process, lambda_k, doMC, True, None))
+      for k in range(len(seeds)):
+        task_queue.put((seeds[k], process, lambda_k, doMC, True, k))
       processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
           args=(task_queue, done_queue)) for p in range(self._cores)]
       for p in range(self._cores):
@@ -1593,7 +1600,7 @@ last modified {2}
     else:
       # Single process code
       results = [self._sim_one_state(\
-        seed, process, lambda_k, doMC, True, None) for seed in seeds]
+        seeds[k], process, lambda_k, doMC, True, k) for k in range(len(seeds))]
 
     confs = [result['confs'] for result in results]
     potEs = [result['E_MM'] for result in results]
@@ -1601,7 +1608,7 @@ last modified {2}
     delta_t = np.median(np.array([results['delta_t'] for results in results]))
     delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
 
-    return (confs, np.array(potEs), delta_t)
+    return (confs, np.array(potEs), delta_t, Ht)
 
   def _replica_exchange(self, process):
     """
@@ -1812,13 +1819,13 @@ last modified {2}
         lambdas = [self._lambda(a,process) for a in progress_n]
         setattr(self,process+'_protocol', lambdas)
 
-        # Clear progress and save the data
+        # Save the data
         setattr(self, process+'_Es', [[] for state in range(K)])
         self.confs[process]['samples'] = [[] for state in range(K)]
         setattr(self,'_%s_cycle'%process,0)
         setattr(self,'_%s_total_cycle'%process,
           getattr(self,'_%s_total_cycle'%process)+1)
-        self._save_progress(process)
+        self._save(process, keys=['progress', 'data'])
         if process=='cool':
           self.calc_f_L(redo=True,readOnly=True)
         else:
@@ -1841,7 +1848,7 @@ last modified {2}
     setattr(self,'_%s_cycle'%process,cycle + 1)
     setattr(self,'_%s_total_cycle'%process,
       getattr(self,'_%s_total_cycle'%process) + 1)
-    self._save_progress(process)
+    self._save(process, keys=['progress', 'data'])
     self._clear_lock(process)
 
   def _sim_one_state_worker(self, input, output):
@@ -1885,7 +1892,8 @@ last modified {2}
       steps_per_trial=steps_per_trial, \
       T=lambda_k['T'], delta_t=delta_t, \
       normalize=(process=='cool'),
-      adapt=initialize)
+      adapt=initialize,
+      seed=int(time.time())+reference)
 
     # Store and return results
     results['confs'] = np.copy(confs[-1])
@@ -2246,7 +2254,7 @@ last modified {2}
     toClean = []
     crd_FN_o = ''
     if phases is None:
-      phases = self.params['dock']['phases']
+      phases = list(set(self.params['cool']['phases'] + self.params['dock']['phases']))
 
     postprocess_start_time = time.time()
     
@@ -2362,9 +2370,9 @@ last modified {2}
             self.original_Es[0][0]['R'+phase][-1]
 
     if 'cool' in updated:
-      self._save_progress('cool')
+      self._save('cool', keys=['data'])
     if ('dock' in updated) or ('original' in updated):
-      self._save_progress('dock')
+      self._save('dock', keys=['data'])
 
     if len(updated)>0:
       self.tee("  postprocessed data in " + \
@@ -2704,7 +2712,7 @@ last modified {2}
     F.close()
     self.tee("  wrote to "+FN)
 
-  def _load_progress(self, p):
+  def _load(self, p):
     saved = {'params':None, 'progress':None, 'data':None}
     for key in saved.keys():
       saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
@@ -2758,7 +2766,7 @@ last modified {2}
 
     return params
 
-  def _save_progress(self, p):
+  def _save(self, p, keys=['params','progress','data']):
     """
     Saves the protocol, 
     cycle counts,
@@ -2800,7 +2808,8 @@ last modified {2}
                self.confs[p]['seeds'],
                self.confs[p]['samples'],
                getattr(self,'%s_Es'%p))}
-    for key in saved.keys():
+    
+    for key in keys:
       saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
       if not os.path.isdir(self.dir[p]):
         os.system('mkdir -p '+self.dir[p])

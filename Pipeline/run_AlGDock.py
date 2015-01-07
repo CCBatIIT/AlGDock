@@ -44,7 +44,7 @@ parser.add_argument('--rmsd', choices=['xtal',None], default=None,
   help='Calulates the rmsd between snapshots a configuration. xtal means the crystal structure.')
 
 # Simulation settings and constants
-#   Run-dependent
+#   Run-dependent 
 parser.add_argument('--cool_repX_cycles', type=int,
   help='Number of replica exchange cycles for cooling')
 parser.add_argument('--dock_repX_cycles', type=int,
@@ -57,7 +57,7 @@ parser.add_argument('--run_type',
            'redo_postprocess', 'clear_intermediates', None],
   help='Type of calculation to run')
 parser.add_argument('--cores', type=int, \
-    help='Number of CPU cores to use')
+  help='Number of CPU cores to use')
 #   Defaults
 parser.add_argument('--protocol', choices=['Adaptive','Set'],
   help='Approach to determining series of thermodynamic states')
@@ -68,6 +68,8 @@ parser.add_argument('--therm_speed', type=float,
 parser.add_argument('--sampler',
   choices=['HMC','NUTS','VV'],
   help='Sampling method')
+parser.add_argument('--MCMC_moves', type=int,
+  help='Types of MCMC moves to use')
 # For initialization
 parser.add_argument('--seeds_per_state', type=int,
   help='Number of starting configurations in each state during initialization')
@@ -82,6 +84,11 @@ parser.add_argument('--steps_per_sweep', type=int,
   help='Number of MD steps per replica exchange sweep')
 parser.add_argument('--keep_intermediate', action='store_true', default=None,
   help='Keep configurations for intermediate states?')
+parser.add_argument('--min_repX_acc', type=float,
+  help='Minimum value for replica exchange acceptance rate')
+# For postprocessing
+parser.add_argument('--phases', nargs='+', \
+  help='Phases to use in postprocessing')
 #   Stored in dir_cool
 parser.add_argument('--cool_protocol', choices=['Adaptive','Set'],
   help='Approach to determining series of thermodynamic states')
@@ -90,8 +97,6 @@ parser.add_argument('--cool_therm_speed', type=float,
 parser.add_argument('--cool_sampler',
   choices=['HMC','NUTS','VV'],
   help='Sampling method')
-parser.add_argument('--MCMC_moves', type=int,
-  help='Types of MCMC moves to use')
 # For initialization
 parser.add_argument('--cool_seeds_per_state', type=int,
   help='Number of starting configurations in each state during initialization')
@@ -102,8 +107,8 @@ parser.add_argument('--cool_sweeps_per_cycle', type=int,
   help='Number of replica exchange sweeps per cycle')
 parser.add_argument('--cool_steps_per_sweep', type=int,
   help='Number of MD steps per replica exchange sweep')
-parser.add_argument('--cool_keep_intermediate', action='store_true', default=None,
-  help='Keep configurations for intermediate states?')
+parser.add_argument('--cool_keep_intermediate', action='store_true',
+  default=None, help='Keep configurations for intermediate states?')
 #   Stored in dir_dock
 parser.add_argument('--dock_protocol', choices=['Adaptive','Set'],
   help='Approach to determining series of thermodynamic states')
@@ -122,8 +127,8 @@ parser.add_argument('--dock_sweeps_per_cycle', type=int,
   help='Number of replica exchange sweeps per cycle')
 parser.add_argument('--dock_steps_per_sweep', type=int,
   help='Number of MD steps per replica exchange sweep')
-parser.add_argument('--dock_keep_intermediate', action='store_true', default=None,
-  help='Keep configurations for intermediate states?')
+parser.add_argument('--dock_keep_intermediate', action='store_true',
+  default=None, help='Keep configurations for intermediate states?')
 
 #  parser.add_argument('--site',
 #    choices=['Sphere','Cylinder'], help='Type of binding site')
@@ -138,12 +143,17 @@ parser.add_argument('--site_max_R', type=float,
 
 parser.add_argument('--site_density', type=float,
   help='Density of center-of-mass points in the first docking stage')
-parser.add_argument('--do_calc_random_dock_stats', action='store_true', default=None,
-  help='Calculate convergence statistics for random placement of the ligand into the active site')
-parser.add_argument('--receptor_GBSA', type=float, nargs='+',
-  help='Receptor potential energies in GBSA implicit solvent (in units of kJ/mol)')
+# Additional calculations
 parser.add_argument('--receptor_Gas', type=float, nargs='+',
+  help='Receptor potential energies in AMBER Gas implicit solvent (in units of kJ/mol)')
+parser.add_argument('--receptor_GBSA', type=float, nargs='+',
+  help='Receptor potential energies in AMBER GBSA implicit solvent (in units of kJ/mol)')
+parser.add_argument('--receptor_PBSA', type=float, nargs='+',
+  help='Receptor potential energies in AMBER PBSA implicit solvent (in units of kJ/mol)')
+parser.add_argument('--receptor_NAMD_Gas', type=float, nargs='+',
   help='Receptor potential energies in gas phase (in units of kJ/mol)')
+parser.add_argument('--receptor_NAMD_GBSA', type=float, nargs='+',
+  help='Receptor potential energies in NAMD GBSA implicit solvent (in units of kJ/mol)')
 args_in = parser.parse_args()
 
 # Check for the existence of input files
@@ -224,7 +234,7 @@ site_max_R = site_R/10.
 # Get other parameters
 general_sim_arg_keys = ['protocol','no_protocol_refinement','therm_speed',\
   'sampler', 'seeds_per_state', 'steps_per_seed', 'repX_cycles', \
-  'sweeps_per_cycle', 'steps_per_sweep', 'keep_intermediate']
+  'sweeps_per_cycle', 'steps_per_sweep', 'keep_intermediate', 'phases']
 sim_arg_keys = general_sim_arg_keys + \
   ['cool_'+a for a in general_sim_arg_keys] + \
   ['dock_'+a for a in general_sim_arg_keys] + \
@@ -375,11 +385,17 @@ for ligand_FN in ligand_FNs:
         continue
       
       outputFNs = {}
-      for FN in ['cool_log.txt','cool_progress.pkl.gz',\
-          'cool_progress.pkl.gz.BAK','f_L.pkl.gz']:
+      for FN in ['cool_log.txt',
+          'cool_params.pkl.gz','cool_params.pkl.gz',
+          'cool_progress.pkl.gz','cool_progress.pkl.gz.BAK',
+          'cool_data.pkl.gz','cool_data.pkl.gz.BAK',
+          'f_L.pkl.gz']:
         outputFNs[FN] = os.path.join(dir_cool,FN)
-      for FN in ['dock_log.txt','dock_progress.pkl.gz',\
-          'dock_progress.pkl.gz.BAK','f_RL.pkl.gz']:
+      for FN in ['dock_log.txt',
+          'dock_params.pkl.gz', 'dock_params.pkl.gz.BAK',
+          'dock_progress.pkl.gz', 'dock_progress.pkl.gz.BAK',
+          'dock_data.pkl.gz', 'dock_data.pkl.gz.BAK',
+          'f_RL.pkl.gz']:
         outputFNs[FN] = os.path.join(dir_dock,FN)
       for k in outputFNs.keys():
         if not os.path.isfile(outputFNs[k]):
