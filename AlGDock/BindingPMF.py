@@ -50,7 +50,7 @@ term_map = {
   'ELE':'ELE',
   'electrostatic':'misc'}
 
-allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA']
+allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA','APBS']
 
 ########################
 # Auxilliary functions #
@@ -194,6 +194,7 @@ class BPMF:
       cool_repX_cycles=None,
       dock_repX_cycles=None,
       run_type=None,
+      max_time=None,
       cores=None,
       #   Defaults for dir_cool and dir_dock
       protocol=None, no_protocol_refinement=None, therm_speed=None,
@@ -224,7 +225,8 @@ class BPMF:
       receptor_GBSA=None,
       receptor_PBSA=None,
       receptor_NAMD_Gas=None,
-      receptor_NAMD_GBSA=None): # Energy values
+      receptor_NAMD_GBSA=None,
+      receptor_APBS=None): # Energy values
     """Parses the input arguments and runs the requested docking calculation"""
     
     mod_path = join(os.path.dirname(a.__file__),'BindingPMF.py')
@@ -473,44 +475,35 @@ last modified {2}
     print '\n*** Setting up the simulation ***'
     self._setup_universe(do_dock = do_dock)
 
+    self.timing = {'start':time.time(), 'max':max_time}
+
     self.run_type = run_type
-    self.cycles_run = 0
     if run_type=='pose_energies':
       self.pose_energies()
-    elif run_type=='one_step':
-      # Does one of the following:
-      # 1. Initial cooling
-      # 2. Cooling replica exchange
-      # 3. Initial docking
-      # 4. One cycle of docking replica exchange
-      self.cool()
-      if self.cycles_run==0:
-        self.dock()
-    elif run_type=='initial_cool':
-      self.initial_cool()
-    elif run_type=='cool':
-      self.cool()
-    elif run_type=='random_dock':
-      self.initial_dock(randomOnly=True)
-    elif run_type=='initial_dock':
-      self.initial_dock()
-    elif run_type=='dock':
-      self.dock()
-    elif run_type=='all':
-      self.cool()
-      self.dock()
     elif run_type=='store_params':
       self._save('cool', keys=['params'])
       self._save('dock', keys=['params'])
-    elif run_type=='free_energies':
-      self.calc_f_L()
-      self.calc_f_RL()
-    elif run_type=='postprocess':
+    elif run_type=='cool': # Sample the cooling process
+      self.cool()
+    elif run_type=='dock': # Sample the docking process
+      self.dock()
+    elif run_type=='timed': # Timed replica exchange sampling
+      self.cool()
+      self.dock()
       self._postprocess()
       self.calc_f_L()
       self.calc_f_RL()
+    elif run_type=='postprocess': # Postprocessing
+      self._postprocess()
     elif run_type=='redo_postprocess':
       self._postprocess(redo_dock=True)
+    elif run_type=='free_energies': # All free energies
+      self.calc_f_L()
+      self.calc_f_RL()
+    elif run_type=='all':
+      self.cool()
+      self.dock()
+      self._postprocess()
       self.calc_f_L()
       self.calc_f_RL()
     elif run_type=='clear_intermediates':
@@ -785,14 +778,16 @@ last modified {2}
         confs = confs_o
         Es_MM = Es_MM_o
         tL_tensor = tL_tensor*1.25 # Use a smaller step
-        self.tee("  rejected new state, as estimated replica exchange acceptance rate of %f is too low"%mean_acc)
+        self.tee("  rejected new state, as estimated replica exchange" + \
+          " acceptance rate of %f is too low"%mean_acc)
       elif (mean_acc>0.95) and (not crossed):
         # If the acceptance probability is too low,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.argmin(Es_MM)]
         self.cool_protocol.pop(-2)
         tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
-        self.tee("  rejected previous state, as estimated replica exchange acceptance rate of %f is too high"%mean_acc)
+        self.tee("  rejected previous state, as estimated replica exchange" + \
+          " acceptance rate of %f is too high"%mean_acc)
       else:
         self.confs['cool']['replicas'].append(confs[np.argmin(Es_MM)])
         self.confs['cool']['samples'].append([confs])
@@ -846,6 +841,9 @@ last modified {2}
 
     K = len(self.cool_protocol)
 
+    # Make sure postprocessing is complete
+    self._postprocess([('cool',-1,-1,'L')])
+
     # Make sure all the energies are available
     for c in range(self._cool_cycle):
       if len(self.cool_Es[-1][c].keys())==0:
@@ -858,7 +856,11 @@ last modified {2}
     mean_u_Ks = np.array([np.mean(u_K) for u_K in u_Ks])
     std_u_Ks = np.array([np.std(u_K) for u_K in u_Ks])
     for c in range(len(self.stats_L['equilibrated_cycle']), self._cool_cycle):
-      nearMean = list((mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]).index(True)
+      nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
+      if nearMean.any():
+        nearMean = list(nearMean).index(True)
+      else:
+        nearMean = c
       if c>0: # If possible, reject burn-in
         nearMean = max(nearMean,1)
       self.stats_L['equilibrated_cycle'].append(nearMean)
@@ -1263,6 +1265,9 @@ last modified {2}
     if readOnly:
       return
 
+    # Make sure postprocessing is complete
+    self._postprocess()
+
     # Make sure all the energies are available
     for c in range(self._dock_cycle):
       if len(self.dock_Es[-1][c].keys())==0:
@@ -1308,7 +1313,11 @@ last modified {2}
     mean_u_Ks = np.array([np.mean(u_K) for u_K in self.stats_RL['u_K_sampled']])
     std_u_Ks = np.array([np.std(u_K) for u_K in self.stats_RL['u_K_sampled']])
     for c in range(len(self.stats_RL['equilibrated_cycle']), self._dock_cycle):
-      nearMean = list((mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]).index(True)
+      nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
+      if nearMean.any():
+        nearMean = list(nearMean).index(True)
+      else:
+        nearMean = c
       if c>0: # If possible, reject burn-in
         nearMean = max(nearMean,1)
       self.stats_RL['equilibrated_cycle'].append(nearMean)
@@ -1438,7 +1447,7 @@ last modified {2}
   # Internal Functions #
   ######################
 
-  def _set_universe_evaluator(self,lambda_n):
+  def _set_universe_evaluator(self, lambda_n, store=True):
     """
     Sets the universe evaluator to values appropriate for the given lambda_n dictionary.
     The elements in the dictionary lambda_n can be:
@@ -1481,7 +1490,6 @@ last modified {2}
       if (scalable in lambda_n.keys()) and lambda_n[scalable]>0:
         # Load the force field if it has not been loaded
         if not scalable in self._forceFields.keys():
-          import time
           loading_start_time = time.time()
           grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
             'LJr':'LJr','LJa':'LJa','ELE':'ELE'}[scalable]]
@@ -1534,7 +1542,7 @@ last modified {2}
     # Only store evaluator if there is enough memory available
     mem_end = virtual_memory().available
     usage = mem_start-mem_end
-    if (mem_end>5*usage):
+    if store and (mem_end>5*usage):
       self._evaluators[evaluator_key] = eval
     
   def _MC_translate_rotate(self, lambda_k, trials=25):
@@ -1875,7 +1883,7 @@ last modified {2}
       results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=25)/25.
       results['MC_time'] = (time.time() - MC_start_time)
 
-    self._set_universe_evaluator(lambda_k)
+    self._set_universe_evaluator(lambda_k, store=(not initialize))
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
@@ -1917,13 +1925,6 @@ last modified {2}
     if (getattr(self,process+'_protocol')==[]) or \
        (not getattr(self,process+'_protocol')[-1]['crossed']):
       getattr(self,'initial_'+process)()
-      if process=='cool':
-        self._postprocess([('cool',-1,-1,'L')])
-      if process=='dock':
-        self._postprocess()
-      self.cycles_run += 1
-      if self.run_type=='one_step':
-        return
 
     # Main loop for replica exchange
     if (self.params[process]['repX_cycles'] is not None) and \
@@ -1935,45 +1936,47 @@ last modified {2}
         self._minimize_dock_score_confs()
 
       self.tee("\n>>> Replica exchange sampling for the {0}ing process".format(process), process=process)
-      import time
-      repEx_start_time = time.time()
+      self.timing[process+'_repX_start'] = time.time()
       start_cycle = getattr(self,'_%s_total_cycle'%process)
+      cycle_times = []
       while ((getattr(self,'_%s_total_cycle'%process) < self.params[process]['repX_cycles']) or (getattr(self,'_%s_cycle'%process)==0)):
+        cycle_start_time = time.time()
         self._replica_exchange(process)
-        if process=='cool':
-          self._postprocess([('cool',-1,-1,'L')])
-        if process=='dock':
-          self._postprocess()
-        self.cycles_run += 1
-        if self.run_type=='one_step' and process=='dock':
-            break
+        cycle_times.append(time.time()-cycle_start_time)
+        if self.run_type=='timed':
+          remaining_time = self.timing['max']*60 - (time.time()-self.timing['start'])
+          cycle_time = np.mean(cycle_times)
+          self.tee("  projected cycle time: %s, remaining time: %s"%(\
+            HMStime(cycle_time), HMStime(remaining_time)), process=process)
+          if cycle_time>remaining_time:
+            return
       self.tee("Elapsed time for %d total cycles of replica exchange was %s\n"%(\
-         (getattr(self,'_%s_total_cycle'%process)-start_cycle), \
-         HMStime((time.time()-repEx_start_time))), process=process)
+         (getattr(self,'_%s_total_cycle'%process) - start_cycle), \
+          HMStime(time.time() - self.timing[process+'_repX_start'])), \
+          process=process)
 
-    # Do additional replica exchange on the cooling process
-    #   if there are not enough configurations
+    # If there are insufficient configurations,
+    #   do additional replica exchange on the cooling process
     if (process=='cool'):
       E_MM = []
       for k in range(len(self.cool_Es[0])):
         E_MM += list(self.cool_Es[0][k]['MM'])
       while len(E_MM)<self.params['dock']['seeds_per_state']:
         self.tee("More samples from high temperature ligand simulation needed", process='cool')
+        cycle_start_time = time.time()
         self._replica_exchange('cool')
+        cycle_times.append(time.time()-cycle_start_time)
+        if self.run_type=='timed':
+          remaining_time = self.timing['max']*60 - (time.time()-self.timing['start'])
+          cycle_time = np.mean(cycle_times)
+          self.tee("  projected cycle time: %s, remaining time: %s"%(\
+            HMStime(cycle_time), HMStime(remaining_time)), process=process)
+          if cycle_time>remaining_time:
+            return
         E_MM = []
         for k in range(len(self.cool_Es[0])):
           E_MM += list(self.cool_Es[0][k]['MM'])
-
-    self._set_lock(process)
-    if process=='cool':
-      self._postprocess(conditions=[('cool',-1,-1,'L')])
-      self.calc_f_L()
-    elif process=='dock':
-      if not (((getattr(self,'_%s_total_cycle'%process) < self.params[process]['repX_cycles']) or (getattr(self,'_%s_cycle'%process)==0))):
-        self._postprocess()
-        self.calc_f_RL()
-    self._clear_lock(process)
-
+    
   def _minimize_dock_score_confs(self):
     """
     Gets configurations to score from another program.
@@ -2249,7 +2252,7 @@ last modified {2}
       conditions=[('original',0, 0,'R'), ('cool',-1,-1,'L'), \
                   ('dock',   -1,-1,'L'), ('dock',-1,-1,'RL')],
       phases=None,
-      readOnly=False, redo_dock=False, debug=False):
+      readOnly=False, redo_dock=False, debug=False, identify_incomplete=False):
     """
     Obtains the NAMD energies of all the conditions using all the phases.  
     Saves both MMTK and NAMD energies after NAMD energies are estimated.
@@ -2266,6 +2269,8 @@ last modified {2}
     m = multiprocessing.Manager()
     task_queue = m.Queue()
     done_queue = m.Queue()
+    
+    incomplete = []
 
     # state == -1 means the last state
     # cycle == -1 means all cycles
@@ -2299,10 +2304,12 @@ last modified {2}
                  'dock':self.dir['dock']}[p]
           
           label = moiety+phase
-          if phase in ['NAMD_Gas','NAMD_GBSA']:
+          if phase in ['Gas','GBSA','PBSA']:
+            traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
+          elif phase in ['NAMD_Gas','NAMD_GBSA']:
             traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
           else:
-            traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
+            traj_FN = None
           outputname = join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
           
           # Skip NAMD
@@ -2321,6 +2328,10 @@ last modified {2}
                  len(getattr(self,p+'_Es')[state][c][label])))):
             pass
           else:
+            if identify_incomplete:
+              incomplete.append((p, state, c, moiety, phase))
+              continue
+            
             # Queue the calculation
             # Obtain configurations
             if (moiety=='R'):
@@ -2330,18 +2341,18 @@ last modified {2}
             else:
               confs = self.confs[p]['samples'][state][c]
 
-            self.tee('  for state %d and cycle %d of %s, '%(state, c, p) + \
-              'will postprocess %s in phase %s'%(moiety, phase))
-            task_queue.put((moiety, phase, traj_FN, outputname, debug, \
+            task_queue.put((confs, moiety, phase, traj_FN, outputname, debug, \
               (p,state,c,label)))
             
             self._write_traj(traj_FN, confs, moiety)
 
             # Programs to locate
-            if phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
-              programs.append('namd')
             if phase in ['Gas','GBSA','PBSA'] and not 'sander' in programs:
               programs.append('sander')
+            elif phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
+              programs.append('namd')
+            elif phase in ['APBS'] and not 'apbs' in programs:
+              programs.append('apbs')
 
             # Files to remove later
             if not traj_FN in toClean:
@@ -2350,6 +2361,9 @@ last modified {2}
             # Updated
             if not p in updated:
               updated.append(p)
+
+    if identify_incomplete:
+      return incomplete
 
     # Find the necessary programs, downloading them if necessary
     for program in programs:
@@ -2371,9 +2385,14 @@ last modified {2}
       p.terminate()
 
     # Store energies
-    for (E,(p,state,c,label)) in results:
+    for (E,(p,state,c,label),wall_time) in results:
       if not (E==np.inf).any():
         getattr(self,p+'_Es')[state][c][label] = E
+        self.tee("  postprocessed %s, state %d, cycle %d, %s in %s"%(\
+          p,state,c,label,HMStime(wall_time)))
+      else:
+        self.tee("  error in postprocessing %s, state %d, cycle %d, %s in %s"%(\
+          p,state,c,label,HMStime(wall_time)))
 
     # Clean up files
     if not debug:
@@ -2395,16 +2414,20 @@ last modified {2}
       self._save('dock', keys=['data'])
 
     if len(updated)>0:
-      self.tee("  postprocessed data in " + \
+      self.tee("  total postprocessing in " + \
         HMStime(time.time()-postprocess_start_time) + "\n")
 
   def _energy_worker(self, input, output):
     for args in iter(input.get, 'STOP'):
-      if args[1] in ['NAMD_Gas','NAMD_GBSA']:
-        E = self._NAMD_Energy(*args)
-      else:
+      start_time = time.time()
+      if args[2] in ['Gas','GBSA','PBSA']:
         E = self._sander_Energy(*args)
-      output.put((E,args[-1]))
+      elif args[2] in ['NAMD_Gas','NAMD_GBSA']:
+        E = self._NAMD_Energy(*args)
+      elif args[2] in ['APBS']:
+        E = self._APBS_ENERGY(*args)
+      wall_time = time.time() - start_time
+      output.put((E, args[-1], wall_time))
 
   def _calc_E(self, confs, E=None, type='sampling', prefix='confs'):
     """
@@ -2432,22 +2455,26 @@ last modified {2}
         for moiety in ['L','RL']:
           outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
           if phase in ['NAMD_Gas','NAMD_GBSA']:
-            self._write_traj(
-              join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety)),
-              confs, moiety)
-            E[moiety+phase] = self._NAMD_Energy(moiety, phase, dcd_FN, outputname)
+            traj_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
+            self._write_traj(traj_FN, confs, moiety)
+            E[moiety+phase] = self._NAMD_Energy(confs, moiety, phase, traj_FN, outputname)
+          elif phase in ['Gas','GBSA','PBSA']:
+            traj_FN = join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety))
+            self._write_traj(traj_FN, confs, moiety)
+            E[moiety+phase] = self._sander_Energy(confs, moiety, phase, traj_FN, outputname)
+          elif phase in ['APBS']:
+            traj_FN = join(self.dir['dock'],'%s.%s.pqr'%(prefix,moiety))
+            E[moiety+phase] = self._APBS_Energy(confs, moiety, phase, traj_FN, outputname)
           else:
-            self._write_traj(
-              join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety)),
-              confs, moiety)
-            E[moiety+phase] = self._sander_Energy(moiety, phase, mdcrd_FN, outputname)
-          toClear.extend([dcd_FN, mdcrd_FN])
-      for FN in set(toClear):
+            raise Exception('Unknown phase!')
+          if not traj_FN in toClear:
+            toClear.append(traj_FN)
+      for FN in toClear:
         if os.path.isfile(FN):
           os.remove(FN)
     return E
 
-  def _sander_Energy(self, moiety, phase, AMBER_mdcrd_FN,
+  def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN,
       outputname=None, debug=False, reference=None):
     self.dir['out'] = os.path.dirname(os.path.abspath(AMBER_mdcrd_FN))
     script_FN = '%s%s.in'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
@@ -2455,6 +2482,10 @@ last modified {2}
 
     script_F = open(script_FN,'w')
     if phase=='PBSA':
+      if moiety=='L':
+        fillratio = 4.
+      else:
+        fillratio = 2.
       script_F.write('''Calculate PBSA energies
 &cntrl
   imin=5,    ! read trajectory in for analysis
@@ -2464,14 +2495,22 @@ last modified {2}
   idecomp=0, ! no decomposition
   ntc=1,     ! No SHAKE
   ntf=1,     ! Complete interaction is calculated
-  cut=9999., !
   ipb=2,     ! Default PB dielectric model
   inp=1,     ! SASA non-polar
 /
 &pb
   radiopt=0, ! Use atomic radii from the prmtop file
+  fillratio=%f,
+  sprob=1.4,
+  cavity_surften=0.005,
+  cavity_offset=0.000,
 /
-''')
+'''%fillratio)
+#  eneopt=1,  ! Use P3M procedure of Lu and Luo for PB energy
+#  cutnb=98.0,
+#  fillratio={0}, {1}
+#/
+#'''.format(fillratio,focusing))
     elif phase=='GBSA':
       script_F.write('''Calculate GBSA energies
 &cntrl
@@ -2482,33 +2521,10 @@ last modified {2}
   idecomp=0, ! no decomposition
   ntc=1,     ! No SHAKE
   ntf=1,     ! Complete interaction is calculated
-  cut=9999., !
   igb=8,     ! Most recent AMBER GBn model, best agreement with PB
   gbsa=2,    ! recursive surface area algorithm
 /
 ''')
-    elif phase=='ALPB':
-      # UNDER CONSTRUCTION
-      # TO DO: Write something to get elsize
-      #        run ambpdb to generate a pqr file
-      #        run elsize
-      #        save elsize as a parameter
-      script_F.write('''Calculate analyical linearized Poisson-Boltzmann energies
-&cntrl
-  imin=5,    ! read trajectory in for analysis
-  ntx=1,     ! input is read formatted with no velocities
-  irest=0,
-  ntb=0,     ! no periodicity and no PME
-  idecomp=0, ! no decomposition
-  ntc=1,     ! No SHAKE
-  ntf=1,     ! Complete interaction is calculated
-  cut=9999., !
-  igb=7,     ! Most recent AMBER GBn model, best agreement with PB
-  gbsa=2,    ! recursive surface area algorithm
-  alpb=1,    ! Analytical Linearized Poisson-Boltzmann
-  arad=%f  ! Electrostatic size
-/
-'''%elsize)
     elif phase=='Gas':
       script_F.write('''Calculate Gas energies
 &cntrl
@@ -2537,10 +2553,6 @@ last modified {2}
           self._FNs[key][moiety] = self._FNs[key][moiety][:-3]
 
     os.chdir(self.dir['out'])
-    print ' '.join([self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
-      '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
-      '-y', AMBER_mdcrd_FN, '-r',script_FN+'.restrt'])
-      
     import subprocess
     p = subprocess.Popen([self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
       '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
@@ -2582,7 +2594,7 @@ last modified {2}
     # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL 5. EGB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT
     # 9. ESURF
 
-  def _NAMD_Energy(self, moiety, phase, dcd_FN, outputname,
+  def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,
       debug=False, reference=None):
     """
     Uses NAMD to calculate the energy of a set of configurations
@@ -2630,15 +2642,48 @@ last modified {2}
           self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
 
     return np.array(E, dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
-  
+
+  def _APBS_Energy(self, confs, moiety, phase, pqr_FN, outputname,
+      debug=False, reference=None):
+    """
+    Uses NAMD to calculate the energy of a set of configurations
+    Units are the MMTK standard, kJ/mol
+    """
+    # Decompress prmtop
+    decompress = self._FNs['prmtop'][moiety].endswith('.gz')
+    if decompress:
+      import shutil
+      shutil.copy(self._FNs['prmtop'][moiety],self._FNs['prmtop'][moiety]+'.BAK')
+      os.system('gunzip -f '+self._FNs['prmtop'][moiety])
+      os.rename(self._FNs['prmtop'][moiety]+'.BAK', self._FNs['prmtop'][moiety])
+      self._FNs['prmtop'][moiety] = self._FNs['prmtop'][moiety][:-3]
+    
+    # Run APBS
+    # TO DO
+    # Prepare pqr file
+#    command = 'cat {0} | {1}/bin/ambpdb -p {2} -pqr > {3}'.format(\
+#      self.FNs['inpcrd'],dirs['amber'],self.FNs['prmtop'],self.FNs['pqr'])
+#    os.system(command)
+
+    # Clear decompressed files
+    if decompress:
+      if os.path.isfile(self._FNs['prmtop'][moiety]+'.gz'):
+        os.remove(self._FNs['prmtop'][moiety])
+        self._FNs['prmtop'][moiety] = self._FNs['prmtop'][moiety] + '.gz'
+
   def _write_traj(self, traj_FN, confs, moiety, \
       title='', factor=1.0/MMTK.Units.Ang):
     """
     Writes a trajectory file
     """
     
+    if traj_FN is None:
+      return
     if os.path.isfile(traj_FN):
       return
+    
+    if not os.path.isdir(os.path.dirname(traj_FN)):
+      os.system('mkdir -p '+os.path.dirname(traj_FN))
 
     import AlGDock.IO
     if traj_FN.endswith('.dcd'):
@@ -2737,7 +2782,7 @@ last modified {2}
     self.tee("  wrote to "+FN)
 
   def _load(self, p):
-    saved = {'params':None, 'progress':None, 'data':None}
+    saved = {'progress':None, 'data':None}
     for key in saved.keys():
       saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
       for FN in [saved_FN, saved_FN+'.BAK']:
@@ -2759,8 +2804,6 @@ last modified {2}
     self.confs[p]['samples'] = None
     setattr(self,'%s_Es'%p,None)
 
-    if saved['params'] is not None:
-      params = saved['params']
     if saved['progress'] is not None:
       # Deprecated
       if len(saved['progress'])==9:
@@ -2776,9 +2819,10 @@ last modified {2}
         self.confs[p]['samples'] = saved['progress'][7]
         setattr(self,'%s_Es'%p, saved['progress'][8])
       else:
-        setattr(self,'%s_protocol'%p,saved['progress'][0])
-        setattr(self,'_%s_cycle'%p,saved['progress'][1])
-        setattr(self,'_%s_total_cycle'%p,saved['progress'][2])
+        params = saved['progress'][0]
+        setattr(self,'%s_protocol'%p,saved['progress'][1])
+        setattr(self,'_%s_cycle'%p,saved['progress'][2])
+        setattr(self,'_%s_total_cycle'%p,saved['progress'][3])
     if saved['data'] is not None:
       if p=='dock':
         (self._n_trans, self._max_n_trans, self._random_trans, \
@@ -2787,10 +2831,9 @@ last modified {2}
       self.confs[p]['seeds'] = saved['data'][2]
       self.confs[p]['samples'] = saved['data'][3]
       setattr(self,'%s_Es'%p, saved['data'][4])
-
     return params
 
-  def _save(self, p, keys=['params','progress','data']):
+  def _save(self, p, keys=['progress','data']):
     """
     Saves the protocol, 
     cycle counts,
@@ -2799,12 +2842,11 @@ last modified {2}
     sampled configurations,
     and energies
     """
-    if p=='dock':
-      random_orient = (self._n_trans, self._max_n_trans, self._random_trans, \
-         self._n_rot, self._max_n_rot, self._random_rotT)
-    else:
-      random_orient = None
-    
+    random_orient = None
+    if p=='dock' and hasattr(self,'_n_trans'):
+        random_orient = (self._n_trans, self._max_n_trans, self._random_trans, \
+           self._n_rot, self._max_n_rot, self._random_rotT)
+  
     arg_dict = dict([tp for tp in self.params[p].items() \
                       if not tp[0] in ['repX_cycles']])
     if p=='cool':
@@ -2815,18 +2857,22 @@ last modified {2}
           'prmtop':{'L':self._FNs['prmtop']['L']},
           'inpcrd':{'L':self._FNs['inpcrd']['L']}},
           relpath_o=None, relpath_n=self.dir['cool'])
-      params = (fn_dict,arg_dict)
+      incomplete_pp = self._postprocess([('cool',-1,-1,'L')], \
+        identify_incomplete=True)
     elif p=='dock':
       fn_dict = convert_dictionary_relpath(
           dict([tp for tp in self._FNs.items() \
             if not tp[0] in ['namd','vmd','sander']]),
           relpath_o=None, relpath_n=self.dir['dock'])
+      incomplete_pp = self._postprocess(identify_incomplete=True)
     params = (fn_dict,arg_dict)
     
-    saved = {'params':params,
-      'progress': (getattr(self,'%s_protocol'%p),
+    saved = {
+      'progress': (params,
+                   getattr(self,'%s_protocol'%p),
                    getattr(self,'_%s_cycle'%p),
-                   getattr(self,'_%s_total_cycle'%p)),
+                   getattr(self,'_%s_total_cycle'%p),
+                   incomplete_pp),
       'data': (random_orient,
                self.confs[p]['replicas'],
                self.confs[p]['seeds'],
@@ -2931,12 +2977,13 @@ if __name__ == '__main__':
   parser.add_argument('--dock_repX_cycles', type=int,
     help='Number of replica exchange cycles for docking')
   parser.add_argument('--run_type',
-    choices=['pose_energies','one_step',\
-             'initial_cool','cool','random_dock',\
-             'initial_dock','dock','all', \
-             'store_params','free_energies', 'postprocess',
-             'redo_postprocess', 'clear_intermediates', None],
+    choices=['pose_energies','store_params', 'cool', \
+             'dock','timed','postprocess',\
+             'redo_postprocess','free_energies','all', \
+             'clear_intermediates', None],
     help='Type of calculation to run')
+  parser.add_argument('--max_time', type=int, default = 180, \
+    help='For timed calculations, the maximum amount of wall clock time, in minutes')
   parser.add_argument('--cores', type=int, \
     help='Number of CPU cores to use')
   #   Defaults
@@ -3038,6 +3085,8 @@ if __name__ == '__main__':
     help='Receptor potential energies in gas phase (in units of kJ/mol)')
   parser.add_argument('--receptor_NAMD_GBSA', type=float, nargs='+',
     help='Receptor potential energies in NAMD GBSA implicit solvent (in units of kJ/mol)')
+  parser.add_argument('--receptor_APBS', type=float, nargs='+',
+    help='Receptor potential energies in APBS PBSA implicit solvent (in units of kJ/mol)')
   
   args = parser.parse_args()
   self = BPMF(**vars(args))

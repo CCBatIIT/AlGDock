@@ -1,8 +1,7 @@
 import AlGDock.BindingPMF
 import os, shutil, glob
 
-# Run the AlGDock job
-while not os.path.exists('dock/f_RL.pkl.gz'):
+for run_type in ['cool','dock','postprocess','free_energies']:
   self = AlGDock.BindingPMF.BPMF(\
     dir_dock='dock', dir_cool='cool',\
     ligand_database='prmtopcrd/ligand.db', \
@@ -22,15 +21,13 @@ while not os.path.exists('dock/f_RL.pkl.gz'):
     cool_seeds_per_state=20, dock_seeds_per_state=10,\
     steps_per_seed=250,
     sweeps_per_cycle=5, steps_per_sweep=250,
-    cool_repX_cycles=3, dock_repX_cycles=2, \
-    site='Sphere', site_center=[1.80624, 1.80624, 1.80624], \
+    cool_repX_cycles=3, dock_repX_cycles=4, \
+    site='Sphere', site_center=[1.91650, 1.91650, 1.91650], \
     site_max_R=0.01, site_density=10., \
-    phases=['Gas','NAMD_Gas'], \
+    phases=['NAMD_Gas'], \
     MCMC_moves=1, \
     cores=-1, \
     score='prmtopcrd/anchor_and_grow_scored.mol2', \
     rmsd=True, \
-    run_type='one_step')
+    run_type=run_type)
   del self
-
-# allowed_phases=['NAMD_Gas','NAMD_GBSA','Gas','GBSA','PBSA']

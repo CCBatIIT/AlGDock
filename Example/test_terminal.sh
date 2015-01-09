@@ -21,13 +21,14 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --cool_seeds_per_state 20 --dock_seeds_per_state 10 \
   --steps_per_seed 250 \
   --sweeps_per_cycle 5 --steps_per_sweep 250 \
-  --cool_repX_cycles 3 --dock_repX_cycles 2 \
-  --site Sphere --site_center 1.80624 1.80624 1.80624 \
+  --cool_repX_cycles 3 --dock_repX_cycles 4 \
+  --site Sphere --site_center 1.91650 1.91650 1.91650 \
   --site_max_R 0.01 --site_density 10. \
-  --phases Gas NAMD_Gas \
+  --phases NAMD_Gas \
   --cores -1 \
   --score prmtopcrd/anchor_and_grow_scored.mol2 \
   --rmsd \
-  --run_type all \
+  --run_type timed \
+  --max_time 10
 
 #  --phases NAMD_Gas NAMD_GBSA Gas GBSA PBSA \
