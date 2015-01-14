@@ -481,18 +481,20 @@ last modified {2}
     if run_type=='pose_energies':
       self.pose_energies()
     elif run_type=='store_params':
-      self._save('cool', keys=['params'])
-      self._save('dock', keys=['params'])
+      self._save('cool', keys=['progress'])
+      self._save('dock', keys=['progress'])
     elif run_type=='cool': # Sample the cooling process
       self.cool()
     elif run_type=='dock': # Sample the docking process
       self.dock()
     elif run_type=='timed': # Timed replica exchange sampling
-      self.cool()
-      self.dock()
-      self._postprocess()
-      self.calc_f_L()
-      self.calc_f_RL()
+      cool_complete = self.cool()
+      if cool_complete:
+        dock_complete = self.dock()
+        if dock_complete:
+          self._postprocess()
+          self.calc_f_L()
+          self.calc_f_RL()
     elif run_type=='postprocess': # Postprocessing
       self._postprocess()
     elif run_type=='redo_postprocess':
@@ -811,7 +813,7 @@ last modified {2}
     Samples different ligand configurations 
     at thermodynamic states between T_HIGH and T_TARGET
     """
-    self._sim_process('cool')
+    return self._sim_process('cool')
 
   def calc_f_L(self, readOnly=False, redo=False):
     """
@@ -856,7 +858,7 @@ last modified {2}
     mean_u_Ks = np.array([np.mean(u_K) for u_K in u_Ks])
     std_u_Ks = np.array([np.std(u_K) for u_K in u_Ks])
     for c in range(len(self.stats_L['equilibrated_cycle']), self._cool_cycle):
-      nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
+      nearMean = abs(mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
       if nearMean.any():
         nearMean = list(nearMean).index(True)
       else:
@@ -1222,7 +1224,7 @@ last modified {2}
     between decoupled and fully interacting and
     between T_HIGH and T_TARGET
     """
-    self._sim_process('dock')
+    return self._sim_process('dock')
 
   def calc_f_RL(self, readOnly=False, redo=False):
     """
@@ -1313,7 +1315,7 @@ last modified {2}
     mean_u_Ks = np.array([np.mean(u_K) for u_K in self.stats_RL['u_K_sampled']])
     std_u_Ks = np.array([np.std(u_K) for u_K in self.stats_RL['u_K_sampled']])
     for c in range(len(self.stats_RL['equilibrated_cycle']), self._dock_cycle):
-      nearMean = (mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
+      nearMean = abs(mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
       if nearMean.any():
         nearMean = list(nearMean).index(True)
       else:
@@ -1542,7 +1544,7 @@ last modified {2}
     # Only store evaluator if there is enough memory available
     mem_end = virtual_memory().available
     usage = mem_start-mem_end
-    if store and (mem_end>5*usage):
+    if store and (mem_end>10*usage):
       self._evaluators[evaluator_key] = eval
     
   def _MC_translate_rotate(self, lambda_k, trials=25):
@@ -1747,7 +1749,7 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    per_independent = {'cool':1.0, 'dock':20.0}[process]
+    per_independent = {'cool':10.0, 'dock':20.0}[process]
     # There will be at least per_independent and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
@@ -1949,7 +1951,7 @@ last modified {2}
           self.tee("  projected cycle time: %s, remaining time: %s"%(\
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
           if cycle_time>remaining_time:
-            return
+            return False
       self.tee("Elapsed time for %d total cycles of replica exchange was %s\n"%(\
          (getattr(self,'_%s_total_cycle'%process) - start_cycle), \
           HMStime(time.time() - self.timing[process+'_repX_start'])), \
@@ -1972,11 +1974,13 @@ last modified {2}
           self.tee("  projected cycle time: %s, remaining time: %s"%(\
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
           if cycle_time>remaining_time:
-            return
+            return False
         E_MM = []
         for k in range(len(self.cool_Es[0])):
           E_MM += list(self.cool_Es[0][k]['MM'])
-    
+
+    return True # The process has completed
+
   def _minimize_dock_score_confs(self):
     """
     Gets configurations to score from another program.
