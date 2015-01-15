@@ -20,8 +20,8 @@ for run_type in ['cool','dock','postprocess','free_energies']:
     sampler='NUTS', \
     cool_seeds_per_state=20, dock_seeds_per_state=10,\
     steps_per_seed=250,
-    sweeps_per_cycle=5, steps_per_sweep=250,
-    cool_repX_cycles=3, dock_repX_cycles=4, \
+    sweeps_per_cycle=5, attempts_per_sweep=100, steps_per_sweep=250,
+    cool_repX_cycles=3, dock_repX_cycles=3, \
     site='Sphere', site_center=[1.91650, 1.91650, 1.91650], \
     site_max_R=0.01, site_density=10., \
     phases=['NAMD_Gas'], \

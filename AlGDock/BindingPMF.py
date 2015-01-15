@@ -28,7 +28,10 @@ from multiprocessing import Process
 
 from psutil import virtual_memory
 
-# Constants
+#############
+# Constants #
+#############
+
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
 T_HIGH = 600.0 * MMTK.Units.K
 T_TARGET = 300.0 * MMTK.Units.K
@@ -51,6 +54,108 @@ term_map = {
   'electrostatic':'misc'}
 
 allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA','APBS']
+
+#############
+# Arguments #
+#############
+
+arguments = {
+  'dir_dock':{'help':'Directory where docking results are stored'},
+  'dir_cool':{'help':'Directory where cooling results are stored'},
+  'namd':{'help':'Location of Not Another Molecular Dynamics (NAMD)'},
+  'vmd':{'help':'Location of Visual Molecular Dynamics (VMD)'},
+  'sander':{'help':'Location of sander (from AMBER)'},
+  #   Stored in both dir_cool and dir_dock
+  'ligand_database':{'help':'MMTK molecule definition for ligand'},
+  'forcefield':{'help':'AMBER force field file'},
+  'frcmodList':{'help':'AMBER force field modifications file(s)', 'nargs':'+'},
+  'ligand_prmtop':{'help':'AMBER prmtop for the ligand'},
+  'ligand_inpcrd':{'help':'AMBER coordinates for the ligand'},
+  #   Stored in dir_dock
+  'receptor_prmtop':{'help':'AMBER prmtop for the receptor'},
+  'receptor_inpcrd':{'help':'AMBER coordinates for the receptor'},
+  'receptor_fixed_atoms':{'help':'PDB file with fixed atoms labeled by 1 in the occupancy column'},
+  'complex_prmtop':{'help':'AMBER prmtop file for the complex'},
+  'complex_inpcrd':{'help':'AMBER coordinates for the complex'},
+  'complex_fixed_atoms':{'help':'PDB file with fixed atoms labeled by 1 in the occupancy column'},
+  'dir_grid':{'help':'Directory containing potential energy grids'},
+  'grid_LJr':{'help':'DX file for Lennard-Jones repulsive grid'},
+  'grid_LJa':{'help':'DX file for Lennard-Jones attractive grid'},
+  'grid_ELE':{'help':'DX file for electrostatic grid'},
+  # Simulation settings and constants
+  #   Run-dependent 
+  'cool_repX_cycles':{'type':int,
+    'help':'Number of replica exchange cycles for cooling'},
+  'dock_repX_cycles':{'type':int,
+    'help':'Number of replica exchange cycles for docking'},
+  'run_type':{'choices':['pose_energies','store_params', 'cool', \
+             'dock','timed','postprocess',\
+             'redo_postprocess','free_energies','all', \
+             'clear_intermediates', None],
+    'help':'Type of calculation to run'},
+  'max_time':{'type':int, 'default':180, \
+    'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
+  'cores':{'type':int, \
+    'help':'Number of CPU cores to use'},
+  #   Defaults
+  'protocol':{'choices':['Adaptive','Set'],
+    'help':'Approach to determining series of thermodynamic states'},
+  'no_protocol_refinement':{'action':'store_true',
+    'help':'Does not refine the protocol during replica exchange'},
+  'therm_speed':{'type':float,
+    'help':'Thermodynamic speed during adaptive simulation'},
+  'sampler':{
+    'choices':['HMC','NUTS','VV'],
+    'help':'Sampling method'},
+  'MCMC_moves':{'type':int,
+    'help':'Types of MCMC moves to use'},
+  # For initialization
+  'seeds_per_state':{'type':int,
+    'help':'Number of starting configurations in each state during initialization'},
+  'steps_per_seed':{'type':int,
+    'help':'Number of MD steps per state during initialization'},
+  # For replica exchange
+  'repX_cycles':{'type':int,
+    'help':'Number of replica exchange cycles for docking and cooling'},
+  'sweeps_per_cycle':{'type':int,
+    'help':'Number of replica exchange sweeps per cycle'},
+  'attempts_per_sweep':{'type':int,
+    'help':'Number of replica exchange attempts per sweep'},
+  'steps_per_sweep':{'type':int,
+    'help':'Number of MD steps per replica exchange sweep'},
+  'keep_intermediate':{'action':'store_true',
+    'help':'Keep configurations for intermediate states?'},
+  'min_repX_acc':{'type':float,
+    'help':'Minimum value for replica exchange acceptance rate'},
+  # For postprocessing
+  'phases':{'nargs':'+', 'help':'Phases to use in postprocessing'},
+  'score':{'nargs':'?', 'const':True, 'default':False,
+    'help':'Start replica exchange from a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.'},
+  'rmsd':{'nargs':'?', 'const':True, 'default':False,
+    'help':'Calculate rmsd between snapshots and a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.'},
+  # Binding site
+  'site':{'choices':['Sphere','Cylinder'], 'help':'Type of binding site'},
+  'site_center':{'nargs':3, 'type':float,
+    'help':'Position of binding site center'},
+  'site_direction':{'nargs':3, 'type':float,
+    'help':'Principal axis of a cylindrical binding site'},
+  'site_max_X':{'type':float,
+    'help':'Maximum position along principal axis in a cylindrical binding site'},
+  'site_max_R':{'type':float,
+    'help':'Maximum radial position for a spherical or cylindrical binding site'},
+  'site_density':{'type':float,
+    'help':'Density of center-of-mass points in the first docking state'}}
+
+for process in ['cool','dock']:
+  for key in ['protocol', 'therm_speed', 'sampler',
+      'seeds_per_state', 'steps_per_seed',
+      'sweeps_per_cycle', 'attempts_per_sweep', 'steps_per_sweep',
+      'keep_intermediate']:
+    arguments[process+'_'+key] = copy.deepcopy(arguments[key])
+
+for phase in allowed_phases:
+  arguments['receptor_'+phase] = {'type':float, 'nargs':'+',
+    'help':'Receptor potential energy in %s (kJ/mol)'%phase}
 
 ########################
 # Auxilliary functions #
@@ -165,70 +270,16 @@ class NullDevice():
 ##############
 
 class BPMF:
-  def __init__(self,
-      # Arguments are either constant or run-dependent.
-      # Constant arguments are stored in the dir_cool and dir_dock directories
-      # when they are first used.  In subsequent instances of Dock, the stored
-      # values will be used.
-      # Run-dependent arguments can vary from instance to instance.
-      #
-      # Directory and file names
-      #   Run-dependent
-      dir_dock=None,
-      dir_cool=None,
-      namd=None,
-      vmd=None,
-      sander=None,
-      #   Stored in both dir_cool and dir_dock
-      ligand_database=None,
-      forcefield=None, frcmodList=None,
-      ligand_prmtop=None, ligand_inpcrd=None,
-      #   Stored in dir_dock
-      receptor_prmtop=None, receptor_inpcrd=None,
-      receptor_fixed_atoms=None,
-      complex_prmtop=None, complex_inpcrd=None,
-      complex_fixed_atoms=None,
-      dir_grid=None, grid_LJr=None, grid_LJa=None, grid_ELE=None,
-      # Arguments - simulation parameters and constants
-      #   Run-dependent
-      cool_repX_cycles=None,
-      dock_repX_cycles=None,
-      run_type=None,
-      max_time=None,
-      cores=None,
-      #   Defaults for dir_cool and dir_dock
-      protocol=None, no_protocol_refinement=None, therm_speed=None,
-      sampler=None, MCMC_moves=1,
-      seeds_per_state=None, steps_per_seed=None,
-      repX_cycles=None,
-      min_repX_acc=None,
-      sweeps_per_cycle=None, steps_per_sweep=None,
-      keep_intermediate=None,
-      phases=None,
-      #   Stored in dir_cool
-      cool_protocol=None, cool_therm_speed=None,
-      cool_sampler=None,
-      cool_seeds_per_state=None, cool_steps_per_seed=None,
-      cool_sweeps_per_cycle=None, cool_steps_per_sweep=None,
-      cool_keep_intermediate=None,
-      #   Stored in dir_dock
-      dock_protocol=None, dock_therm_speed=None,
-      dock_sampler=None,
-      dock_seeds_per_state=None, dock_steps_per_seed=None,
-      dock_sweeps_per_cycle=None, dock_steps_per_sweep=None,
-      dock_keep_intermediate=None,
-      score=None, rmsd=None,
-      site=None, site_center=None, site_direction=None, # Site parameters
-      site_max_X=None, site_max_R=None, # Site parameters
-      site_density=None,
-      receptor_Gas=None,
-      receptor_GBSA=None,
-      receptor_PBSA=None,
-      receptor_NAMD_Gas=None,
-      receptor_NAMD_GBSA=None,
-      receptor_APBS=None): # Energy values
+  def __init__(self, **kwargs): # Energy values
     """Parses the input arguments and runs the requested docking calculation"""
     
+    # Set undefined keywords to None
+    for key in arguments.keys():
+      if not key in kwargs.keys():
+        kwargs[key] = None
+    if kwargs['dir_grid'] is None:
+      kwargs['dir_grid'] = ''
+
     mod_path = join(os.path.dirname(a.__file__),'BindingPMF.py')
     print """
 ###########
@@ -250,12 +301,12 @@ last modified {2}
     
     # Default
     available_cores = multiprocessing.cpu_count()
-    if (cores is None):
+    if kwargs['cores'] is None:
       self._cores = 1
-    elif (cores==-1):
+    elif (kwargs['cores']==-1):
       self._cores = available_cores
     else:
-      self._cores = min(cores, available_cores)
+      self._cores = min(kwargs['cores'], available_cores)
     print "using %d/%d available cores\n\n"%(self._cores, available_cores)
   
     self.confs = {'cool':{}, 'dock':{}}
@@ -264,13 +315,13 @@ last modified {2}
     self.dir = {}
     self.dir['start'] = os.getcwd()
     
-    if dir_dock is not None:
-      self.dir['dock'] = os.path.abspath(dir_dock)
+    if kwargs['dir_dock'] is not None:
+      self.dir['dock'] = os.path.abspath(kwargs['dir_dock'])
     else:
       self.dir['dock'] = os.path.abspath('.')
     
-    if dir_cool is not None:
-      self.dir['cool'] = os.path.abspath(dir_cool)
+    if kwargs['dir_cool'] is not None:
+      self.dir['cool'] = os.path.abspath(kwargs['dir_cool'])
     else:
       self.dir['cool'] = self.dir['dock'] # Default that may be
                                           # overwritten by stored directory
@@ -285,7 +336,7 @@ last modified {2}
         FNs[p] = convert_dictionary_relpath(fn_dict,
           relpath_o=self.dir[p], relpath_n=None)
         args[p] = arg_dict
-        if (p=='dock') and (dir_cool is None) and \
+        if (p=='dock') and (kwargs['dir_cool'] is None) and \
            ('dir_cool' in FNs[p].keys()) and \
            (FNs[p]['dir_cool'] is not None):
           self.dir['cool'] = FNs[p]['dir_cool']
@@ -304,40 +355,38 @@ last modified {2}
           print 'previous stored in %s directory:'%p
           print FNs[p]
 
-    if dir_grid is None:
-      dir_grid = ''
     FNs['new'] = {
-      'ligand_database':a.findPath([ligand_database]),
-      'forcefield':a.findPath([forcefield,'../Data/gaff.dat'] + \
+      'ligand_database':a.findPath([kwargs['ligand_database']]),
+      'forcefield':a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + \
                                a.search_paths['gaff.dat']),
-      'frcmodList':frcmodList,
-      'prmtop':{'L':a.findPath([ligand_prmtop]),
-                'R':a.findPath([receptor_prmtop]),
-                'RL':a.findPath([complex_prmtop])},
-      'inpcrd':{'L':a.findPath([ligand_inpcrd]),
-                'R':a.findPath([receptor_inpcrd]),
-                'RL':a.findPath([complex_inpcrd])},
-      'fixed_atoms':{'R':a.findPath([receptor_fixed_atoms]),
-                     'RL':a.findPath([complex_fixed_atoms])},
-      'grids':{'LJr':a.findPath([grid_LJr,
-                               join(dir_grid,'LJr.nc'),
-                               join(dir_grid,'LJr.dx'),
-                               join(dir_grid,'LJr.dx.gz')]),
-               'LJa':a.findPath([grid_LJa,
-                               join(dir_grid,'LJa.nc'),
-                               join(dir_grid,'LJa.dx'),
-                               join(dir_grid,'LJa.dx.gz')]),
-               'ELE':a.findPath([grid_ELE,
-                               join(dir_grid,'electrostatic.nc'),
-                               join(dir_grid,'electrostatic.dx'),
-                               join(dir_grid,'electrostatic.dx.gz'),
-                               join(dir_grid,'pbsa.nc'),
-                               join(dir_grid,'pbsa.dx'),
-                               join(dir_grid,'pbsa.dx.gz')])},
+      'frcmodList':kwargs['frcmodList'],
+      'prmtop':{'L':a.findPath([kwargs['ligand_prmtop']]),
+                'R':a.findPath([kwargs['receptor_prmtop']]),
+                'RL':a.findPath([kwargs['complex_prmtop']])},
+      'inpcrd':{'L':a.findPath([kwargs['ligand_inpcrd']]),
+                'R':a.findPath([kwargs['receptor_inpcrd']]),
+                'RL':a.findPath([kwargs['complex_inpcrd']])},
+      'fixed_atoms':{'R':a.findPath([kwargs['receptor_fixed_atoms']]),
+                     'RL':a.findPath([kwargs['complex_fixed_atoms']])},
+      'grids':{'LJr':a.findPath([kwargs['grid_LJr'],
+                               join(kwargs['dir_grid'],'LJr.nc'),
+                               join(kwargs['dir_grid'],'LJr.dx'),
+                               join(kwargs['dir_grid'],'LJr.dx.gz')]),
+               'LJa':a.findPath([kwargs['grid_LJa'],
+                               join(kwargs['dir_grid'],'LJa.nc'),
+                               join(kwargs['dir_grid'],'LJa.dx'),
+                               join(kwargs['dir_grid'],'LJa.dx.gz')]),
+               'ELE':a.findPath([kwargs['grid_ELE'],
+                               join(kwargs['dir_grid'],'electrostatic.nc'),
+                               join(kwargs['dir_grid'],'electrostatic.dx'),
+                               join(kwargs['dir_grid'],'electrostatic.dx.gz'),
+                               join(kwargs['dir_grid'],'pbsa.nc'),
+                               join(kwargs['dir_grid'],'pbsa.dx'),
+                               join(kwargs['dir_grid'],'pbsa.dx.gz')])},
       'dir_cool':self.dir['cool'],
-      'namd':a.findPath([namd] + a.search_paths['namd']),
-      'vmd':a.findPath([vmd] + a.search_paths['vmd']),
-      'sander':a.findPath([vmd] + a.search_paths['sander'])}
+      'namd':a.findPath([kwargs['namd']] + a.search_paths['namd']),
+      'vmd':a.findPath([kwargs['vmd']] + a.search_paths['vmd']),
+      'sander':a.findPath([kwargs['vmd']] + a.search_paths['sander'])}
 
     if not (FNs['cool']=={} and FNs['dock']=={}):
       print 'from arguments and defaults:'
@@ -356,7 +405,7 @@ last modified {2}
           os.path.basename(self._FNs['prmtop']['L'])[:-7]+'.frcmod')),\
         os.path.abspath(join(dir_lig,'lig.frcmod')),\
         os.path.abspath(join(dir_lig,'ligand.frcmod'))])
-      if frcmod is not None:
+      if kwargs['frcmodList'] is None:
         self._FNs['frcmodList'] = [frcmod]
     elif isinstance(self._FNs['frcmodList'],str):
       self._FNs['frcmodList'] = [self._FNs['frcmodList']]
@@ -365,15 +414,16 @@ last modified {2}
     
     args['default_cool'] = {
         'protocol':'Adaptive',
-        'no_protocol_refinement':False,
-        'therm_speed':1.0,
-        'sampler':'HMC',
-        'seeds_per_state':50,
-        'steps_per_seed':20000,
+        'no_protocol_refinement':True,
+        'therm_speed':0.9,
+        'sampler':'NUTS',
+        'seeds_per_state':100,
+        'steps_per_seed':2500,
         'repX_cycles':20,
         'min_repX_acc':0.3,
-        'sweeps_per_cycle':100,
-        'steps_per_sweep':2500,
+        'sweeps_per_cycle':200,
+        'attempts_per_sweep':1000,
+        'steps_per_sweep':1000,
         'phases':['NAMD_Gas','NAMD_GBSA'],
         'keep_intermediate':False}
 
@@ -387,23 +437,22 @@ last modified {2}
       [('receptor_'+phase,None) for phase in allowed_phases])
 
     # Store passed arguments in dictionary
-    namespace = locals()
     for p in ['cool','dock']:
       args['new_'+p] = {}
       for key in args['default_'+p].keys():
         specific_key = p + '_' + key
-        if (specific_key in namespace.keys()) and \
-           (namespace[specific_key] is not None):
+        if (specific_key in kwargs.keys()) and \
+           (kwargs[specific_key] is not None):
           # Use the specific key if it exists
-          args['new_'+p][key] = namespace[specific_key]
+          args['new_'+p][key] = kwargs[specific_key]
         elif (key in ['site_center', 'site_direction'] +
                      ['receptor_'+phase for phase in allowed_phases]) and \
-             (namespace[key] is not None):
+             (kwargs[key] is not None):
           # Convert these to arrays of floats
-          args['new_'+p][key] = np.array(namespace[key], dtype=float)
+          args['new_'+p][key] = np.array(kwargs[key], dtype=float)
         else:
           # Use the general key
-          args['new_'+p][key] = namespace[key]
+          args['new_'+p][key] = kwargs[key]
 
     self.params = {}
     for p in ['cool','dock']:
@@ -475,19 +524,19 @@ last modified {2}
     print '\n*** Setting up the simulation ***'
     self._setup_universe(do_dock = do_dock)
 
-    self.timing = {'start':time.time(), 'max':max_time}
+    self.timing = {'start':time.time(), 'max':kwargs['max_time']}
 
-    self.run_type = run_type
-    if run_type=='pose_energies':
+    self.run_type = kwargs['run_type']
+    if self.run_type=='pose_energies':
       self.pose_energies()
-    elif run_type=='store_params':
+    elif self.run_type=='store_params':
       self._save('cool', keys=['progress'])
       self._save('dock', keys=['progress'])
-    elif run_type=='cool': # Sample the cooling process
+    elif self.run_type=='cool': # Sample the cooling process
       self.cool()
-    elif run_type=='dock': # Sample the docking process
+    elif self.run_type=='dock': # Sample the docking process
       self.dock()
-    elif run_type=='timed': # Timed replica exchange sampling
+    elif self.run_type=='timed': # Timed replica exchange sampling
       cool_complete = self.cool()
       if cool_complete:
         dock_complete = self.dock()
@@ -495,20 +544,20 @@ last modified {2}
           self._postprocess()
           self.calc_f_L()
           self.calc_f_RL()
-    elif run_type=='postprocess': # Postprocessing
+    elif self.run_type=='postprocess': # Postprocessing
       self._postprocess()
-    elif run_type=='redo_postprocess':
+    elif self.run_type=='redo_postprocess':
       self._postprocess(redo_dock=True)
-    elif run_type=='free_energies': # All free energies
+    elif self.run_type=='free_energies': # All free energies
       self.calc_f_L()
       self.calc_f_RL()
-    elif run_type=='all':
+    elif self.run_type=='all':
       self.cool()
       self.dock()
       self._postprocess()
       self.calc_f_L()
       self.calc_f_RL()
-    elif run_type=='clear_intermediates':
+    elif self.run_type=='clear_intermediates':
       for process in ['cool','dock']:
         print 'Clearing intermediates for '+process
         for state_ind in range(1,len(self.confs[process]['samples'])-1):
@@ -585,10 +634,6 @@ last modified {2}
     self._set_universe_evaluator({'MM':True, 'T':T_HIGH})
     self._ligand_natoms = self.universe.numberOfAtoms()
 
-    from Integrators.VelocityVerlet.VelocityVerlet \
-      import VelocityVerletIntegrator
-    from Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-      import HamiltonianMonteCarloIntegrator
     from NUTS import NUTSIntegrator  # @UnresolvedImport
 
     # Samplers may accept the following options:
@@ -600,11 +645,15 @@ last modified {2}
     self.sampler = {}
     self.sampler['init'] = NUTSIntegrator(self.universe)
     for p in ['cool', 'dock']:
-      if self.params[p]['sampler'] == 'HMC':
-        self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
-      elif self.params[p]['sampler'] == 'NUTS':
+      if self.params[p]['sampler'] == 'NUTS':
         self.sampler[p] = NUTSIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'HMC':
+        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+          import HamiltonianMonteCarloIntegrator
+        self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
       elif self.params[p]['sampler'] == 'VV':
+        from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
+          import VelocityVerletIntegrator
         self.sampler[p] = VelocityVerletIntegrator(self.universe)
       else:
         raise Exception('Unrecognized sampler!')
@@ -1429,7 +1478,7 @@ last modified {2}
     E = self._calc_E(confs, E, type='all', prefix=prefix)
 
     # Try different grid transformations
-    from ForceFields.Grid.TrilinearTransformGrid \
+    from AlGDock.ForceFields.Grid.TrilinearTransformGrid \
       import TrilinearTransformGridForceField
     for type in ['LJa','LJr']:
       E[type+'_transformed'] = np.zeros((12,len(confs)),dtype=np.float)
@@ -1499,7 +1548,7 @@ last modified {2}
             {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
              'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
           if scalable=='LJr':
-            from ForceFields.Grid.TrilinearISqrtGrid import TrilinearISqrtGridForceField
+            from AlGDock.ForceFields.Grid.TrilinearISqrtGrid import TrilinearISqrtGridForceField
             self._forceFields[scalable] = TrilinearISqrtGridForceField(grid_FN,
               lambda_n[scalable], grid_scaling_factor,
               grid_name=scalable, max_val=-1)
@@ -1522,7 +1571,7 @@ last modified {2}
             else:
               max_val = -1
               
-            from ForceFields.Grid.TrilinearGrid import TrilinearGridForceField
+            from AlGDock.ForceFields.Grid.TrilinearGrid import TrilinearGridForceField
             self._forceFields[scalable] = TrilinearGridForceField(grid_FN,
               lambda_n[scalable], grid_scaling_factor,
               grid_name=scalable, max_val=max_val)
@@ -1622,7 +1671,7 @@ last modified {2}
     delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
 
     return (confs, np.array(potEs), delta_t, Ht)
-
+  
   def _replica_exchange(self, process):
     """
     Performs a cycle of replica exchange
@@ -1669,7 +1718,8 @@ last modified {2}
       done_queue = m.Queue()
 
     # Do replica exchange
-    MC_time = 0
+    MC_time = 0.0
+    repX_time = 0.0
     state_inds = range(K)
     inv_state_inds = range(K)
     for sweep in range(self.params[process]['sweeps_per_cycle']):
@@ -1721,7 +1771,8 @@ last modified {2}
       #    a list of arrays
       (u_ij,N_k) = self._u_kln(E, [lambdas[state_inds[c]] for c in range(K)])
       # Do the replica exchange
-      for attempt in range(1000):
+      repX_start_time = time.time()
+      for attempt in range(self.params[process]['attempts_per_sweep']):
         for (t1,t2) in pairs_to_swap:
           a = inv_state_inds[t1]
           b = inv_state_inds[t2]
@@ -1731,6 +1782,7 @@ last modified {2}
             state_inds[a],state_inds[b] = state_inds[b],state_inds[a]
             inv_state_inds[state_inds[a]],inv_state_inds[state_inds[b]] = \
               inv_state_inds[state_inds[b]],inv_state_inds[state_inds[a]]
+      repX_time += (time.time()-repX_start_time)
       # Store data in local variables
       storage['confs'].append(list(confs))
       storage['state_inds'].append(list(state_inds))
@@ -1766,6 +1818,7 @@ last modified {2}
       " in cycle %d"%cycle + \
       " (tau2=%f, tau_ac=%f)"%(tau2,tau_ac) + \
       " with %s for MC"%(HMStime(MC_time)) + \
+      " and %s for replica exchange"%(HMStime(repX_time)) + \
       " in " + HMStime(time.time()-cycle_start_time))
 
     # Get indicies for storing global variables
@@ -2930,167 +2983,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(
     description='Molecular docking with adaptively scaled alchemical interaction grids')
   
-  # Files and directories
-  #   Run-dependent
-  parser.add_argument('--dir_dock', 
-    help='Directory where docking results are stored')
-  parser.add_argument('--dir_cool', 
-    help='Directory where cooling results are stored')
-  parser.add_argument('--namd',
-    help='Location of Not Another Molecular Dynamics (NAMD)')
-  parser.add_argument('--vmd',
-    help='Location of Visual Molecular Dynamics (VMD)')
-  parser.add_argument('--sander',
-    help='Location of sander (from AMBER)')
-  #   Stored in both dir_cool and dir_dock
-  parser.add_argument('--ligand_database', 
-    help='MMTK molecule definition for ligand')
-  parser.add_argument('--forcefield', 
-    help='AMBER force field file')
-  parser.add_argument('--frcmodList', nargs='+',
-    help='AMBER force field modifications file(s)')
-  parser.add_argument('--ligand_prmtop', 
-    help='AMBER prmtop for the ligand')
-  parser.add_argument('--ligand_inpcrd', 
-    help='AMBER coordinates for the ligand')
-  #   Stored in dir_dock
-  parser.add_argument('--receptor_prmtop', 
-    help='AMBER prmtop for the receptor')
-  parser.add_argument('--receptor_inpcrd', 
-    help='AMBER coordinates for the receptor')
-  parser.add_argument('--receptor_fixed_atoms',
-    help='PDB file with fixed atoms labeled by 1 in the occupancy column')
-  parser.add_argument('--complex_prmtop', 
-    help='AMBER prmtop file for the complex')
-  parser.add_argument('--complex_inpcrd', 
-    help='AMBER coordinates for the complex')
-  parser.add_argument('--complex_fixed_atoms',
-    help='PDB file with fixed atoms labeled by 1 in the occupancy column')
-  parser.add_argument('--dir_grid',
-    help='Directory containing potential energy grids')
-  parser.add_argument('--grid_LJr', 
-    help='DX file for Lennard-Jones repulsive grid')
-  parser.add_argument('--grid_LJa', 
-    help='DX file for Lennard-Jones attractive grid')
-  parser.add_argument('--grid_ELE', 
-    help='DX file for electrostatic grid')
-  # Simulation settings and constants
-  #   Run-dependent 
-  parser.add_argument('--cool_repX_cycles', type=int,
-    help='Number of replica exchange cycles for cooling')
-  parser.add_argument('--dock_repX_cycles', type=int,
-    help='Number of replica exchange cycles for docking')
-  parser.add_argument('--run_type',
-    choices=['pose_energies','store_params', 'cool', \
-             'dock','timed','postprocess',\
-             'redo_postprocess','free_energies','all', \
-             'clear_intermediates', None],
-    help='Type of calculation to run')
-  parser.add_argument('--max_time', type=int, default = 180, \
-    help='For timed calculations, the maximum amount of wall clock time, in minutes')
-  parser.add_argument('--cores', type=int, \
-    help='Number of CPU cores to use')
-  #   Defaults
-  parser.add_argument('--protocol', choices=['Adaptive','Set'],
-    help='Approach to determining series of thermodynamic states')
-  parser.add_argument('--no_protocol_refinement', action='store_true', default=None,
-    help='Does not refine the protocol during replica exchange')
-  parser.add_argument('--therm_speed', type=float,
-    help='Thermodynamic speed during adaptive simulation')
-  parser.add_argument('--sampler',
-    choices=['HMC','NUTS','VV'],
-    help='Sampling method')
-  parser.add_argument('--MCMC_moves', type=int,
-    help='Types of MCMC moves to use')
-  # For initialization
-  parser.add_argument('--seeds_per_state', type=int,
-    help='Number of starting configurations in each state during initialization')
-  parser.add_argument('--steps_per_seed', type=int,
-    help='Number of MD steps per state during initialization')
-  # For replica exchange
-  parser.add_argument('--repX_cycles', type=int,
-    help='Number of replica exchange cycles for docking and cooling')
-  parser.add_argument('--sweeps_per_cycle', type=int,
-    help='Number of replica exchange sweeps per cycle')
-  parser.add_argument('--steps_per_sweep', type=int,
-    help='Number of MD steps per replica exchange sweep')
-  parser.add_argument('--keep_intermediate', action='store_true', default=None,
-    help='Keep configurations for intermediate states?')
-  parser.add_argument('--min_repX_acc', type=float,
-    help='Minimum value for replica exchange acceptance rate')
-  # For postprocessing
-  parser.add_argument('--phases', nargs='+', \
-    help='Phases to use in postprocessing')
-  #   Stored in dir_cool
-  parser.add_argument('--cool_protocol', choices=['Adaptive','Set'],
-    help='Approach to determining series of thermodynamic states')
-  parser.add_argument('--cool_therm_speed', type=float,
-    help='Thermodynamic speed during adaptive simulation')
-  parser.add_argument('--cool_sampler',
-    choices=['HMC','NUTS','VV'],
-    help='Sampling method')
-  # For initialization
-  parser.add_argument('--cool_seeds_per_state', type=int,
-    help='Number of starting configurations in each state during initialization')
-  parser.add_argument('--cool_steps_per_seed', type=int,
-    help='Number of MD steps per state during initialization')
-  # For replica exchange
-  parser.add_argument('--cool_sweeps_per_cycle', type=int,
-    help='Number of replica exchange sweeps per cycle')
-  parser.add_argument('--cool_steps_per_sweep', type=int,
-    help='Number of MD steps per replica exchange sweep')
-  parser.add_argument('--cool_keep_intermediate', action='store_true',
-    default=None, help='Keep configurations for intermediate states?')
-  #   Stored in dir_dock
-  parser.add_argument('--dock_protocol', choices=['Adaptive','Set'],
-    help='Approach to determining series of thermodynamic states')
-  parser.add_argument('--dock_therm_speed', type=float,
-    help='Thermodynamic speed during adaptive simulation')
-  parser.add_argument('--dock_sampler',
-    choices=['HMC','NUTS','VV'],
-    help='Sampling method')
-  # For initialization
-  parser.add_argument('--dock_seeds_per_state', type=int,
-    help='Number of starting configurations in each state during initialization')
-  parser.add_argument('--dock_steps_per_seed', type=int,
-    help='Number of MD steps per state during initialization')
-  # For replica exchange
-  parser.add_argument('--dock_sweeps_per_cycle', type=int,
-    help='Number of replica exchange sweeps per cycle')
-  parser.add_argument('--dock_steps_per_sweep', type=int,
-    help='Number of MD steps per replica exchange sweep')
-  parser.add_argument('--dock_keep_intermediate', action='store_true',
-    default=None, help='Keep configurations for intermediate states?')
-  parser.add_argument('--score', nargs='?', const=True, default=False,
-    help='Start replica exchange from a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.')
-  parser.add_argument('--rmsd', nargs='?', const=True, default=False,
-    help='Calculate rmsd between snapshots and a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.')
-  # Binding site
-  parser.add_argument('--site',
-    choices=['Sphere','Cylinder'], help='Type of binding site')
-  parser.add_argument('--site_center', nargs=3, type=float,
-    help='Position of binding site center')
-  parser.add_argument('--site_direction', nargs=3, type=float,
-    help='Principal axis of a cylindrical binding site')
-  parser.add_argument('--site_max_X', type=float,
-    help='Maximum position along principal axis in a cylindrical binding site')
-  parser.add_argument('--site_max_R', type=float,
-    help='Maximum radial position for a spherical or cylindrical binding site')
-  parser.add_argument('--site_density', type=float,
-    help='Density of center-of-mass points in the first docking state')
-  # Additional calculations
-  parser.add_argument('--receptor_Gas', type=float, nargs='+',
-    help='Receptor potential energies in AMBER Gas implicit solvent (in units of kJ/mol)')
-  parser.add_argument('--receptor_GBSA', type=float, nargs='+',
-    help='Receptor potential energies in AMBER GBSA implicit solvent (in units of kJ/mol)')
-  parser.add_argument('--receptor_PBSA', type=float, nargs='+',
-    help='Receptor potential energies in AMBER PBSA implicit solvent (in units of kJ/mol)')
-  parser.add_argument('--receptor_NAMD_Gas', type=float, nargs='+',
-    help='Receptor potential energies in gas phase (in units of kJ/mol)')
-  parser.add_argument('--receptor_NAMD_GBSA', type=float, nargs='+',
-    help='Receptor potential energies in NAMD GBSA implicit solvent (in units of kJ/mol)')
-  parser.add_argument('--receptor_APBS', type=float, nargs='+',
-    help='Receptor potential energies in APBS PBSA implicit solvent (in units of kJ/mol)')
+  for key in arguments.keys():
+    parser.add_argument('--'+key, **arguments[key])
   
   args = parser.parse_args()
   self = BPMF(**vars(args))

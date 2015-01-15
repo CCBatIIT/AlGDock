@@ -1,0 +1,505 @@
+From the two profiles below (one with 250 steps between exchanges and one with 50 steps), 
+it seems that replica exchange is taking a significant fraction of the simulation time!
+
+
+Timer unit: 1e-06 s
+
+Total time: 58.5046 s
+File: /Users/dminh/Installers/AlGDock-0.0.1/AlGDock/BindingPMF.py
+Function: _replica_exchange at line 1626
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+  1626                                             @profile
+  1627                                             def _replica_exchange(self, process):
+  1628                                               """
+  1629                                               Performs a cycle of replica exchange
+  1630                                               """
+  1631         5           71     14.2      0.0      if not process in ['dock','cool']:
+  1632                                                 raise Exception('Process must be dock or cool')
+  1633                                           
+  1634         5          512    102.4      0.0      self._set_lock(process)
+  1635                                           
+  1636         5           17      3.4      0.0      if process=='cool':
+  1637         2            6      3.0      0.0        terms = ['MM']
+  1638                                               else:
+  1639         3           12      4.0      0.0        terms = ['MM','site','misc'] + self._scalables
+  1640                                           
+  1641         5           18      3.6      0.0      cycle = getattr(self,'_%s_cycle'%process)
+  1642         5           14      2.8      0.0      confs = self.confs[process]['replicas']
+  1643         5           16      3.2      0.0      lambdas = getattr(self,process+'_protocol')
+  1644                                               
+  1645                                               # A list of pairs of replica indicies
+  1646         5           16      3.2      0.0      K = len(lambdas)
+  1647         5           13      2.6      0.0      pairs_to_swap = []
+  1648        25           73      2.9      0.0      for interval in range(1,min(5,K)):
+  1649        20           51      2.5      0.0        lower_inds = []
+  1650        70          182      2.6      0.0        for lowest_index in range(interval):
+  1651        50          173      3.5      0.0          lower_inds += range(lowest_index,K-interval,interval)
+  1652        20          256     12.8      0.0        upper_inds = np.array(lower_inds) + interval
+  1653        20          160      8.0      0.0        pairs_to_swap += zip(lower_inds,upper_inds)
+  1654                                           
+  1655                                               # Setting the force field will load grids
+  1656                                               # before multiple processes are spawned
+  1657        98          312      3.2      0.0      for k in range(K):
+  1658        93      3432659  36910.3      5.9        self._set_universe_evaluator(lambdas[k])
+  1659                                               
+  1660         5           12      2.4      0.0      storage = {}
+  1661        20           61      3.0      0.0      for var in ['confs','state_inds','energies']:
+  1662        15           34      2.3      0.0        storage[var] = []
+  1663                                               
+  1664         5           16      3.2      0.0      cycle_start_time = time.time()
+  1665                                           
+  1666         5           15      3.0      0.0      if self._cores>1:
+  1667                                                 # Multiprocessing setup
+  1668         5        40641   8128.2      0.1        m = multiprocessing.Manager()
+  1669         5        22592   4518.4      0.0        task_queue = m.Queue()
+  1670         5        14279   2855.8      0.0        done_queue = m.Queue()
+  1671                                           
+  1672                                               # Do replica exchange
+  1673         5           20      4.0      0.0      MC_time = 0
+  1674         5           36      7.2      0.0      state_inds = range(K)
+  1675         5           68     13.6      0.0      inv_state_inds = range(K)
+  1676        30          249      8.3      0.0      for sweep in range(self.params[process]['sweeps_per_cycle']):
+  1677        25          137      5.5      0.0        E = {}
+  1678       155          510      3.3      0.0        for term in terms:
+  1679       130         1018      7.8      0.0          E[term] = np.zeros(K, dtype=float)
+  1680        25           63      2.5      0.0        if process=='dock':
+  1681        15           83      5.5      0.0          E['acc_MC'] = np.zeros(K, dtype=float)
+  1682        25          240      9.6      0.0        Ht = np.zeros(K, dtype=float)
+  1683                                                 # Sample within each state
+  1684        25           65      2.6      0.0        doMC = [(process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
+  1685                                                   and (lambdas[state_inds[k]]['a'] > 0.0) \
+  1686       490         2655      5.4      0.0          and (lambdas[state_inds[k]]['a'] < 0.01) for k in range(K)]
+  1687        25           67      2.7      0.0        if self._cores>1:
+  1688       490         1403      2.9      0.0          for k in range(K):
+  1689       465        74428    160.1      0.1            task_queue.put((confs[k], process, lambdas[state_inds[k]], doMC[k], False, k))
+  1690       125          401      3.2      0.0          for p in range(self._cores):
+  1691       100         4682     46.8      0.0            task_queue.put('STOP')
+  1692        25           61      2.4      0.0          processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
+  1693       125         3376     27.0      0.0              args=(task_queue, done_queue)) for p in range(self._cores)]
+  1694       125         1205      9.6      0.0          for p in processes:
+  1695       100       111972   1119.7      0.2            p.start()
+  1696       125          750      6.0      0.0          for p in processes:
+  1697       100     19966069 199660.7     34.1            p.join()
+  1698       490        63447    129.5      0.1          unordered_results = [done_queue.get() for k in range(K)]
+  1699        25         2133     85.3      0.0          results = sorted(unordered_results, key=lambda d: d['reference'])
+  1700       125          339      2.7      0.0          for p in processes:
+  1701       100          536      5.4      0.0            p.terminate()
+  1702                                                 else:
+  1703                                                   # Single process code
+  1704                                                   results = [self._sim_one_state(confs[k], process, \
+  1705                                                       lambdas[state_inds[k]], doMC[k], False, k) for k in range(K)]
+  1706                                                 # Store results
+  1707       490         1329      2.7      0.0        for k in range(K):
+  1708       465         1716      3.7      0.0          if 'acc_MC' in results[k].keys():
+  1709       135          479      3.5      0.0            E['acc_MC'][k] = results[k]['acc_MC']
+  1710       135          403      3.0      0.0            MC_time += results[k]['MC_time']
+  1711       465         1798      3.9      0.0          confs[k] = results[k]['confs'] # [-1]
+  1712       465         1261      2.7      0.0          if process == 'cool':
+  1713        60          215      3.6      0.0              E['MM'][k] = results[k]['E_MM'] # [-1]
+  1714       465         1970      4.2      0.0          Ht[k] += results[k]['Ht']
+  1715        25           59      2.4      0.0        if process=='dock':
+  1716        15       185757  12383.8      0.3          E = self._calc_E(confs, E) # Get energies
+  1717                                                   # Get rmsd values
+  1718        15          187     12.5      0.0          if self.params['dock']['rmsd'] is not False:
+  1719        15           62      4.1      0.0            E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
+  1720       420        14747     35.1      0.0              self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
+  1721                                                 # Calculate u_ij (i is the replica, and j is the configuration),
+  1722                                                 #    a list of arrays
+  1723       490        19458     39.7      0.0        (u_ij,N_k) = self._u_kln(E, [lambdas[state_inds[c]] for c in range(K)])
+  1724                                                 # Do the replica exchange
+  1725     25025        66213      2.6      0.1        for attempt in range(1000):
+  1726   1635000      4215419      2.6      7.2          for (t1,t2) in pairs_to_swap:
+  1727   1610000      3839200      2.4      6.6            a = inv_state_inds[t1]
+  1728   1610000      3925791      2.4      6.7            b = inv_state_inds[t2]
+  1729   1610000      7429188      4.6     12.7            ddu = -u_ij[a][b]-u_ij[b][a]+u_ij[a][a]+u_ij[b][b]
+  1730   1610000      9501740      5.9     16.2            if (ddu>0) or (np.random.uniform()<np.exp(ddu)):
+  1731    458847      1216714      2.7      2.1              u_ij[a],u_ij[b] = u_ij[b],u_ij[a]
+  1732    458847      1174360      2.6      2.0              state_inds[a],state_inds[b] = state_inds[b],state_inds[a]
+  1733                                                       inv_state_inds[state_inds[a]],inv_state_inds[state_inds[b]] = \
+  1734    458847      1236095      2.7      2.1                inv_state_inds[state_inds[b]],inv_state_inds[state_inds[a]]
+  1735                                                 # Store data in local variables
+  1736        25          410     16.4      0.0        storage['confs'].append(list(confs))
+  1737        25          117      4.7      0.0        storage['state_inds'].append(list(state_inds))
+  1738        25         4915    196.6      0.0        storage['energies'].append(copy.deepcopy(E))
+  1739                                           
+  1740                                               # Estimate relaxation time from empirical state transition matrix
+  1741         5          172     34.4      0.0      state_inds = np.array(storage['state_inds'])
+  1742         5           60     12.0      0.0      Nij = np.zeros((K,K),dtype=int)
+  1743        25          254     10.2      0.0      for (i,j) in zip(state_inds[:-1,:],state_inds[1:,:]):
+  1744       392          895      2.3      0.0        for k in range(K):
+  1745       372         1554      4.2      0.0          Nij[j[k],i[k]] += 1
+  1746         5          180     36.0      0.0      N = (Nij+Nij.T)
+  1747         5          504    100.8      0.0      Tij = np.array(N,dtype=float)/sum(N,1)
+  1748         5         3788    757.6      0.0      (eval,evec)=np.linalg.eig(Tij)
+  1749         5           50     10.0      0.0      tau2 = 1/(1-eval[1])
+  1750                                               
+  1751                                               # Estimate relaxation time from autocorrelation
+  1752         5        12789   2557.8      0.0      tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
+  1753         5           32      6.4      0.0      per_independent = {'cool':10.0, 'dock':20.0}[process]
+  1754                                               # There will be at least per_independent and up to sweeps_per_cycle saved samples
+  1755                                               # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
+  1756                                               # which is based on per_independent samples per autocorrelation time.
+  1757                                               # max(self.params['dock']['sweeps_per_cycle']/per_independent)
+  1758                                               # is the maximum stride, which gives per_independent samples if possible.
+  1759         5          119     23.8      0.0      stride = min(max(int(np.ceil((1+2*tau_ac)/per_independent)),1), \
+  1760         5           60     12.0      0.0                   max(int(np.ceil(self.params[process]['sweeps_per_cycle']/per_independent)),1))
+  1761                                           
+  1762         5           13      2.6      0.0      store_indicies = np.array(\
+  1763         5           55     11.0      0.0        range(min(stride-1,self.params[process]['sweeps_per_cycle']-1), self.params[process]['sweeps_per_cycle'], stride), dtype=int)
+  1764         5           18      3.6      0.0      nsaved = len(store_indicies)
+  1765                                           
+  1766         5           46      9.2      0.0      self.tee("  storing %d configurations for %d replicas"%(nsaved, len(confs)) + \
+  1767                                                 " in cycle %d"%cycle + \
+  1768                                                 " (tau2=%f, tau_ac=%f)"%(tau2,tau_ac) + \
+  1769                                                 " with %s for MC"%(HMStime(MC_time)) + \
+  1770         5          709    141.8      0.0        " in " + HMStime(time.time()-cycle_start_time))
+  1771                                           
+  1772                                               # Get indicies for storing global variables
+  1773         5           63     12.6      0.0      inv_state_inds = np.zeros((nsaved,K),dtype=int)
+  1774        30          105      3.5      0.0      for snap in range(nsaved):
+  1775        25           82      3.3      0.0        state_inds = storage['state_inds'][store_indicies[snap]]
+  1776       490         1207      2.5      0.0        for state in range(K):
+  1777       465         1403      3.0      0.0          inv_state_inds[snap][state_inds[state]] = state
+  1778                                           
+  1779                                               # Reorder energies and replicas for storage
+  1780         5           11      2.2      0.0      if process=='dock':
+  1781         3           38     12.7      0.0        terms.append('acc_MC') # Make sure to save the acceptance probability
+  1782         3           13      4.3      0.0        if self.params['dock']['rmsd'] is not False:
+  1783         3           10      3.3      0.0          terms.append('rmsd') # Make sure to save the rmsd
+  1784         5           13      2.6      0.0      Es = []
+  1785        98          251      2.6      0.0      for state in range(K):
+  1786        93          251      2.7      0.0        E_state = {}
+  1787        93          243      2.6      0.0        if state==0:
+  1788         5           12      2.4      0.0          E_state['repXpath'] = storage['state_inds']
+  1789         5           12      2.4      0.0          E_state['Ht'] = Ht
+  1790       915         2542      2.8      0.0        for term in terms:
+  1791      4932        20495      4.2      0.0          E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][state]] for snap in range(nsaved)])
+  1792        93          296      3.2      0.0        Es.append([E_state])
+  1793                                           
+  1794                                               self.confs[process]['replicas'] = \
+  1795         5           13      2.6      0.0        [storage['confs'][store_indicies[-1]][inv_state_inds[-1][state]] \
+  1796        98          421      4.3      0.0         for state in range(K)]
+  1797                                           
+  1798                                               # If it is not the last cycle, consider
+  1799                                               # refinings the protocol by inserting states between neighbors with low
+  1800                                               # mean replica exchange probabilities
+  1801                                           
+  1802         5           47      9.4      0.0      if ((not self.params[process]['no_protocol_refinement']) and \
+  1803                                                   ((getattr(self,'_%s_total_cycle'%process)+1) \
+  1804                                                     < self.params[process]['repX_cycles'])):
+  1805                                                 # Estimate mean replica exchange probabilities between neighbors
+  1806                                                 mean_acc = np.zeros(K-1)
+  1807                                                 for k in range(K-1):
+  1808                                                   (u_kln,N_k) = self._u_kln(Es[k:k+2],lambdas[k:k+2])
+  1809                                                   N = min(N_k)
+  1810                                                   acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
+  1811                                                   mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
+  1812                                                 insert_state = (mean_acc<self.params['dock']['min_repX_acc'])
+  1813                                                 if insert_state.any():
+  1814                                                   for k in reversed(range(K-1)):
+  1815                                                     if insert_state[k]:
+  1816                                                       self.tee("  due to exchange acceptance probability of %f, inserted state between %d and %d"%(mean_acc[k],k,k+1))
+  1817                                                       # Duplicating the configuration of the later state
+  1818                                                       new_conf = np.copy(self.confs[process]['replicas'][k+1])
+  1819                                                       self.confs[process]['replicas'].insert(k+1, new_conf)
+  1820                                                   K = len(self.confs[process]['replicas'])
+  1821                                                   self.tee("  refined protocol to have %d states after total cycle %d"%(\
+  1822                                                     K, getattr(self,'_%s_total_cycle'%process)))
+  1823                                                   
+  1824                                                   # Determine new protocol with equal intervals in thermodynamic length
+  1825                                                   progress_o = np.array([l['a'] for l in lambdas])
+  1826                                                   tL_tensor = np.array([self._tL_tensor(Es[k],lambdas[k],process) \
+  1827                                                     for k in range(len(lambdas))])
+  1828                                                   tL_intervals = abs(progress_o[1:]-progress_o[:-1])*(tL_tensor[:-1] + tL_tensor[1:])
+  1829                                                   tL_o = np.insert(np.cumsum(tL_intervals),0,0.)
+  1830                                                   tL_n = np.linspace(0,tL_o[-1],K)
+  1831                                                   progress_n = np.interp(tL_n,tL_o,progress_o)
+  1832                                                   progress_n.sort()
+  1833                                                   
+  1834                                                   lambdas = [self._lambda(a,process) for a in progress_n]
+  1835                                                   setattr(self,process+'_protocol', lambdas)
+  1836                                           
+  1837                                                   # Save the data
+  1838                                                   setattr(self, process+'_Es', [[] for state in range(K)])
+  1839                                                   self.confs[process]['samples'] = [[] for state in range(K)]
+  1840                                                   setattr(self,'_%s_cycle'%process,0)
+  1841                                                   setattr(self,'_%s_total_cycle'%process,
+  1842                                                     getattr(self,'_%s_total_cycle'%process)+1)
+  1843                                                   self._save(process, keys=['progress', 'data'])
+  1844                                                   if process=='cool':
+  1845                                                     self.calc_f_L(redo=True,readOnly=True)
+  1846                                                   else:
+  1847                                                     self.calc_f_RL(redo=True,readOnly=True)
+  1848                                                   self._clear_lock(process)
+  1849                                                   return
+  1850                                           
+  1851        98          314      3.2      0.0      for state in range(K):
+  1852        93          917      9.9      0.0        getattr(self,process+'_Es')[state].append(Es[state][0])
+  1853                                           
+  1854        98          284      2.9      0.0      for state in range(K):
+  1855        93          269      2.9      0.0        if self.params[process]['keep_intermediate'] or \
+  1856        93          261      2.8      0.0            ((process=='cool') and (state==0)) or \
+  1857        91          253      2.8      0.0            (state==(K-1)):
+  1858        42          185      4.4      0.0          confs = [storage['confs'][store_indicies[snap]][inv_state_inds[snap][state]] for snap in range(nsaved)]
+  1859         7           50      7.1      0.0          self.confs[process]['samples'][state].append(confs)
+  1860                                                 else:
+  1861        86          448      5.2      0.0          self.confs[process]['samples'][state].append([])
+  1862                                           
+  1863         5           37      7.4      0.0      setattr(self,'_%s_cycle'%process,cycle + 1)
+  1864         5           15      3.0      0.0      setattr(self,'_%s_total_cycle'%process,
+  1865         5           27      5.4      0.0        getattr(self,'_%s_total_cycle'%process) + 1)
+  1866         5      1863765 372753.0      3.2      self._save(process, keys=['progress', 'data'])
+  1867         5         1080    216.0      0.0      self._clear_lock(process)
+
+Timer unit: 1e-06 s
+
+Total time: 174.767 s
+File: /Users/dminh/Installers/AlGDock-0.0.1/AlGDock/BindingPMF.py
+Function: _replica_exchange at line 1626
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+  1626                                             @profile
+  1627                                             def _replica_exchange(self, process):
+  1628                                               """
+  1629                                               Performs a cycle of replica exchange
+  1630                                               """
+  1631         5           71     14.2      0.0      if not process in ['dock','cool']:
+  1632                                                 raise Exception('Process must be dock or cool')
+  1633                                           
+  1634         5          505    101.0      0.0      self._set_lock(process)
+  1635                                           
+  1636         5           14      2.8      0.0      if process=='cool':
+  1637         2            6      3.0      0.0        terms = ['MM']
+  1638                                               else:
+  1639         3           12      4.0      0.0        terms = ['MM','site','misc'] + self._scalables
+  1640                                           
+  1641         5           23      4.6      0.0      cycle = getattr(self,'_%s_cycle'%process)
+  1642         5           17      3.4      0.0      confs = self.confs[process]['replicas']
+  1643         5           17      3.4      0.0      lambdas = getattr(self,process+'_protocol')
+  1644                                               
+  1645                                               # A list of pairs of replica indicies
+  1646         5           17      3.4      0.0      K = len(lambdas)
+  1647         5           12      2.4      0.0      pairs_to_swap = []
+  1648        25           78      3.1      0.0      for interval in range(1,min(5,K)):
+  1649        20           48      2.4      0.0        lower_inds = []
+  1650        70          188      2.7      0.0        for lowest_index in range(interval):
+  1651        50          177      3.5      0.0          lower_inds += range(lowest_index,K-interval,interval)
+  1652        20          251     12.6      0.0        upper_inds = np.array(lower_inds) + interval
+  1653        20          162      8.1      0.0        pairs_to_swap += zip(lower_inds,upper_inds)
+  1654                                           
+  1655                                               # Setting the force field will load grids
+  1656                                               # before multiple processes are spawned
+  1657        88          355      4.0      0.0      for k in range(K):
+  1658        83      2677765  32262.2      1.5        self._set_universe_evaluator(lambdas[k])
+  1659                                               
+  1660         5           32      6.4      0.0      storage = {}
+  1661        20          275     13.8      0.0      for var in ['confs','state_inds','energies']:
+  1662        15           53      3.5      0.0        storage[var] = []
+  1663                                               
+  1664         5           28      5.6      0.0      cycle_start_time = time.time()
+  1665                                           
+  1666         5           19      3.8      0.0      if self._cores>1:
+  1667                                                 # Multiprocessing setup
+  1668         5        61606  12321.2      0.0        m = multiprocessing.Manager()
+  1669         5        25136   5027.2      0.0        task_queue = m.Queue()
+  1670         5        14628   2925.6      0.0        done_queue = m.Queue()
+  1671                                           
+  1672                                               # Do replica exchange
+  1673         5           19      3.8      0.0      MC_time = 0
+  1674         5           43      8.6      0.0      state_inds = range(K)
+  1675         5           50     10.0      0.0      inv_state_inds = range(K)
+  1676       130          549      4.2      0.0      for sweep in range(self.params[process]['sweeps_per_cycle']):
+  1677       125          781      6.2      0.0        E = {}
+  1678       775         1918      2.5      0.0        for term in terms:
+  1679       650         3611      5.6      0.0          E[term] = np.zeros(K, dtype=float)
+  1680       125          309      2.5      0.0        if process=='dock':
+  1681        75          335      4.5      0.0          E['acc_MC'] = np.zeros(K, dtype=float)
+  1682       125          794      6.4      0.0        Ht = np.zeros(K, dtype=float)
+  1683                                                 # Sample within each state
+  1684       125          295      2.4      0.0        doMC = [(process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
+  1685                                                   and (lambdas[state_inds[k]]['a'] > 0.0) \
+  1686      2200         9629      4.4      0.0          and (lambdas[state_inds[k]]['a'] < 0.01) for k in range(K)]
+  1687       125          353      2.8      0.0        if self._cores>1:
+  1688      2200         7106      3.2      0.0          for k in range(K):
+  1689      2075       339824    163.8      0.2            task_queue.put((confs[k], process, lambdas[state_inds[k]], doMC[k], False, k))
+  1690       625         2092      3.3      0.0          for p in range(self._cores):
+  1691       500        26288     52.6      0.0            task_queue.put('STOP')
+  1692       125          321      2.6      0.0          processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
+  1693       625        17640     28.2      0.0              args=(task_queue, done_queue)) for p in range(self._cores)]
+  1694       625         7426     11.9      0.0          for p in processes:
+  1695       500       630926   1261.9      0.4            p.start()
+  1696       625         3286      5.3      0.0          for p in processes:
+  1697       500     29505630  59011.3     16.9            p.join()
+  1698      2200       295965    134.5      0.2          unordered_results = [done_queue.get() for k in range(K)]
+  1699       125         9348     74.8      0.0          results = sorted(unordered_results, key=lambda d: d['reference'])
+  1700       625         1790      2.9      0.0          for p in processes:
+  1701       500         2892      5.8      0.0            p.terminate()
+  1702                                                 else:
+  1703                                                   # Single process code
+  1704                                                   results = [self._sim_one_state(confs[k], process, \
+  1705                                                       lambdas[state_inds[k]], doMC[k], False, k) for k in range(K)]
+  1706                                                 # Store results
+  1707      2200         5947      2.7      0.0        for k in range(K):
+  1708      2075         6800      3.3      0.0          if 'acc_MC' in results[k].keys():
+  1709       600         1877      3.1      0.0            E['acc_MC'][k] = results[k]['acc_MC']
+  1710       600         1679      2.8      0.0            MC_time += results[k]['MC_time']
+  1711      2075         6735      3.2      0.0          confs[k] = results[k]['confs'] # [-1]
+  1712      2075         5421      2.6      0.0          if process == 'cool':
+  1713       350         1649      4.7      0.0              E['MM'][k] = results[k]['E_MM'] # [-1]
+  1714      2075         8125      3.9      0.0          Ht[k] += results[k]['Ht']
+  1715       125          321      2.6      0.0        if process=='dock':
+  1716        75       732583   9767.8      0.4          E = self._calc_E(confs, E) # Get energies
+  1717                                                   # Get rmsd values
+  1718        75          556      7.4      0.0          if self.params['dock']['rmsd'] is not False:
+  1719        75          215      2.9      0.0            E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
+  1720      1800        53005     29.4      0.0              self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
+  1721                                                 # Calculate u_ij (i is the replica, and j is the configuration),
+  1722                                                 #    a list of arrays
+  1723      2200        90845     41.3      0.1        (u_ij,N_k) = self._u_kln(E, [lambdas[state_inds[c]] for c in range(K)])
+  1724                                                 # Do the replica exchange
+  1725    125125       337184      2.7      0.2        for attempt in range(1000):
+  1726   7175000     18081428      2.5     10.3          for (t1,t2) in pairs_to_swap:
+  1727   7050000     16893759      2.4      9.7            a = inv_state_inds[t1]
+  1728   7050000     17146198      2.4      9.8            b = inv_state_inds[t2]
+  1729   7050000     32180194      4.6     18.4            ddu = -u_ij[a][b]-u_ij[b][a]+u_ij[a][a]+u_ij[b][b]
+  1730   7050000     39698635      5.6     22.7            if (ddu>0) or (np.random.uniform()<np.exp(ddu)):
+  1731   1714855      4473756      2.6      2.6              u_ij[a],u_ij[b] = u_ij[b],u_ij[a]
+  1732   1714855      4386121      2.6      2.5              state_inds[a],state_inds[b] = state_inds[b],state_inds[a]
+  1733                                                       inv_state_inds[state_inds[a]],inv_state_inds[state_inds[b]] = \
+  1734   1714855      4609411      2.7      2.6                inv_state_inds[state_inds[b]],inv_state_inds[state_inds[a]]
+  1735                                                 # Store data in local variables
+  1736       125         2142     17.1      0.0        storage['confs'].append(list(confs))
+  1737       125          641      5.1      0.0        storage['state_inds'].append(list(state_inds))
+  1738       125        21644    173.2      0.0        storage['energies'].append(copy.deepcopy(E))
+  1739                                           
+  1740                                               # Estimate relaxation time from empirical state transition matrix
+  1741         5          398     79.6      0.0      state_inds = np.array(storage['state_inds'])
+  1742         5           48      9.6      0.0      Nij = np.zeros((K,K),dtype=int)
+  1743       125          717      5.7      0.0      for (i,j) in zip(state_inds[:-1,:],state_inds[1:,:]):
+  1744      2112         5192      2.5      0.0        for k in range(K):
+  1745      1992         9286      4.7      0.0          Nij[j[k],i[k]] += 1
+  1746         5          227     45.4      0.0      N = (Nij+Nij.T)
+  1747         5          379     75.8      0.0      Tij = np.array(N,dtype=float)/sum(N,1)
+  1748         5         3814    762.8      0.0      (eval,evec)=np.linalg.eig(Tij)
+  1749         5           70     14.0      0.0      tau2 = 1/(1-eval[1])
+  1750                                               
+  1751                                               # Estimate relaxation time from autocorrelation
+  1752         5        48884   9776.8      0.0      tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
+  1753         5           28      5.6      0.0      per_independent = {'cool':10.0, 'dock':20.0}[process]
+  1754                                               # There will be at least per_independent and up to sweeps_per_cycle saved samples
+  1755                                               # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
+  1756                                               # which is based on per_independent samples per autocorrelation time.
+  1757                                               # max(self.params['dock']['sweeps_per_cycle']/per_independent)
+  1758                                               # is the maximum stride, which gives per_independent samples if possible.
+  1759         5          104     20.8      0.0      stride = min(max(int(np.ceil((1+2*tau_ac)/per_independent)),1), \
+  1760         5           53     10.6      0.0                   max(int(np.ceil(self.params[process]['sweeps_per_cycle']/per_independent)),1))
+  1761                                           
+  1762         5           13      2.6      0.0      store_indicies = np.array(\
+  1763         5           49      9.8      0.0        range(min(stride-1,self.params[process]['sweeps_per_cycle']-1), self.params[process]['sweeps_per_cycle'], stride), dtype=int)
+  1764         5           14      2.8      0.0      nsaved = len(store_indicies)
+  1765                                           
+  1766         5           43      8.6      0.0      self.tee("  storing %d configurations for %d replicas"%(nsaved, len(confs)) + \
+  1767                                                 " in cycle %d"%cycle + \
+  1768                                                 " (tau2=%f, tau_ac=%f)"%(tau2,tau_ac) + \
+  1769                                                 " with %s for MC"%(HMStime(MC_time)) + \
+  1770         5          566    113.2      0.0        " in " + HMStime(time.time()-cycle_start_time))
+  1771                                           
+  1772                                               # Get indicies for storing global variables
+  1773         5           37      7.4      0.0      inv_state_inds = np.zeros((nsaved,K),dtype=int)
+  1774        78          187      2.4      0.0      for snap in range(nsaved):
+  1775        73          234      3.2      0.0        state_inds = storage['state_inds'][store_indicies[snap]]
+  1776      1160         2872      2.5      0.0        for state in range(K):
+  1777      1087         3209      3.0      0.0          inv_state_inds[snap][state_inds[state]] = state
+  1778                                           
+  1779                                               # Reorder energies and replicas for storage
+  1780         5           13      2.6      0.0      if process=='dock':
+  1781         3           18      6.0      0.0        terms.append('acc_MC') # Make sure to save the acceptance probability
+  1782         3           12      4.0      0.0        if self.params['dock']['rmsd'] is not False:
+  1783         3            8      2.7      0.0          terms.append('rmsd') # Make sure to save the rmsd
+  1784         5           13      2.6      0.0      Es = []
+  1785        88          289      3.3      0.0      for state in range(K):
+  1786        83          226      2.7      0.0        E_state = {}
+  1787        83          213      2.6      0.0        if state==0:
+  1788         5           14      2.8      0.0          E_state['repXpath'] = storage['state_inds']
+  1789         5           12      2.4      0.0          E_state['Ht'] = Ht
+  1790       787         1965      2.5      0.0        for term in terms:
+  1791      9243        37560      4.1      0.0          E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][state]] for snap in range(nsaved)])
+  1792        83          358      4.3      0.0        Es.append([E_state])
+  1793                                           
+  1794                                               self.confs[process]['replicas'] = \
+  1795         5           11      2.2      0.0        [storage['confs'][store_indicies[-1]][inv_state_inds[-1][state]] \
+  1796        88          298      3.4      0.0         for state in range(K)]
+  1797                                           
+  1798                                               # If it is not the last cycle, consider
+  1799                                               # refinings the protocol by inserting states between neighbors with low
+  1800                                               # mean replica exchange probabilities
+  1801                                           
+  1802         5           39      7.8      0.0      if ((not self.params[process]['no_protocol_refinement']) and \
+  1803                                                   ((getattr(self,'_%s_total_cycle'%process)+1) \
+  1804                                                     < self.params[process]['repX_cycles'])):
+  1805                                                 # Estimate mean replica exchange probabilities between neighbors
+  1806                                                 mean_acc = np.zeros(K-1)
+  1807                                                 for k in range(K-1):
+  1808                                                   (u_kln,N_k) = self._u_kln(Es[k:k+2],lambdas[k:k+2])
+  1809                                                   N = min(N_k)
+  1810                                                   acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
+  1811                                                   mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
+  1812                                                 insert_state = (mean_acc<self.params['dock']['min_repX_acc'])
+  1813                                                 if insert_state.any():
+  1814                                                   for k in reversed(range(K-1)):
+  1815                                                     if insert_state[k]:
+  1816                                                       self.tee("  due to exchange acceptance probability of %f, inserted state between %d and %d"%(mean_acc[k],k,k+1))
+  1817                                                       # Duplicating the configuration of the later state
+  1818                                                       new_conf = np.copy(self.confs[process]['replicas'][k+1])
+  1819                                                       self.confs[process]['replicas'].insert(k+1, new_conf)
+  1820                                                   K = len(self.confs[process]['replicas'])
+  1821                                                   self.tee("  refined protocol to have %d states after total cycle %d"%(\
+  1822                                                     K, getattr(self,'_%s_total_cycle'%process)))
+  1823                                                   
+  1824                                                   # Determine new protocol with equal intervals in thermodynamic length
+  1825                                                   progress_o = np.array([l['a'] for l in lambdas])
+  1826                                                   tL_tensor = np.array([self._tL_tensor(Es[k],lambdas[k],process) \
+  1827                                                     for k in range(len(lambdas))])
+  1828                                                   tL_intervals = abs(progress_o[1:]-progress_o[:-1])*(tL_tensor[:-1] + tL_tensor[1:])
+  1829                                                   tL_o = np.insert(np.cumsum(tL_intervals),0,0.)
+  1830                                                   tL_n = np.linspace(0,tL_o[-1],K)
+  1831                                                   progress_n = np.interp(tL_n,tL_o,progress_o)
+  1832                                                   progress_n.sort()
+  1833                                                   
+  1834                                                   lambdas = [self._lambda(a,process) for a in progress_n]
+  1835                                                   setattr(self,process+'_protocol', lambdas)
+  1836                                           
+  1837                                                   # Save the data
+  1838                                                   setattr(self, process+'_Es', [[] for state in range(K)])
+  1839                                                   self.confs[process]['samples'] = [[] for state in range(K)]
+  1840                                                   setattr(self,'_%s_cycle'%process,0)
+  1841                                                   setattr(self,'_%s_total_cycle'%process,
+  1842                                                     getattr(self,'_%s_total_cycle'%process)+1)
+  1843                                                   self._save(process, keys=['progress', 'data'])
+  1844                                                   if process=='cool':
+  1845                                                     self.calc_f_L(redo=True,readOnly=True)
+  1846                                                   else:
+  1847                                                     self.calc_f_RL(redo=True,readOnly=True)
+  1848                                                   self._clear_lock(process)
+  1849                                                   return
+  1850                                           
+  1851        88          217      2.5      0.0      for state in range(K):
+  1852        83          692      8.3      0.0        getattr(self,process+'_Es')[state].append(Es[state][0])
+  1853                                           
+  1854        88          209      2.4      0.0      for state in range(K):
+  1855        83          200      2.4      0.0        if self.params[process]['keep_intermediate'] or \
+  1856        83          192      2.3      0.0            ((process=='cool') and (state==0)) or \
+  1857        81          193      2.4      0.0            (state==(K-1)):
+  1858       117          464      4.0      0.0          confs = [storage['confs'][store_indicies[snap]][inv_state_inds[snap][state]] for snap in range(nsaved)]
+  1859         7           25      3.6      0.0          self.confs[process]['samples'][state].append(confs)
+  1860                                                 else:
+  1861        76          400      5.3      0.0          self.confs[process]['samples'][state].append([])
+  1862                                           
+  1863         5           49      9.8      0.0      setattr(self,'_%s_cycle'%process,cycle + 1)
+  1864         5           13      2.6      0.0      setattr(self,'_%s_total_cycle'%process,
+  1865         5           32      6.4      0.0        getattr(self,'_%s_total_cycle'%process) + 1)
+  1866         5      2248536 449707.2      1.3      self._save(process, keys=['progress', 'data'])
+  1867         5          919    183.8      0.0      self._clear_lock(process)
