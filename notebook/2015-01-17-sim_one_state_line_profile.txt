@@ -1,0 +1,128 @@
+At 200 steps per sweep, re-creating evaluators can be 57% of the time spend in _sim_one_state!
+
+  --protocol Adaptive --cool_therm_speed 1.25 --dock_therm_speed 1.25 \
+  --no_protocol_refinement \
+  --sampler NUTS \
+  --MCMC_moves 1 \
+  --cool_seeds_per_state 20 --dock_seeds_per_state 10 \
+  --steps_per_seed 250 \
+  --sweeps_per_cycle 10 --attempts_per_sweep 100 --steps_per_sweep 200 \
+  --cool_repX_cycles 3 --dock_repX_cycles 3 \
+  --site Sphere --site_center 1.91650 1.91650 1.91650 \
+  --site_max_R 0.01 --site_density 10. \
+  --phases NAMD_Gas \
+  --cores 1 \
+  --no_stored_evaluators \
+  --score prmtopcrd/anchor_and_grow_scored.mol2 \
+  --rmsd \
+  --run_type memory_test
+
+*** With stored evaluators:
+
+Timer unit: 1e-06 s
+
+Total time: 16.7316 s
+File: /Users/dminh/Installers/AlGDock-0.0.1/AlGDock/BindingPMF.py
+Function: _sim_one_state at line 1949
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+  1949                                             @profile
+  1950                                             def _sim_one_state(self, seed, process, lambda_k, doMC,
+  1951                                                 initialize=False, reference=None):
+  1952       230         8391     36.5      0.1      self.universe.setConfiguration(Configuration(self.universe, seed))
+  1953                                               
+  1954       230          281      1.2      0.0      results = {}
+  1955                                               
+  1956                                               # Perform MCMC moves
+  1957       230          230      1.0      0.0      if doMC:
+  1958        80          186      2.3      0.0        MC_start_time = time.time()
+  1959        80       761943   9524.3      4.6        results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=25)/25.
+  1960        80          335      4.2      0.0        results['MC_time'] = (time.time() - MC_start_time)
+  1961                                           
+  1962       230        16952     73.7      0.1      self._set_universe_evaluator(lambda_k, store=(not initialize))
+  1963       230          493      2.1      0.0      if 'delta_t' in lambda_k.keys():
+  1964       220          251      1.1      0.0        delta_t = lambda_k['delta_t']
+  1965                                               else:
+  1966        10           15      1.5      0.0        delta_t = 1.5*MMTK.Units.fs
+  1967                                           
+  1968                                               # Execute sampler
+  1969       230          214      0.9      0.0      if initialize:
+  1970                                                 sampler = self.sampler['init']
+  1971                                                 steps = self.params[process]['steps_per_seed']
+  1972                                                 steps_per_trial = self.params[process]['steps_per_seed']/10
+  1973                                               else:
+  1974       230          297      1.3      0.0        sampler = self.sampler[process]
+  1975       230          392      1.7      0.0        steps = self.params[process]['steps_per_sweep']
+  1976       230          214      0.9      0.0        steps_per_trial = steps
+  1977                                           
+  1978       230          212      0.9      0.0      (confs, potEs, Ht, delta_t) = sampler(\
+  1979       230          209      0.9      0.0        steps=steps, \
+  1980       230          201      0.9      0.0        steps_per_trial=steps_per_trial, \
+  1981       230          243      1.1      0.0        T=lambda_k['T'], delta_t=delta_t, \
+  1982       230          239      1.0      0.0        normalize=(process=='cool'),
+  1983       230          206      0.9      0.0        adapt=initialize,
+  1984       230     15937404  69293.1     95.3        seed=int(time.time())+reference)
+  1985                                           
+  1986                                               # Store and return results
+  1987       230         1415      6.2      0.0      results['confs'] = np.copy(confs[-1])
+  1988       230          308      1.3      0.0      results['E_MM'] = potEs[-1]
+  1989       230          238      1.0      0.0      results['Ht'] = Ht
+  1990       230          297      1.3      0.0      results['delta_t'] = delta_t
+  1991       230          240      1.0      0.0      results['reference'] = reference
+  1992       230          237      1.0      0.0      return results
+
+*** Without stored evaluators
+
+Timer unit: 1e-06 s
+
+Total time: 44.6527 s
+File: /Users/dminh/Installers/AlGDock-0.0.1/AlGDock/BindingPMF.py
+Function: _sim_one_state at line 1949
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+  1949                                             @profile
+  1950                                             def _sim_one_state(self, seed, process, lambda_k, doMC,
+  1951                                                 initialize=False, reference=None):
+  1952       230         8060     35.0      0.0      self.universe.setConfiguration(Configuration(self.universe, seed))
+  1953                                               
+  1954       230          325      1.4      0.0      results = {}
+  1955                                               
+  1956                                               # Perform MCMC moves
+  1957       230          222      1.0      0.0      if doMC:
+  1958        80          153      1.9      0.0        MC_start_time = time.time()
+  1959        80       826790  10334.9      1.9        results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=25)/25.
+  1960        80          267      3.3      0.0        results['MC_time'] = (time.time() - MC_start_time)
+  1961                                           
+  1962       230     25469216 110735.7     57.0      self._set_universe_evaluator(lambda_k, store=(not initialize))
+  1963       230         1142      5.0      0.0      if 'delta_t' in lambda_k.keys():
+  1964       220          290      1.3      0.0        delta_t = lambda_k['delta_t']
+  1965                                               else:
+  1966        10           19      1.9      0.0        delta_t = 1.5*MMTK.Units.fs
+  1967                                           
+  1968                                               # Execute sampler
+  1969       230          254      1.1      0.0      if initialize:
+  1970                                                 sampler = self.sampler['init']
+  1971                                                 steps = self.params[process]['steps_per_seed']
+  1972                                                 steps_per_trial = self.params[process]['steps_per_seed']/10
+  1973                                               else:
+  1974       230          351      1.5      0.0        sampler = self.sampler[process]
+  1975       230          427      1.9      0.0        steps = self.params[process]['steps_per_sweep']
+  1976       230          216      0.9      0.0        steps_per_trial = steps
+  1977                                           
+  1978       230          209      0.9      0.0      (confs, potEs, Ht, delta_t) = sampler(\
+  1979       230          207      0.9      0.0        steps=steps, \
+  1980       230          216      0.9      0.0        steps_per_trial=steps_per_trial, \
+  1981       230          261      1.1      0.0        T=lambda_k['T'], delta_t=delta_t, \
+  1982       230          261      1.1      0.0        normalize=(process=='cool'),
+  1983       230          205      0.9      0.0        adapt=initialize,
+  1984       230     18340749  79742.4     41.1        seed=int(time.time())+reference)
+  1985                                           
+  1986                                               # Store and return results
+  1987       230         1542      6.7      0.0      results['confs'] = np.copy(confs[-1])
+  1988       230          294      1.3      0.0      results['E_MM'] = potEs[-1]
+  1989       230          232      1.0      0.0      results['Ht'] = Ht
+  1990       230          306      1.3      0.0      results['delta_t'] = delta_t
+  1991       230          269      1.2      0.0      results['reference'] = reference
+  1992       230          192      0.8      0.0      return results

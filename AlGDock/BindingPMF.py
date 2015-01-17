@@ -28,6 +28,9 @@ from multiprocessing import Process
 
 from psutil import virtual_memory
 
+# For profiling. Unnecessary for normal execution.
+# from memory_profiler import profile
+
 #############
 # Constants #
 #############
@@ -91,12 +94,14 @@ arguments = {
   'run_type':{'choices':['pose_energies','store_params', 'cool', \
              'dock','timed','postprocess',\
              'redo_postprocess','free_energies','all', \
-             'clear_intermediates', None],
+             'clear_intermediates', 'memory_test', None],
     'help':'Type of calculation to run'},
   'max_time':{'type':int, 'default':180, \
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
   'cores':{'type':int, \
     'help':'Number of CPU cores to use'},
+  'no_stored_evaluators':{'action':'store_true',
+    'help':'Does not store the evaluator. This saves memory but can make replica exchange much slower.'},
   #   Defaults
   'protocol':{'choices':['Adaptive','Set'],
     'help':'Approach to determining series of thermodynamic states'},
@@ -307,11 +312,14 @@ last modified {2}
       self._cores = available_cores
     else:
       self._cores = min(kwargs['cores'], available_cores)
-    print "using %d/%d available cores\n\n"%(self._cores, available_cores)
-  
+    print "using %d/%d available cores"%(self._cores, available_cores)
+
+    self._store_evaluator = not kwargs['no_stored_evaluators']
+    print "will%s store evaluator\n\n"%(\
+      ' not' if not self._store_evaluator else '')
+
     self.confs = {'cool':{}, 'dock':{}}
     
-    print '*** Directories ***'
     self.dir = {}
     self.dir['start'] = os.getcwd()
     
@@ -344,6 +352,7 @@ last modified {2}
         FNs[p] = {}
         args[p] = {}
   
+    print '\n*** Directories ***'
     print self.dir
   
     # Set up file name dictionary
@@ -564,6 +573,11 @@ last modified {2}
           for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
             self.confs[process]['samples'][state_ind][cycle_ind] = []
         self._save(process, keys=['data'])
+    elif self.run_type=='memory_test':
+#      self.params['dock']['sweeps_per_cycle'] = 15
+#      self.params['dock']['attempts_per_sweep'] = 20
+#      self.params['dock']['steps_per_sweep'] = 10
+      self._replica_exchange('dock')
 
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
@@ -739,7 +753,7 @@ last modified {2}
     self.cool_protocol = [{'MM':True, 'T':T_HIGH, \
                           'delta_t':1.5*MMTK.Units.fs,
                           'a':0.0, 'crossed':False}]
-    self._set_universe_evaluator(self.cool_protocol[-1])
+    self._set_universe_evaluator(self.cool_protocol[-1], store=False)
 
     # Minimize and ramp the temperature from 0 to the desired high temperature
     from MMTK.Minimization import ConjugateGradientMinimizer # @UnresolvedImport
@@ -792,7 +806,6 @@ last modified {2}
         raise Exception('No variance in configuration energies')
       self.cool_protocol.append(\
         {'T':T, 'a':(T_HIGH-T)/(T_HIGH-T_TARGET), 'MM':True, 'crossed':crossed})
-      self._set_universe_evaluator(self.cool_protocol[-1])
 
       # Randomly select seeds for new trajectory
       weight = np.exp(-Es_MM/R*(1/T-1/To))
@@ -803,7 +816,9 @@ last modified {2}
       # Simulate and store data
       confs_o = confs
       Es_MM_o = Es_MM
-               
+      
+      self._set_universe_evaluator(self.cool_protocol[-1], store=False)
+      
       state_start_time = time.time()
       (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
         self._initial_sim_state(\
@@ -1009,7 +1024,7 @@ last modified {2}
     self.tee("\n>>> Initial docking")
 
     # Set up the force field with full interaction grids
-    self._set_universe_evaluator(self.lambda_scalables)
+    self._set_universe_evaluator(self.lambda_scalables, store=False)
   
     lambda_o = {'T':T_HIGH, 'MM':True, 'site':True, \
                 'crossed':False, 'a':0.0}
@@ -1198,7 +1213,7 @@ last modified {2}
 
       # Simulate
       sim_start_time = time.time()
-      self._set_universe_evaluator(lambda_n)
+      self._set_universe_evaluator(lambda_n, store=False)
       (confs, Es_tot, lambda_n['delta_t'], Ht) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
       self.tee("  generated %d configurations "%len(confs) + \
@@ -1253,6 +1268,8 @@ last modified {2}
         self.dock_protocol[-1] = copy.deepcopy(lambda_n)
         rejectStage = 0
         lambda_o = lambda_n
+
+      self._save('dock')
       self.tee("")
 
     K = len(self.dock_protocol)
@@ -1593,9 +1610,9 @@ last modified {2}
     # Only store evaluator if there is enough memory available
     mem_end = virtual_memory().available
     usage = mem_start-mem_end
-    if store and (mem_end>10*usage):
+    if self._store_evaluator and store and (mem_end>10*usage):
       self._evaluators[evaluator_key] = eval
-    
+
   def _MC_translate_rotate(self, lambda_k, trials=25):
     """
     Conducts Monte Carlo translation and rotation moves.
@@ -1932,18 +1949,21 @@ last modified {2}
     
     results = {}
     
+    # For initialization, the evaluator is already set
+    if not initialize:
+      self._set_universe_evaluator(lambda_k)
+    
+    if 'delta_t' in lambda_k.keys():
+      delta_t = lambda_k['delta_t']
+    else:
+      delta_t = 1.5*MMTK.Units.fs
+    
     # Perform MCMC moves
     if doMC:
       MC_start_time = time.time()
       results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=25)/25.
       results['MC_time'] = (time.time() - MC_start_time)
-
-    self._set_universe_evaluator(lambda_k, store=(not initialize))
-    if 'delta_t' in lambda_k.keys():
-      delta_t = lambda_k['delta_t']
-    else:
-      delta_t = 1.5*MMTK.Units.fs
-
+    
     # Execute sampler
     if initialize:
       sampler = self.sampler['init']
@@ -2056,7 +2076,7 @@ last modified {2}
        self.params['dock']['score'].endswith('.mol2.gz'):
       (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
       # Add configurations where the ligand is in the binding site
-      self._set_universe_evaluator({'site':True,'T':T_TARGET})
+      self._set_universe_evaluator({'site':True,'T':T_TARGET}, store=False)
       for ind in range(len(confs_dock6)):
         self.universe.setConfiguration(Configuration(self.universe, confs_dock6[ind]))
         if self.universe.energy()<1.:
@@ -2070,7 +2090,7 @@ last modified {2}
       count['initial_dock'] = len(self.confs['dock']['seeds'])
     
     # Minimize each configuration
-    self._set_universe_evaluator(self._lambda(1.0,process='dock'))
+    self._set_universe_evaluator(self._lambda(1.0,process='dock'), store=False)
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
 
@@ -2314,6 +2334,9 @@ last modified {2}
     Obtains the NAMD energies of all the conditions using all the phases.  
     Saves both MMTK and NAMD energies after NAMD energies are estimated.
     """
+    # Clear evaluators to save memory
+    self._evaluators = {}
+    
     updated = []
     toClean = []
     programs = []
@@ -2464,6 +2487,7 @@ last modified {2}
            (self.original_Es[0][0]['R'+phase] is not None):
           self.params['dock']['receptor_'+phase] = \
             self.original_Es[0][0]['R'+phase][-1]
+          self._save('dock', keys=['progress'])
 
     if 'cool' in updated:
       self._save('cool', keys=['data'])
@@ -2496,7 +2520,7 @@ last modified {2}
 
     if type=='sampling' or type=='all':
       # Molecular mechanics and grid interaction energies
-      self._set_universe_evaluator(self.lambda_full)
+      self._set_universe_evaluator(self.lambda_full, store=False)
       for term in (['MM','site','misc'] + self._scalables):
         E[term] = np.zeros(len(confs), dtype=float)
       for c in range(len(confs)):
@@ -2862,24 +2886,10 @@ last modified {2}
     setattr(self,'%s_Es'%p,None)
 
     if saved['progress'] is not None:
-      # Deprecated
-      if len(saved['progress'])==9:
-        params = saved['progress'][0]
-        setattr(self,'%s_protocol'%p,saved['progress'][1])
-        setattr(self,'_%s_cycle'%p,saved['progress'][2])
-        setattr(self,'_%s_total_cycle'%p,saved['progress'][3])
-        if p=='dock':
-          (self._n_trans, self._max_n_trans, self._random_trans, \
-           self._n_rot, self._max_n_rot, self._random_rotT) = saved['progress'][4]
-        self.confs[p]['replicas'] = saved['progress'][5]
-        self.confs[p]['seeds'] = saved['progress'][6]
-        self.confs[p]['samples'] = saved['progress'][7]
-        setattr(self,'%s_Es'%p, saved['progress'][8])
-      else:
-        params = saved['progress'][0]
-        setattr(self,'%s_protocol'%p,saved['progress'][1])
-        setattr(self,'_%s_cycle'%p,saved['progress'][2])
-        setattr(self,'_%s_total_cycle'%p,saved['progress'][3])
+      params = saved['progress'][0]
+      setattr(self,'%s_protocol'%p,saved['progress'][1])
+      setattr(self,'_%s_cycle'%p,saved['progress'][2])
+      setattr(self,'_%s_total_cycle'%p,saved['progress'][3])
     if saved['data'] is not None:
       if p=='dock':
         (self._n_trans, self._max_n_trans, self._random_trans, \
@@ -2914,22 +2924,18 @@ last modified {2}
           'prmtop':{'L':self._FNs['prmtop']['L']},
           'inpcrd':{'L':self._FNs['inpcrd']['L']}},
           relpath_o=None, relpath_n=self.dir['cool'])
-      incomplete_pp = self._postprocess([('cool',-1,-1,'L')], \
-        identify_incomplete=True)
     elif p=='dock':
       fn_dict = convert_dictionary_relpath(
           dict([tp for tp in self._FNs.items() \
             if not tp[0] in ['namd','vmd','sander']]),
           relpath_o=None, relpath_n=self.dir['dock'])
-      incomplete_pp = self._postprocess(identify_incomplete=True)
     params = (fn_dict,arg_dict)
     
     saved = {
       'progress': (params,
                    getattr(self,'%s_protocol'%p),
                    getattr(self,'_%s_cycle'%p),
-                   getattr(self,'_%s_total_cycle'%p),
-                   incomplete_pp),
+                   getattr(self,'_%s_total_cycle'%p)),
       'data': (random_orient,
                self.confs[p]['replicas'],
                self.confs[p]['seeds'],

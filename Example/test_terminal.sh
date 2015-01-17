@@ -28,10 +28,12 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --site Sphere --site_center 1.91650 1.91650 1.91650 \
   --site_max_R 0.01 --site_density 10. \
   --phases NAMD_Gas \
-  --cores 2 \
+  --cores -1 \
   --score prmtopcrd/anchor_and_grow_scored.mol2 \
   --rmsd \
   --run_type timed \
   --max_time 10
 
+#  --run_type memory_test
+#  --no_stored_evaluators \
 #  --phases NAMD_Gas NAMD_GBSA Gas GBSA PBSA \
