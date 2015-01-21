@@ -1,0 +1,148 @@
+mg-auto
+
+Complex
+print energy 1 (solv) end
+  Local net energy (PE 0) = 3.928095140499E+05 kJ/mol
+  Global net ELEC energy = 3.928095140499E+05 kJ/mol
+print energy 2 (ref) end
+  Local net energy (PE 0) = 4.029877296469E+05 kJ/mol
+  Global net ELEC energy = 4.029877296469E+05 kJ/mol
+print energy 1 (solv) - 2 (ref) end
+  Local net energy (PE 0) = -1.017821559700E+04 kJ/mol
+  Global net ELEC energy = -1.017821559700E+04 kJ/mol
+
+Receptor
+print energy 1 (solv) end
+  Local net energy (PE 0) = 3.915958921273E+05 kJ/mol
+  Global net ELEC energy = 3.915958921273E+05 kJ/mol
+print energy 2 (ref) end
+  Local net energy (PE 0) = 4.018193708587E+05 kJ/mol
+  Global net ELEC energy = 4.018193708587E+05 kJ/mol
+print energy 1 (solv) - 2 (ref) end
+  Local net energy (PE 0) = -1.022347873140E+04 kJ/mol
+  Global net ELEC energy = -1.022347873140E+04 kJ/mol
+  
+Ligand
+print energy 1 (solv) end
+  Local net energy (PE 0) = 1.180546013123E+03 kJ/mol
+  Global net ELEC energy = 1.180546013123E+03 kJ/mol
+print energy 2 (ref) end
+  Local net energy (PE 0) = 1.205109875388E+03 kJ/mol
+  Global net ELEC energy = 1.205109875388E+03 kJ/mol
+print energy 1 (solv) - 2 (ref) end
+  Local net energy (PE 0) = -2.456386226485E+01 kJ/mol
+  Global net ELEC energy = -2.456386226485E+01 kJ/mol
+  
+Cs-Rs-Ls = 33.07 kJ/mol
+Cr-Rr-Lr = -36.75 kJ/mol
+(Cs-Cr) - (Rs-Rr) - (Ls-Lr) = 69.82 kJ/mol
+
+mg-manual with focusing based on the electrostatic grid
+
+Complex
+print energy 2 (solv) end
+  Local net energy (PE 0) = 2.319651223466E+05 kJ/mol
+  Global net ELEC energy = 2.319651223466E+05 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 2.488740343005E+05 kJ/mol
+  Global net ELEC energy = 2.488740343005E+05 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -1.690891195382E+04 kJ/mol
+  Global net ELEC energy = -1.690891195382E+04 kJ/mol
+
+Receptor  
+print energy 2 (solv) end
+  Local net energy (PE 0) = 2.312813843535E+05 kJ/mol
+  Global net ELEC energy = 2.312813843535E+05 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 2.482626071929E+05 kJ/mol
+  Global net ELEC energy = 2.482626071929E+05 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -1.698122283941E+04 kJ/mol
+  Global net ELEC energy = -1.698122283941E+04 kJ/mol
+  
+print energy 2 (solv) end
+  Local net energy (PE 0) = 6.479512583201E+02 kJ/mol
+  Global net ELEC energy = 6.479512583201E+02 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 6.903105093595E+02 kJ/mol
+  Global net ELEC energy = 6.903105093595E+02 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -4.235925103942E+01 kJ/mol
+  Global net ELEC energy = -4.235925103942E+01 kJ/mol
+  
+(Cs-Cr) - (Rs-Rr) - (Ls-Lr) = 114.67 kJ/mol 
+
+mg-manual with focusing around the receptor
+
+Complex
+print energy 2 (solv) end
+  Local net energy (PE 0) = 3.670673805238E+05 kJ/mol
+  Global net ELEC energy = 3.670673805238E+05 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 3.837039012841E+05 kJ/mol
+  Global net ELEC energy = 3.837039012841E+05 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -1.663652076030E+04 kJ/mol
+  Global net ELEC energy = -1.663652076030E+04 kJ/mol
+  
+Receptor
+print energy 2 (solv) end
+  Local net energy (PE 0) = 3.664034078681E+05 kJ/mol
+  Global net ELEC energy = 3.664034078681E+05 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 3.831117369707E+05 kJ/mol
+  Global net ELEC energy = 3.831117369707E+05 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -1.670832910266E+04 kJ/mol
+  Global net ELEC energy = -1.670832910266E+04 kJ/mol
+  
+Ligand
+print energy 2 (solv) end
+  Local net energy (PE 0) = 6.282638200428E+02 kJ/mol
+  Global net ELEC energy = 6.282638200428E+02 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 6.707851375672E+02 kJ/mol
+  Global net ELEC energy = 6.707851375672E+02 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -4.252131752439E+01 kJ/mol
+  Global net ELEC energy = -4.252131752439E+01 kJ/mol
+  
+(Cs-Cr) - (Rs-Rr) - (Ls-Lr) = 114.32 kJ/mol
+
+mg-manual with sdie = 2.0 (it was 1.0 in the other mg-manual calcs)
+
+Complex
+print energy 2 (solv) end
+  Local net energy (PE 0) = 2.319651223466E+05 kJ/mol
+  Global net ELEC energy = 2.319651223466E+05 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 2.422549799197E+05 kJ/mol
+  Global net ELEC energy = 2.422549799197E+05 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -1.028985757305E+04 kJ/mol
+  Global net ELEC energy = -1.028985757305E+04 kJ/mol
+  
+Receptor
+print energy 2 (solv) end
+  Local net energy (PE 0) = 2.312813843535E+05 kJ/mol
+  Global net ELEC energy = 2.312813843535E+05 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 2.416179387438E+05 kJ/mol
+  Global net ELEC energy = 2.416179387438E+05 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -1.033655439022E+04 kJ/mol
+  Global net ELEC energy = -1.033655439022E+04 kJ/mol
+  
+Ligand
+print energy 2 (solv) end
+  Local net energy (PE 0) = 6.479512583201E+02 kJ/mol
+  Global net ELEC energy = 6.479512583201E+02 kJ/mol
+print energy 4 (ref) end
+  Local net energy (PE 0) = 6.739292217910E+02 kJ/mol
+  Global net ELEC energy = 6.739292217910E+02 kJ/mol
+print energy 2 (solv) - 4 (ref) end
+  Local net energy (PE 0) = -2.597796347094E+01 kJ/mol
+  Global net ELEC energy = -2.597796347094E+01 kJ/mol
+  
+(Cs-Cr) - (Rs-Rr) - (Ls-Lr) = 72.67 kJ/mol

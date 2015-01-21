@@ -281,11 +281,11 @@ class crd:
         F.write('%d\n'%crd.shape[0])
   
     if not trajectory:
-      ordered = np.vstack(crd)
+      flattened = np.vstack(crd).flatten()
       if multiplier is not None:
-        ordered = multiplier*ordered
-      for atom in ordered:
-        F.write('%12.7f%12.7f%12.7f\n'%(atom[0],atom[1],atom[2]))
+        flattened = multiplier*flattened
+      for n in range(0,len(flattened),6):
+        F.write(''.join(['%12.7f'%val for val in flattened[n:n+6]]) + '\n')
     else:
       for c in crd:
         flattened = c.flatten()

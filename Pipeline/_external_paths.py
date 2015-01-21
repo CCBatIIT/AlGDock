@@ -75,7 +75,7 @@ search_paths = {
       'sander':['/Users/dminh/Installers/amber14/bin/sander',
                 '/share/apps/amber/14/bin/sander'],
                # Calculating a Poisson-Boltzmann Grid
-        'apbs':['/Users/dminh/Applications/APBS-1.4-osx/bin/apbs',
+        'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
                 '/share/apps/apbs/1.4/bin/apbs'],
                # Generalized AMBER force field
     'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',

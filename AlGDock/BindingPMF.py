@@ -26,7 +26,7 @@ import pymbar.timeseries
 import multiprocessing
 from multiprocessing import Process
 
-from psutil import virtual_memory
+import psutil
 
 # For profiling. Unnecessary for normal execution.
 # from memory_profiler import profile
@@ -295,7 +295,6 @@ Molecular docking with adaptively scaled alchemical interaction grids
 version {0}
 in {1}
 last modified {2}
-
     """.format(a.__version__, mod_path, \
       time.ctime(os.path.getmtime(mod_path)))
     
@@ -315,7 +314,7 @@ last modified {2}
     print "using %d/%d available cores"%(self._cores, available_cores)
 
     self._store_evaluator = not kwargs['no_stored_evaluators']
-    print "will%s store evaluator\n\n"%(\
+    print "will%s store evaluators\n"%(\
       ' not' if not self._store_evaluator else '')
 
     self.confs = {'cool':{}, 'dock':{}}
@@ -466,16 +465,16 @@ last modified {2}
     self.params = {}
     for p in ['cool','dock']:
       self.params[p] = merge_dictionaries(
-        [args[src] for src in [p,'new_'+p,'default_'+p]])
+        [args[src] for src in ['new_'+p,p,'default_'+p]])
 
-    # Allow updates of receptor energies
-    for phase in allowed_phases:
-      if args['new_dock']['receptor_'+phase] is not None:
-        self.params['dock']['receptor_'+phase] = args['new_dock']['receptor_'+phase]
-
-    # Allow updates of score parameter
-    if args['new_dock']['score'] is not None:
-      self.params['dock']['score'] = args['new_dock']['score']
+#    # Allow updates of receptor energies
+#    for phase in allowed_phases:
+#      if args['new_dock']['receptor_'+phase] is not None:
+#        self.params['dock']['receptor_'+phase] = args['new_dock']['receptor_'+phase]
+#
+#    # Allow updates of score parameter
+#    if args['new_dock']['score'] is not None:
+#      self.params['dock']['score'] = args['new_dock']['score']
 
     print '\n*** Simulation parameters and constants ***'
     for p in ['cool','dock']:
@@ -548,10 +547,10 @@ last modified {2}
     elif self.run_type=='timed': # Timed replica exchange sampling
       cool_complete = self.cool()
       if cool_complete:
+        self.calc_f_L()
         dock_complete = self.dock()
         if dock_complete:
           self._postprocess()
-          self.calc_f_L()
           self.calc_f_RL()
     elif self.run_type=='postprocess': # Postprocessing
       self._postprocess()
@@ -648,14 +647,14 @@ last modified {2}
     self._set_universe_evaluator({'MM':True, 'T':T_HIGH})
     self._ligand_natoms = self.universe.numberOfAtoms()
 
-    from NUTS import NUTSIntegrator  # @UnresolvedImport
-
     # Samplers may accept the following options:
     # steps - number of MD steps
     # T - temperature in K
     # delta_t - MD time step
     # normalize - normalizes configurations
     # adapt - uses an adaptive time step
+    from NUTS import NUTSIntegrator  # @UnresolvedImport
+
     self.sampler = {}
     self.sampler['init'] = NUTSIntegrator(self.universe)
     for p in ['cool', 'dock']:
@@ -723,7 +722,39 @@ last modified {2}
           natoms=self.universe.numberOfAtoms(), multiplier=0.1)
         rmsd_crd = rmsd_crd[self.molecule.inv_prmtop_atom_order,:]
       self.confs['rmsd'] = rmsd_crd[self.molecule.heavy_atoms,:]
+
+    # Determine APBS grid spacing
+    factor = 1.0/MMTK.Units.Ang
     
+    def roundUpDime(x):
+      return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
+
+    self._set_universe_evaluator({'MM':True, 'T':T_HIGH, 'ELE':1}, store=False)
+    gd = self._forceFields['ELE'].grid_data
+    focus_dims = roundUpDime(gd['counts'])
+    focus_center = factor*(gd['counts']*gd['spacing']/2. + gd['origin'])
+    focus_spacing = factor*gd['spacing'][0]
+
+    min_xyz = np.array([min(factor*self.confs['receptor'][a,:]) for a in range(3)])
+    max_xyz = np.array([max(factor*self.confs['receptor'][a,:]) for a in range(3)])
+    mol_range = max_xyz - min_xyz
+    mol_center = (min_xyz + max_xyz)/2.
+
+    # The full grid spans 1.5 times the range of the receptor
+    # and the focus grid, whatever is larger
+    full_spacing = 1.0
+    full_min = np.minimum(mol_center - mol_range/2.*1.5, \
+                          focus_center - focus_dims*focus_spacing/2.*1.5)
+    full_max = np.maximum(mol_center + mol_range/2.*1.5, \
+                          focus_center + focus_dims*focus_spacing/2.*1.5)
+    full_dims = roundUpDime((full_max-full_min)/full_spacing)
+    full_center = (full_min + full_max)/2.
+
+    self._apbs_grid = { \
+      'dime':[full_dims, focus_dims], \
+      'gcent':[full_center, focus_center], \
+      'spacing':[full_spacing, focus_spacing]}
+
     # Load progress
     self._postprocess(readOnly=True)
     self.calc_f_L(readOnly=True)
@@ -745,8 +776,9 @@ last modified {2}
       return # Initial cooling is already complete
     
     self._set_lock('cool')
-    self.tee("\n>>> Initial cooling of the ligand "+\
-             "from %d K to %d K"%(T_HIGH,T_TARGET))
+    self.tee("\n>>> Initial cooling of the ligand " + \
+      "from %d K to %d K, "%(T_HIGH,T_TARGET) + "starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
     cool_start_time = time.time()
 
     # Set up the force field
@@ -916,6 +948,10 @@ last modified {2}
         self.tee("  skipping the cooling free energy calculation")
         return
 
+    start_string = "\n>>> Ligand free energy calculations, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
+    free_energy_start_time = time.time()
+
     # Estimate cycle at which simulation has equilibrated
     u_Ks = [self._u_kln([self.cool_Es[-1][c]],[self.cool_protocol[-1]]) \
       for c in range(self._cool_cycle)]
@@ -935,7 +971,14 @@ last modified {2}
     # in units of RT
     updated = False
     for phase in self.params['cool']['phases']:
+      if not phase+'_solv' in self.f_L:
+        self.f_L[phase+'_solv'] = []
       for c in range(len(self.f_L[phase+'_solv']), self._cool_cycle):
+        if not updated:
+          self._set_lock('cool')
+          self.tee(start_string)
+          updated = True
+
         fromCycle = self.stats_L['equilibrated_cycle'][c]
         toCycle = c + 1
         
@@ -956,11 +999,15 @@ last modified {2}
         self.tee("  calculated " + phase + " solvation free energy of " + \
                  "%f RT "%(f_L_solv) + \
                  "using cycles %d to %d"%(fromCycle, toCycle-1))
-        updated = True
 
     # Calculate cooling free energies that have not already been calculated,
     # in units of RT
     for c in range(len(self.f_L['cool_BAR']), self._cool_cycle):
+      if not updated:
+        self._set_lock('cool')
+        self.tee(start_string)
+        updated = True
+      
       fromCycle = self.stats_L['equilibrated_cycle'][c]
       toCycle = c + 1
 
@@ -985,10 +1032,12 @@ last modified {2}
       self.tee("  calculated cooling free energy of %f RT "%(\
                   self.f_L['cool_MBAR'][-1][-1])+\
                "using MBAR for cycles %d to %d"%(fromCycle, c))
-      updated = True
 
     if updated:
       self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L))
+      self.tee("\nElapsed time for free energy calculation: " + \
+        HMStime(time.time()-free_energy_start_time))
+      self._clear_lock('cool')
 
   ###########
   # Docking #
@@ -1021,7 +1070,8 @@ last modified {2}
     cool0_confs = [confs[ind] for ind in random_dock_inds]
 
     # Do the random docking
-    self.tee("\n>>> Initial docking")
+    self.tee("\n>>> Initial docking, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 
     # Set up the force field with full interaction grids
     self._set_universe_evaluator(self.lambda_scalables, store=False)
@@ -1160,7 +1210,8 @@ last modified {2}
         return
     else:
       # Continuing from a previous docking instance
-      self.tee("\n>>> Initial docking, continued")
+      self.tee("\n>>> Initial docking, continuing at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
       confs = self.confs['dock']['samples'][-1][0]
       E = self.dock_Es[-1][0]
 
@@ -1335,6 +1386,7 @@ last modified {2}
 
     # Make sure postprocessing is complete
     self._postprocess()
+    self.calc_f_L()
 
     # Make sure all the energies are available
     for c in range(self._dock_cycle):
@@ -1349,6 +1401,11 @@ last modified {2}
     if not hasattr(self,'f_L'):
       self.tee("  skipping the binding PMF calculation")
       return
+
+    self._set_lock('dock')
+    self.tee("\n>>> Binding PMF estimation, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+    BPMF_start_time = time.time()
 
     K = len(self.dock_protocol)
   
@@ -1371,6 +1428,8 @@ last modified {2}
            self.dock_Es[-1][c]['LJa'] + \
            self.dock_Es[-1][c]['ELE'])/RT_TARGET)
     for phase in self.params['dock']['phases']:
+      if not 'Psi_'+phase in self.stats_RL:
+        self.stats_RL['Psi_'+phase] = []
       for c in range(len(self.stats_RL['Psi_'+phase]), self._dock_cycle):
         self.stats_RL['Psi_'+phase].append(
           (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
@@ -1421,6 +1480,16 @@ last modified {2}
       (BAR,MBAR) = self._run_MBAR(u_kln,N_k)
       self.f_RL['grid_MBAR'].append(MBAR)
       self.f_RL['grid_BAR'].append(BAR)
+      updated = True
+
+      # Average acceptance probabilities
+      mean_acc = np.zeros(K-1)
+      for k in range(0, K-1):
+        (u_kln,N_k) = self._u_kln(dock_Es[k:k+2],self.dock_protocol[k:k+2])
+        N = min(N_k)
+        acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
+        mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
+      self.stats_RL['mean_acc'].append(mean_acc)
 
 # How to estimate the change in potential energy for GBSA:
 #              This is the NAMD result
@@ -1433,7 +1502,14 @@ last modified {2}
 # Because RMM and RMMTK are both zero,
 # du = (RLGBSAfixedR) - (LMMTK + PsiMMTK)
 
-      for phase in self.params['dock']['phases']:
+    for phase in self.params['dock']['phases']:
+      if not phase+'_solv' in self.f_RL:
+        self.f_RL[phase+'_solv'] = []
+      for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
+        if not phase+'_'+method in self.B:
+          self.B[phase+'_'+method] = []
+      for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
+        extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
         du = np.concatenate([self.stats_RL['u_K_'+phase][c] - \
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
         min_du = min(du)
@@ -1461,23 +1537,17 @@ last modified {2}
            self.f_L['cool_MBAR'][-1][-1] + \
            self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
 
-      # Average acceptance probabilities
-      mean_acc = np.zeros(K-1)
-      for k in range(0, K-1):
-        (u_kln,N_k) = self._u_kln(dock_Es[k:k+2],self.dock_protocol[k:k+2])
-        N = min(N_k)
-        acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
-        mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      self.stats_RL['mean_acc'].append(mean_acc)
-
-      for phase in self.params['dock']['phases']:
         self.tee("  calculated %s binding PMF of %f RT with cycles %d to %d"%(\
           phase, self.B[phase+'_MBAR'][-1], \
           self.stats_RL['equilibrated_cycle'][c], c))
-      updated = True
+        updated = True
 
     if updated:
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
+
+    self.tee("\nElapsed time for binding PMF estimation: " + \
+      HMStime(time.time()-BPMF_start_time))
+    self._clear_lock('dock')
 
   def pose_energies(self):
     """
@@ -1546,8 +1616,6 @@ last modified {2}
       return
     
     # Otherwise create a new evaluator
-    mem_start = virtual_memory().available
-
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
       fflist.append(self._forceFields['gaff'])
@@ -1603,17 +1671,22 @@ last modified {2}
       compoundFF += ff
     self.universe.setForceField(compoundFF)
 
+    mem_start = psutil.virtual_memory()
+
     eval = ForceField.EnergyEvaluator(\
       self.universe, self.universe._forcefield, None, None, None, None)
     self.universe._evaluator[(None,None,None)] = eval
 
     # Only store evaluator if there is enough memory available
-    mem_end = virtual_memory().available
-    usage = mem_start-mem_end
-    if self._store_evaluator and store and (mem_end>10*usage):
+    mem_end = psutil.virtual_memory()
+    usage = mem_start.available - mem_end.available
+    if self._store_evaluator and store and (mem_end.available>10*usage):
+#      self.tee('  keeping evaluator that uses about ' + \
+#        '%f MiB; %f MiB available / %f MiB total'%(\
+#          usage/1E6, mem_end.available/1E6, mem_end.total/1E6))
       self._evaluators[evaluator_key] = eval
 
-  def _MC_translate_rotate(self, lambda_k, trials=25):
+  def _MC_translate_rotate(self, lambda_k, trials=20):
     """
     Conducts Monte Carlo translation and rotation moves.
     """
@@ -1818,7 +1891,7 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    per_independent = {'cool':10.0, 'dock':20.0}[process]
+    per_independent = {'cool':3.0, 'dock':20.0}[process]
     # There will be at least per_independent and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
@@ -1833,8 +1906,8 @@ last modified {2}
 
     self.tee("  storing %d configurations for %d replicas"%(nsaved, len(confs)) + \
       " in cycle %d"%cycle + \
-      " (tau2=%f, tau_ac=%f)"%(tau2,tau_ac) + \
-      " with %s for MC"%(HMStime(MC_time)) + \
+      " (tau2=%f, tau_ac=%f)"%(tau2,tau_ac))
+    self.tee("  with %s for MC"%(HMStime(MC_time)) + \
       " and %s for replica exchange"%(HMStime(repX_time)) + \
       " in " + HMStime(time.time()-cycle_start_time))
 
@@ -1961,7 +2034,7 @@ last modified {2}
     # Perform MCMC moves
     if doMC:
       MC_start_time = time.time()
-      results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=25)/25.
+      results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=20)/20.
       results['MC_time'] = (time.time() - MC_start_time)
     
     # Execute sampler
@@ -2010,7 +2083,9 @@ last modified {2}
          (self.params['dock']['score'] is not False):
         self._minimize_dock_score_confs()
 
-      self.tee("\n>>> Replica exchange sampling for the {0}ing process".format(process), process=process)
+      self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
+        process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())), \
+        process=process)
       self.timing[process+'_repX_start'] = time.time()
       start_cycle = getattr(self,'_%s_total_cycle'%process)
       cycle_times = []
@@ -2025,7 +2100,7 @@ last modified {2}
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
           if cycle_time>remaining_time:
             return False
-      self.tee("Elapsed time for %d total cycles of replica exchange was %s\n"%(\
+      self.tee("\nElapsed time for %d cycles of replica exchange was %s"%(\
          (getattr(self,'_%s_total_cycle'%process) - start_cycle), \
           HMStime(time.time() - self.timing[process+'_repX_start'])), \
           process=process)
@@ -2097,7 +2172,7 @@ last modified {2}
     minimized_confs = []
     minimized_conf_Es = []
 
-    self.tee("\n>>> Minimizing seed configurations")
+    self.tee("\n>>> Minimizing %d seed configurations"%len(unique_confs))
     min_start_time = time.time()
     for conf in unique_confs:
       self.universe.setConfiguration(Configuration(self.universe, conf))
@@ -2338,19 +2413,16 @@ last modified {2}
     self._evaluators = {}
     
     updated = []
+    incomplete = []
     toClean = []
     programs = []
     crd_FN_o = ''
     if phases is None:
       phases = list(set(self.params['cool']['phases'] + self.params['dock']['phases']))
-
-    postprocess_start_time = time.time()
     
     m = multiprocessing.Manager()
     task_queue = m.Queue()
     done_queue = m.Queue()
-    
-    incomplete = []
 
     # state == -1 means the last state
     # cycle == -1 means all cycles
@@ -2388,8 +2460,8 @@ last modified {2}
             traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
           elif phase in ['NAMD_Gas','NAMD_GBSA']:
             traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
-          else:
-            traj_FN = None
+          elif phase in ['APBS']:
+            traj_FN = join(p_dir,'%s.%s.pqr'%(prefix,moiety))
           outputname = join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
           
           # Skip NAMD
@@ -2408,8 +2480,8 @@ last modified {2}
                  len(getattr(self,p+'_Es')[state][c][label])))):
             pass
           else:
+            incomplete.append((p, state, c, moiety, phase))
             if identify_incomplete:
-              incomplete.append((p, state, c, moiety, phase))
               continue
             
             # Queue the calculation
@@ -2432,7 +2504,7 @@ last modified {2}
             elif phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
               programs.append('namd')
             elif phase in ['APBS'] and not 'apbs' in programs:
-              programs.append('apbs')
+              programs.extend(['apbs','ambpdb'])
 
             # Files to remove later
             if not traj_FN in toClean:
@@ -2444,12 +2516,19 @@ last modified {2}
 
     if identify_incomplete:
       return incomplete
+    if incomplete==[]:
+      return incomplete
 
     # Find the necessary programs, downloading them if necessary
     for program in programs:
       self._FNs[program] = a.findPaths([program])[program]
 
     # Start processes
+    self._set_lock('dock' if 'dock' in updated else 'cool')
+    self.tee("\n>>> Postprocessing, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+    postprocess_start_time = time.time()
+    
     processes = [multiprocessing.Process(target=self._energy_worker, \
         args=(task_queue, done_queue)) for p in range(self._cores)]
     for p in range(self._cores):
@@ -2495,8 +2574,9 @@ last modified {2}
       self._save('dock', keys=['data'])
 
     if len(updated)>0:
-      self.tee("  total postprocessing in " + \
-        HMStime(time.time()-postprocess_start_time) + "\n")
+      self.tee("\nElapsed time for postprocessing was " + \
+        HMStime(time.time()-postprocess_start_time))
+      self._clear_lock('dock' if 'dock' in updated else 'cool')
 
   def _energy_worker(self, input, output):
     for args in iter(input.get, 'STOP'):
@@ -2506,7 +2586,7 @@ last modified {2}
       elif args[2] in ['NAMD_Gas','NAMD_GBSA']:
         E = self._NAMD_Energy(*args)
       elif args[2] in ['APBS']:
-        E = self._APBS_ENERGY(*args)
+        E = self._APBS_Energy(*args)
       wall_time = time.time() - start_time
       output.put((E, args[-1], wall_time))
 
@@ -2587,11 +2667,6 @@ last modified {2}
   cavity_offset=0.000,
 /
 '''%fillratio)
-#  eneopt=1,  ! Use P3M procedure of Lu and Luo for PB energy
-#  cutnb=98.0,
-#  fillratio={0}, {1}
-#/
-#'''.format(fillratio,focusing))
     elif phase=='GBSA':
       script_F.write('''Calculate GBSA energies
 &cntrl
@@ -2725,11 +2800,15 @@ last modified {2}
     return np.array(E, dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
 
   def _APBS_Energy(self, confs, moiety, phase, pqr_FN, outputname,
-      debug=False, reference=None):
+      debug=False, reference=None, factor=1.0/MMTK.Units.Ang):
     """
     Uses NAMD to calculate the energy of a set of configurations
     Units are the MMTK standard, kJ/mol
     """
+    
+# TO DO: In _APBS_Energy, translate the ligand to the binding site
+# TO DO: Add surface area and ligand internal energy to APBS calculations
+
     # Decompress prmtop
     decompress = self._FNs['prmtop'][moiety].endswith('.gz')
     if decompress:
@@ -2738,19 +2817,106 @@ last modified {2}
       os.system('gunzip -f '+self._FNs['prmtop'][moiety])
       os.rename(self._FNs['prmtop'][moiety]+'.BAK', self._FNs['prmtop'][moiety])
       self._FNs['prmtop'][moiety] = self._FNs['prmtop'][moiety][:-3]
+  
+    # Prepare configurations for writing to crd file
+    if (moiety.find('R')>-1):
+      receptor_0 = factor*self.confs['receptor'][:self._ligand_first_atom,:]
+      receptor_1 = factor*self.confs['receptor'][self._ligand_first_atom:,:]
+
+    if not isinstance(confs,list):
+      confs = [confs]
     
-    # Run APBS
-    # TO DO
-    # Prepare pqr file
-#    command = 'cat {0} | {1}/bin/ambpdb -p {2} -pqr > {3}'.format(\
-#      self.FNs['inpcrd'],dirs['amber'],self.FNs['prmtop'],self.FNs['pqr'])
-#    os.system(command)
+    # Translate configurations to the binding site
+    
+    if (moiety.find('R')>-1):
+      if (moiety.find('L')>-1):
+        full_confs = [np.vstack((receptor_0, \
+          conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang, \
+          receptor_1)) for conf in confs]
+      else:
+        full_confs = [factor*self.confs['receptor']]
+    else:
+      full_confs = [conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang \
+        for conf in confs]
+
+    # Write coordinates, run APBS, and store energies
+    apbs_dir = pqr_FN[:-4]
+    os.system('mkdir -p '+apbs_dir)
+    os.chdir(apbs_dir)
+    pqr_FN = os.path.join(apbs_dir, 'in.pqr')
+
+    import subprocess
+    import AlGDock.IO
+    IO_crd = AlGDock.IO.crd()
+
+    E = []
+    for full_conf in full_confs:
+      # Writes the coordinates in AMBER format
+      inpcrd_FN = pqr_FN[:-4]+'.crd'
+      IO_crd.write(inpcrd_FN, full_conf, 'title', trajectory=False)
+      
+      # Converts the coordinates to a pqr file
+      inpcrd_F = open(inpcrd_FN,'r')
+      pqr_F = open(pqr_FN,'w')
+      p = subprocess.Popen(
+        [self._FNs['ambpdb'], '-p', self._FNs['prmtop'][moiety], '-pqr'],
+        stdin=inpcrd_F, stdout=pqr_F, stderr=subprocess.PIPE)
+      p.wait()
+      pqr_F.close()
+      inpcrd_F.close()
+      
+      # Writes APBS script
+      apbs_in_FN = moiety+'apbs-mg-manual.in'
+      apbs_in_F = open(apbs_in_FN,'w')
+      apbs_in_F.write('READ\n  mol pqr {0}\nEND\n'.format(pqr_FN))
+      
+      for sdie in [80.0,2.0]:
+        for (bcfl,dime,gcent,grid) in zip(['mdh','focus'],
+            self._apbs_grid['dime'], self._apbs_grid['gcent'],
+            self._apbs_grid['spacing']):
+          apbs_in_F.write('''ELEC mg-manual
+  bcfl {0} # multiple debye-huckel boundary condition
+  chgm spl4 # quintic B-spline charge discretization
+  dime {1[0]} {1[1]} {1[2]}
+  gcent {2[0]} {2[1]} {2[2]}
+  grid {3} {3} {3}
+  lpbe # Linearized Poisson-Boltzmann
+  mol 1
+  pdie 2.0
+  sdens 10.0
+  sdie {4}
+  srad 1.4
+  srfm smol # Smoothed dielectric and ion-accessibility coefficients
+  swin 0.3
+  temp 300.0
+  calcenergy total
+END
+'''.format(bcfl,dime,gcent,grid,sdie))
+      apbs_in_F.write('quit\n')
+      apbs_in_F.close()
+
+      p = subprocess.Popen([self._FNs['apbs'], apbs_in_FN], \
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      (stdoutdata, stderrdata) = p.communicate()
+      ele_energy = [float(line.split('=')[-1][:-7]) \
+        for line in stdoutdata.split('\n') \
+        if line.startswith('  Total electrostatic energy')]
+
+      for FN in [inpcrd_FN, pqr_FN, apbs_in_FN, 'io.mc']:
+        os.remove(FN)
+      
+      E.append(ele_energy[3]-ele_energy[1])
 
     # Clear decompressed files
     if decompress:
       if os.path.isfile(self._FNs['prmtop'][moiety]+'.gz'):
         os.remove(self._FNs['prmtop'][moiety])
         self._FNs['prmtop'][moiety] = self._FNs['prmtop'][moiety] + '.gz'
+
+    os.chdir(self.dir['start'])
+    os.system('rm -rf '+apbs_dir)
+    E = np.array(E, dtype=float)*MMTK.Units.kJ/MMTK.Units.mol
+    return E.reshape((len(E),1))
 
   def _write_traj(self, traj_FN, confs, moiety, \
       title='', factor=1.0/MMTK.Units.Ang):
@@ -2759,6 +2925,8 @@ last modified {2}
     """
     
     if traj_FN is None:
+      return
+    if traj_FN.endswith('.pqr'):
       return
     if os.path.isfile(traj_FN):
       return
@@ -2776,13 +2944,9 @@ last modified {2}
         includeReceptor=(moiety.find('R')>-1),
         includeLigand=(moiety.find('L')>-1))
     elif traj_FN.endswith('.mdcrd'):
-      n_atoms = 0
       if (moiety.find('R')>-1):
         receptor_0 = factor*self.confs['receptor'][:self._ligand_first_atom,:]
         receptor_1 = factor*self.confs['receptor'][self._ligand_first_atom:,:]
-        n_atoms += self.confs['receptor'].shape[0]
-      if (moiety.find('L')>-1):
-        n_atoms += len(self.molecule.atoms)
 
       if not isinstance(confs,list):
         confs = [confs]
