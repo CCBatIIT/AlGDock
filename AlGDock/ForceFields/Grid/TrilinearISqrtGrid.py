@@ -43,6 +43,7 @@ class TrilinearISqrtGridForceField(ForceField):
         self.grid_name = grid_name
         self.max_val = max_val
   
+        # Load the grid
         import AlGDock.IO
         IO_Grid = AlGDock.IO.Grid()
         self.grid_data = IO_Grid.read(self.FN, multiplier=0.1)
@@ -58,6 +59,16 @@ class TrilinearISqrtGridForceField(ForceField):
         else:
           neg_vals = True
           self.grid_data['vals'] = -1*self.grid_data['vals']
+
+        import numpy as np
+
+        # Get inverse square root of the grid
+        nonzero = self.grid_data['vals']!=0
+        self.grid_data['vals'][nonzero] = 1/np.sqrt(self.grid_data['vals'][nonzero])
+
+        # "Cap" the grid values
+        if max_val>0.0:
+          self.grid_data['vals'] = max_val*np.tanh(self.grid_data['vals']/max_val)
 
         if scaling_prefactor is not None:
           self.scaling_prefactor = scaling_prefactor
@@ -100,4 +111,4 @@ class TrilinearISqrtGridForceField(ForceField):
         return [TrilinearISqrtGridTerm(universe, \
           self.grid_data['spacing'], self.grid_data['counts'], \
           self.grid_data['vals'], \
-          self.strength, scaling_factor, self.grid_name, self.max_val)]
+          self.strength, scaling_factor, self.grid_name)]

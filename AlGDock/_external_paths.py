@@ -61,12 +61,15 @@ search_paths = {
               '/share/apps/amber/14/bin/sander',
               'sander'],
              # For postprocessing snapshots
-    'ambpdb':['/Users/dminh/Installers/amber14/bin/ambpdb',
-              '/share/apps/amber/14/bin/ambpdb',
-              'ambpdb'],
       'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
               '/share/apps/apbs/1.4/bin/apbs',
               'apbs'],
+    'ambpdb':['/Users/dminh/Installers/amber14/bin/ambpdb',
+              '/share/apps/amber/14/bin/ambpdb',
+              'ambpdb'],
+   'molsurf':['/Users/dminh/Installers/amber14/bin/molsurf',
+              '/share/apps/amber/14/bin/molsurf',
+              'molsurf'],
              # BindingPMF.py is built on MMTK
       'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],
@@ -78,4 +81,5 @@ download_paths = {
   'namd':('namd.tar.gz','','namd2'),
   'sander':('sander.tar.gz','','sander'),
   'ambpdb':('ambpdb.tar.gz','','ambpdb'),
+  'molsurf':('molsurf.tar.gz','','molsurf'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs')}

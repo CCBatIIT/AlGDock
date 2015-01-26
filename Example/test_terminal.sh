@@ -21,10 +21,10 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --no_protocol_refinement \
   --sampler NUTS \
   --MCMC_moves 1 \
-  --cool_seeds_per_state 20 --dock_seeds_per_state 10 \
+  --seeds_per_state 10 \
   --steps_per_seed 250 \
-  --sweeps_per_cycle 10 --attempts_per_sweep 100 --steps_per_sweep 100 \
-  --cool_repX_cycles 3 --dock_repX_cycles 2 \
+  --sweeps_per_cycle 5 --attempts_per_sweep 100 --steps_per_sweep 1000 \
+  --cool_repX_cycles 2 --dock_repX_cycles 2 \
   --site Sphere --site_center 1.91650 1.91650 1.91650 \
   --site_max_R 0.01 --site_density 10. \
   --phases NAMD_Gas NAMD_GBSA \
@@ -34,6 +34,5 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --run_type timed \
   --max_time 10
 
-#  --run_type memory_test
 #  --no_stored_evaluators \
-#  --phases NAMD_Gas NAMD_GBSA Gas GBSA PBSA \
+#  --phases NAMD_Gas NAMD_GBSA Gas GBSA APBS PBSA \

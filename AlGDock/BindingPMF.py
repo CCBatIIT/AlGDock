@@ -100,8 +100,6 @@ arguments = {
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
   'cores':{'type':int, \
     'help':'Number of CPU cores to use'},
-  'no_stored_evaluators':{'action':'store_true',
-    'help':'Does not store the evaluator. This saves memory but can make replica exchange much slower.'},
   #   Defaults
   'protocol':{'choices':['Adaptive','Set'],
     'help':'Approach to determining series of thermodynamic states'},
@@ -312,10 +310,6 @@ last modified {2}
     else:
       self._cores = min(kwargs['cores'], available_cores)
     print "using %d/%d available cores"%(self._cores, available_cores)
-
-    self._store_evaluator = not kwargs['no_stored_evaluators']
-    print "will%s store evaluators\n"%(\
-      ' not' if not self._store_evaluator else '')
 
     self.confs = {'cool':{}, 'dock':{}}
     
@@ -724,36 +718,38 @@ last modified {2}
       self.confs['rmsd'] = rmsd_crd[self.molecule.heavy_atoms,:]
 
     # Determine APBS grid spacing
-    factor = 1.0/MMTK.Units.Ang
-    
-    def roundUpDime(x):
-      return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
+    if 'APBS' in self.params['dock']['phases'] or \
+       'APBS' in self.params['cool']['phases']:
+      factor = 1.0/MMTK.Units.Ang
+      
+      def roundUpDime(x):
+        return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
 
-    self._set_universe_evaluator({'MM':True, 'T':T_HIGH, 'ELE':1}, store=False)
-    gd = self._forceFields['ELE'].grid_data
-    focus_dims = roundUpDime(gd['counts'])
-    focus_center = factor*(gd['counts']*gd['spacing']/2. + gd['origin'])
-    focus_spacing = factor*gd['spacing'][0]
+      self._set_universe_evaluator({'MM':True, 'T':T_HIGH, 'ELE':1})
+      gd = self._forceFields['ELE'].grid_data
+      focus_dims = roundUpDime(gd['counts'])
+      focus_center = factor*(gd['counts']*gd['spacing']/2. + gd['origin'])
+      focus_spacing = factor*gd['spacing'][0]
 
-    min_xyz = np.array([min(factor*self.confs['receptor'][a,:]) for a in range(3)])
-    max_xyz = np.array([max(factor*self.confs['receptor'][a,:]) for a in range(3)])
-    mol_range = max_xyz - min_xyz
-    mol_center = (min_xyz + max_xyz)/2.
+      min_xyz = np.array([min(factor*self.confs['receptor'][a,:]) for a in range(3)])
+      max_xyz = np.array([max(factor*self.confs['receptor'][a,:]) for a in range(3)])
+      mol_range = max_xyz - min_xyz
+      mol_center = (min_xyz + max_xyz)/2.
 
-    # The full grid spans 1.5 times the range of the receptor
-    # and the focus grid, whatever is larger
-    full_spacing = 1.0
-    full_min = np.minimum(mol_center - mol_range/2.*1.5, \
-                          focus_center - focus_dims*focus_spacing/2.*1.5)
-    full_max = np.maximum(mol_center + mol_range/2.*1.5, \
-                          focus_center + focus_dims*focus_spacing/2.*1.5)
-    full_dims = roundUpDime((full_max-full_min)/full_spacing)
-    full_center = (full_min + full_max)/2.
+      # The full grid spans 1.5 times the range of the receptor
+      # and the focus grid, whatever is larger
+      full_spacing = 1.0
+      full_min = np.minimum(mol_center - mol_range/2.*1.5, \
+                            focus_center - focus_dims*focus_spacing/2.*1.5)
+      full_max = np.maximum(mol_center + mol_range/2.*1.5, \
+                            focus_center + focus_dims*focus_spacing/2.*1.5)
+      full_dims = roundUpDime((full_max-full_min)/full_spacing)
+      full_center = (full_min + full_max)/2.
 
-    self._apbs_grid = { \
-      'dime':[full_dims, focus_dims], \
-      'gcent':[full_center, focus_center], \
-      'spacing':[full_spacing, focus_spacing]}
+      self._apbs_grid = { \
+        'dime':[full_dims, focus_dims], \
+        'gcent':[full_center, focus_center], \
+        'spacing':[full_spacing, focus_spacing]}
 
     # Load progress
     self._postprocess(readOnly=True)
@@ -785,7 +781,7 @@ last modified {2}
     self.cool_protocol = [{'MM':True, 'T':T_HIGH, \
                           'delta_t':1.5*MMTK.Units.fs,
                           'a':0.0, 'crossed':False}]
-    self._set_universe_evaluator(self.cool_protocol[-1], store=False)
+    self._set_universe_evaluator(self.cool_protocol[-1])
 
     # Minimize and ramp the temperature from 0 to the desired high temperature
     from MMTK.Minimization import ConjugateGradientMinimizer # @UnresolvedImport
@@ -849,7 +845,7 @@ last modified {2}
       confs_o = confs
       Es_MM_o = Es_MM
       
-      self._set_universe_evaluator(self.cool_protocol[-1], store=False)
+      self._set_universe_evaluator(self.cool_protocol[-1])
       
       state_start_time = time.time()
       (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
@@ -1074,7 +1070,7 @@ last modified {2}
       time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 
     # Set up the force field with full interaction grids
-    self._set_universe_evaluator(self.lambda_scalables, store=False)
+    self._set_universe_evaluator(self.lambda_scalables)
   
     lambda_o = {'T':T_HIGH, 'MM':True, 'site':True, \
                 'crossed':False, 'a':0.0}
@@ -1264,7 +1260,7 @@ last modified {2}
 
       # Simulate
       sim_start_time = time.time()
-      self._set_universe_evaluator(lambda_n, store=False)
+      self._set_universe_evaluator(lambda_n)
       (confs, Es_tot, lambda_n['delta_t'], Ht) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
       self.tee("  generated %d configurations "%len(confs) + \
@@ -1585,7 +1581,7 @@ last modified {2}
   # Internal Functions #
   ######################
 
-  def _set_universe_evaluator(self, lambda_n, store=True):
+  def _set_universe_evaluator(self, lambda_n):
     """
     Sets the universe evaluator to values appropriate for the given lambda_n dictionary.
     The elements in the dictionary lambda_n can be:
@@ -1660,7 +1656,8 @@ last modified {2}
             self._forceFields[scalable] = TrilinearGridForceField(grid_FN,
               lambda_n[scalable], grid_scaling_factor,
               grid_name=scalable, max_val=max_val)
-          self.tee('  %s grid loaded from %s in %s'%(scalable, grid_FN, HMStime(time.time()-loading_start_time)))
+          self.tee('  %s grid loaded from %s in %s'%(scalable, grid_FN, \
+            HMStime(time.time()-loading_start_time)))
 
         # Set the force field strength to the desired value
         self._forceFields[scalable].strength = lambda_n[scalable]
@@ -1671,20 +1668,10 @@ last modified {2}
       compoundFF += ff
     self.universe.setForceField(compoundFF)
 
-    mem_start = psutil.virtual_memory()
-
     eval = ForceField.EnergyEvaluator(\
       self.universe, self.universe._forcefield, None, None, None, None)
     self.universe._evaluator[(None,None,None)] = eval
-
-    # Only store evaluator if there is enough memory available
-    mem_end = psutil.virtual_memory()
-    usage = mem_start.available - mem_end.available
-    if self._store_evaluator and store and (mem_end.available>10*usage):
-#      self.tee('  keeping evaluator that uses about ' + \
-#        '%f MiB; %f MiB available / %f MiB total'%(\
-#          usage/1E6, mem_end.available/1E6, mem_end.total/1E6))
-      self._evaluators[evaluator_key] = eval
+    self._evaluators[evaluator_key] = eval
 
   def _MC_translate_rotate(self, lambda_k, trials=20):
     """
@@ -2086,6 +2073,9 @@ last modified {2}
       self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
         process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())), \
         process=process)
+      mem_start = psutil.virtual_memory()
+      self.tee('  %f MiB available / %f MiB total'%(\
+        mem_start.available/1E6, mem_start.total/1E6))
       self.timing[process+'_repX_start'] = time.time()
       start_cycle = getattr(self,'_%s_total_cycle'%process)
       cycle_times = []
@@ -2151,7 +2141,7 @@ last modified {2}
        self.params['dock']['score'].endswith('.mol2.gz'):
       (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
       # Add configurations where the ligand is in the binding site
-      self._set_universe_evaluator({'site':True,'T':T_TARGET}, store=False)
+      self._set_universe_evaluator({'site':True,'T':T_TARGET})
       for ind in range(len(confs_dock6)):
         self.universe.setConfiguration(Configuration(self.universe, confs_dock6[ind]))
         if self.universe.energy()<1.:
@@ -2165,7 +2155,7 @@ last modified {2}
       count['initial_dock'] = len(self.confs['dock']['seeds'])
     
     # Minimize each configuration
-    self._set_universe_evaluator(self._lambda(1.0,process='dock'), store=False)
+    self._set_universe_evaluator(self._lambda(1.0,process='dock'))
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
 
@@ -2435,10 +2425,8 @@ last modified {2}
     
       if p!='original' and getattr(self,p+'_protocol')==[]:
         continue
-    
       if state==-1:
         state = len(getattr(self,p+'_protocol'))-1
-
       if cycle==-1:
         cycles = range(getattr(self,'_'+p+'_cycle'))
       else:
@@ -2504,7 +2492,7 @@ last modified {2}
             elif phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
               programs.append('namd')
             elif phase in ['APBS'] and not 'apbs' in programs:
-              programs.extend(['apbs','ambpdb'])
+              programs.extend(['apbs','ambpdb','molsurf'])
 
             # Files to remove later
             if not traj_FN in toClean:
@@ -2553,6 +2541,17 @@ last modified {2}
         self.tee("  error in postprocessing %s, state %d, cycle %d, %s in %s"%(\
           p,state,c,label,HMStime(wall_time)))
 
+    # Combine APBS and NAMD_Gas energies
+    for (p, state, c, moiety, phase) in incomplete:
+      if (phase=='APBS') and \
+          (getattr(self,p+'_Es')[state][c][moiety+phase].shape[1]==2) and \
+          (moiety+'NAMD_Gas' in getattr(self,p+'_Es')[state][c]):
+        E_PBSA = getattr(self,p+'_Es')[state][c][moiety+phase]
+        E_NAMD_Gas = getattr(self,p+'_Es')[state][c][moiety+'NAMD_Gas'][:,-1]
+        E_tot = np.sum(E_PBSA,1) + E_NAMD_Gas
+        getattr(self,p+'_Es')[state][c][moiety+phase] = \
+          np.hstack((E_NAMD_Gas[...,None],E_PBSA,E_tot[...,None]))
+
     # Clean up files
     if not debug:
       for FN in toClean:
@@ -2600,7 +2599,7 @@ last modified {2}
 
     if type=='sampling' or type=='all':
       # Molecular mechanics and grid interaction energies
-      self._set_universe_evaluator(self.lambda_full, store=False)
+      self._set_universe_evaluator(self.lambda_full)
       for term in (['MM','site','misc'] + self._scalables):
         E[term] = np.zeros(len(confs), dtype=float)
       for c in range(len(confs)):
@@ -2805,10 +2804,6 @@ last modified {2}
     Uses NAMD to calculate the energy of a set of configurations
     Units are the MMTK standard, kJ/mol
     """
-    
-# TO DO: In _APBS_Energy, translate the ligand to the binding site
-# TO DO: Add surface area and ligand internal energy to APBS calculations
-
     # Decompress prmtop
     decompress = self._FNs['prmtop'][moiety].endswith('.gz')
     if decompress:
@@ -2825,8 +2820,6 @@ last modified {2}
 
     if not isinstance(confs,list):
       confs = [confs]
-    
-    # Translate configurations to the binding site
     
     if (moiety.find('R')>-1):
       if (moiety.find('L')>-1):
@@ -2869,11 +2862,25 @@ last modified {2}
       apbs_in_FN = moiety+'apbs-mg-manual.in'
       apbs_in_F = open(apbs_in_FN,'w')
       apbs_in_F.write('READ\n  mol pqr {0}\nEND\n'.format(pqr_FN))
-      
+
       for sdie in [80.0,2.0]:
-        for (bcfl,dime,gcent,grid) in zip(['mdh','focus'],
+        if moiety=='L':
+          min_xyz = np.array([min(full_conf[a,:]) for a in range(3)])
+          max_xyz = np.array([max(full_conf[a,:]) for a in range(3)])
+          mol_range = max_xyz - min_xyz
+          mol_center = (min_xyz + max_xyz)/2.
+          
+          def roundUpDime(x):
+            return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
+          
+          focus_spacing = 0.5
+          focus_dims = roundUpDime(mol_range*1.5/focus_spacing)
+          args = zip(['mdh'],[focus_dims],[mol_center],[focus_spacing])
+        else:
+          args = zip(['mdh','focus'],
             self._apbs_grid['dime'], self._apbs_grid['gcent'],
-            self._apbs_grid['spacing']):
+            self._apbs_grid['spacing'])
+        for (bcfl,dime,gcent,grid) in args:
           apbs_in_F.write('''ELEC mg-manual
   bcfl {0} # multiple debye-huckel boundary condition
   chgm spl4 # quintic B-spline charge discretization
@@ -2895,17 +2902,32 @@ END
       apbs_in_F.write('quit\n')
       apbs_in_F.close()
 
+      # Runs APBS
       p = subprocess.Popen([self._FNs['apbs'], apbs_in_FN], \
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       (stdoutdata, stderrdata) = p.communicate()
-      ele_energy = [float(line.split('=')[-1][:-7]) \
+      apbs_energy = [float(line.split('=')[-1][:-7]) \
         for line in stdoutdata.split('\n') \
         if line.startswith('  Total electrostatic energy')]
+      if moiety=='L':
+        polar_energy = apbs_energy[0]-apbs_energy[1]
+      else:
+        polar_energy = apbs_energy[1]-apbs_energy[3]
+      
+      # Runs molsurf to calculate Connolly surface
+      apolar_energy = 0.0
+      p = subprocess.Popen([self._FNs['molsurf'], pqr_FN, '1.4'], \
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      (stdoutdata, stderrdata) = p.communicate()
+      for line in stdoutdata.split('\n'):
+        if line.startswith('surface area ='):
+          apolar_energy = float(line.split('=')[-1]) * \
+            0.0072 * MMTK.Units.kcal/MMTK.Units.mol
 
       for FN in [inpcrd_FN, pqr_FN, apbs_in_FN, 'io.mc']:
         os.remove(FN)
       
-      E.append(ele_energy[3]-ele_energy[1])
+      E.append([polar_energy, apolar_energy])
 
     # Clear decompressed files
     if decompress:
@@ -2915,8 +2937,7 @@ END
 
     os.chdir(self.dir['start'])
     os.system('rm -rf '+apbs_dir)
-    E = np.array(E, dtype=float)*MMTK.Units.kJ/MMTK.Units.mol
-    return E.reshape((len(E),1))
+    return np.array(E, dtype=float)*MMTK.Units.kJ/MMTK.Units.mol
 
   def _write_traj(self, traj_FN, confs, moiety, \
       title='', factor=1.0/MMTK.Units.Ang):
@@ -2931,8 +2952,9 @@ END
     if os.path.isfile(traj_FN):
       return
     
-    if not os.path.isdir(os.path.dirname(traj_FN)):
-      os.system('mkdir -p '+os.path.dirname(traj_FN))
+    traj_dir = os.path.dirname(os.path.abspath(traj_FN))
+    if not os.path.isdir(traj_dir):
+      os.system('mkdir -p '+traj_dir)
 
     import AlGDock.IO
     if traj_FN.endswith('.dcd'):

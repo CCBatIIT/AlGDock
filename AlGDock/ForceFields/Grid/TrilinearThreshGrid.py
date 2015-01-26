@@ -48,17 +48,23 @@ class TrilinearThreshGridForceField(ForceField):
         self.max_val = max_val
         self.Ethresh = Ethresh
   
+        # Load the grid
         import AlGDock.IO
         IO_Grid = AlGDock.IO.Grid()
         self.grid_data = IO_Grid.read(self.FN, multiplier=0.1)
         if not (self.grid_data['origin']==0.0).all():
           raise Exception('Trilinear grid origin in %s not at (0, 0, 0)!'%self.FN)
+
+        import numpy as np
+
+        # "Cap" the grid values
+        if max_val>0.0:
+          self.grid_data['vals'] = max_val*np.tanh(self.grid_data['vals']/max_val)
     
         if scaling_prefactor is not None:
           self.scaling_prefactor = scaling_prefactor
         else:
           self.scaling_prefactor = 1.
-
 
     # The following method is called by the energy evaluation engine
     # to inquire if this force field term has all the parameters it
@@ -97,4 +103,4 @@ class TrilinearThreshGridForceField(ForceField):
         return [TrilinearThreshGridTerm(universe, \
           self.grid_data['spacing'], self.grid_data['counts'], \
           self.grid_data['vals'], \
-          self.strength, scaling_factor, self.grid_name, self.max_val, self.Ethresh)]
+          self.strength, scaling_factor, self.grid_name, self.Ethresh)]

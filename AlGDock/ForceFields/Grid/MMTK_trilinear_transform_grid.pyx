@@ -37,13 +37,13 @@ cdef class TrilinearTransformGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
-    cdef float_t max_val, strength, inv_power, inv_power_m1, k
+    cdef float_t strength, inv_power, inv_power_m1, k
 
     # The __init__ method remembers parameters and loads the potential
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
     def __init__(self, universe, spacing, counts, vals, strength,
-                 scaling_factor, inv_power, grid_name, max_val):
+                 scaling_factor, inv_power, grid_name):
 
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
@@ -53,7 +53,6 @@ cdef class TrilinearTransformGridTerm(EnergyTerm):
         self.strength = strength
         self.scaling_factor = np.array(scaling_factor, dtype=float)
         self.natoms = len(self.scaling_factor)
-        self.max_val = max_val
         self.inv_power = float(inv_power)
         self.inv_power_m1 = inv_power - 1.
 
@@ -67,15 +66,6 @@ cdef class TrilinearTransformGridTerm(EnergyTerm):
         # To keep atoms within the grid
         self.k = 10000. # kJ/mol nm**2
         
-        # Transform the grid
-        self.vals = np.copy(vals)
-        nonzero = self.vals!=0
-        self.vals[nonzero] = self.vals[nonzero]**(1./self.inv_power)
-        
-        # "Cap" the grid values
-        if max_val>0.0:
-          self.vals = max_val*np.tanh(vals/max_val)
-
     # This method is called for every single energy evaluation, so make
     # it as efficient as possible. The parameters do_gradients and
     # do_force_constants are flags that indicate if gradients and/or

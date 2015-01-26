@@ -37,13 +37,13 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
-    cdef float_t max_val, Ethresh, strength, k
+    cdef float_t Ethresh, strength, k
 
     # The __init__ method remembers parameters and loads the potential
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
     def __init__(self, universe, spacing, counts, vals, strength,
-                 scaling_factor, grid_name, max_val, Ethresh):
+                 scaling_factor, grid_name, Ethresh):
 
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
@@ -53,7 +53,6 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
         self.scaling_factor = np.array(scaling_factor, dtype=float)
         self.natoms = len(self.scaling_factor)
         self.grid_name = grid_name
-        self.max_val = max_val
         self.Ethresh = Ethresh
         
         self.spacing = spacing
@@ -66,12 +65,6 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
         # To keep atoms within the grid
         self.k = 10000. # kJ/mol nm**2
 
-        # "Cap" the grid values
-        if max_val>0.0:
-          self.vals = max_val*np.tanh(self.vals/max_val)
-        else:
-          self.vals = np.copy(vals)
-          
     # This method is called for every single energy evaluation, so make
     # it as efficient as possible. The parameters do_gradients and
     # do_force_constants are flags that indicate if gradients and/or

@@ -45,12 +45,18 @@ class TrilinearGridForceField(ForceField):
         self.grid_name = grid_name
         self.max_val = max_val
 
-
+        # Load the grid
         import AlGDock.IO
         IO_Grid = AlGDock.IO.Grid()
         self.grid_data = IO_Grid.read(self.FN, multiplier=0.1)
         if not (self.grid_data['origin']==0.0).all():
           raise Exception('Trilinear grid origin in %s not at (0, 0, 0)!'%self.FN)
+    
+        import numpy as np
+        
+        # "Cap" the grid values
+        if max_val>0.0:
+          self.grid_data['vals'] = max_val*np.tanh(self.grid_data['vals']/max_val)
     
         if scaling_prefactor is not None:
           self.scaling_prefactor = scaling_prefactor
@@ -94,4 +100,4 @@ class TrilinearGridForceField(ForceField):
         return [TrilinearGridTerm(universe, \
           self.grid_data['spacing'], self.grid_data['counts'], \
           self.grid_data['vals'], \
-          self.strength, scaling_factor, self.grid_name, self.max_val)]
+          self.strength, scaling_factor, self.grid_name)]
