@@ -3092,6 +3092,9 @@ END
       self.confs[p]['seeds'] = saved['data'][2]
       self.confs[p]['samples'] = saved['data'][3]
       setattr(self,'%s_Es'%p, saved['data'][4])
+      setattr(self,'_%s_cycle'%p,len(saved['data'][3][-1]))
+      # TO DO: This breaks _total_cycle. This feature should be fixed or removed.
+      setattr(self,'_%s_total_cycle'%p,len(saved['data'][3][-1]))
     return params
 
   def _save(self, p, keys=['progress','data']):
