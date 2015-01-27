@@ -3049,18 +3049,26 @@ END
     self.tee("  wrote to "+FN)
 
   def _load(self, p):
-    saved = {'progress':None, 'data':None}
-    for key in saved.keys():
-      saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
-      for FN in [saved_FN, saved_FN+'.BAK']:
-        saved[key] = self._load_pkl_gz(FN)
-        if (saved[key] is None):
-          print '  failed to load '+FN
-          if os.path.isfile(FN):
-            os.remove(FN)
-        else:
-          print '  loaded '+FN
-          break
+    progress_FN = join(self.dir[p],'%s_progress.pkl.gz'%(p))
+    data_FN = join(self.dir[p],'%s_data.pkl.gz'%(p))
+    saved = {'progress':self._load_pkl_gz(progress_FN),
+             'data':self._load_pkl_gz(data_FN)}
+    if (saved['progress'] is None) or (saved['data'] is None):
+      if os.path.isfile(progress_FN):
+        os.remove(progress_FN)
+      if os.path.isfile(data_FN):
+        os.remove(data_FN)
+      progress_FN = join(self.dir[p],'%s_progress.pkl.gz.BAK'%(p))
+      data_FN = join(self.dir[p],'%s_data.pkl.gz.BAK'%(p))
+      saved = {'progress':self._load_pkl_gz(progress_FN),
+               'data':self._load_pkl_gz(data_FN)}
+      if (saved['progress'] is None) or (saved['data'] is None):
+        if os.path.isfile(progress_FN):
+          os.remove(progress_FN)
+        if os.path.isfile(data_FN):
+          os.remove(data_FN)
+      else:
+        print '  using backed up progress and data for %s progress'%p
 
     params = None
     setattr(self,'%s_protocol'%p,[])
