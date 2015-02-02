@@ -22,19 +22,19 @@ def findPaths(keys):
       if key in download_paths.keys():
         (FN,command,path) = download_paths[key]
         # Check that it has not already been downloaded
+        import os
         if os.path.isfile(path):
           paths[key] = os.path.abspath(path)
         else:
           import time
           download_start_time = time.time()
           print 'Downloading and installing '+key
-          os.system('wget --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
-          os.system('tar -xvf %s'%FN)
+          os.system('wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
+          os.system('tar xzf %s'%FN)
           if command != '':
-            command = command.replace('$WORK_DIR',os.getcwd())
             os.system(command)
           if os.path.isfile(path):
-            print key + ' downloaded and installed in %d s'%(\
+            print '  ' + key + ' downloaded and installed in %f s'%(\
               time.time() - download_start_time)
             paths[key] = os.path.abspath(path)
           else:

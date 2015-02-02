@@ -78,18 +78,5 @@ class VelocityVerletIntegrator(Dynamics.Integrator):
             (self.universe,
              self.universe.configuration().array,
              self.universe.velocities().array) + late_args)
-
-          # Decide whether to accept the move
-          pe_n = self.universe.energy()
-          en = pe_n + self.universe.kineticEnergy()
-          if not math.isnan(en):
-            acc += 1
-            if normalize:
-              self.universe.normalizePosition()
-          else:
-            self.universe.setConfiguration(xo)
-            pe_n = pe_o
-          xs.append(self.universe.copyConfiguration().array)
-          energies.append(pe_n)
   
         return (xs, energies, float(acc)/float(ntrials), delta_t)

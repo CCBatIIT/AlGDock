@@ -424,7 +424,7 @@ last modified {2}
         'repX_cycles':20,
         'min_repX_acc':0.3,
         'sweeps_per_cycle':200,
-        'attempts_per_sweep':1000,
+        'attempts_per_sweep':100,
         'steps_per_sweep':1000,
         'phases':['NAMD_Gas','NAMD_GBSA'],
         'keep_intermediate':False}
@@ -460,15 +460,6 @@ last modified {2}
     for p in ['cool','dock']:
       self.params[p] = merge_dictionaries(
         [args[src] for src in ['new_'+p,p,'default_'+p]])
-
-#    # Allow updates of receptor energies
-#    for phase in allowed_phases:
-#      if args['new_dock']['receptor_'+phase] is not None:
-#        self.params['dock']['receptor_'+phase] = args['new_dock']['receptor_'+phase]
-#
-#    # Allow updates of score parameter
-#    if args['new_dock']['score'] is not None:
-#      self.params['dock']['score'] = args['new_dock']['score']
 
     print '\n*** Simulation parameters and constants ***'
     for p in ['cool','dock']:
@@ -541,11 +532,14 @@ last modified {2}
     elif self.run_type=='timed': # Timed replica exchange sampling
       cool_complete = self.cool()
       if cool_complete:
-        self.calc_f_L()
-        dock_complete = self.dock()
-        if dock_complete:
-          self._postprocess()
-          self.calc_f_RL()
+        pp_complete = self._postprocess([('cool',-1,-1,'L')])
+        if pp_complete:
+          self.calc_f_L()
+          dock_complete = self.dock()
+          if dock_complete:
+            pp_complete = self._postprocess()
+            if pp_complete:
+              self.calc_f_RL()
     elif self.run_type=='postprocess': # Postprocessing
       self._postprocess()
     elif self.run_type=='redo_postprocess':
@@ -565,7 +559,7 @@ last modified {2}
         for state_ind in range(1,len(self.confs[process]['samples'])-1):
           for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
             self.confs[process]['samples'][state_ind][cycle_ind] = []
-        self._save(process, keys=['data'])
+        self._save(process)
     elif self.run_type=='memory_test':
 #      self.params['dock']['sweeps_per_cycle'] = 15
 #      self.params['dock']['attempts_per_sweep'] = 20
@@ -936,7 +930,9 @@ last modified {2}
     K = len(self.cool_protocol)
 
     # Make sure postprocessing is complete
-    self._postprocess([('cool',-1,-1,'L')])
+    pp_complete = self._postprocess([('cool',-1,-1,'L')])
+    if not pp_complete:
+      return False
 
     # Make sure all the energies are available
     for c in range(self._cool_cycle):
@@ -1378,10 +1374,12 @@ last modified {2}
         for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
           self.B[phase+'_'+method] = []
     if readOnly:
-      return
+      return True
 
     # Make sure postprocessing is complete
-    self._postprocess()
+    pp_complete = self._postprocess()
+    if not pp_complete:
+      return False
     self.calc_f_L()
 
     # Make sure all the energies are available
@@ -1430,7 +1428,7 @@ last modified {2}
         self.stats_RL['Psi_'+phase].append(
           (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
            self.dock_Es[-1][c]['L'+phase][:,-1] - \
-           self.params['dock']['receptor_'+phase][-1])/RT_TARGET)
+           self.original_Es[0][0]['R'+phase][:,-1])/RT_TARGET)
 
     # Estimate cycle at which simulation has equilibrated
     mean_u_Ks = np.array([np.mean(u_K) for u_K in self.stats_RL['u_K_sampled']])
@@ -1524,12 +1522,12 @@ last modified {2}
           np.log(sum(weight*np.exp(Psi-min_Psi))) + min_Psi)
         self.B[phase+'_BAR'].append(\
           -self.f_L[phase+'_solv'][-1] - \
-           self.params['dock']['receptor_'+phase][-1]/RT_TARGET - \
+           self.original_Es[0][0]['R'+phase][:,-1]/RT_TARGET - \
            self.f_L['cool_BAR'][-1][-1] + \
            self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
         self.B[phase+'_MBAR'].append(\
           -self.f_L[phase+'_solv'][-1] - \
-           self.params['dock']['receptor_'+phase][-1]/RT_TARGET - \
+           self.original_Es[0][0]['R'+phase][:,-1]/RT_TARGET - \
            self.f_L['cool_MBAR'][-1][-1] + \
            self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
 
@@ -1969,7 +1967,7 @@ last modified {2}
         setattr(self,'_%s_cycle'%process,0)
         setattr(self,'_%s_total_cycle'%process,
           getattr(self,'_%s_total_cycle'%process)+1)
-        self._save(process, keys=['progress', 'data'])
+        self._save(process)
         if process=='cool':
           self.calc_f_L(redo=True,readOnly=True)
         else:
@@ -1992,7 +1990,7 @@ last modified {2}
     setattr(self,'_%s_cycle'%process,cycle + 1)
     setattr(self,'_%s_total_cycle'%process,
       getattr(self,'_%s_total_cycle'%process) + 1)
-    self._save(process, keys=['progress', 'data'])
+    self._save(process)
     self._clear_lock(process)
 
   def _sim_one_state_worker(self, input, output):
@@ -2394,35 +2392,33 @@ last modified {2}
       conditions=[('original',0, 0,'R'), ('cool',-1,-1,'L'), \
                   ('dock',   -1,-1,'L'), ('dock',-1,-1,'RL')],
       phases=None,
-      readOnly=False, redo_dock=False, debug=False, identify_incomplete=False):
+      readOnly=False, redo_dock=False, debug=False):
     """
     Obtains the NAMD energies of all the conditions using all the phases.  
     Saves both MMTK and NAMD energies after NAMD energies are estimated.
+    
+    state == -1 means the last state
+    cycle == -1 means all cycles
+
     """
     # Clear evaluators to save memory
     self._evaluators = {}
     
-    updated = []
-    incomplete = []
-    toClean = []
-    programs = []
-    crd_FN_o = ''
     if phases is None:
       phases = list(set(self.params['cool']['phases'] + self.params['dock']['phases']))
-    
-    m = multiprocessing.Manager()
-    task_queue = m.Queue()
-    done_queue = m.Queue()
 
-    # state == -1 means the last state
-    # cycle == -1 means all cycles
+    updated_processes = []
+    if 'APBS' in phases:
+      updated_processes = self._combine_APBS_and_NAMD(updated_processes)
+    
+    # Identify incomplete calculations
+    incomplete = []
     for (p, state, cycle, moiety) in conditions:
       # Check that the values are legitimate
       if not p in ['cool','dock','original']:
         raise Exception("Type should be in ['cool', 'dock', 'original']")
       if not moiety in ['R','L', 'RL']:
         raise Exception("Species should in ['R','L', 'RL']")
-    
       if p!='original' and getattr(self,p+'_protocol')==[]:
         continue
       if state==-1:
@@ -2431,28 +2427,13 @@ last modified {2}
         cycles = range(getattr(self,'_'+p+'_cycle'))
       else:
         cycles = [cycle]
-    
-      for c in cycles:
-        if p=='original':
-          prefix = p
-        else:
-          prefix = '%s%d_%d'%(p, state, c)
 
+      # Check for completeness
+      for c in cycles:
         for phase in phases:
-          p_dir = {'cool':self.dir['cool'],
-                 'original':self.dir['dock'],
-                 'dock':self.dir['dock']}[p]
-          
           label = moiety+phase
-          if phase in ['Gas','GBSA','PBSA']:
-            traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
-          elif phase in ['NAMD_Gas','NAMD_GBSA']:
-            traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
-          elif phase in ['APBS']:
-            traj_FN = join(p_dir,'%s.%s.pqr'%(prefix,moiety))
-          outputname = join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
           
-          # Skip NAMD
+          # Skip postprocessing
           # if the function is NOT being rerun in redo mode
           # and one of the following:
           # the function is being run in readOnly mode,
@@ -2469,56 +2450,81 @@ last modified {2}
             pass
           else:
             incomplete.append((p, state, c, moiety, phase))
-            if identify_incomplete:
-              continue
-            
-            # Queue the calculation
-            # Obtain configurations
-            if (moiety=='R'):
-              if not 'receptor' in self.confs.keys():
-                continue
-              confs = self.confs['receptor']
-            else:
-              confs = self.confs[p]['samples'][state][c]
 
-            task_queue.put((confs, moiety, phase, traj_FN, outputname, debug, \
-              (p,state,c,label)))
-            
-            self._write_traj(traj_FN, confs, moiety)
-
-            # Programs to locate
-            if phase in ['Gas','GBSA','PBSA'] and not 'sander' in programs:
-              programs.append('sander')
-            elif phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
-              programs.append('namd')
-            elif phase in ['APBS'] and not 'apbs' in programs:
-              programs.extend(['apbs','ambpdb','molsurf'])
-
-            # Files to remove later
-            if not traj_FN in toClean:
-              toClean.append(traj_FN)
-
-            # Updated
-            if not p in updated:
-              updated.append(p)
-
-    if identify_incomplete:
-      return incomplete
     if incomplete==[]:
-      return incomplete
-
+      return True
+    
+    del p, state, c, moiety, phase, cycles, label
+    
     # Find the necessary programs, downloading them if necessary
+    programs = []
+    for (p, state, c, moiety, phase) in incomplete:
+      if phase in ['Gas','GBSA','PBSA'] and not 'sander' in programs:
+        programs.append('sander')
+      elif phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
+        programs.append('namd')
+      elif phase in ['APBS'] and not 'apbs' in programs:
+        programs.extend(['apbs','ambpdb','molsurf'])
+
     for program in programs:
       self._FNs[program] = a.findPaths([program])[program]
 
-    # Start processes
-    self._set_lock('dock' if 'dock' in updated else 'cool')
+    # Write trajectories and queue calculations
+    m = multiprocessing.Manager()
+    task_queue = m.Queue()
+    time_per_snap = m.dict()
+    for (p, state, c, moiety, phase) in incomplete:
+      if moiety+phase not in time_per_snap.keys():
+        time_per_snap[moiety+phase] = m.list()
+
+    toClean = []
+
+    for (p, state, c, moiety, phase) in incomplete:
+      # Identify the configurations
+      if (moiety=='R'):
+        if not 'receptor' in self.confs.keys():
+          continue
+        confs = [self.confs['receptor']]
+      else:
+        confs = self.confs[p]['samples'][state][c]
+
+      # Identify the file names
+      if p=='original':
+        prefix = p
+      else:
+        prefix = '%s%d_%d'%(p, state, c)
+
+      p_dir = {'cool':self.dir['cool'],
+         'original':self.dir['dock'],
+         'dock':self.dir['dock']}[p]
+      
+      if phase in ['Gas','GBSA','PBSA']:
+        traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
+      elif phase in ['NAMD_Gas','NAMD_GBSA']:
+        traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
+      elif phase in ['APBS']:
+        traj_FN = join(p_dir,'%s.%s.pqr'%(prefix,moiety))
+      outputname = join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
+
+      # Writes trajectory
+      self._write_traj(traj_FN, confs, moiety)
+      if not traj_FN in toClean:
+        toClean.append(traj_FN)
+
+      # Queues the calculations
+      task_queue.put((confs, moiety, phase, traj_FN, outputname, debug, \
+              (p,state,c,moiety+phase)))
+
+    # Start postprocessing
+    self._set_lock('dock' if 'dock' in [loc[0] for loc in incomplete] else 'cool')
     self.tee("\n>>> Postprocessing, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
     postprocess_start_time = time.time()
-    
+
+    done_queue = m.Queue()
     processes = [multiprocessing.Process(target=self._energy_worker, \
-        args=(task_queue, done_queue)) for p in range(self._cores)]
+        args=(task_queue, done_queue, time_per_snap)) \
+        for p in range(self._cores)]
     for p in range(self._cores):
       task_queue.put('STOP')
     for p in processes:
@@ -2531,63 +2537,137 @@ last modified {2}
     for p in processes:
       p.terminate()
 
-    # Store energies
-    for (E,(p,state,c,label),wall_time) in results:
-      if not (E==np.inf).any():
-        getattr(self,p+'_Es')[state][c][label] = E
-        self.tee("  postprocessed %s, state %d, cycle %d, %s in %s"%(\
-          p,state,c,label,HMStime(wall_time)))
-      else:
-        self.tee("  error in postprocessing %s, state %d, cycle %d, %s in %s"%(\
-          p,state,c,label,HMStime(wall_time)))
-
-    # Combine APBS and NAMD_Gas energies
-    for (p, state, c, moiety, phase) in incomplete:
-      if (phase=='APBS') and \
-          (getattr(self,p+'_Es')[state][c][moiety+phase].shape[1]==2) and \
-          (moiety+'NAMD_Gas' in getattr(self,p+'_Es')[state][c]):
-        E_PBSA = getattr(self,p+'_Es')[state][c][moiety+phase]
-        E_NAMD_Gas = getattr(self,p+'_Es')[state][c][moiety+'NAMD_Gas'][:,-1]
-        E_tot = np.sum(E_PBSA,1) + E_NAMD_Gas
-        getattr(self,p+'_Es')[state][c][moiety+phase] = \
-          np.hstack((E_NAMD_Gas[...,None],E_PBSA,E_tot[...,None]))
-
     # Clean up files
     if not debug:
       for FN in toClean:
         if os.path.isfile(FN):
           os.remove(FN)
 
+    # Store energies
+    for (E,(p,state,c,label),wall_time) in results:
+      getattr(self,p+'_Es')[state][c][label] = E
+      if not p in updated_processes:
+        updated_processes.append(p)
+
+    # Print time per snapshot
+    for key in time_per_snap.keys():
+      if len(time_per_snap[key])>0:
+        mean_time_per_snap = np.mean(time_per_snap[key])
+        if not np.isnan(mean_time_per_snap):
+          self.tee("  an average of %f s per %s snapshot"%(\
+            mean_time_per_snap, key))
+        else:
+          self.tee("  time per snapshot in %s: "%(key) + \
+            ', '.join(['%f'%t for t in time_per_snap[key]]))
+      else:
+        self.tee("  no snapshots postprocessed in %s"%(key))
+
+    # Combine APBS and NAMD_Gas energies
+    if 'APBS' in phases:
+      updated_processes = self._combine_APBS_and_NAMD(updated_processes)
+
     # Save data
-    if 'original' in updated:
+    if 'original' in updated_processes:
       for phase in phases:
         if (self.params['dock']['receptor_'+phase] is None) and \
            (self.original_Es[0][0]['R'+phase] is not None):
           self.params['dock']['receptor_'+phase] = \
-            self.original_Es[0][0]['R'+phase][-1]
-          self._save('dock', keys=['progress'])
+            self.original_Es[0][0]['R'+phase]
+      self._save('dock', keys=['progress'])
+    if 'cool' in updated_processes:
+      self._save('cool')
+    if ('dock' in updated_processes) or ('original' in updated_processes):
+      self._save('dock')
 
-    if 'cool' in updated:
-      self._save('cool', keys=['data'])
-    if ('dock' in updated) or ('original' in updated):
-      self._save('dock', keys=['data'])
-
-    if len(updated)>0:
+    if len(updated_processes)>0:
+      self._clear_lock('dock' if 'dock' in updated_processes else 'cool')
       self.tee("\nElapsed time for postprocessing was " + \
         HMStime(time.time()-postprocess_start_time))
-      self._clear_lock('dock' if 'dock' in updated else 'cool')
+      return len(incomplete)==len(results)
 
-  def _energy_worker(self, input, output):
+  def _energy_worker(self, input, output, time_per_snap):
     for args in iter(input.get, 'STOP'):
+      (confs, moiety, phase, traj_FN, outputname, debug, reference) = args
+      (p, state, c, label) = reference
+      nsnaps = len(confs)
+      
+      # Make sure there is enough time remaining
+      if self.run_type=='timed':
+        remaining_time = self.timing['max']*60 - \
+          (time.time()-self.timing['start'])
+        if len(time_per_snap[moiety+phase])>0:
+          mean_time_per_snap = np.mean(np.mean(time_per_snap[moiety+phase]))
+          if np.isnan(mean_time_per_snap):
+            return
+          projected_time = mean_time_per_snap*nsnaps
+          self.tee("  projected cycle time for %s: %s, remaining time: %s"%(\
+            moiety+phase, \
+            HMStime(projected_time), HMStime(remaining_time)), process=p)
+          if projected_time > remaining_time:
+            return
+    
+      # Calculate the energy
       start_time = time.time()
-      if args[2] in ['Gas','GBSA','PBSA']:
+      if phase in ['Gas','GBSA','PBSA']:
         E = self._sander_Energy(*args)
-      elif args[2] in ['NAMD_Gas','NAMD_GBSA']:
+      elif phase in ['NAMD_Gas','NAMD_GBSA']:
         E = self._NAMD_Energy(*args)
-      elif args[2] in ['APBS']:
+      elif phase in ['APBS']:
         E = self._APBS_Energy(*args)
       wall_time = time.time() - start_time
-      output.put((E, args[-1], wall_time))
+
+      if not np.isinf(E).any():
+        self.tee("  postprocessed %s, state %d, cycle %d, %s in %s"%(\
+          p,state,c,label,HMStime(wall_time)))
+          
+        # Store output and timings
+        output.put((E, reference, wall_time))
+
+        times_per_snap = time_per_snap[moiety+phase]
+        times_per_snap.append(wall_time/nsnaps)
+        time_per_snap[moiety+phase] = times_per_snap
+      else:
+        self.tee("  error in postprocessing %s, state %d, cycle %d, %s in %s"%(\
+          p,state,c,label,HMStime(wall_time)))
+        return
+
+  def _combine_APBS_and_NAMD(self, updated_processes = []):
+    psmc = [\
+      ('cool', len(self.cool_protocol)-1, ['L'], range(self._cool_cycle)), \
+      ('dock', len(self.dock_protocol)-1, ['L','RL'], range(self._dock_cycle)), \
+      ('original', 0, ['R'], [0])]
+    for (p,state,moieties,cycles) in psmc:
+      for moiety in moieties:
+        label = moiety + 'APBS'
+        for c in cycles:
+          if not ((label in getattr(self,p+'_Es')[state][c]) and \
+              (getattr(self,p+'_Es')[state][c][label] is not None) and \
+              (moiety+'NAMD_Gas' in getattr(self,p+'_Es')[state][c]) and \
+              (getattr(self,p+'_Es')[state][c][moiety+'NAMD_Gas'] is not None)):
+            break
+          if len(getattr(self,p+'_Es')[state][c][label].shape)==1 and \
+              (getattr(self,p+'_Es')[state][c][label].shape[0]==2):
+            E_PBSA = getattr(self,p+'_Es')[state][c][label]
+            E_NAMD_Gas = getattr(self,p+'_Es')[state][c][moiety+'NAMD_Gas'][-1]
+            E_tot = np.sum(E_PBSA) + E_NAMD_Gas
+            getattr(self,p+'_Es')[state][c][label] = \
+              np.hstack((E_PBSA,E_NAMD_Gas,E_tot))
+            if not p in updated_processes:
+              updated_processes.append(p)
+          elif len(getattr(self,p+'_Es')[state][c][label].shape)==2 and \
+              (getattr(self,p+'_Es')[state][c][label].shape[1]==2):
+            E_PBSA = getattr(self,p+'_Es')[state][c][label]
+            E_NAMD_Gas = getattr(self,p+'_Es')[state][c][moiety+'NAMD_Gas']
+            if len(E_NAMD_Gas.shape)==1:
+              E_NAMD_Gas = np.array([[E_NAMD_Gas[-1]]])
+            else:
+              E_NAMD_Gas = E_NAMD_Gas[:,-1]
+            E_tot = np.sum(E_PBSA,1) + E_NAMD_Gas
+            getattr(self,p+'_Es')[state][c][label] = \
+              np.hstack((E_NAMD_Gas[...,None],E_PBSA,E_tot[...,None]))
+            if not p in updated_processes:
+              updated_processes.append(p)
+    return updated_processes
 
   def _calc_E(self, confs, E=None, type='sampling', prefix='confs'):
     """
@@ -2744,10 +2824,11 @@ last modified {2}
     return E
     # AMBER ENERGY FIELDS:
     # For Gas phase:
-    # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL 5. HBOND 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT
+    # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL
+    # 5. HBOND 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT
     # For GBSA phase:
-    # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL 5. EGB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT
-    # 9. ESURF
+    # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL
+    # 5. EGB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT 9. ESURF
 
   def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,
       debug=False, reference=None):
@@ -2850,13 +2931,19 @@ last modified {2}
       
       # Converts the coordinates to a pqr file
       inpcrd_F = open(inpcrd_FN,'r')
-      pqr_F = open(pqr_FN,'w')
-      p = subprocess.Popen(
-        [self._FNs['ambpdb'], '-p', self._FNs['prmtop'][moiety], '-pqr'],
-        stdin=inpcrd_F, stdout=pqr_F, stderr=subprocess.PIPE)
+      cdir = os.getcwd()
+      p = subprocess.Popen(\
+        [os.path.relpath(self._FNs['ambpdb'], cdir), \
+         '-p', os.path.relpath(self._FNs['prmtop'][moiety], cdir), \
+         '-pqr'], \
+        stdin=inpcrd_F, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      (stdoutdata_ambpdb, stderrdata_ambpdb) = p.communicate()
       p.wait()
-      pqr_F.close()
       inpcrd_F.close()
+      
+      pqr_F = open(pqr_FN,'w')
+      pqr_F.write(stdoutdata_ambpdb)
+      pqr_F.close()
       
       # Writes APBS script
       apbs_in_FN = moiety+'apbs-mg-manual.in'
@@ -2906,19 +2993,36 @@ END
       p = subprocess.Popen([self._FNs['apbs'], apbs_in_FN], \
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       (stdoutdata, stderrdata) = p.communicate()
+      p.wait()
+
       apbs_energy = [float(line.split('=')[-1][:-7]) \
         for line in stdoutdata.split('\n') \
         if line.startswith('  Total electrostatic energy')]
-      if moiety=='L':
+      if moiety=='L' and len(apbs_energy)==2:
         polar_energy = apbs_energy[0]-apbs_energy[1]
-      else:
+      elif len(apbs_energy)==4:
         polar_energy = apbs_energy[1]-apbs_energy[3]
+      else:
+        # An error has occured in APBS
+        polar_energy = np.inf
+        self.tee("  error has occured in APBS after %d snapshots"%len(E))
+        self.tee("  prmtop was "+self._FNs['prmtop'][moiety])
+        self.tee("  --- ambpdb stdout:")
+        self.tee(stdoutdata_ambpdb)
+        self.tee("  --- ambpdb stderr:")
+        self.tee(stderrdata_ambpdb)
+        self.tee("  --- APBS stdout:")
+        self.tee(stdoutdata)
+        self.tee("  --- APBS stderr:")
+        self.tee(stderrdata)
       
       # Runs molsurf to calculate Connolly surface
-      apolar_energy = 0.0
+      apolar_energy = np.inf
       p = subprocess.Popen([self._FNs['molsurf'], pqr_FN, '1.4'], \
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       (stdoutdata, stderrdata) = p.communicate()
+      p.wait()
+
       for line in stdoutdata.split('\n'):
         if line.startswith('surface area ='):
           apolar_energy = float(line.split('=')[-1]) * \
@@ -2928,6 +3032,9 @@ END
         os.remove(FN)
       
       E.append([polar_energy, apolar_energy])
+
+      if np.isinf(polar_energy) or np.isinf(apolar_energy):
+        break
 
     # Clear decompressed files
     if decompress:
@@ -3173,12 +3280,14 @@ END
         self.log.write(var+'\n')
       else:
         self.log.write(repr(var)+'\n')
+      self.log.flush()
     elif process is not None:
       self._set_lock(process)
       if isinstance(var,str):
         self.log.write(var+'\n')
       else:
         self.log.write(repr(var)+'\n')
+      self.log.flush()
       self._clear_lock(process)
 
 if __name__ == '__main__':

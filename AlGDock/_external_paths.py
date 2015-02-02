@@ -30,11 +30,11 @@ def findPaths(keys):
           download_start_time = time.time()
           print 'Downloading and installing '+key
           os.system('wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
-          os.system('tar -xvf %s'%FN)
+          os.system('tar xzf %s'%FN)
           if command != '':
             os.system(command)
           if os.path.isfile(path):
-            print key + ' downloaded and installed in %d s'%(\
+            print '  ' + key + ' downloaded and installed in %f s'%(\
               time.time() - download_start_time)
             paths[key] = os.path.abspath(path)
           else:
@@ -81,5 +81,7 @@ download_paths = {
   'namd':('namd.tar.gz','','namd2'),
   'sander':('sander.tar.gz','','sander'),
   'ambpdb':('ambpdb.tar.gz','','ambpdb'),
-  'molsurf':('molsurf.tar.gz','','molsurf'),
+  'molsurf':('molsurf.tar.gz', \
+    'export LD_LIBRARY_PATH=./molsurf:$LD_LIBRARY_PATH', \
+    'molsurf/molsurf'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs')}
