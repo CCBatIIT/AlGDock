@@ -365,6 +365,10 @@ rigid receptor.
                                 ['AlGDock/Integrators/NUTS/NUTS.pyx'],
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
+                      Extension('MCExternal',
+                                ['AlGDock/Integrators/MCExternal/MCExternal.pyx'],
+                                extra_compile_args = compile_args,
+                                include_dirs=include_dirs),
                       ],
 
        data_files = data_files,

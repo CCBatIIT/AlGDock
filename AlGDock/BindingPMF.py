@@ -1428,7 +1428,7 @@ last modified {2}
         self.stats_RL['Psi_'+phase].append(
           (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
            self.dock_Es[-1][c]['L'+phase][:,-1] - \
-           self.original_Es[0][0]['R'+phase][:,-1])/RT_TARGET)
+           self.original_Es[0][0]['R'+phase][-1])/RT_TARGET)
 
     # Estimate cycle at which simulation has equilibrated
     mean_u_Ks = np.array([np.mean(u_K) for u_K in self.stats_RL['u_K_sampled']])
@@ -1448,7 +1448,7 @@ last modified {2}
       if 'Ht' in self.dock_Es[-1][c].keys() else [] \
       for c in range(self._dock_cycle)]
       
-    # Autocorrelation time for all replicas
+    # Autocorrelation time for all replicas (this can take a while)
     paths = np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
       for c in range(len(self.dock_Es[0])) \
       if 'repXpath' in self.dock_Es[0][c].keys()]))
@@ -1522,12 +1522,12 @@ last modified {2}
           np.log(sum(weight*np.exp(Psi-min_Psi))) + min_Psi)
         self.B[phase+'_BAR'].append(\
           -self.f_L[phase+'_solv'][-1] - \
-           self.original_Es[0][0]['R'+phase][:,-1]/RT_TARGET - \
+           self.original_Es[0][0]['R'+phase][-1]/RT_TARGET - \
            self.f_L['cool_BAR'][-1][-1] + \
            self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
         self.B[phase+'_MBAR'].append(\
           -self.f_L[phase+'_solv'][-1] - \
-           self.original_Es[0][0]['R'+phase][:,-1]/RT_TARGET - \
+           self.original_Es[0][0]['R'+phase][-1]/RT_TARGET - \
            self.f_L['cool_MBAR'][-1][-1] + \
            self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
 
@@ -2545,7 +2545,10 @@ last modified {2}
 
     # Store energies
     for (E,(p,state,c,label),wall_time) in results:
-      getattr(self,p+'_Es')[state][c][label] = E
+      if p=='original':
+        self.original_Es[state][c][label] = E[:,-1]
+      else:
+        getattr(self,p+'_Es')[state][c][label] = E
       if not p in updated_processes:
         updated_processes.append(p)
 
