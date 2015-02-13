@@ -5,19 +5,14 @@ def jobs_on_queue():
   import subprocess
 
   if os.path.exists('/home/daveminh/stash'):
-    qstat = subprocess.Popen(['condor_q','-long','daveminh'], \
-      stdout=subprocess.PIPE).stdout.read().split('\n')
-    onq = [os.path.basename(l.split('"')[-2]) \
-      for l in qstat if l.startswith('Cmd')]
+    condor_q = subprocess.Popen(['condor_q','-long','daveminh'], \
+      stdout=subprocess.PIPE).stdout.read().split('\n\n')
+    condor_q = [dict([(line[:line.find('=')-1],line[line.find('=')+2:]) for line in c.split('\n')]) for c in condor_q if c!='']
+    onq = [q['Cmd'][1:-1] for q in condor_q if q['JobStatus']!='3'] # 3 is removed
+    onq = [os.path.basename(line) for line in onq] # Get rid of directory name
     onq = ['-'.join(line.split('-')[:-1]) for line in onq] # Get rid of job number
   elif os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB cluster
     qstat = subprocess.Popen(['qstat','-f'], \
       stdout=subprocess.PIPE).stdout.read().split('\n')
     onq = [line.strip().split()[-1] for line in qstat if line.find('Job_Name')>-1]
   return onq
-
-#  elif exists('/home/dbchem/dm225/scripts/qsub_command.py'):
-#    cluster = 'DSCR'
-#    qstat = subprocess.Popen(['qstat','-xml'],stdout=subprocess.PIPE).stdout.read().split('\n')
-#    onq = [line.strip()[9:-14] for line in qstat if line.strip().startswith('<JB_name>')]
-#    onq = ['-'.join(line.split('-')[:-1]) for line in onq] # Get rid of job number

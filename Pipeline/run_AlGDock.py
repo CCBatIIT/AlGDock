@@ -50,12 +50,13 @@ parser.add_argument('--cool_repX_cycles', type=int,
 parser.add_argument('--dock_repX_cycles', type=int,
   help='Number of replica exchange cycles for docking')
 parser.add_argument('--run_type',
-  choices=['pose_energies','one_step',\
-           'initial_cool','cool','random_dock',\
-           'initial_dock','dock','all', \
-           'store_params','free_energies', 'postprocess',
-           'redo_postprocess', 'clear_intermediates', None],
+  choices=['pose_energies','store_params', 'cool', \
+           'dock','timed','postprocess',\
+           'redo_postprocess','free_energies','all', \
+           'clear_intermediates', None],
   help='Type of calculation to run')
+parser.add_argument('--max_time', type=int, default = 180, \
+  help='For timed calculations, the maximum amount of wall clock time, in minutes')
 parser.add_argument('--cores', type=int, \
   help='Number of CPU cores to use')
 #   Defaults
@@ -80,6 +81,8 @@ parser.add_argument('--repX_cycles', type=int,
   help='Number of replica exchange cycles for docking and cooling')
 parser.add_argument('--sweeps_per_cycle', type=int,
   help='Number of replica exchange sweeps per cycle')
+parser.add_argument('--attempts_per_sweep', type=int,
+  help='Number of replica exchange attempts per sweeps')
 parser.add_argument('--steps_per_sweep', type=int,
   help='Number of MD steps per replica exchange sweep')
 parser.add_argument('--keep_intermediate', action='store_true', default=None,
@@ -105,6 +108,8 @@ parser.add_argument('--cool_steps_per_seed', type=int,
 # For replica exchange
 parser.add_argument('--cool_sweeps_per_cycle', type=int,
   help='Number of replica exchange sweeps per cycle')
+parser.add_argument('--cool_attempts_per_sweep', type=int,
+  help='Number of replica exchange attempts per sweeps')
 parser.add_argument('--cool_steps_per_sweep', type=int,
   help='Number of MD steps per replica exchange sweep')
 parser.add_argument('--cool_keep_intermediate', action='store_true',
@@ -120,6 +125,8 @@ parser.add_argument('--dock_sampler',
 # For initialization
 parser.add_argument('--dock_seeds_per_state', type=int,
   help='Number of starting configurations in each state during initialization')
+parser.add_argument('--dock_attempts_per_sweep', type=int,
+  help='Number of replica exchange attempts per sweeps')
 parser.add_argument('--dock_steps_per_seed', type=int,
   help='Number of MD steps per state during initialization')
 # For replica exchange
@@ -130,8 +137,10 @@ parser.add_argument('--dock_steps_per_sweep', type=int,
 parser.add_argument('--dock_keep_intermediate', action='store_true',
   default=None, help='Keep configurations for intermediate states?')
 
-#  parser.add_argument('--site',
-#    choices=['Sphere','Cylinder'], help='Type of binding site')
+parser.add_argument('--site',
+  choices=['Sphere','Cylinder','Measure'], \
+  help='Type of binding site. "Measure" means that parameters' + \
+         ' for a sphere will be measured from docked poses.')
 #  parser.add_argument('--site_center', nargs=3, type=float,
 #    help='Position of binding site center')
 #  parser.add_argument('--site_direction', nargs=3, type=float,
@@ -140,7 +149,6 @@ parser.add_argument('--dock_keep_intermediate', action='store_true',
 #    help='Maximum position along principal axis in a cylindrical binding site')
 parser.add_argument('--site_max_R', type=float,
   help='Maximum radial position for a spherical or cylindrical binding site')
-
 parser.add_argument('--site_density', type=float,
   help='Density of center-of-mass points in the first docking stage')
 # Additional calculations
@@ -222,14 +230,15 @@ print 'Found %d ligands, %d receptors, and %d complexes ready for AlGDock'%(\
   len(ligand_FNs),len(receptor_FNs),len(complex_FNs))
 
 # Load the binding site radius and half edge length
-site = 'Sphere'
-if os.path.isfile(args_in.site_info):
-  execfile(args_in.site_info)
-else:
-  raise Exception('No binding site information')
-# These should be in nanometers, not Angstroms
-site_center = [half_edge_length*0.1, half_edge_length*0.1, half_edge_length*0.1]
-site_max_R = site_R/10.
+site = args_in.site
+if site=='Sphere':
+  if os.path.isfile(args_in.site_info):
+    execfile(args_in.site_info)
+  else:
+    raise Exception('No binding site information')
+  # These should be in nanometers, not Angstroms
+  site_center = [half_edge_length*0.1, half_edge_length*0.1, half_edge_length*0.1]
+  site_max_R = site_R/10.
 
 # Get other parameters
 general_sim_arg_keys = ['protocol','no_protocol_refinement','therm_speed',\
@@ -372,7 +381,7 @@ for ligand_FN in ligand_FNs:
             interactive_to_pass.append("%s = ['%s']"%(key,
               "', '".join([a for a in val])))
             terminal_to_pass.append("--%s %s"%(key,
-              "' '".join([a for a in val])))
+              " ".join([a for a in val])))
           elif isinstance(val[0],float):
             interactive_to_pass.append("%s = [%s]"%(key,
               ", ".join(['%.5f'%a for a in val])))
@@ -386,13 +395,11 @@ for ligand_FN in ligand_FNs:
       
       outputFNs = {}
       for FN in ['cool_log.txt',
-          'cool_params.pkl.gz','cool_params.pkl.gz',
           'cool_progress.pkl.gz','cool_progress.pkl.gz.BAK',
           'cool_data.pkl.gz','cool_data.pkl.gz.BAK',
           'f_L.pkl.gz']:
         outputFNs[FN] = os.path.join(dir_cool,FN)
       for FN in ['dock_log.txt',
-          'dock_params.pkl.gz', 'dock_params.pkl.gz.BAK',
           'dock_progress.pkl.gz', 'dock_progress.pkl.gz.BAK',
           'dock_data.pkl.gz', 'dock_data.pkl.gz.BAK',
           'f_RL.pkl.gz']:

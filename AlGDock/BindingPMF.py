@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# These capabilities are under construction:
+# Docking with Fast Fourier Transform
+# "Undocking" to initialize thermodynamic states
+
 import os # Miscellaneous operating system interfaces
 from os.path import join
 import cPickle as pickle
@@ -94,7 +98,7 @@ arguments = {
   'run_type':{'choices':['pose_energies','store_params', 'cool', \
              'dock','timed','postprocess',\
              'redo_postprocess','free_energies','all', \
-             'clear_intermediates', 'memory_test', None],
+             'clear_intermediates', None],
     'help':'Type of calculation to run'},
   'max_time':{'type':int, 'default':180, \
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
@@ -137,7 +141,9 @@ arguments = {
   'rmsd':{'nargs':'?', 'const':True, 'default':False,
     'help':'Calculate rmsd between snapshots and a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.'},
   # Binding site
-  'site':{'choices':['Sphere','Cylinder'], 'help':'Type of binding site'},
+  'site':{'choices':['Sphere','Cylinder','Measure'], 'default':'Sphere', \
+    'help':'Type of binding site. "Measure" means that parameters' + \
+           ' for a sphere will be measured from docked poses.'},
   'site_center':{'nargs':3, 'type':float,
     'help':'Position of binding site center'},
   'site_direction':{'nargs':3, 'type':float,
@@ -412,6 +418,37 @@ last modified {2}
     elif isinstance(self._FNs['frcmodList'],str):
       self._FNs['frcmodList'] = [self._FNs['frcmodList']]
 
+    # Check for existence of required files
+    do_dock = (hasattr(args,'run_type') and \
+              (args.run_type in ['pose_energies','random_dock',\
+                'initial_dock','dock','all']))
+              
+    for FN in [self._FNs['ligand_database'],
+               self._FNs['forcefield'],
+               self._FNs['prmtop']['L'],
+               self._FNs['inpcrd']['L']]:
+      if (FN is None) or (not os.path.isfile(FN)):
+        raise Exception('Required file %s is missing!'%FN)
+
+    for FN in [self._FNs['prmtop']['RL'],
+               self._FNs['inpcrd']['RL'],
+               self._FNs['fixed_atoms']['RL'],
+               self._FNs['grids']['LJr'],
+               self._FNs['grids']['LJa'],
+               self._FNs['grids']['ELE']]:
+      if (FN is None) or (not os.path.isfile(FN)):
+        if do_dock:
+          raise Exception('Missing file is required for docking!')
+        else:
+          print 'Missing file is required for docking!'
+
+    if ((self._FNs['inpcrd']['RL'] is None) and \
+        (self._FNs['inpcrd']['R'] is None)):
+        if do_dock:
+          raise Exception('Receptor coordinates needed for docking')
+        else:
+          print 'Receptor coordinates needed for docking'
+
     print self._FNs
     
     args['default_cool'] = {
@@ -461,10 +498,7 @@ last modified {2}
       self.params[p] = merge_dictionaries(
         [args[src] for src in ['new_'+p,p,'default_'+p]])
 
-    print '\n*** Simulation parameters and constants ***'
-    for p in ['cool','dock']:
-      print 'for %s:'%p
-      print self.params[p]
+    self._scalables = ['sLJr','sELE','LJr','LJa','ELE']
 
     # Variables dependent on the parameters
     self.original_Es = [[{}]]
@@ -474,48 +508,14 @@ last modified {2}
           self.params['dock']['receptor_'+phase]
       else:
         self.original_Es[0][0]['R'+phase] = None
-        
-    self._scalables = ['sLJr','sELE','LJr','LJa','ELE']
 
-    self.lambda_full = {'T':T_HIGH,'MM':True,'site':True}
-    self.lambda_scalables = {'T':T_HIGH}
-    for scalable in self._scalables:
-        self.lambda_full[scalable] = 1
-        self.lambda_scalables[scalable] = 1
-
-    # Check for existence of required files
-    do_dock = (hasattr(args,'run_type') and \
-              (args.run_type in ['pose_energies','random_dock',\
-                'initial_dock','dock','all']))
-              
-    for FN in [self._FNs['ligand_database'],
-               self._FNs['forcefield'],
-               self._FNs['prmtop']['L'],
-               self._FNs['inpcrd']['L']]:
-      if (FN is None) or (not os.path.isfile(FN)):
-        raise Exception('Required file %s is missing!'%FN)
-
-    for FN in [self._FNs['prmtop']['RL'],
-               self._FNs['inpcrd']['RL'],
-               self._FNs['fixed_atoms']['RL'],
-               self._FNs['grids']['LJr'],
-               self._FNs['grids']['LJa'],
-               self._FNs['grids']['ELE']]:
-      if (FN is None) or (not os.path.isfile(FN)):
-        if do_dock:
-          raise Exception('Missing file is required for docking!')
-        else:
-          print 'Missing file is required for docking!'
-
-    if ((self._FNs['inpcrd']['RL'] is None) and \
-        (self._FNs['inpcrd']['R'] is None)):
-        if do_dock:
-          raise Exception('Receptor coordinates needed for docking')
-        else:
-          print 'Receptor coordinates needed for docking'
-        
     print '\n*** Setting up the simulation ***'
     self._setup_universe(do_dock = do_dock)
+
+    print '\n*** Simulation parameters and constants ***'
+    for p in ['cool','dock']:
+      print 'for %s:'%p
+      print self.params[p]
 
     self.timing = {'start':time.time(), 'max':kwargs['max_time']}
 
@@ -560,17 +560,34 @@ last modified {2}
           for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
             self.confs[process]['samples'][state_ind][cycle_ind] = []
         self._save(process)
-    elif self.run_type=='memory_test':
-#      self.params['dock']['sweeps_per_cycle'] = 15
-#      self.params['dock']['attempts_per_sweep'] = 20
-#      self.params['dock']['steps_per_sweep'] = 10
-      self._replica_exchange('dock')
 
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
-
+  
+    # Set up the system
+    import sys
+    original_stderr = sys.stderr
+    sys.stderr = NullDevice()
     MMTK.Database.molecule_types.directory = \
       os.path.dirname(self._FNs['ligand_database'])
+    self.molecule = MMTK.Molecule(\
+      os.path.basename(self._FNs['ligand_database']))
+    sys.stderr = original_stderr
+
+    # Helpful variables for referencing and indexing atoms in the molecule
+    self.molecule.heavy_atoms = [ind for (atm,ind) in zip(self.molecule.atoms,range(self.molecule.numberOfAtoms())) if atm.type.name!='hydrogen']
+    self.molecule.nhatoms = len(self.molecule.heavy_atoms)
+
+    self.molecule.prmtop_atom_order = np.array([atom.number \
+      for atom in self.molecule.prmtop_order], dtype=int)
+    self.molecule.inv_prmtop_atom_order = np.zeros(shape=len(self.molecule.prmtop_atom_order), dtype=int)
+    for i in range(len(self.molecule.prmtop_atom_order)):
+      self.molecule.inv_prmtop_atom_order[self.molecule.prmtop_atom_order[i]] = i
+
+    self.universe = MMTK.Universe.InfiniteUniverse()
+    self.universe.addObject(self.molecule)
+    self._evaluators = {} # Store evaluators
+    self._ligand_natoms = self.universe.numberOfAtoms()
 
     # Force fields
     from MMTK.ForceFields import Amber12SBForceField
@@ -586,6 +603,32 @@ last modified {2}
       self._forceFields['site'] = SphereForceField(
         center=self.params['dock']['site_center'],
         max_R=self.params['dock']['site_max_R'], name='site')
+    elif (self.params['dock']['site']=='Measure') and \
+        (self.params['dock']['score'].endswith('.mol2') or
+         self.params['dock']['score'].endswith('.mol2.gz')):
+      self._set_universe_evaluator(\
+        {'ELE':1, 'LJa':1, 'LJr':1, 'MM':True, 'T':T_HIGH})
+      (confs_dock6,E_dock6) = self._read_dock6(self.params['dock']['score'])
+      Es = []
+      coms = []
+      for c in range(len(confs_dock6)):
+        self.universe.setConfiguration(Configuration(self.universe,confs_dock6[c]))
+        Es.append(self.universe.energy())
+        if Es[-1]<(Es[0]+50):
+          coms.append(np.array(self.universe.centerOfMass()))
+        else:
+          break
+      coms = np.array(coms)
+      center = (np.min(coms,0)+np.max(coms,0))/2
+      max_R = max(np.ceil(np.max(np.sqrt(np.sum((coms-center)**2,1)))*10.)/10.,0.6)
+      self.params['dock']['site'] = 'Sphere'
+      self.params['dock']['site_max_R'] = max_R
+      self.params['dock']['site_center'] = center
+      from AlGDock.ForceFields.Sphere.Sphere import SphereForceField
+      self._forceFields['site'] = SphereForceField(
+        center=self.params['dock']['site_center'],
+        max_R=self.params['dock']['site_max_R'], name='site')
+      self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
     elif (self.params['dock']['site']=='Cylinder') and \
          (self.params['dock']['site_center'] is not None) and \
          (self.params['dock']['site_direction'] is not None):
@@ -600,40 +643,17 @@ last modified {2}
         raise Exception('Binding site type not recognized!')
       else:
         print 'Binding site type not recognized!'
-  
-    # Set up the system
-    import sys
-    original_stderr = sys.stderr
-    sys.stderr = NullDevice()
 
-    self.molecule = MMTK.Molecule(\
-      os.path.basename(self._FNs['ligand_database']))
-
-    sys.stderr = original_stderr
-
-    # Helpful variables for referencing and indexing atoms in the molecule
-    self.molecule.heavy_atoms = [ind for (atm,ind) in zip(self.molecule.atoms,range(self.molecule.numberOfAtoms())) if atm.type.name!='hydrogen']
-    self.molecule.nhatoms = len(self.molecule.heavy_atoms)
-
-    self.molecule.prmtop_atom_order = np.array([atom.number \
-      for atom in self.molecule.prmtop_order], dtype=int)
-    self.molecule.inv_prmtop_atom_order = np.zeros(shape=len(self.molecule.prmtop_atom_order), dtype=int)
-    for i in range(len(self.molecule.prmtop_atom_order)):
-      self.molecule.inv_prmtop_atom_order[self.molecule.prmtop_atom_order[i]] = i
-    
     # Randomly rotate the molecule and translate it into the binding site
-    from Scientific.Geometry.Transformation import Rotation
-    self.molecule.applyTransformation(Rotation(random_rotate()))
+    self.universe.setConfiguration(Configuration(self.universe, \
+      np.dot(self.universe.configuration().array,
+      np.transpose(random_rotate()))))
     if 'site' in self._forceFields.keys():
-      self.molecule.translateTo(Vector(self._forceFields['site'].randomPoint()))
+      self.universe.translateTo(Vector(self._forceFields['site'].randomPoint()))
     else:
       print 'Molecule not translated into binding site'
 
-    self.universe = MMTK.Universe.InfiniteUniverse()
-    self.universe.addObject(self.molecule)
-    self._evaluators = {} # Store evaluators
     self._set_universe_evaluator({'MM':True, 'T':T_HIGH})
-    self._ligand_natoms = self.universe.numberOfAtoms()
 
     # Samplers may accept the following options:
     # steps - number of MD steps
@@ -1066,7 +1086,9 @@ last modified {2}
       time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 
     # Set up the force field with full interaction grids
-    self._set_universe_evaluator(self.lambda_scalables)
+    lambda_scalables = dict(zip(\
+      self._scalables,np.ones(len(self._scalables),dtype=int)) + [('T',T_HIGH)])
+    self._set_universe_evaluator(lambda_scalables)
   
     lambda_o = {'T':T_HIGH, 'MM':True, 'site':True, \
                 'crossed':False, 'a':0.0}
@@ -1178,7 +1200,7 @@ last modified {2}
     #     Keep the lowest-energy conformers
     # Estimate the BPMF
 
-  def initial_dock(self, randomOnly=False):
+  def initial_dock(self, randomOnly=False, undock=False):
     """
       Docks the ligand into the receptor
       
@@ -1221,6 +1243,8 @@ last modified {2}
       self.dock_protocol.append(lambda_n)
       if len(self.dock_protocol)>100:
         raise Exception('Too many replicas!')
+      if abs(rejectStage)>20:
+        raise Exception('Too many consecutive rejected stages!')
 
       # Randomly select seeds for new trajectory
       u_o = self._u_kln([E],[lambda_o])
@@ -1231,21 +1255,34 @@ last modified {2}
         size = self.params['dock']['seeds_per_state'], \
         p=weight/sum(weight))
 
-      if len(self.dock_protocol)==2: # Cooling state 0 configurations, randomly oriented
-        # Use the lowest energy configuration in the first docking state for replica exchange
-        ind = np.argmin(u_n)
-        (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
-        repX_conf = np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]),\
-                           self._random_trans[i_trans].array)
-        self.confs['dock']['replicas'] = [repX_conf]
-        self.confs['dock']['samples'] = [[repX_conf]]
-        self.dock_Es = [[dict([(key,np.array([val[ind]])) for (key,val) in E.iteritems()])]]
-        seeds = []
-        for ind in seedIndicies:
+      if len(self.dock_protocol)==2:
+        # TO DO: Move this up to replace random_dock
+        if undock:
+          if (self.params['dock']['score'] is not False):
+            seeds = self._minimize_dock_score_confs(nconfs=self.params['dock']['seeds_per_state'])
+            self.confs['dock']['replicas'] = [seeds[0]]
+            self.confs['dock']['samples'] = [seeds[0]]
+            confs = None
+            E = {}
+            # TO DO: Return energies
+          else:
+            raise Exception('Docked poses required for undocking')
+        else:
+          # Cooling state 0 configurations, randomly oriented
+          # Use the lowest energy configuration in the first docking state for replica exchange
+          ind = np.argmin(u_n)
           (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
-          seeds.append(np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]), self._random_trans[i_trans].array))
-        confs = None
-        E = {}
+          repX_conf = np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]),\
+                             self._random_trans[i_trans].array)
+          self.confs['dock']['replicas'] = [repX_conf]
+          self.confs['dock']['samples'] = [[repX_conf]]
+          self.dock_Es = [[dict([(key,np.array([val[ind]])) for (key,val) in E.iteritems()])]]
+          seeds = []
+          for ind in seedIndicies:
+            (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
+            seeds.append(np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]), self._random_trans[i_trans].array))
+          confs = None
+          E = {}
       else: # Seeds from last state
         seeds = [confs[ind] for ind in seedIndicies]
       self.confs['dock']['seeds'] = seeds
@@ -1289,7 +1326,7 @@ last modified {2}
           self.confs['dock']['replicas'][-1] = confs[np.argmin(Es_tot)]
           self.dock_protocol.pop()
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
-          rejectStage = 0
+          rejectStage -= 1
           lambda_o = lambda_n
           self.tee("  rejected previous state, as estimated replica exchange acceptance rate of %f is too high"%mean_acc)
         else:
@@ -1303,6 +1340,8 @@ last modified {2}
           rejectStage = 0
           lambda_o = lambda_n
           self.tee("  the estimated replica exchange acceptance rate is %f"%mean_acc)
+          self._save('dock')
+          self.tee("")
       else:
         # Store data and continue with initialization (first time)
         self.confs['dock']['replicas'].append(confs[np.argmin(Es_tot)])
@@ -1312,8 +1351,8 @@ last modified {2}
         rejectStage = 0
         lambda_o = lambda_n
 
-      self._save('dock')
-      self.tee("")
+        self._save('dock')
+        self.tee("")
 
     K = len(self.dock_protocol)
     self.tee("  %d states in the docking process sampled in %s"%(K,\
@@ -2066,7 +2105,8 @@ last modified {2}
       if (process=='dock') and \
          (self._dock_cycle==1) and (self._dock_total_cycle==1) and \
          (self.params['dock']['score'] is not False):
-        self._minimize_dock_score_confs()
+        self.confs['dock']['replicas'] = \
+          self._minimize_dock_score_confs(nconfs=len(self.dock_protocol))
 
       self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
         process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())), \
@@ -2117,18 +2157,16 @@ last modified {2}
 
     return True # The process has completed
 
-  def _minimize_dock_score_confs(self):
+  def _minimize_dock_score_confs(self, nconfs):
     """
     Gets configurations to score from another program.
-    Returns unique configurations and corresponding energies (if applicable).
-    The final results are stored in self.confs['dock']['replicas'].
+    Returns unique configurations.
     """
     self._set_lock('dock')
     unique_confs = []
     if isinstance(self.params['dock']['score'],bool):
       unique_confs = [self.confs['ligand']]
-      self.confs['dock']['replicas'] = [np.copy(self.confs['ligand']) \
-        for k in range(len(self.dock_protocol))]
+      confs = [np.copy(self.confs['ligand']) for k in range(nconfs)]
       self.tee("\n>>> Rescoring default configuration")
       self._clear_lock('dock')
       return (unique_confs, [])
@@ -2154,6 +2192,7 @@ last modified {2}
     
     # Minimize each configuration
     self._set_universe_evaluator(self._lambda(1.0,process='dock'))
+    # TO DO: Fix reference to lambda
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
 
@@ -2175,14 +2214,14 @@ last modified {2}
       (list(l) for l in zip(*sorted(zip(minimized_conf_Es, minimized_confs), \
         key=lambda p:p[0], reverse=True)))
 
-    self.confs['dock']['replicas'] = minimized_confs[-len(self.dock_protocol):]
-    while len(self.confs['dock']['replicas'])<len(self.dock_protocol):
-      self.confs['dock']['replicas'].append(self.confs['dock']['replicas'][-1])
+    confs = minimized_confs[-nconfs:]
+    while len(confs)<nconfs:
+      confs.append(confs[-1])
       count['duplicated'] += 1
     self.tee("\n>>> Rescoring configurations:")
     self.tee("  {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated".format(**count))
     self._clear_lock('dock')
-    return (minimized_confs, minimized_conf_Es)
+    return confs
 
   def _run_MBAR(self,u_kln,N_k):
     """
@@ -2308,11 +2347,11 @@ last modified {2}
     else:
       return (u_kln,N_k)
 
-  def _next_dock_state(self, E=None, lambda_o=None, pow=None):
+  def _next_dock_state(self, E=None, lambda_o=None, pow=None, undock=False):
     """
     Determines the parameters for the next docking state
     """
-
+    
     if E is None:
       E = self.dock_Es[-1]
 
@@ -2329,13 +2368,23 @@ last modified {2}
         tL_tensor = tL_tensor*(1.25**pow)
       if tL_tensor>0:
         dL = self.params['dock']['therm_speed']/tL_tensor
-        a = lambda_o['a'] + dL
-        if a > 1:
-          a = 1.0
-          lambda_n['crossed'] = True
-        return self._lambda(a)
+        if not undock:
+          a = lambda_o['a'] + dL
+          if a > 1:
+            a = 1.0
+            lambda_n['crossed'] = True
+          return self._lambda(a)
+        else:
+          a = lambda_o['a'] - dL
+          if a < 0:
+            a = 0.0
+            lambda_n['crossed'] = True
+          return self._lambda(a)
       else:
-        raise Exception("No variance in stage")
+        # Repeats the previous stage
+        lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
+        self.tee('  no variance in stage! trying time step of %f'%lambda_n['delta_t'])
+        return lambda_n
 
   def _tL_tensor(self, E, lambda_c, process='dock'):
     T = lambda_c['T']
@@ -2682,7 +2731,8 @@ last modified {2}
 
     if type=='sampling' or type=='all':
       # Molecular mechanics and grid interaction energies
-      self._set_universe_evaluator(self.lambda_full)
+      self._set_universe_evaluator(\
+        {'ELE':1, 'LJa':1, 'LJr':1, 'MM':True, 'T':T_HIGH, 'site':True})
       for term in (['MM','site','misc'] + self._scalables):
         E[term] = np.zeros(len(confs), dtype=float)
       for c in range(len(confs)):

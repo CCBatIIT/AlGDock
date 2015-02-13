@@ -5,7 +5,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Run a command on the queue')
 parser.add_argument('name', help='Job name')
 parser.add_argument('command', help='Command to execute')
-parser.add_argument('--mem',type=int, default=1, help='Amount of memory to allocate (GB)')
+parser.add_argument('--mem', type=int, default=1, help='Amount of memory to allocate (GB)')
 parser.add_argument('--comment', default='', help='Adds a comment to the end of the script')
 parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')
@@ -13,7 +13,7 @@ parser.add_argument('--no_release', action='store_true', default=False, \
   help='Does not release held jobs')
 
 # For OSG
-parser.add_argument('--disk',type=int, default=200000, help='Amount of disk space to allocate (KB)')
+parser.add_argument('--disk', default='350MB', help='Amount of disk space to allocate')
 parser.add_argument('--input_files', default=[], nargs='+', help='Input files for the job')
 parser.add_argument('--output_files', default=[], nargs='+', help='Output files for the job')
 parser.add_argument('--output_remaps', default=[], nargs='+', help='New output file names')
@@ -106,8 +106,7 @@ elif os.path.exists('/stash'):   # Open Science Grid
   
   # Split the command onto multiple lines
   command_list = args.command.split(';')
-  command = '\n'.join([(c.strip() + ' 2>&1 | tee command%d.stdouterr'%rep) \
-    for (c,rep) in zip(command_list,range(len(command_list)))])
+  command = '\n'.join([c.strip() for c in command_list])
   
   # Determine the input files
   #   All specified input files
@@ -130,27 +129,20 @@ elif os.path.exists('/stash'):   # Open Science Grid
   transfer_input_files = ', '.join(input_files)
 
   # Format the output files for the script
-  if len(args.output_files)>0:
-    transfer_output_files = 'transfer_output_files = ' + \
-      ', '.join(args.output_files)
-  else:
-    transfer_output_files = ''
-
-  print args.output_remaps
   if len(args.output_remaps)>0:
-    transfer_output_files += '\ntransfer_output_remaps = "' + \
+    transfer_output_files = 'transfer_output_remaps = "' + \
       '; '.join(['%s = %s'%(FNo,FNn) for (FNo,FNn) in zip(\
         args.output_remaps[::2],args.output_remaps[1::2])]) + '"'
 
   if command.find('$ALGDOCK')!=-1:
     hold_string = 'on_exit_hold = (ExitCode == 100)'
   else:
-    hold_string = '(ExitCode != 0) && ' + \
-      '((CurrentTime - JobStartDate) < ({0}*60))'.format(args.min_job_time)
+    hold_string = '''
+# stay in queue if there was an error and 
+# the job ran for less than min_job_time minutes
+on_exit_hold = (ExitCode != 0) && ((CurrentTime - JobStartDate) < ({0}*60))
+'''.format(args.min_job_time)
 
-  release_string = {True:'',
-    False:'periodic_release = ((CurrentTime - EnteredCurrentStatus) > 60)'}[\
-      args.no_release]
   # Write the submission script
   submit_script = """Universe       = vanilla
 
@@ -158,7 +150,9 @@ Executable     = {0}
 Error   = jobs/{1}.$(Cluster)-$(Process).err
 Output  = jobs/{1}.$(Cluster)-$(Process).out
 Log     = jobs/{1}.$(Cluster).log
-Requirements = (FileSystemDomain != "") && (OpSys == "LINUX" ) && (Arch == "X86_64") && (Memory >= {2}) && (Disk >= {3})
+Requirements = (FileSystemDomain != "") && (OpSys == "LINUX" ) && (Arch == "X86_64") 
+request_disk = {2}
+request_memory = {3}GB
 
 # File transfer
 should_transfer_files = YES
@@ -167,7 +161,6 @@ transfer_input_files = {4}
 when_to_transfer_output = ON_EXIT_OR_EVICT
 want_graceful_removal = (ExitCode == 100)
 
-# stay in queue if there was an error and the job ran for less than min_job_time minutes
 {6}
 # protect against hung jobs (taking more than max_job_time hours)
 periodic_hold = (JobStatus==2) && ((CurrentTime - EnteredCurrentStatus) > {7}*60*60)
@@ -175,24 +168,29 @@ periodic_hold = (JobStatus==2) && ((CurrentTime - EnteredCurrentStatus) > {7}*60
 {8}
 +ProjectName="AlGDock"
 Queue 1
-""".format(sh_FN, args.name, 1000*args.mem, args.disk, \
+""".format(sh_FN, args.name, args.disk, args.mem, \
     transfer_input_files, transfer_output_files, \
-    hold_string, args.max_job_time, release_string)
+    hold_string, args.max_job_time, \
+    {True:'',
+    False:'periodic_release = ((CurrentTime - EnteredCurrentStatus) > 60)'}[\
+      args.no_release])
 
   if command.find('$ALGDOCK')!=-1:
     command = """
 
 # Download data
-wget --no_verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
-tar xf algdock.tar.gz
+wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
+tar xzf algdock.tar.gz
 
 # Modify paths
 echo "
 search_paths = {
   'gaff.dat':[None],
-  'catdcd':[None],
   'namd':[None],
   'sander':[None],
+  'apbs':[None],
+  'ambpdb':[None],
+  'molsurf':[None],
   'MMTK':['$WORK_DIR/AlGDock/MMTK'],
   'vmd':[None]}
 " | cat AlGDock/AlGDock/_external_paths.py - > AlGDock/AlGDock/paths.py
@@ -201,10 +199,12 @@ export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF
 
 """ + command + """
 
-rm -rf AlGDock namd2 sander
-rm algdock.tar.gz* namd.tar.gz* sander.tar.gz*
+rm -rf AlGDock namd2* sander* ambpdb* molsurf* APBS*
+rm algdock.tar.gz*
+rm *.inpcrd.gz *.prmtop.gz
 rm *.out *.namd *.dcd
 rm .lock
+
 """
   execute_script = """#!/bin/bash
 
@@ -220,7 +220,7 @@ ls -ltr
 
 """
 
-  if command.find('$ALGDOCK')!=-1 and command.find('one_step')!=-1:
+  if command.find('$ALGDOCK')!=-1 and command.find('timed')!=-1:
       # -s means file is not zero size
       execute_script += """
 if [ ! -s f_RL.pkl.gz ]
