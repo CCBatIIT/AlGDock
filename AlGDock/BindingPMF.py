@@ -422,32 +422,33 @@ last modified {2}
     do_dock = (hasattr(args,'run_type') and \
               (args.run_type in ['pose_energies','random_dock',\
                 'initial_dock','dock','all']))
-              
-    for FN in [self._FNs['ligand_database'],
-               self._FNs['forcefield'],
-               self._FNs['prmtop']['L'],
-               self._FNs['inpcrd']['L']]:
-      if (FN is None) or (not os.path.isfile(FN)):
-        raise Exception('Required file %s is missing!'%FN)
 
-    for FN in [self._FNs['prmtop']['RL'],
-               self._FNs['inpcrd']['RL'],
-               self._FNs['fixed_atoms']['RL'],
-               self._FNs['grids']['LJr'],
-               self._FNs['grids']['LJa'],
-               self._FNs['grids']['ELE']]:
+    for key in ['ligand_database','forcefield']:
+      if (self._FNs[key] is None) or (not os.path.isfile(self._FNs[key])):
+        raise Exception('File for %s is missing!'%key)
+
+    for (key1,key2) in [('prmtop','L'),('inpcrd','L')]:
+      FN = self._FNs[key1][key2]
+      if (FN is None) or (not os.path.isfile(FN)):
+        raise Exception('File for %s %s is missing'%(key1,key2))
+
+    for (key1,key2) in [\
+        ('prmtop','RL'), ('inpcrd','RL'), ('fixed_atoms','RL'), \
+        ('grids','LJr'), ('grids','LJa'), ('grids','ELE')]:
+      FN = self._FNs[key1][key2]
+      errstring = 'Missing file %s %s required for docking!'%(key1,key2)
       if (FN is None) or (not os.path.isfile(FN)):
         if do_dock:
-          raise Exception('Missing file is required for docking!')
+          raise Exception(errstring)
         else:
-          print 'Missing file is required for docking!'
+          print errstring
 
     if ((self._FNs['inpcrd']['RL'] is None) and \
         (self._FNs['inpcrd']['R'] is None)):
         if do_dock:
-          raise Exception('Receptor coordinates needed for docking')
+          raise Exception('Receptor coordinates needed for docking!')
         else:
-          print 'Receptor coordinates needed for docking'
+          print 'Receptor coordinates needed for docking!'
 
     print self._FNs
     
@@ -609,26 +610,31 @@ last modified {2}
       self._set_universe_evaluator(\
         {'ELE':1, 'LJa':1, 'LJr':1, 'MM':True, 'T':T_HIGH})
       (confs_dock6,E_dock6) = self._read_dock6(self.params['dock']['score'])
-      Es = []
-      coms = []
-      for c in range(len(confs_dock6)):
-        self.universe.setConfiguration(Configuration(self.universe,confs_dock6[c]))
-        Es.append(self.universe.energy())
-        if Es[-1]<(Es[0]+50):
-          coms.append(np.array(self.universe.centerOfMass()))
-        else:
-          break
-      coms = np.array(coms)
-      center = (np.min(coms,0)+np.max(coms,0))/2
-      max_R = max(np.ceil(np.max(np.sqrt(np.sum((coms-center)**2,1)))*10.)/10.,0.6)
-      self.params['dock']['site'] = 'Sphere'
-      self.params['dock']['site_max_R'] = max_R
-      self.params['dock']['site_center'] = center
+      if len(confs_dock6)>0:
+        Es = []
+        coms = []
+        for c in range(len(confs_dock6)):
+          self.universe.setConfiguration(Configuration(self.universe,confs_dock6[c]))
+          Es.append(self.universe.energy())
+          if Es[-1]<(Es[0]+50):
+            coms.append(np.array(self.universe.centerOfMass()))
+          else:
+            break
+        coms = np.array(coms)
+        center = (np.min(coms,0)+np.max(coms,0))/2
+        max_R = max(np.ceil(np.max(np.sqrt(np.sum((coms-center)**2,1)))*10.)/10.,0.6)
+        self.params['dock']['site'] = 'Sphere'
+        self.params['dock']['site_max_R'] = max_R
+        self.params['dock']['site_center'] = center
+      if ((self.params['dock']['site_max_R'] is None) or \
+          (self.params['dock']['site_center'] is None)):
+        raise Exception('No binding site parameters!')
       from AlGDock.ForceFields.Sphere.Sphere import SphereForceField
       self._forceFields['site'] = SphereForceField(
         center=self.params['dock']['site_center'],
         max_R=self.params['dock']['site_max_R'], name='site')
-      self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
+      if len(confs_dock6)>0:
+        self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
     elif (self.params['dock']['site']=='Cylinder') and \
          (self.params['dock']['site_center'] is not None) and \
          (self.params['dock']['site_direction'] is not None):
@@ -850,7 +856,8 @@ last modified {2}
         {'T':T, 'a':(T_HIGH-T)/(T_HIGH-T_TARGET), 'MM':True, 'crossed':crossed})
 
       # Randomly select seeds for new trajectory
-      weight = np.exp(-Es_MM/R*(1/T-1/To))
+      logweight = Es_MM/R*(1/T-1/To)
+      weight = np.exp(-logweight+min(logweight))
       seedIndicies = np.random.choice(len(Es_MM),
         size = self.params['cool']['seeds_per_state'],
         p = weight/sum(weight))
@@ -1242,8 +1249,12 @@ last modified {2}
           pow = rejectStage)
       self.dock_protocol.append(lambda_n)
       if len(self.dock_protocol)>100:
+        self._clear('dock')
+        self._save('dock')
         raise Exception('Too many replicas!')
       if abs(rejectStage)>20:
+        self._clear('dock')
+        self._save('dock')
         raise Exception('Too many consecutive rejected stages!')
 
       # Randomly select seeds for new trajectory
@@ -3172,19 +3183,20 @@ END
     
     crds = []
     E = {}
-    for line in models[0].split('\n'):
-      if line.startswith('##########'):
-        label = line[11:line.find(':')].strip()
-        E[label] = []
-    
-    for model in models:
-      fields = model.split('<TRIPOS>')
-      for line in fields[0].split('\n'):
+    if len(models)>0:
+      for line in models[0].split('\n'):
         if line.startswith('##########'):
           label = line[11:line.find(':')].strip()
-          E[label].append(float(line.split()[-1]))
-      crds.append(np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
-        dtype=float)[self.molecule.inv_prmtop_atom_order,:]/10.)
+          E[label] = []
+      
+      for model in models:
+        fields = model.split('<TRIPOS>')
+        for line in fields[0].split('\n'):
+          if line.startswith('##########'):
+            label = line[11:line.find(':')].strip()
+            E[label].append(float(line.split()[-1]))
+        crds.append(np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
+          dtype=float)[self.molecule.inv_prmtop_atom_order,:]/10.)
     return (crds,E)
 
   def _load_pkl_gz(self, FN):
@@ -3230,15 +3242,9 @@ END
       else:
         print '  using backed up progress and data for %s progress'%p
 
+    self._clear(p)
+    
     params = None
-    setattr(self,'%s_protocol'%p,[])
-    setattr(self,'_%s_cycle'%p,0)
-    setattr(self,'_%s_total_cycle'%p,0)
-    self.confs[p]['replicas'] = None
-    self.confs[p]['seeds'] = None
-    self.confs[p]['samples'] = None
-    setattr(self,'%s_Es'%p,None)
-
     if saved['progress'] is not None:
       params = saved['progress'][0]
       setattr(self,'%s_protocol'%p,saved['progress'][1])
@@ -3252,10 +3258,24 @@ END
       self.confs[p]['seeds'] = saved['data'][2]
       self.confs[p]['samples'] = saved['data'][3]
       setattr(self,'%s_Es'%p, saved['data'][4])
-      setattr(self,'_%s_cycle'%p,len(saved['data'][3][-1]))
-      # TO DO: This breaks _total_cycle. This feature should be fixed or removed.
-      setattr(self,'_%s_total_cycle'%p,len(saved['data'][3][-1]))
+      if saved['data'][3] is not None:
+        cycle = len(saved['data'][3][-1])
+        setattr(self,'_%s_cycle'%p,cycle)
+        # TO DO: This breaks _total_cycle. This feature should be fixed or removed.
+        setattr(self,'_%s_total_cycle'%p,cycle)
+      else:
+        setattr(self,'_%s_cycle'%p,0)
+        setattr(self,'_%s_total_cycle'%p,0)
     return params
+
+  def _clear(self, p):
+    setattr(self,'%s_protocol'%p,[])
+    setattr(self,'_%s_cycle'%p,0)
+    setattr(self,'_%s_total_cycle'%p,0)
+    self.confs[p]['replicas'] = None
+    self.confs[p]['seeds'] = None
+    self.confs[p]['samples'] = None
+    setattr(self,'%s_Es'%p,None)
 
   def _save(self, p, keys=['progress','data']):
     """

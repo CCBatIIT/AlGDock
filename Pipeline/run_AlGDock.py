@@ -231,14 +231,13 @@ print 'Found %d ligands, %d receptors, and %d complexes ready for AlGDock'%(\
 
 # Load the binding site radius and half edge length
 site = args_in.site
-if site=='Sphere':
-  if os.path.isfile(args_in.site_info):
-    execfile(args_in.site_info)
-  else:
-    raise Exception('No binding site information')
-  # These should be in nanometers, not Angstroms
-  site_center = [half_edge_length*0.1, half_edge_length*0.1, half_edge_length*0.1]
-  site_max_R = site_R/10.
+if os.path.isfile(args_in.site_info):
+  execfile(args_in.site_info)
+else:
+  raise Exception('No binding site information')
+# These should be in nanometers, not Angstroms
+site_center = [half_edge_length*0.1, half_edge_length*0.1, half_edge_length*0.1]
+site_max_R = site_R/10.
 
 # Get other parameters
 general_sim_arg_keys = ['protocol','no_protocol_refinement','therm_speed',\
@@ -315,7 +314,7 @@ for ligand_FN in ligand_FNs:
       if not os.path.isdir(dir_dock):
         os.system('mkdir -p '+dir_dock)
       if (args_in.run_type in ['random_dock','initial_dock', \
-                               'dock','all','one_step']) and \
+                               'dock','all','timed']) and \
           nonzero(os.path.join(dir_dock,'f_RL.pkl.gz')):
         job_status['complete'] += 1
         continue # Docking is done

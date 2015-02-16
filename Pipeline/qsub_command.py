@@ -129,10 +129,13 @@ elif os.path.exists('/stash'):   # Open Science Grid
   transfer_input_files = ', '.join(input_files)
 
   # Format the output files for the script
+  touches = ""
   if len(args.output_remaps)>0:
     transfer_output_files = 'transfer_output_remaps = "' + \
       '; '.join(['%s = %s'%(FNo,FNn) for (FNo,FNn) in zip(\
         args.output_remaps[::2],args.output_remaps[1::2])]) + '"'
+    for FN in args.output_remaps[::2]:
+      touches += "if [ ! -e {0} ]\n  then\n    touch {0}\nfi\n".format(FN)
 
   if command.find('$ALGDOCK')!=-1:
     hold_string = 'on_exit_hold = (ExitCode == 100)'
@@ -213,7 +216,7 @@ echo Working in $WORK_DIR
 echo Directory before command:
 ls -ltr
 
-"""+command+"""
+"""+command+touches+"""
 
 echo Directory after command:
 ls -ltr
