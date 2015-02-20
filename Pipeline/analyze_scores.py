@@ -1,16 +1,16 @@
 # To be run from the [TARGET]/ directory
 
 # Parameters
-show = {'FF':{'dock6':'DOCK 6', \
-#              'grid':'grid',
-#              'Gas_MBAR_based':'MBAR-based (Gas)',
+show = {'FF':{'dock6':'DOCK 6',
+              'grid_MBAR':'Grid',
+#              'Gas_MBAR':'MBAR-based (Gas)',
 #              'Gas_min_Psi':'Minimum \Psi (Gas)',
-#              'GBSA_MBAR_based':'MBAR-based (GBSA)',
+#              'GBSA_MBAR':'MBAR-based (GBSA)',
 #              'GBSA_min_Psi':'Minimum \Psi (GBSA)'},
-#              'NAMD_Gas_MBAR_based':'MBAR-based (Gas)',
+#              'NAMD_Gas_MBAR':'MBAR-based (Gas)',
 #              'NAMD_Gas_mean_Psi':'Mean $\Psi$ (Gas)',
 #              'NAMD_Gas_min_Psi':'Minimum $\Psi$ (Gas)',
-              'NAMD_GBSA_MBAR_based':'BPMF (GBSA)',
+              'NAMD_GBSA_MBAR':'BPMF (GBSA)',
               'NAMD_GBSA_mean_Psi':'Mean $\Psi$ (GBSA)',
               'NAMD_GBSA_min_Psi':'Minimum $\Psi$ (GBSA)'},
         'lib':{'active':'Active', 'decoy':'Decoy'}}
@@ -99,19 +99,20 @@ import pickle
 f_RL_FNs = [FN for FN in glob.glob(os.path.join(\
   args.AlGDock,'*','f_RL.pkl.gz')) if os.path.getsize(FN)>0]
 for f_RL_FN in f_RL_FNs:
+  print 'Reading AlGDock scores from '+f_RL_FN
   key = '-'.join(os.path.dirname(f_RL_FN).split('/')[-1].split('-')[:-1])
   F = gzip.open(f_RL_FN)
-  (f_cool, f_L_solvation, Psi, f_grid, B, \
-   dock_equilibrated_cycle, dock_mean_acc) = pickle.load(F)
+  (f_L, stats_RL, f_RL, B) = pickle.load(F)
   F.close()
-  B = B[-1]
+  if 'grid_MBAR' in scores.keys():
+    scores['grid_MBAR'][key] = f_RL['grid_MBAR'][-1][-1]
+  else:
+    scores['grid_MBAR'] = {key:f_RL['grid_MBAR'][-1][-1]}
   for FF in B.keys():
     if FF in scores.keys():
-      scores[FF][key] = B[FF]
+      scores[FF][key] = B[FF][-1]
     else:
-      scores[FF] = {key:B[FF]}
-  del f_cool, f_L_solvation, Psi, f_grid, B
-  del dock_equilibrated_cycle, dock_mean_acc
+      scores[FF] = {key:B[FF][-1]}
 
 for FF in show['FF'].keys():
   if not FF in scores.keys():
@@ -153,13 +154,13 @@ for FF in scores.keys():
 # Libraries
 libraries = {}
 libraries['AM1BCC'] = set([key for key in scores['dock6'].keys() \
-  if SMILES[key].find('Gasteiger')==-1])
+  if key in SMILES.keys() and SMILES[key].find('Gasteiger')==-1])
 libraries['Gasteiger'] = set([key for key in scores['dock6'].keys() \
   if not key in libraries['AM1BCC']])
 
 libraries['dock6_AM1BCC'] = libraries['AM1BCC']
-libraries['AlGDock_AM1BCC'] = set([key for key in scores['grid'].keys() \
-  if SMILES[key].find('Gasteiger')==-1])
+libraries['AlGDock_AM1BCC'] = set([key for key in scores['grid_MBAR'].keys() \
+  if key in SMILES.keys() and SMILES[key].find('Gasteiger')==-1])
 for FF in show['FF'].keys():
   libraries[FF] = set(scores[FF].keys())
 
@@ -172,7 +173,7 @@ libraries['decoy'] = set(decoy)
 libraries['top'] = set(active[:50] + decoy[:150])
 del dock6_scores, active, decoy
 all_AlGDock_ligands = set([key.lower().split('-')[0] \
-  for key in scores['grid'].keys()])
+  for key in scores['grid_MBAR'].keys()])
 for nc_val in set(nc.values()):
   nc_ligands = [key for key in nc.keys() if key in all_AlGDock_ligands and nc[key]== nc_val]
   libraries['nc%d'%nc_val] = set([key for key in libraries['AlGDock_AM1BCC'] if key.split('-')[0].lower() in nc_ligands])

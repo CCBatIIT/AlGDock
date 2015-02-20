@@ -818,7 +818,7 @@ last modified {2}
     for T in np.linspace(0.,T_HIGH,33)[1:]:
       self.sampler['init'](steps = 500, T=T,\
                            delta_t=self.delta_t, steps_per_trial = 100, \
-                           seed=int(time.time()))
+                           seed=int(time.time()+T))
     self.universe.normalizePosition()
 
     # Run at high temperature
@@ -859,8 +859,7 @@ last modified {2}
       logweight = Es_MM/R*(1/T-1/To)
       weight = np.exp(-logweight+min(logweight))
       seedIndicies = np.random.choice(len(Es_MM),
-        size = self.params['cool']['seeds_per_state'],
-        p = weight/sum(weight))
+        size = self.params['cool']['seeds_per_state'], p = weight/sum(weight))
 
       # Simulate and store data
       confs_o = confs
@@ -895,8 +894,8 @@ last modified {2}
         tL_tensor = tL_tensor*1.25 # Use a smaller step
         self.tee("  rejected new state, as estimated replica exchange" + \
           " acceptance rate of %f is too low"%mean_acc)
-      elif (mean_acc>0.95) and (not crossed):
-        # If the acceptance probability is too low,
+      elif (mean_acc>0.99) and (not crossed):
+        # If the acceptance probability is too high,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.argmin(Es_MM)]
         self.cool_protocol.pop(-2)
@@ -911,15 +910,29 @@ last modified {2}
           self.confs['cool']['samples'][-2] = []
         self.cool_Es.append([{'MM':Es_MM}])
         tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
-        self.tee("  estimated replica exchange acceptance rate is %f\n"%mean_acc)
+        self.tee("  estimated replica exchange acceptance rate is %f"%mean_acc)
+
+        self._save('cool')
+        self.tee("")
+
+      if self.run_type=='timed':
+        remaining_time = self.timing['max']*60 - \
+          (time.time()-self.timing['start'])
+        if remaining_time<0:
+          self._save('cool')
+          self.tee("  no time remaining for initial cool")
+          self._clear_lock('cool')
+          return False
 
     # Save data
     self._cool_cycle += 1
     self._cool_total_cycle += 1
     self._save('cool')
-    self.tee("\nElapsed time for initial cooling: " + \
+    self.tee("\nElapsed time for initial cooling of " + \
+      "%d states: "%len(self.cool_protocol) + \
       HMStime(time.time()-cool_start_time))
     self._clear_lock('cool')
+    return True
 
   def cool(self):
     """
@@ -1071,7 +1084,7 @@ last modified {2}
     # Select samples from the first cooling state and make sure there are enough
     E_MM = []
     confs = []
-    for k in range(len(self.cool_Es[0])):
+    for k in range(1,len(self.cool_Es[0])):
       E_MM += list(self.cool_Es[0][k]['MM'])
       confs += list(self.confs['cool']['samples'][0][k])
     while len(E_MM)<self.params['dock']['seeds_per_state']:
@@ -1079,7 +1092,7 @@ last modified {2}
       self._replica_exchange('cool')
       E_MM = []
       confs = []
-      for k in range(len(self.cool_Es[0])):
+      for k in range(1,len(self.cool_Es[0])):
         E_MM += list(self.cool_Es[0][k]['MM'])
         confs += list(self.confs['cool']['samples'][0][k])
 
@@ -1248,7 +1261,7 @@ last modified {2}
       lambda_n = self._next_dock_state(E = E, lambda_o = lambda_o, \
           pow = rejectStage)
       self.dock_protocol.append(lambda_n)
-      if len(self.dock_protocol)>100:
+      if len(self.dock_protocol)>1000:
         self._clear('dock')
         self._save('dock')
         raise Exception('Too many replicas!')
@@ -1331,7 +1344,7 @@ last modified {2}
           E = E_o
           rejectStage += 1
           self.tee("  rejected new state, as estimated replica exchange acceptance rate of %f is too low"%mean_acc)
-        elif (mean_acc>0.95) and (not lambda_n['crossed']):
+        elif (mean_acc>0.99) and (not lambda_n['crossed']):
           # If the acceptance probability is too high,
           # reject the previous state and restart
           self.confs['dock']['replicas'][-1] = confs[np.argmin(Es_tot)]
@@ -1365,16 +1378,23 @@ last modified {2}
         self._save('dock')
         self.tee("")
 
-    K = len(self.dock_protocol)
-    self.tee("  %d states in the docking process sampled in %s"%(K,\
-      HMStime(time.time()-dock_start_time)))
-      
+      if self.run_type=='timed':
+        remaining_time = self.timing['max']*60 - \
+          (time.time()-self.timing['start'])
+        if remaining_time<0:
+          self._save('dock')
+          self.tee("  no time remaining for initial dock")
+          self._clear_lock('dock')
+          return False
+
     self._dock_cycle += 1
     self._dock_total_cycle += 1
     self._save('dock')
-    self.tee("\nElapsed time for initial docking: " + \
+    self.tee("\nElapsed time for initial docking of " + \
+      "%d states: "%len(self.dock_protocol) + \
       HMStime(time.time()-dock_start_time))
     self._clear_lock('dock')
+    return True
 
   def dock(self):
     """
@@ -1926,7 +1946,7 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    per_independent = {'cool':3.0, 'dock':20.0}[process]
+    per_independent = {'cool':2.0, 'dock':20.0}[process]
     # There will be at least per_independent and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
@@ -2088,7 +2108,7 @@ last modified {2}
       T=lambda_k['T'], delta_t=delta_t, \
       normalize=(process=='cool'),
       adapt=initialize,
-      seed=int(time.time())+reference)
+      seed=int(time.time()+reference))
 
     # Store and return results
     results['confs'] = np.copy(confs[-1])
@@ -2107,7 +2127,9 @@ last modified {2}
     """
     if (getattr(self,process+'_protocol')==[]) or \
        (not getattr(self,process+'_protocol')[-1]['crossed']):
-      getattr(self,'initial_'+process)()
+      initial_complete = getattr(self,'initial_'+process)()
+      if not initial_complete:
+        return False
 
     # Main loop for replica exchange
     if (self.params[process]['repX_cycles'] is not None) and \
