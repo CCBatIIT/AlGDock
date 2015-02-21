@@ -18,9 +18,8 @@ class BPMF_plots(BPMF):
     
     if toCycle is None:
       toCycle = getattr(self,'_%s_cycle'%process)
-    Es = [getattr(self,process+'_Es')[0][firstCycle:toCycle]]
-    for Es_state in getattr(self,process+'_Es'):
-      Es.append(Es_state[firstCycle:toCycle])
+    Es = [getattr(self,process+'_Es')[k][firstCycle:toCycle] \
+      for k in range(len(getattr(self,process+'_Es')))]
     (u_kln,N_k) = self._u_kln(Es, getattr(self,process+'_protocol'), noBeta=True)
     
     plt.figure(0)
@@ -106,7 +105,7 @@ class BPMF_plots(BPMF):
     import subprocess
     subprocess.call([self._FNs['vmd'], '-e', script_FN, '-size', '800', '800'])
     for FN in [ligand_dcd_FN, original_ligand_dcd_FN, \
-               receptor_dcd_FN, 'show_samples.vmd']:
+               dcd_FN, 'show_samples.vmd']:
       if os.path.isfile(FN):
         os.remove(FN)
 

@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-# These capabilities are under construction:
-# Docking with Fast Fourier Transform
-# "Undocking" to initialize thermodynamic states
-
 import os # Miscellaneous operating system interfaces
 from os.path import join
 import cPickle as pickle
@@ -121,6 +117,10 @@ arguments = {
     'help':'Number of starting configurations in each state during initialization'},
   'steps_per_seed':{'type':int,
     'help':'Number of MD steps per state during initialization'},
+  'score':{'nargs':'?', 'const':True, 'default':False,
+    'help':'Start replica exchange from a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.'},
+  'score_multiple':{'action':'store_true',
+    'help':'Uses multiple configurations at the start of replica exchange'},
   # For replica exchange
   'repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking and cooling'},
@@ -136,8 +136,6 @@ arguments = {
     'help':'Minimum value for replica exchange acceptance rate'},
   # For postprocessing
   'phases':{'nargs':'+', 'help':'Phases to use in postprocessing'},
-  'score':{'nargs':'?', 'const':True, 'default':False,
-    'help':'Start replica exchange from a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.'},
   'rmsd':{'nargs':'?', 'const':True, 'default':False,
     'help':'Calculate rmsd between snapshots and a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.'},
   # Binding site
@@ -154,6 +152,7 @@ arguments = {
     'help':'Maximum radial position for a spherical or cylindrical binding site'},
   'site_density':{'type':float,
     'help':'Density of center-of-mass points in the first docking state'}}
+# TODO: Create a measure_site argument
 
 for process in ['cool','dock']:
   for key in ['protocol', 'therm_speed', 'sampler',
@@ -473,7 +472,8 @@ last modified {2}
       'site_density':50.,
       'MCMC_moves':1,
       'rmsd':False,
-      'score':False}.items() + \
+      'score':False,
+      'score_multiple':False}.items() + \
       [('receptor_'+phase,None) for phase in allowed_phases])
 
     # Store passed arguments in dictionary
@@ -597,6 +597,32 @@ last modified {2}
     self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self._FNs['forcefield'],mod_files=self._FNs['frcmodList'])
 
+    if (self.params['dock']['site']=='Measure'):
+      print '\n*** Measuring the binding site ***'
+      self.params['dock']['site'] = 'Sphere'
+      (confs, Es) = self._get_confs_to_rescore()
+      if len(confs)>0:
+        # Use the center of mass for configurations
+        # within 20 RT of the lowest energy
+        coms = []
+        for (conf,E) in reversed(zip(confs,Es)):
+          if E<(Es[-1]+20*RT_TARGET):
+            self.universe.setConfiguration(Configuration(self.universe,conf))
+            coms.append(np.array(self.universe.centerOfMass()))
+          else:
+            break
+        print '  %d configurations fit in the binding site'%len(coms)
+        coms = np.array(coms)
+        center = (np.min(coms,0)+np.max(coms,0))/2
+        max_R = max(np.ceil(np.max(np.sqrt(np.sum((coms-center)**2,1)))*10.)/10.,0.6)
+        self.params['dock']['site_max_R'] = max_R
+        self.params['dock']['site_center'] = center
+        self.universe.setConfiguration(Configuration(self.universe,confs[-1]))
+      if ((self.params['dock']['site_max_R'] is None) or \
+          (self.params['dock']['site_center'] is None)):
+        raise Exception('No binding site parameters!')
+# TODO: Develop way to note that measurement has been completed, and to store the measured site
+
     if (self.params['dock']['site']=='Sphere') and \
        (self.params['dock']['site_center'] is not None) and \
        (self.params['dock']['site_max_R'] is not None):
@@ -604,37 +630,6 @@ last modified {2}
       self._forceFields['site'] = SphereForceField(
         center=self.params['dock']['site_center'],
         max_R=self.params['dock']['site_max_R'], name='site')
-    elif (self.params['dock']['site']=='Measure') and \
-        (self.params['dock']['score'].endswith('.mol2') or
-         self.params['dock']['score'].endswith('.mol2.gz')):
-      self._set_universe_evaluator(\
-        {'ELE':1, 'LJa':1, 'LJr':1, 'MM':True, 'T':T_HIGH})
-      (confs_dock6,E_dock6) = self._read_dock6(self.params['dock']['score'])
-      if len(confs_dock6)>0:
-        Es = []
-        coms = []
-        for c in range(len(confs_dock6)):
-          self.universe.setConfiguration(Configuration(self.universe,confs_dock6[c]))
-          Es.append(self.universe.energy())
-          if Es[-1]<(Es[0]+50):
-            coms.append(np.array(self.universe.centerOfMass()))
-          else:
-            break
-        coms = np.array(coms)
-        center = (np.min(coms,0)+np.max(coms,0))/2
-        max_R = max(np.ceil(np.max(np.sqrt(np.sum((coms-center)**2,1)))*10.)/10.,0.6)
-        self.params['dock']['site'] = 'Sphere'
-        self.params['dock']['site_max_R'] = max_R
-        self.params['dock']['site_center'] = center
-      if ((self.params['dock']['site_max_R'] is None) or \
-          (self.params['dock']['site_center'] is None)):
-        raise Exception('No binding site parameters!')
-      from AlGDock.ForceFields.Sphere.Sphere import SphereForceField
-      self._forceFields['site'] = SphereForceField(
-        center=self.params['dock']['site_center'],
-        max_R=self.params['dock']['site_max_R'], name='site')
-      if len(confs_dock6)>0:
-        self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
     elif (self.params['dock']['site']=='Cylinder') and \
          (self.params['dock']['site_center'] is not None) and \
          (self.params['dock']['site_direction'] is not None):
@@ -658,8 +653,6 @@ last modified {2}
       self.universe.translateTo(Vector(self._forceFields['site'].randomPoint()))
     else:
       print 'Molecule not translated into binding site'
-
-    self._set_universe_evaluator({'MM':True, 'T':T_HIGH})
 
     # Samplers may accept the following options:
     # steps - number of MD steps
@@ -815,7 +808,9 @@ last modified {2}
         self.universe.configuration().array = x_o
         break
 
-    for T in np.linspace(0.,T_HIGH,33)[1:]:
+    T_LOW = 20.
+    T_SERIES = T_LOW*(T_HIGH/T_LOW)**(np.arange(30)/29.)
+    for T in T_SERIES:
       self.sampler['init'](steps = 500, T=T,\
                            delta_t=self.delta_t, steps_per_trial = 100, \
                            seed=int(time.time()+T))
@@ -1102,19 +1097,11 @@ last modified {2}
     cool0_confs = [confs[ind] for ind in random_dock_inds]
 
     # Do the random docking
-    self.tee("\n>>> Initial docking, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+    lambda_o = self._lambda(0.0,'dock',MM=True,site=True,crossed=False)
+    self.dock_protocol = [lambda_o]
 
     # Set up the force field with full interaction grids
-    lambda_scalables = dict(zip(\
-      self._scalables,np.ones(len(self._scalables),dtype=int)) + [('T',T_HIGH)])
-    self._set_universe_evaluator(lambda_scalables)
-  
-    lambda_o = {'T':T_HIGH, 'MM':True, 'site':True, \
-                'crossed':False, 'a':0.0}
-    for scalable in self._scalables:
-      lambda_o[scalable] = 0
-    self.dock_protocol = [lambda_o]
+    self._set_universe_evaluator(self._lambda(1.0,'dock',MM=False,site=False))
 
     # Either loads or generates the random translations and rotations for the first state of docking
     if not (hasattr(self,'_random_trans') and hasattr(self,'_random_rotT')):
@@ -1211,6 +1198,7 @@ last modified {2}
       along grid points using a Fast Fourier Transform
     """
 
+    # TODO: Write this function
     # UNDER CONSTRUCTION
     # Loop over conformers
     #   Loop over rotations
@@ -1220,7 +1208,7 @@ last modified {2}
     #     Keep the lowest-energy conformers
     # Estimate the BPMF
 
-  def initial_dock(self, randomOnly=False, undock=False):
+  def initial_dock(self, randomOnly=False, undock=True):
     """
       Docks the ligand into the receptor
       
@@ -1236,12 +1224,50 @@ last modified {2}
     dock_start_time = time.time()
 
     if self.dock_protocol==[]:
-      (cool0_confs, E) = self.random_dock()
-      self.tee("  random docking complete in " + \
-               HMStime(time.time()-dock_start_time))
-      if randomOnly:
-        self._clear_lock('dock')
-        return
+      self.tee("\n>>> Initial docking, starting at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+      if undock:
+        (seed, Es) = self._get_confs_to_rescore(nconfs=1)
+        if seed==[]:
+          undock = False
+        else:
+          lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
+          self.dock_protocol = [lambda_o]
+          self._set_universe_evaluator(lambda_o)
+          
+          # Ramp up the temperature
+          T_LOW = 20.
+          T_SERIES = T_LOW*(T_TARGET/T_LOW)**(np.arange(30)/29.)
+          self.universe.setConfiguration(Configuration(self.universe,seed[0]))
+          for T in T_SERIES:
+            self.sampler['init'](steps = 500, T=T,\
+              delta_t=self.delta_t, steps_per_trial = 100, \
+              seed=int(time.time()+T))
+          seed = [self.universe.configuration().array]
+
+          # Simulate
+          sim_start_time = time.time()
+          (confs, Es_tot, lambda_o['delta_t'], Ht) = \
+            self._initial_sim_state(\
+              seed*self.params['dock']['seeds_per_state'], 'dock', lambda_o)
+          self.tee("  generated %d configurations "%len(confs) + \
+                   "(dt=%f ps, Ht=%f) "%(lambda_o['delta_t'],Ht) + \
+                   "with progress %f "%lambda_o['a'] + \
+                   "in " + HMStime(time.time()-sim_start_time))
+
+          # Get state energies
+          E = self._calc_E(confs)
+          self.confs['dock']['replicas'] = [confs[np.argmin(Es_tot)]]
+          self.confs['dock']['samples'] = [[confs]]
+          self.dock_Es = [[E]]
+    
+      if not undock:
+        (cool0_confs, E) = self.random_dock()
+        self.tee("  random docking complete in " + \
+                 HMStime(time.time()-dock_start_time))
+        if randomOnly:
+          self._clear_lock('dock')
+          return
     else:
       # Continuing from a previous docking instance
       self.tee("\n>>> Initial docking, continuing at " + \
@@ -1259,7 +1285,7 @@ last modified {2}
     while (not self.dock_protocol[-1]['crossed']):
       # Determine next value of the protocol
       lambda_n = self._next_dock_state(E = E, lambda_o = lambda_o, \
-          pow = rejectStage)
+          pow = rejectStage, undock = undock)
       self.dock_protocol.append(lambda_n)
       if len(self.dock_protocol)>1000:
         self._clear('dock')
@@ -1279,34 +1305,22 @@ last modified {2}
         size = self.params['dock']['seeds_per_state'], \
         p=weight/sum(weight))
 
-      if len(self.dock_protocol)==2:
-        # TO DO: Move this up to replace random_dock
-        if undock:
-          if (self.params['dock']['score'] is not False):
-            seeds = self._minimize_dock_score_confs(nconfs=self.params['dock']['seeds_per_state'])
-            self.confs['dock']['replicas'] = [seeds[0]]
-            self.confs['dock']['samples'] = [seeds[0]]
-            confs = None
-            E = {}
-            # TO DO: Return energies
-          else:
-            raise Exception('Docked poses required for undocking')
-        else:
-          # Cooling state 0 configurations, randomly oriented
-          # Use the lowest energy configuration in the first docking state for replica exchange
-          ind = np.argmin(u_n)
+      if (not undock) and (len(self.dock_protocol)==2):
+        # Cooling state 0 configurations, randomly oriented
+        # Use the lowest energy configuration in the first docking state for replica exchange
+        ind = np.argmin(u_n)
+        (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
+        repX_conf = np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]),\
+                           self._random_trans[i_trans].array)
+        self.confs['dock']['replicas'] = [repX_conf]
+        self.confs['dock']['samples'] = [[repX_conf]]
+        self.dock_Es = [[dict([(key,np.array([val[ind]])) for (key,val) in E.iteritems()])]]
+        seeds = []
+        for ind in seedIndicies:
           (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
-          repX_conf = np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]),\
-                             self._random_trans[i_trans].array)
-          self.confs['dock']['replicas'] = [repX_conf]
-          self.confs['dock']['samples'] = [[repX_conf]]
-          self.dock_Es = [[dict([(key,np.array([val[ind]])) for (key,val) in E.iteritems()])]]
-          seeds = []
-          for ind in seedIndicies:
-            (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
-            seeds.append(np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]), self._random_trans[i_trans].array))
-          confs = None
-          E = {}
+          seeds.append(np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]), self._random_trans[i_trans].array))
+        confs = None
+        E = {}
       else: # Seeds from last state
         seeds = [confs[ind] for ind in seedIndicies]
       self.confs['dock']['seeds'] = seeds
@@ -1328,7 +1342,8 @@ last modified {2}
       # Get state energies
       E = self._calc_E(confs)
 
-      if len(self.dock_protocol)>2:
+      # Decide whether to keep the state
+      if len(self.dock_protocol)>(1+(not undock)):
         # Estimate the mean replica exchange acceptance rate
         # between the previous and new state
         (u_kln,N_k) = self._u_kln([[E_o],[E]], self.dock_protocol[-2:])
@@ -1357,8 +1372,6 @@ last modified {2}
           # Store data and continue with initialization
           self.confs['dock']['replicas'].append(confs[np.argmin(Es_tot)])
           self.confs['dock']['samples'].append([confs])
-          if (not self.params['dock']['keep_intermediate']):
-            self.confs['dock']['samples'][-2] = []
           self.dock_Es.append([E])
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
@@ -1386,6 +1399,21 @@ last modified {2}
           self.tee("  no time remaining for initial dock")
           self._clear_lock('dock')
           return False
+
+    # For undocking, reverse protocol and energies
+    if undock:
+      self.tee("  reversing replicas, samples, and protocol")
+      self.confs['dock']['replicas'].reverse()
+      self.confs['dock']['samples'].reverse()
+      self.confs['dock']['seeds'] = None
+      self.dock_Es.reverse()
+      self.dock_protocol.reverse()
+      self.dock_protocol[0]['crossed'] = False
+      self.dock_protocol[-1]['crossed'] = True
+
+    if (not self.params['dock']['keep_intermediate']):
+      for k in range(len(self.dock_protocol)-1):
+        self.confs['dock']['samples'][k] = []
 
     self._dock_cycle += 1
     self._dock_total_cycle += 1
@@ -2134,12 +2162,17 @@ last modified {2}
     # Main loop for replica exchange
     if (self.params[process]['repX_cycles'] is not None) and \
        ((getattr(self,'_%s_total_cycle'%process) < self.params[process]['repX_cycles']) or (getattr(self,'_%s_cycle'%process)==0)):
+
       # Score configurations from another program
       if (process=='dock') and \
          (self._dock_cycle==1) and (self._dock_total_cycle==1) and \
-         (self.params['dock']['score'] is not False):
-        self.confs['dock']['replicas'] = \
-          self._minimize_dock_score_confs(nconfs=len(self.dock_protocol))
+         (self.params['dock']['score'] is not False) and \
+         (self.params['dock']['score_multiple']):
+        self._set_lock('dock')
+        self.tee(">>> Reinitializing replica exchange configurations")
+        (self.confs['dock']['replicas'], Es) = \
+          self._get_confs_to_rescore(nconfs=len(self.dock_protocol))
+        self._clear_lock('dock')
 
       self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
         process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())), \
@@ -2190,71 +2223,91 @@ last modified {2}
 
     return True # The process has completed
 
-  def _minimize_dock_score_confs(self, nconfs):
+  def _get_confs_to_rescore(self, nconfs=None):
     """
-    Gets configurations to score from another program.
-    Returns unique configurations.
+    Returns configurations to rescore and their corresponding energies 
+    as a tuple of lists, ordered by DECREASING energy.
+    It is either the default configuration, or from dock6 and initial docking.
+    If nconfs is None, then all configurations will be unique.
+    If nconfs is smaller than the number of unique configurations, 
+    then the lowest energy configurations will be retained.
+    If nconfs is larger than the number of unique configurations, 
+    then the lowest energy configuration will be duplicated.
     """
-    self._set_lock('dock')
-    unique_confs = []
-    if isinstance(self.params['dock']['score'],bool):
-      unique_confs = [self.confs['ligand']]
-      confs = [np.copy(self.confs['ligand']) for k in range(nconfs)]
-      self.tee("\n>>> Rescoring default configuration")
-      self._clear_lock('dock')
-      return (unique_confs, [])
+    lambda_full = self._lambda(1.0,'dock', \
+      MM=True,site='site' in self._forceFields.keys())
     
+    if self.params['dock']['score'] is True:
+      conf = self.confs['ligand']
+      self._set_universe_evaluator(lambda_full)
+      self.universe.setConfiguration(Configuration(self.universe, conf))
+      E = self.universe.energy()
+      if nconfs is None:
+        nconfs = 1
+      return ([np.copy(conf) for k in range(nconfs)],[E for k in range(nconfs)])
+
+    confs = []
     count = {'dock6':0, 'initial_dock':0, 'duplicated':0}
     
     if self.params['dock']['score'].endswith('.mol2') or \
        self.params['dock']['score'].endswith('.mol2.gz'):
       (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
-      # Add configurations where the ligand is in the binding site
-      self._set_universe_evaluator({'site':True,'T':T_TARGET})
-      for ind in range(len(confs_dock6)):
-        self.universe.setConfiguration(Configuration(self.universe, confs_dock6[ind]))
-        if self.universe.energy()<1.:
-          unique_confs.append(confs_dock6[ind])
-      count['dock6'] = len(unique_confs)
+
+      if 'site' in self._forceFields.keys():
+        # Add configurations where the ligand is in the binding site
+        self._set_universe_evaluator({'site':True,'T':T_TARGET})
+        for ind in range(len(confs_dock6)):
+          self.universe.setConfiguration(\
+            Configuration(self.universe, confs_dock6[ind]))
+          if self.universe.energy()<1.:
+            confs.append(confs_dock6[ind])
+      else:
+        confs = confs_dock6
+      count['dock6'] = len(confs)
     else:
       raise Exception('Unrecognized file type for configurations')
 
     if self.confs['dock']['seeds'] is not None:
-      unique_confs = unique_confs + self.confs['dock']['seeds']
+      confs = confs + self.confs['dock']['seeds']
       count['initial_dock'] = len(self.confs['dock']['seeds'])
     
+    if len(confs)==0:
+      return ([],[])
+    
     # Minimize each configuration
-    self._set_universe_evaluator(self._lambda(1.0,process='dock'))
-    # TO DO: Fix reference to lambda
+    self._set_universe_evaluator(lambda_full)
+    
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
 
     minimized_confs = []
     minimized_conf_Es = []
 
-    self.tee("\n>>> Minimizing %d seed configurations"%len(unique_confs))
     min_start_time = time.time()
-    for conf in unique_confs:
+    for conf in confs:
       self.universe.setConfiguration(Configuration(self.universe, conf))
       minimizer(steps = 1000)
       minimized_confs.append(np.copy(self.universe.configuration().array))
       minimized_conf_Es.append(self.universe.energy())
-    self.tee("\nElapsed time for minimization: " + \
+    self.tee("\n  minimized %d configurations in "%len(confs) + \
       HMStime(time.time()-min_start_time))
 
-    # Sort minimized configurations
-    minimized_conf_Es, minimized_confs = \
+    # Sort minimized configurations by DECREASING energy
+    Es, confs = \
       (list(l) for l in zip(*sorted(zip(minimized_conf_Es, minimized_confs), \
         key=lambda p:p[0], reverse=True)))
 
-    confs = minimized_confs[-nconfs:]
-    while len(confs)<nconfs:
-      confs.append(confs[-1])
-      count['duplicated'] += 1
-    self.tee("\n>>> Rescoring configurations:")
-    self.tee("  {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated".format(**count))
-    self._clear_lock('dock')
-    return confs
+    # Shrink or extend configuration and energy array
+    if nconfs is not None:
+      confs = confs[-nconfs:]
+      Es = Es[-nconfs:]
+      while len(confs)<nconfs:
+        confs.append(confs[-1])
+        Es.append(Es[-1])
+        count['duplicated'] += 1
+
+    self.tee("  keeping configurations: {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
+    return (confs, Es)
 
   def _run_MBAR(self,u_kln,N_k):
     """
@@ -2397,22 +2450,22 @@ last modified {2}
     elif self.params['dock']['protocol']=='Adaptive':
       # Change grid scaling and temperature simultaneously
       tL_tensor = self._tL_tensor(E,lambda_o)
+      crossed = lambda_o['crossed']
       if pow is not None:
         tL_tensor = tL_tensor*(1.25**pow)
       if tL_tensor>0:
         dL = self.params['dock']['therm_speed']/tL_tensor
-        if not undock:
-          a = lambda_o['a'] + dL
-          if a > 1:
-            a = 1.0
-            lambda_n['crossed'] = True
-          return self._lambda(a)
-        else:
+        if undock:
           a = lambda_o['a'] - dL
-          if a < 0:
+          if a < 0.0:
             a = 0.0
-            lambda_n['crossed'] = True
-          return self._lambda(a)
+            crossed = True
+        else:
+          a = lambda_o['a'] + dL
+          if a > 1.0:
+            a = 1.0
+            crossed = True
+        return self._lambda(a, crossed=crossed)
       else:
         # Repeats the previous stage
         lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
@@ -2442,11 +2495,23 @@ last modified {2}
     else:
       raise Exception("Unknown process!")
 
-  def _lambda(self, a, process='dock', lambda_o=None):
-    if process=='dock':
-      if lambda_o is None:
-        lambda_o = self.dock_protocol[-1]
+  def _lambda(self, a, process='dock', lambda_o=None, \
+      MM=None, site=None, crossed=None):
+
+    if (lambda_o is None) and len(getattr(self,process+'_protocol'))>0:
+      lambda_o = copy.deepcopy(getattr(self,process+'_protocol')[-1])
+    if (lambda_o is not None):
       lambda_n = copy.deepcopy(lambda_o)
+    else:
+      lambda_n = {}
+    if MM is not None:
+      lambda_n['MM'] = MM
+    if site is not None:
+      lambda_n['site'] = site
+    if crossed is not None:
+      lambda_n['crossed'] = crossed
+
+    if process=='dock':
       a_sg = 1.-4.*(a-0.5)**2
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
       if a_g<1E-10:
@@ -2457,17 +2522,14 @@ last modified {2}
       lambda_n['LJr'] = a_g
       lambda_n['LJa'] = a_g
       lambda_n['ELE'] = a_g
+      # TODO: Geometric series for temperature?
       lambda_n['T'] = a*(T_TARGET-T_HIGH) + T_HIGH
-      lambda_n['crossed'] = (abs(a-1.0)<0.001)
     elif process=='cool':
-      if lambda_o is None:
-        lambda_o = self.cool_protocol[-1]
-      lambda_n = copy.deepcopy(lambda_o)
       lambda_n['a'] = a
       lambda_n['T'] = T_HIGH - a*(T_HIGH-T_TARGET)
-      lambda_n['crossed'] = (abs(a-1.0)<0.001)
     else:
       raise Exception("Unknown process!")
+
     return lambda_n
 
   def _postprocess(self,
@@ -2764,8 +2826,7 @@ last modified {2}
 
     if type=='sampling' or type=='all':
       # Molecular mechanics and grid interaction energies
-      self._set_universe_evaluator(\
-        {'ELE':1, 'LJa':1, 'LJr':1, 'MM':True, 'T':T_HIGH, 'site':True})
+      self._set_universe_evaluator(self._lambda(1.0,'dock',MM=True,site=True))
       for term in (['MM','site','misc'] + self._scalables):
         E[term] = np.zeros(len(confs), dtype=float)
       for c in range(len(confs)):
@@ -3273,7 +3334,7 @@ END
       setattr(self,'_%s_cycle'%p,saved['progress'][2])
       setattr(self,'_%s_total_cycle'%p,saved['progress'][3])
     if saved['data'] is not None:
-      if p=='dock':
+      if p=='dock' and saved['data'][0] is not None:
         (self._n_trans, self._max_n_trans, self._random_trans, \
          self._n_rot, self._max_n_rot, self._random_rotT) = saved['data'][0]
       self.confs[p]['replicas'] = saved['data'][1]
@@ -3283,7 +3344,7 @@ END
       if saved['data'][3] is not None:
         cycle = len(saved['data'][3][-1])
         setattr(self,'_%s_cycle'%p,cycle)
-        # TO DO: This breaks _total_cycle. This feature should be fixed or removed.
+        # TODO: Remove _total_cycle and protocol refinement?
         setattr(self,'_%s_total_cycle'%p,cycle)
       else:
         setattr(self,'_%s_cycle'%p,0)
