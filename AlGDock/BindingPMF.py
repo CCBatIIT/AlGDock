@@ -1102,7 +1102,9 @@ last modified {2}
     self.dock_protocol = [lambda_o]
 
     # Set up the force field with full interaction grids
-    self._set_universe_evaluator(self._lambda(1.0,'dock',MM=False,site=False))
+    lambda_scalables = dict(zip(\
+      self._scalables,np.ones(len(self._scalables),dtype=int)) + [('T',T_HIGH)])
+    self._set_universe_evaluator(lambda_scalables)
 
     # Either loads or generates the random translations and rotations for the first state of docking
     if not (hasattr(self,'_random_trans') and hasattr(self,'_random_rotT')):
@@ -2469,14 +2471,10 @@ last modified {2}
           if a > 1.0:
             a = 1.0
             crossed = True
-        if crossed:
-          self.tee("  the metric tensor for thermodynamic length" + \
-            " was %e"%tL_tensor)
         return self._lambda(a, crossed=crossed)
       else:
         # Repeats the previous stage
         lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
-        raise Exception('No variance!')
         self.tee('  no variance in previous stage!' + \
           ' trying time step of %f'%lambda_n['delta_t'])
         return lambda_n
