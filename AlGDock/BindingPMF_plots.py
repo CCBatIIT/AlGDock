@@ -104,7 +104,7 @@ class BPMF_plots(BPMF):
 
     import subprocess
     subprocess.call([self._FNs['vmd'], '-e', script_FN, '-size', '800', '800'])
-    for FN in [ligand_dcd_FN, original_ligand_dcd_FN, \
+    for FN in [dcd_FN, original_ligand_dcd_FN, \
                dcd_FN, 'show_samples.vmd']:
       if os.path.isfile(FN):
         os.remove(FN)

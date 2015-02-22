@@ -826,12 +826,13 @@ last modified {2}
     self.confs['cool']['replicas'] = [confs[np.argmin(Es_MM)]]
     self.confs['cool']['samples'] = [[confs]]
     self.cool_Es = [[{'MM':Es_MM}]]
+    tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
+
     self.tee("  generated %d configurations "%len(confs) + \
-             "(dt=%f ps, Ht=%f, sigma=%f) "%(\
-              self.cool_protocol[-1]['delta_t'], Ht, Es_MM.std()) + \
              "at %d K "%self.cool_protocol[-1]['T'] + \
              "in " + HMStime(time.time()-state_start_time))
-    tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
+    self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
+      self.cool_protocol[-1]['delta_t'], Ht, tL_tensor))
 
     # Main loop for initial cooling:
     # choose new temperature, randomly select seeds, simulate
@@ -840,7 +841,7 @@ last modified {2}
       # Choose new temperature
       To = self.cool_protocol[-1]['T']
       crossed = False
-      if tL_tensor>0:
+      if tL_tensor>1E-5:
         T = To - self.params['cool']['therm_speed']/tL_tensor
         if T < T_TARGET:
           T = T_TARGET
@@ -867,10 +868,10 @@ last modified {2}
         self._initial_sim_state(\
         [confs[ind] for ind in seedIndicies], 'cool', self.cool_protocol[-1])
       self.tee("  generated %d configurations "%len(confs) + \
-               "(dt=%f ps, Ht=%f, sigma=%f) "%(\
-                self.cool_protocol[-1]['delta_t'], Ht, Es_MM.std()) + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + (HMStime(time.time()-state_start_time)))
+      self.tee("  dt=%f ps, Ht=%f, sigma=%f"%(\
+        self.cool_protocol[-1]['delta_t'], Ht, Es_MM.std()))
 
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
@@ -1169,10 +1170,9 @@ last modified {2}
         n_trans_n = min(n_trans_n + 25, self._max_n_trans)
         for term in (['MM','site']+self._scalables):
           # Large array creation may cause MemoryError
-          # Has not been tested
-          E[term] = np.dstack(E[term], \
-            np.zeros((self.params['dock']['seeds_per_state'], \
-            self._max_n_rot,25)))
+          E[term] = np.dstack((E[term], \
+            np.zeros((self.params['dock']['seeds_per_state'],\
+              self._max_n_rot,25))))
 
     if self._n_trans != n_trans_n:
       self._n_trans = n_trans_n
@@ -1250,16 +1250,18 @@ last modified {2}
           (confs, Es_tot, lambda_o['delta_t'], Ht) = \
             self._initial_sim_state(\
               seed*self.params['dock']['seeds_per_state'], 'dock', lambda_o)
-          self.tee("  generated %d configurations "%len(confs) + \
-                   "(dt=%f ps, Ht=%f) "%(lambda_o['delta_t'],Ht) + \
-                   "with progress %f "%lambda_o['a'] + \
-                   "in " + HMStime(time.time()-sim_start_time))
 
           # Get state energies
           E = self._calc_E(confs)
           self.confs['dock']['replicas'] = [confs[np.argmin(Es_tot)]]
           self.confs['dock']['samples'] = [[confs]]
           self.dock_Es = [[E]]
+
+          self.tee("  generated %d configurations "%len(confs) + \
+                   "with progress %f "%lambda_o['a'] + \
+                   "in " + HMStime(time.time()-sim_start_time))
+          self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
+            lambda_o['delta_t'],Ht,self._tL_tensor(E,lambda_o)))
     
       if not undock:
         (cool0_confs, E) = self.random_dock()
@@ -1334,13 +1336,15 @@ last modified {2}
       self._set_universe_evaluator(lambda_n)
       (confs, Es_tot, lambda_n['delta_t'], Ht) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
-      self.tee("  generated %d configurations "%len(confs) + \
-               "(dt=%f ps, Ht=%f) "%(lambda_n['delta_t'],Ht) + \
-               "with progress %f "%lambda_n['a'] + \
-               "in " + HMStime(time.time()-sim_start_time))
 
       # Get state energies
       E = self._calc_E(confs)
+
+      self.tee("  generated %d configurations "%len(confs) + \
+               "with progress %f "%lambda_n['a'] + \
+               "in " + HMStime(time.time()-sim_start_time))
+      self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
+        lambda_n['delta_t'],Ht,self._tL_tensor(E,lambda_n)))
 
       # Decide whether to keep the state
       if len(self.dock_protocol)>(1+(not undock)):
@@ -2234,12 +2238,12 @@ last modified {2}
     If nconfs is larger than the number of unique configurations, 
     then the lowest energy configuration will be duplicated.
     """
-    lambda_full = self._lambda(1.0,'dock', \
-      MM=True,site='site' in self._forceFields.keys())
+    lambda_1 = self._lambda(1.0,'dock', \
+      MM=True, site='site' in self._forceFields.keys())
     
-    if self.params['dock']['score'] is True:
+    if isinstance(self.params['dock']['score'], bool):
       conf = self.confs['ligand']
-      self._set_universe_evaluator(lambda_full)
+      self._set_universe_evaluator(lambda_1)
       self.universe.setConfiguration(Configuration(self.universe, conf))
       E = self.universe.energy()
       if nconfs is None:
@@ -2275,7 +2279,7 @@ last modified {2}
       return ([],[])
     
     # Minimize each configuration
-    self._set_universe_evaluator(lambda_full)
+    self._set_universe_evaluator(lambda_1)
     
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
@@ -2453,7 +2457,7 @@ last modified {2}
       crossed = lambda_o['crossed']
       if pow is not None:
         tL_tensor = tL_tensor*(1.25**pow)
-      if tL_tensor>0:
+      if tL_tensor>1E-5:
         dL = self.params['dock']['therm_speed']/tL_tensor
         if undock:
           a = lambda_o['a'] - dL
@@ -2465,11 +2469,16 @@ last modified {2}
           if a > 1.0:
             a = 1.0
             crossed = True
+        if crossed:
+          self.tee("  the metric tensor for thermodynamic length" + \
+            " was %e"%tL_tensor)
         return self._lambda(a, crossed=crossed)
       else:
         # Repeats the previous stage
         lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
-        self.tee('  no variance in stage! trying time step of %f'%lambda_n['delta_t'])
+        raise Exception('No variance!')
+        self.tee('  no variance in previous stage!' + \
+          ' trying time step of %f'%lambda_n['delta_t'])
         return lambda_n
 
   def _tL_tensor(self, E, lambda_c, process='dock'):
@@ -2824,9 +2833,13 @@ last modified {2}
     if E is None:
       E = {}
 
+    lambda_full = {'T':T_HIGH,'MM':True,'site':True}
+    for scalable in self._scalables:
+      lambda_full[scalable] = 1
+    
     if type=='sampling' or type=='all':
       # Molecular mechanics and grid interaction energies
-      self._set_universe_evaluator(self._lambda(1.0,'dock',MM=True,site=True))
+      self._set_universe_evaluator(lambda_full)
       for term in (['MM','site','misc'] + self._scalables):
         E[term] = np.zeros(len(confs), dtype=float)
       for c in range(len(confs)):
@@ -3426,8 +3439,9 @@ END
     lockFN = join(self.dir[p],'.lock')
     if os.path.isfile(lockFN):
       os.remove(lockFN)
-    self.log.close()
-    del self.log
+    if hasattr(self,'log'):
+      self.log.close()
+      del self.log
 
   def tee(self, var, process=None):
     print var
