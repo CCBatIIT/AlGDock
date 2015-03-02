@@ -31,6 +31,7 @@ parser.add_argument('--tree_dock', default='dock/',
 parser.add_argument('--reps', default=[0,1], nargs=2, type=int, \
   help='Range of repetitions')
 parser.add_argument('--max_jobs', default=None, type=int)
+parser.add_argument('--first_ligand', default=None, type=int)
 parser.add_argument('--max_ligands', default=None, type=int)
 parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')
@@ -189,6 +190,7 @@ if os.path.isfile(args_in.ligand):
   ligand_FNs = [args_in.ligand]
 elif os.path.isdir(args_in.ligand):
   ligand_FNs = glob.glob(os.path.join(args_in.ligand,'*.prmtop'))
+  ligand_FNs.sort()
 else:
   raise Exception('Ligand input %s is not a file or directory!'%args_in.ligand)
 # Require inpcrd, frcmod, and db files
@@ -264,8 +266,8 @@ else:
 
 namespace = locals()
 
-job_status = {'submitted':0, 'no_complex':0, 'no_dock6':0, 'missing_file':0, \
-              'onq':0, 'complete':0}
+job_status = {'submitted':0, 'skipped':0, 'no_complex':0, 'no_dock6':0, \
+  'missing_file':0, 'onq':0, 'complete':0}
 for ligand_FN in ligand_FNs:
   labels = {'ligand':os.path.basename(ligand_FN)[:-7]}
   dir_cool = os.path.join(args_in.tree_cool,labels['ligand'])
@@ -322,6 +324,10 @@ for ligand_FN in ligand_FNs:
       if jobname in onq:
         job_status['onq'] += 1
         continue # Job is on the queue
+      if (args_in.first_ligand is not None) and \
+          (sum(job_status.values())<args_in.first_ligand):
+        job_status['skipped'] += 1
+        continue
 
       path_keys = [p[0] for p in paths]
       paths = dict(paths)
@@ -465,4 +471,4 @@ for ligand_FN in ligand_FNs:
      (num_ligands>=args_in.max_ligands):
     break
 
-print "Jobs: {submitted} submitted, {no_complex} without complex files, {no_dock6} without dock6 files, {missing_file} missing other files, {onq} on the queue, {complete} complete".format(**job_status)
+print "Jobs: {submitted} submitted, {skipped} skipped, {no_complex} without complex files, {no_dock6} without dock6 files, {missing_file} missing other files, {onq} on the queue, {complete} complete".format(**job_status)

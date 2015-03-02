@@ -62,6 +62,12 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
   if command.find('modeller')>-1:
     modules += 'module load modeller/9.14\n'
 
+  if command.find('cores')>-1:
+    cores = command[command.find('cores')+5:]
+    cores = cores[:cores.find('\n')]
+    cores = int(cores.strip().split(' ')[0])
+    args.ppn = cores
+
   if args.ambertools:
     modules += 'module load ambertools/14\n'
 
@@ -202,9 +208,9 @@ export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF
 
 """ + command + """
 
-rm -rf AlGDock namd2* sander* ambpdb* molsurf* APBS*
+rm -rf AlGDock namd* sander* ambpdb* molsurf* APBS*
 rm algdock.tar.gz*
-rm *.inpcrd.gz *.prmtop.gz
+rm *.inpcrd* *.prmtop*
 rm *.out *.namd *.dcd
 rm .lock
 

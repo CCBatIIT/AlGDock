@@ -192,7 +192,7 @@ for FF in show['FF'].keys():
     if not os.path.isfile(hist_FN):
       for lib in show['lib'].keys():
         scores_FF = [scores[FF][key] for key in scores[FF].keys() \
-          if key in libraries[lib] and scores[FF][key]<cutoff]
+          if key in libraries[lib] and scores[FF][key]<cutoff and scores[FF][key]>-1E4]
         if len(scores_FF)>0:
           hist_scores.append(scores_FF)
           hist_legend.append(show['lib'][lib])
@@ -224,7 +224,7 @@ for libname in ['dock6_AM1BCC','AlGDock_AM1BCC','top','AM1BCC','Gasteiger'] + \
   AUC = {}
   AUlC = {}
   ROC_legend = []
-  for FF in show['FF'].keys():
+  for (FF,symbol) in zip(show['FF'].keys(),('s','d','^','v','>','<','.')):
     if not libraries[libname].issubset(libraries[FF]):
       continue
 
@@ -258,7 +258,7 @@ for libname in ['dock6_AM1BCC','AlGDock_AM1BCC','top','AM1BCC','Gasteiger'] + \
       nactive, ndecoy, len(isActive), \
       AUC[FF], AUlC[FF]),ROC_F)
 
-    plt.plot(FPR,TPR,'.-')
+    plt.plot(FPR,TPR,symbol+'-')
     ROC_legend.append(show['FF'][FF]+', AUlC=%.3f'%AUlC[FF])
 
   if nactive>0 and ndecoy>0:

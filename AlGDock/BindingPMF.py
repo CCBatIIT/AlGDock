@@ -823,7 +823,7 @@ last modified {2}
       self._initial_sim_state(\
       [conf for n in range(self.params['cool']['seeds_per_state'])], \
       'cool', self.cool_protocol[-1])
-    self.confs['cool']['replicas'] = [confs[np.argmin(Es_MM)]]
+    self.confs['cool']['replicas'] = [confs[np.random.randint(len(confs))]]
     self.confs['cool']['samples'] = [[confs]]
     self.cool_Es = [[{'MM':Es_MM}]]
     tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
@@ -893,13 +893,13 @@ last modified {2}
       elif (mean_acc>0.99) and (not crossed):
         # If the acceptance probability is too high,
         # reject the previous state and restart
-        self.confs['cool']['replicas'][-1] = confs[np.argmin(Es_MM)]
+        self.confs['cool']['replicas'][-1] = confs[np.random.randint(len(confs))]
         self.cool_protocol.pop(-2)
         tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
         self.tee("  rejected previous state, as estimated replica exchange" + \
           " acceptance rate of %f is too high"%mean_acc)
       else:
-        self.confs['cool']['replicas'].append(confs[np.argmin(Es_MM)])
+        self.confs['cool']['replicas'].append(confs[np.random.randint(len(confs))])
         self.confs['cool']['samples'].append([confs])
         if len(self.confs['cool']['samples'])>2 and \
             (not self.params['cool']['keep_intermediate']):
@@ -908,22 +908,22 @@ last modified {2}
         tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
         self.tee("  estimated replica exchange acceptance rate is %f"%mean_acc)
 
-        self._save('cool')
-        self.tee("")
+      if crossed:
+        self._cool_cycle += 1
+        self._cool_total_cycle += 1
+      
+      self._save('cool')
+      self.tee("")
 
       if self.run_type=='timed':
         remaining_time = self.timing['max']*60 - \
           (time.time()-self.timing['start'])
         if remaining_time<0:
-          self._save('cool')
           self.tee("  no time remaining for initial cool")
           self._clear_lock('cool')
           return False
 
     # Save data
-    self._cool_cycle += 1
-    self._cool_total_cycle += 1
-    self._save('cool')
     self.tee("\nElapsed time for initial cooling of " + \
       "%d states: "%len(self.cool_protocol) + \
       HMStime(time.time()-cool_start_time))
@@ -979,14 +979,16 @@ last modified {2}
     start_string = "\n>>> Ligand free energy calculations, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
     free_energy_start_time = time.time()
-
+      
     # Estimate cycle at which simulation has equilibrated
-    u_Ks = [self._u_kln([self.cool_Es[-1][c]],[self.cool_protocol[-1]]) \
-      for c in range(self._cool_cycle)]
-    mean_u_Ks = np.array([np.mean(u_K) for u_K in u_Ks])
-    std_u_Ks = np.array([np.std(u_K) for u_K in u_Ks])
+    u_KKs = \
+      [np.sum([self._u_kln([self.cool_Es[k][c]],[self.cool_protocol[k]]) \
+        for k in range(len(self.cool_protocol))],0) \
+          for c in range(self._cool_cycle)]
+    mean_u_KKs = np.array([np.mean(u_KK) for u_KK in u_KKs])
+    std_u_KKs = np.array([np.std(u_KK) for u_KK in u_KKs])
     for c in range(len(self.stats_L['equilibrated_cycle']), self._cool_cycle):
-      nearMean = abs(mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
+      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<std_u_KKs[c]
       if nearMean.any():
         nearMean = list(nearMean).index(True)
       else:
@@ -1255,7 +1257,7 @@ last modified {2}
 
           # Get state energies
           E = self._calc_E(confs)
-          self.confs['dock']['replicas'] = [confs[np.argmin(Es_tot)]]
+          self.confs['dock']['replicas'] = [confs[np.random.randint(len(confs))]]
           self.confs['dock']['samples'] = [[confs]]
           self.dock_Es = [[E]]
 
@@ -1368,7 +1370,7 @@ last modified {2}
         elif (mean_acc>0.99) and (not lambda_n['crossed']):
           # If the acceptance probability is too high,
           # reject the previous state and restart
-          self.confs['dock']['replicas'][-1] = confs[np.argmin(Es_tot)]
+          self.confs['dock']['replicas'][-1] = confs[np.random.randint(len(confs))]
           self.dock_protocol.pop()
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage -= 1
@@ -1376,54 +1378,58 @@ last modified {2}
           self.tee("  rejected previous state, as estimated replica exchange acceptance rate of %f is too high"%mean_acc)
         else:
           # Store data and continue with initialization
-          self.confs['dock']['replicas'].append(confs[np.argmin(Es_tot)])
+          self.confs['dock']['replicas'].append(confs[np.random.randint(len(confs))])
           self.confs['dock']['samples'].append([confs])
           self.dock_Es.append([E])
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
           lambda_o = lambda_n
           self.tee("  the estimated replica exchange acceptance rate is %f"%mean_acc)
-          self._save('dock')
-          self.tee("")
+
+          if (not self.params['dock']['keep_intermediate']):
+            if len(self.dock_protocol)>(2+(not undock)):
+              self.confs['dock']['samples'][-2] = []
       else:
         # Store data and continue with initialization (first time)
-        self.confs['dock']['replicas'].append(confs[np.argmin(Es_tot)])
+        self.confs['dock']['replicas'].append(confs[np.random.randint(len(confs))])
         self.confs['dock']['samples'].append([confs])
         self.dock_Es.append([E])
         self.dock_protocol[-1] = copy.deepcopy(lambda_n)
         rejectStage = 0
         lambda_o = lambda_n
 
-        self._save('dock')
-        self.tee("")
+      # Special tasks after the last stage
+      if (self.dock_protocol[-1]['crossed']):
+        # For undocking, reverse protocol and energies
+        if undock:
+          self.tee("  reversing replicas, samples, and protocol")
+          self.confs['dock']['replicas'].reverse()
+          self.confs['dock']['samples'].reverse()
+          self.confs['dock']['seeds'] = None
+          self.dock_Es.reverse()
+          self.dock_protocol.reverse()
+          self.dock_protocol[0]['crossed'] = False
+          self.dock_protocol[-1]['crossed'] = True
+
+        if (not self.params['dock']['keep_intermediate']):
+          for k in range(len(self.dock_protocol)-1):
+            self.confs['dock']['samples'][k] = []
+
+        self._dock_cycle += 1
+        self._dock_total_cycle += 1
+
+      # Save progress
+      self._save('dock')
+      self.tee("")
 
       if self.run_type=='timed':
         remaining_time = self.timing['max']*60 - \
           (time.time()-self.timing['start'])
         if remaining_time<0:
-          self._save('dock')
           self.tee("  no time remaining for initial dock")
           self._clear_lock('dock')
           return False
 
-    # For undocking, reverse protocol and energies
-    if undock:
-      self.tee("  reversing replicas, samples, and protocol")
-      self.confs['dock']['replicas'].reverse()
-      self.confs['dock']['samples'].reverse()
-      self.confs['dock']['seeds'] = None
-      self.dock_Es.reverse()
-      self.dock_protocol.reverse()
-      self.dock_protocol[0]['crossed'] = False
-      self.dock_protocol[-1]['crossed'] = True
-
-    if (not self.params['dock']['keep_intermediate']):
-      for k in range(len(self.dock_protocol)-1):
-        self.confs['dock']['samples'][k] = []
-
-    self._dock_cycle += 1
-    self._dock_total_cycle += 1
-    self._save('dock')
     self.tee("\nElapsed time for initial docking of " + \
       "%d states: "%len(self.dock_protocol) + \
       HMStime(time.time()-dock_start_time))
@@ -1514,6 +1520,10 @@ last modified {2}
     self.stats_RL['u_K_sampled'] = \
       [self._u_kln([self.dock_Es[-1][c]],[self.dock_protocol[-1]]) \
         for c in range(self._dock_cycle)]
+    self.stats_RL['u_KK'] = \
+      [np.sum([self._u_kln([self.dock_Es[k][c]],[self.dock_protocol[k]]) \
+        for k in range(len(self.dock_protocol))],0) \
+          for c in range(self._dock_cycle)]
     for phase in self.params['dock']['phases']:
       self.stats_RL['u_K_'+phase] = \
         [self.dock_Es[-1][c]['RL'+phase][:,-1]/RT_TARGET \
@@ -1535,10 +1545,10 @@ last modified {2}
            self.original_Es[0][0]['R'+phase][-1])/RT_TARGET)
 
     # Estimate cycle at which simulation has equilibrated
-    mean_u_Ks = np.array([np.mean(u_K) for u_K in self.stats_RL['u_K_sampled']])
-    std_u_Ks = np.array([np.std(u_K) for u_K in self.stats_RL['u_K_sampled']])
+    mean_u_KKs = np.array([np.mean(u_KK) for u_KK in self.stats_RL['u_KK']])
+    std_u_KKs = np.array([np.std(u_KK) for u_KK in self.stats_RL['u_KK']])
     for c in range(len(self.stats_RL['equilibrated_cycle']), self._dock_cycle):
-      nearMean = abs(mean_u_Ks - mean_u_Ks[c])<std_u_Ks[c]
+      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<std_u_KKs[c]
       if nearMean.any():
         nearMean = list(nearMean).index(True)
       else:
@@ -1980,7 +1990,7 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    per_independent = {'cool':2.0, 'dock':20.0}[process]
+    per_independent = {'cool':5.0, 'dock':30.0}[process]
     # There will be at least per_independent and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
@@ -2161,8 +2171,8 @@ last modified {2}
     """
     if (getattr(self,process+'_protocol')==[]) or \
        (not getattr(self,process+'_protocol')[-1]['crossed']):
-      initial_complete = getattr(self,'initial_'+process)()
-      if not initial_complete:
+      time_left = getattr(self,'initial_'+process)()
+      if not time_left:
         return False
 
     # Main loop for replica exchange
@@ -2628,6 +2638,18 @@ last modified {2}
       if moiety+phase not in time_per_snap.keys():
         time_per_snap[moiety+phase] = m.list()
 
+    # Decompress prmtop and inpcrd files
+    decompress = (self._FNs['prmtop'][moiety].endswith('.gz')) or \
+                 (self._FNs['inpcrd'][moiety].endswith('.gz'))
+    if decompress:
+      for key in ['prmtop','inpcrd']:
+        if self._FNs[key][moiety].endswith('.gz'):
+          import shutil
+          shutil.copy(self._FNs[key][moiety],self._FNs[key][moiety]+'.BAK')
+          os.system('gunzip -f '+self._FNs[key][moiety])
+          os.rename(self._FNs[key][moiety]+'.BAK', self._FNs[key][moiety])
+          self._FNs[key][moiety] = self._FNs[key][moiety][:-3]
+
     toClean = []
 
     for (p, state, c, moiety, phase) in incomplete:
@@ -2693,6 +2715,13 @@ last modified {2}
       for FN in toClean:
         if os.path.isfile(FN):
           os.remove(FN)
+
+    # Clear decompressed files
+    if decompress:
+      for key in ['prmtop','inpcrd']:
+        if os.path.isfile(self._FNs[key][moiety]+'.gz'):
+          os.remove(self._FNs[key][moiety])
+          self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
 
     # Store energies
     for (E,(p,state,c,label),wall_time) in results:
@@ -2933,18 +2962,6 @@ last modified {2}
 ''')
     script_F.close()
     
-    # Decompress prmtop and inpcrd files
-    decompress = (self._FNs['prmtop'][moiety].endswith('.gz')) or \
-                 (self._FNs['inpcrd'][moiety].endswith('.gz'))
-    if decompress:
-      for key in ['prmtop','inpcrd']:
-        if self._FNs[key][moiety].endswith('.gz'):
-          import shutil
-          shutil.copy(self._FNs[key][moiety],self._FNs[key][moiety]+'.BAK')
-          os.system('gunzip -f '+self._FNs[key][moiety])
-          os.rename(self._FNs[key][moiety]+'.BAK', self._FNs[key][moiety])
-          self._FNs[key][moiety] = self._FNs[key][moiety][:-3]
-
     os.chdir(self.dir['out'])
     import subprocess
     p = subprocess.Popen([self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
@@ -2965,13 +2982,6 @@ last modified {2}
         os.remove(script_FN)
       if os.path.isfile(script_FN+'.restrt'):
         os.remove(script_FN+'.restrt')
-
-      # Clear decompressed files
-      if decompress:
-        for key in ['prmtop','inpcrd']:
-          if os.path.isfile(self._FNs[key][moiety]+'.gz'):
-            os.remove(self._FNs[key][moiety])
-            self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
 
       if not debug and os.path.isfile(out_FN):
         os.remove(out_FN)
@@ -3001,18 +3011,6 @@ last modified {2}
     # and thus the new indicies are
     # 0. BOND 1. ANGLE 2. DIHED 3. IMPRP 4. ELECT 5. VDW 6. MISC 7. POTENTIAL
     
-    # Decompress prmtop and inpcrd files
-    decompress = (self._FNs['prmtop'][moiety].endswith('.gz')) or \
-                 (self._FNs['inpcrd'][moiety].endswith('.gz'))
-    if decompress:
-      for key in ['prmtop','inpcrd']:
-        if self._FNs[key][moiety].endswith('.gz'):
-          import shutil
-          shutil.copy(self._FNs[key][moiety],self._FNs[key][moiety]+'.BAK')
-          os.system('gunzip -f '+self._FNs[key][moiety])
-          os.rename(self._FNs[key][moiety]+'.BAK', self._FNs[key][moiety])
-          self._FNs[key][moiety] = self._FNs[key][moiety][:-3]
-    
     # Run NAMD
     import AlGDock.NAMD
     energyCalc = AlGDock.NAMD.NAMD(\
@@ -3028,13 +3026,6 @@ last modified {2}
       outputname, dcd_FN, energyFields=[1, 2, 3, 4, 5, 6, 8, 12], \
       keepScript=debug, writeEnergyDatGZ=False)
 
-    # Clear decompressed files
-    if decompress:
-      for key in ['prmtop','inpcrd']:
-        if os.path.isfile(self._FNs[key][moiety]+'.gz'):
-          os.remove(self._FNs[key][moiety])
-          self._FNs[key][moiety] = self._FNs[key][moiety] + '.gz'
-
     return np.array(E, dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
 
   def _APBS_Energy(self, confs, moiety, phase, pqr_FN, outputname,
@@ -3043,15 +3034,6 @@ last modified {2}
     Uses NAMD to calculate the energy of a set of configurations
     Units are the MMTK standard, kJ/mol
     """
-    # Decompress prmtop
-    decompress = self._FNs['prmtop'][moiety].endswith('.gz')
-    if decompress:
-      import shutil
-      shutil.copy(self._FNs['prmtop'][moiety],self._FNs['prmtop'][moiety]+'.BAK')
-      os.system('gunzip -f '+self._FNs['prmtop'][moiety])
-      os.rename(self._FNs['prmtop'][moiety]+'.BAK', self._FNs['prmtop'][moiety])
-      self._FNs['prmtop'][moiety] = self._FNs['prmtop'][moiety][:-3]
-  
     # Prepare configurations for writing to crd file
     if (moiety.find('R')>-1):
       receptor_0 = factor*self.confs['receptor'][:self._ligand_first_atom,:]
@@ -3193,12 +3175,6 @@ END
 
       if np.isinf(polar_energy) or np.isinf(apolar_energy):
         break
-
-    # Clear decompressed files
-    if decompress:
-      if os.path.isfile(self._FNs['prmtop'][moiety]+'.gz'):
-        os.remove(self._FNs['prmtop'][moiety])
-        self._FNs['prmtop'][moiety] = self._FNs['prmtop'][moiety] + '.gz'
 
     os.chdir(self.dir['start'])
     os.system('rm -rf '+apbs_dir)
