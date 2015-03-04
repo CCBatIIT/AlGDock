@@ -785,54 +785,63 @@ last modified {2}
       return # Initial cooling is already complete
     
     self._set_lock('cool')
-    self.tee("\n>>> Initial cooling of the ligand " + \
-      "from %d K to %d K, "%(T_HIGH,T_TARGET) + "starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
     cool_start_time = time.time()
 
-    # Set up the force field
-    self.cool_protocol = [{'MM':True, 'T':T_HIGH, \
-                          'delta_t':1.5*MMTK.Units.fs,
-                          'a':0.0, 'crossed':False}]
-    self._set_universe_evaluator(self.cool_protocol[-1])
+    if self.cool_protocol==[]:
+      self.tee("\n>>> Initial cooling of the ligand " + \
+        "from %d K to %d K, "%(T_HIGH,T_TARGET) + "starting at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 
-    # Minimize and ramp the temperature from 0 to the desired high temperature
-    from MMTK.Minimization import ConjugateGradientMinimizer # @UnresolvedImport
-    minimizer = ConjugateGradientMinimizer(self.universe)
-    for rep in range(50):
-      x_o = np.copy(self.universe.configuration().array)
-      e_o = self.universe.energy()
-      minimizer(steps = 10)
-      e_n = self.universe.energy()
-      if np.isnan(e_n) or (e_o-e_n)<1000:
-        self.universe.configuration().array = x_o
-        break
+      # Set up the force field
+      self.cool_protocol = [{'MM':True, 'T':T_HIGH, \
+                            'delta_t':1.5*MMTK.Units.fs,
+                            'a':0.0, 'crossed':False}]
+      self._set_universe_evaluator(self.cool_protocol[-1])
 
-    T_LOW = 20.
-    T_SERIES = T_LOW*(T_HIGH/T_LOW)**(np.arange(30)/29.)
-    for T in T_SERIES:
-      self.sampler['init'](steps = 500, T=T,\
-                           delta_t=self.delta_t, steps_per_trial = 100, \
-                           seed=int(time.time()+T))
-    self.universe.normalizePosition()
+      # Minimize and ramp the temperature from 0 to the desired high temperature
+      from MMTK.Minimization import ConjugateGradientMinimizer # @UnresolvedImport
+      minimizer = ConjugateGradientMinimizer(self.universe)
+      for rep in range(50):
+        x_o = np.copy(self.universe.configuration().array)
+        e_o = self.universe.energy()
+        minimizer(steps = 10)
+        e_n = self.universe.energy()
+        if np.isnan(e_n) or (e_o-e_n)<1000:
+          self.universe.configuration().array = x_o
+          break
 
-    # Run at high temperature
-    state_start_time = time.time()
-    conf = self.universe.configuration().array
-    (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
-      self._initial_sim_state(\
-      [conf for n in range(self.params['cool']['seeds_per_state'])], \
-      'cool', self.cool_protocol[-1])
-    self.confs['cool']['replicas'] = [confs[np.random.randint(len(confs))]]
-    self.confs['cool']['samples'] = [[confs]]
-    self.cool_Es = [[{'MM':Es_MM}]]
-    tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
+      T_LOW = 20.
+      T_SERIES = T_LOW*(T_HIGH/T_LOW)**(np.arange(30)/29.)
+      for T in T_SERIES:
+        self.sampler['init'](steps = 500, T=T,\
+                             delta_t=self.delta_t, steps_per_trial = 100, \
+                             seed=int(time.time()+T))
+      self.universe.normalizePosition()
 
-    self.tee("  generated %d configurations "%len(confs) + \
-             "at %d K "%self.cool_protocol[-1]['T'] + \
-             "in " + HMStime(time.time()-state_start_time))
-    self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
-      self.cool_protocol[-1]['delta_t'], Ht, tL_tensor))
+      # Run at high temperature
+      state_start_time = time.time()
+      conf = self.universe.configuration().array
+      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
+        self._initial_sim_state(\
+        [conf for n in range(self.params['cool']['seeds_per_state'])], \
+        'cool', self.cool_protocol[-1])
+      self.confs['cool']['replicas'] = [confs[np.random.randint(len(confs))]]
+      self.confs['cool']['samples'] = [[confs]]
+      self.cool_Es = [[{'MM':Es_MM}]]
+      tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
+
+      self.tee("  generated %d configurations "%len(confs) + \
+               "at %d K "%self.cool_protocol[-1]['T'] + \
+               "in " + HMStime(time.time()-state_start_time))
+      self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
+        self.cool_protocol[-1]['delta_t'], Ht, tL_tensor))
+    else:
+      self.tee("\n>>> Initial cooling of the ligand " + \
+        "from %d K to %d K, "%(T_HIGH,T_TARGET) + "continuing at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+      confs = self.confs['cool']['samples'][-1][0]
+      Es_MM = self.cool_Es[-1][0]['MM']
+      tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
 
     # Main loop for initial cooling:
     # choose new temperature, randomly select seeds, simulate
@@ -3336,6 +3345,10 @@ END
       else:
         setattr(self,'_%s_cycle'%p,0)
         setattr(self,'_%s_total_cycle'%p,0)
+    if getattr(self,'%s_protocol'%p)==[] or \
+        (not getattr(self,'%s_protocol'%p)[-1]['crossed']):
+      setattr(self,'_%s_cycle'%p,0)
+      setattr(self,'_%s_total_cycle'%p,0)
     return params
 
   def _clear(self, p):
