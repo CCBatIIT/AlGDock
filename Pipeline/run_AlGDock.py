@@ -63,8 +63,6 @@ parser.add_argument('--cores', type=int, \
 #   Defaults
 parser.add_argument('--protocol', choices=['Adaptive','Set'],
   help='Approach to determining series of thermodynamic states')
-parser.add_argument('--no_protocol_refinement', action='store_true', default=None,
-  help='Does not refine the protocol during replica exchange')
 parser.add_argument('--therm_speed', type=float,
   help='Thermodynamic speed during adaptive simulation')
 parser.add_argument('--sampler',
@@ -242,7 +240,7 @@ site_center = [half_edge_length*0.1, half_edge_length*0.1, half_edge_length*0.1]
 site_max_R = site_R/10.
 
 # Get other parameters
-general_sim_arg_keys = ['protocol','no_protocol_refinement','therm_speed',\
+general_sim_arg_keys = ['protocol', 'therm_speed',\
   'sampler', 'seeds_per_state', 'steps_per_seed', 'repX_cycles', \
   'sweeps_per_cycle', 'steps_per_sweep', 'keep_intermediate', 'phases']
 sim_arg_keys = general_sim_arg_keys + \

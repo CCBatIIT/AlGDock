@@ -16,7 +16,6 @@ for run_type in ['cool','dock','postprocess','free_energies']:
     complex_fixed_atoms='prmtopcrd/complex.pdb', \
     dir_grid='grids', \
     protocol='Adaptive', cool_therm_speed=1.5, dock_therm_speed=1.5,\
-    no_protocol_refinement=True,\
     sampler='NUTS', \
     MCMC_moves=1, \
     seeds_per_state=10, steps_per_seed=200,

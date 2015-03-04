@@ -103,8 +103,6 @@ arguments = {
   #   Defaults
   'protocol':{'choices':['Adaptive','Set'],
     'help':'Approach to determining series of thermodynamic states'},
-  'no_protocol_refinement':{'action':'store_true',
-    'help':'Does not refine the protocol during replica exchange'},
   'therm_speed':{'type':float,
     'help':'Thermodynamic speed during adaptive simulation'},
   'sampler':{
@@ -152,7 +150,6 @@ arguments = {
     'help':'Maximum radial position for a spherical or cylindrical binding site'},
   'site_density':{'type':float,
     'help':'Density of center-of-mass points in the first docking state'}}
-# TODO: Create a measure_site argument
 
 for process in ['cool','dock']:
   for key in ['protocol', 'therm_speed', 'sampler',
@@ -453,7 +450,6 @@ last modified {2}
     
     args['default_cool'] = {
         'protocol':'Adaptive',
-        'no_protocol_refinement':True,
         'therm_speed':0.9,
         'sampler':'NUTS',
         'seeds_per_state':100,
@@ -919,7 +915,6 @@ last modified {2}
 
       if crossed:
         self._cool_cycle += 1
-        self._cool_total_cycle += 1
       
       self._save('cool')
       self.tee("")
@@ -933,7 +928,7 @@ last modified {2}
           return False
 
     # Save data
-    self.tee("\nElapsed time for initial cooling of " + \
+    self.tee("Elapsed time for initial cooling of " + \
       "%d states: "%len(self.cool_protocol) + \
       HMStime(time.time()-cool_start_time))
     self._clear_lock('cool')
@@ -1425,7 +1420,6 @@ last modified {2}
             self.confs['dock']['samples'][k] = []
 
         self._dock_cycle += 1
-        self._dock_total_cycle += 1
 
       # Save progress
       self._save('dock')
@@ -1439,7 +1433,7 @@ last modified {2}
           self._clear_lock('dock')
           return False
 
-    self.tee("\nElapsed time for initial docking of " + \
+    self.tee("Elapsed time for initial docking of " + \
       "%d states: "%len(self.dock_protocol) + \
       HMStime(time.time()-dock_start_time))
     self._clear_lock('dock')
@@ -2045,59 +2039,6 @@ last modified {2}
       [storage['confs'][store_indicies[-1]][inv_state_inds[-1][state]] \
        for state in range(K)]
 
-    # If it is not the last cycle, consider
-    # refinings the protocol by inserting states between neighbors with low
-    # mean replica exchange probabilities
-
-    if ((not self.params[process]['no_protocol_refinement']) and \
-        ((getattr(self,'_%s_total_cycle'%process)+1) \
-          < self.params[process]['repX_cycles'])):
-      # Estimate mean replica exchange probabilities between neighbors
-      mean_acc = np.zeros(K-1)
-      for k in range(K-1):
-        (u_kln,N_k) = self._u_kln(Es[k:k+2],lambdas[k:k+2])
-        N = min(N_k)
-        acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
-        mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      insert_state = (mean_acc<self.params['dock']['min_repX_acc'])
-      if insert_state.any():
-        for k in reversed(range(K-1)):
-          if insert_state[k]:
-            self.tee("  due to exchange acceptance probability of %f, inserted state between %d and %d"%(mean_acc[k],k,k+1))
-            # Duplicating the configuration of the later state
-            new_conf = np.copy(self.confs[process]['replicas'][k+1])
-            self.confs[process]['replicas'].insert(k+1, new_conf)
-        K = len(self.confs[process]['replicas'])
-        self.tee("  refined protocol to have %d states after total cycle %d"%(\
-          K, getattr(self,'_%s_total_cycle'%process)))
-        
-        # Determine new protocol with equal intervals in thermodynamic length
-        progress_o = np.array([l['a'] for l in lambdas])
-        tL_tensor = np.array([self._tL_tensor(Es[k],lambdas[k],process) \
-          for k in range(len(lambdas))])
-        tL_intervals = abs(progress_o[1:]-progress_o[:-1])*(tL_tensor[:-1] + tL_tensor[1:])
-        tL_o = np.insert(np.cumsum(tL_intervals),0,0.)
-        tL_n = np.linspace(0,tL_o[-1],K)
-        progress_n = np.interp(tL_n,tL_o,progress_o)
-        progress_n.sort()
-        
-        lambdas = [self._lambda(a,process) for a in progress_n]
-        setattr(self,process+'_protocol', lambdas)
-
-        # Save the data
-        setattr(self, process+'_Es', [[] for state in range(K)])
-        self.confs[process]['samples'] = [[] for state in range(K)]
-        setattr(self,'_%s_cycle'%process,0)
-        setattr(self,'_%s_total_cycle'%process,
-          getattr(self,'_%s_total_cycle'%process)+1)
-        self._save(process)
-        if process=='cool':
-          self.calc_f_L(redo=True,readOnly=True)
-        else:
-          self.calc_f_RL(redo=True,readOnly=True)
-        self._clear_lock(process)
-        return
-
     for state in range(K):
       getattr(self,process+'_Es')[state].append(Es[state][0])
 
@@ -2111,8 +2052,6 @@ last modified {2}
         self.confs[process]['samples'][state].append([])
 
     setattr(self,'_%s_cycle'%process,cycle + 1)
-    setattr(self,'_%s_total_cycle'%process,
-      getattr(self,'_%s_total_cycle'%process) + 1)
     self._save(process)
     self._clear_lock(process)
 
@@ -2186,11 +2125,11 @@ last modified {2}
 
     # Main loop for replica exchange
     if (self.params[process]['repX_cycles'] is not None) and \
-       ((getattr(self,'_%s_total_cycle'%process) < self.params[process]['repX_cycles']) or (getattr(self,'_%s_cycle'%process)==0)):
+       ((getattr(self,'_%s_cycle'%process) < \
+         self.params[process]['repX_cycles'])):
 
       # Score configurations from another program
-      if (process=='dock') and \
-         (self._dock_cycle==1) and (self._dock_total_cycle==1) and \
+      if (process=='dock') and (self._dock_cycle==1) and \
          (self.params['dock']['score'] is not False) and \
          (self.params['dock']['score_multiple']):
         self._set_lock('dock')
@@ -2206,9 +2145,9 @@ last modified {2}
       self.tee('  %f MiB available / %f MiB total'%(\
         mem_start.available/1E6, mem_start.total/1E6))
       self.timing[process+'_repX_start'] = time.time()
-      start_cycle = getattr(self,'_%s_total_cycle'%process)
+      start_cycle = getattr(self,'_%s_cycle'%process)
       cycle_times = []
-      while ((getattr(self,'_%s_total_cycle'%process) < self.params[process]['repX_cycles']) or (getattr(self,'_%s_cycle'%process)==0)):
+      while ((getattr(self,'_%s_cycle'%process) < self.params[process]['repX_cycles'])):
         cycle_start_time = time.time()
         self._replica_exchange(process)
         cycle_times.append(time.time()-cycle_start_time)
@@ -2220,7 +2159,7 @@ last modified {2}
           if cycle_time>remaining_time:
             return False
       self.tee("\nElapsed time for %d cycles of replica exchange was %s"%(\
-         (getattr(self,'_%s_total_cycle'%process) - start_cycle), \
+         (getattr(self,'_%s_cycle'%process) - start_cycle), \
           HMStime(time.time() - self.timing[process+'_repX_start'])), \
           process=process)
 
@@ -3328,7 +3267,6 @@ END
       params = saved['progress'][0]
       setattr(self,'%s_protocol'%p,saved['progress'][1])
       setattr(self,'_%s_cycle'%p,saved['progress'][2])
-      setattr(self,'_%s_total_cycle'%p,saved['progress'][3])
     if saved['data'] is not None:
       if p=='dock' and saved['data'][0] is not None:
         (self._n_trans, self._max_n_trans, self._random_trans, \
@@ -3340,21 +3278,16 @@ END
       if saved['data'][3] is not None:
         cycle = len(saved['data'][3][-1])
         setattr(self,'_%s_cycle'%p,cycle)
-        # TODO: Remove _total_cycle and protocol refinement?
-        setattr(self,'_%s_total_cycle'%p,cycle)
       else:
         setattr(self,'_%s_cycle'%p,0)
-        setattr(self,'_%s_total_cycle'%p,0)
     if getattr(self,'%s_protocol'%p)==[] or \
         (not getattr(self,'%s_protocol'%p)[-1]['crossed']):
       setattr(self,'_%s_cycle'%p,0)
-      setattr(self,'_%s_total_cycle'%p,0)
     return params
 
   def _clear(self, p):
     setattr(self,'%s_protocol'%p,[])
     setattr(self,'_%s_cycle'%p,0)
-    setattr(self,'_%s_total_cycle'%p,0)
     self.confs[p]['replicas'] = None
     self.confs[p]['seeds'] = None
     self.confs[p]['samples'] = None
@@ -3394,8 +3327,7 @@ END
     saved = {
       'progress': (params,
                    getattr(self,'%s_protocol'%p),
-                   getattr(self,'_%s_cycle'%p),
-                   getattr(self,'_%s_total_cycle'%p)),
+                   getattr(self,'_%s_cycle'%p)),
       'data': (random_orient,
                self.confs[p]['replicas'],
                self.confs[p]['seeds'],
