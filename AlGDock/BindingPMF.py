@@ -768,9 +768,10 @@ last modified {2}
   ###########
   # Cooling #
   ###########
-  def initial_cool(self):
+  def initial_cool(self, warm=True):
     """
-    Cools the ligand from T_HIGH to T_TARGET
+    Warms the ligand from T_TARGET to T_HIGH, or
+    cools the ligand from T_HIGH to T_TARGET
     
     Intermediate thermodynamic states are chosen such that
     thermodynamic length intervals are approximately constant.
@@ -783,18 +784,26 @@ last modified {2}
     self._set_lock('cool')
     cool_start_time = time.time()
 
+    if warm:
+      T_START, T_END = T_TARGET, T_HIGH
+      direction_name = 'warm'
+    else:
+      T_START, T_END = T_HIGH, T_TARGET
+      direction_name = 'cool'
+
     if self.cool_protocol==[]:
-      self.tee("\n>>> Initial cooling of the ligand " + \
-        "from %d K to %d K, "%(T_HIGH,T_TARGET) + "starting at " + \
+      self.tee("\n>>> Initial %sing of the ligand "%direction_name + \
+        "from %d K to %d K, "%(T_START,T_END) + "starting at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 
       # Set up the force field
-      self.cool_protocol = [{'MM':True, 'T':T_HIGH, \
+      T = T_START
+      self.cool_protocol = [{'MM':True, 'T':T, \
                             'delta_t':1.5*MMTK.Units.fs,
                             'a':0.0, 'crossed':False}]
       self._set_universe_evaluator(self.cool_protocol[-1])
 
-      # Minimize and ramp the temperature from 0 to the desired high temperature
+      # Minimize and ramp the temperature from 0 to the desired starting temperature
       from MMTK.Minimization import ConjugateGradientMinimizer # @UnresolvedImport
       minimizer = ConjugateGradientMinimizer(self.universe)
       for rep in range(50):
@@ -807,14 +816,14 @@ last modified {2}
           break
 
       T_LOW = 20.
-      T_SERIES = T_LOW*(T_HIGH/T_LOW)**(np.arange(30)/29.)
+      T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
       for T in T_SERIES:
         self.sampler['init'](steps = 500, T=T,\
                              delta_t=self.delta_t, steps_per_trial = 100, \
                              seed=int(time.time()+T))
       self.universe.normalizePosition()
 
-      # Run at high temperature
+      # Run at starting temperature
       state_start_time = time.time()
       conf = self.universe.configuration().array
       (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
@@ -824,7 +833,7 @@ last modified {2}
       self.confs['cool']['replicas'] = [confs[np.random.randint(len(confs))]]
       self.confs['cool']['samples'] = [[confs]]
       self.cool_Es = [[{'MM':Es_MM}]]
-      tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
+      tL_tensor = Es_MM.std()/(R*T_START*T_START)
 
       self.tee("  generated %d configurations "%len(confs) + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
@@ -832,25 +841,32 @@ last modified {2}
       self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
         self.cool_protocol[-1]['delta_t'], Ht, tL_tensor))
     else:
-      self.tee("\n>>> Initial cooling of the ligand " + \
-        "from %d K to %d K, "%(T_HIGH,T_TARGET) + "continuing at " + \
+      self.tee("\n>>> Initial %s of the ligand "%direction_name + \
+        "from %d K to %d K, "%(T_START,T_END) + "continuing at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
       confs = self.confs['cool']['samples'][-1][0]
       Es_MM = self.cool_Es[-1][0]['MM']
-      tL_tensor = Es_MM.std()/(R*T_HIGH*T_HIGH)
+      T = self.cool_protocol[-1]['T']
+      tL_tensor = Es_MM.std()/(R*T*T)
 
     # Main loop for initial cooling:
     # choose new temperature, randomly select seeds, simulate
-    T = T_HIGH
     while (not self.cool_protocol[-1]['crossed']):
       # Choose new temperature
       To = self.cool_protocol[-1]['T']
-      crossed = False
+      crossed = self.cool_protocol[-1]['crossed']
       if tL_tensor>1E-5:
-        T = To - self.params['cool']['therm_speed']/tL_tensor
-        if T < T_TARGET:
-          T = T_TARGET
-          crossed = True
+        dL = self.params['cool']['therm_speed']/tL_tensor
+        if warm:
+          T = To + dL
+          if T > T_HIGH:
+            T = T_HIGH
+            crossed = True
+        else:
+          T = To - dL
+          if T < T_TARGET:
+            T = T_TARGET
+            crossed = True
       else:
         raise Exception('No variance in configuration energies')
       self.cool_protocol.append(\
@@ -913,9 +929,19 @@ last modified {2}
         tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
         self.tee("  estimated replica exchange acceptance rate is %f"%mean_acc)
 
-      if crossed:
+      # Special tasks after the last stage
+      if self.cool_protocol[-1]['crossed']:
         self._cool_cycle += 1
-      
+        # For warming, reverse protocol and energies
+        if warm:
+          self.tee("  reversing replicas, samples, and protocol")
+          self.confs['cool']['replicas'].reverse()
+          self.confs['cool']['samples'].reverse()
+          self.cool_Es.reverse()
+          self.cool_protocol.reverse()
+          self.cool_protocol[0]['crossed'] = False
+          self.cool_protocol[-1]['crossed'] = True
+
       self._save('cool')
       self.tee("")
 
@@ -923,12 +949,12 @@ last modified {2}
         remaining_time = self.timing['max']*60 - \
           (time.time()-self.timing['start'])
         if remaining_time<0:
-          self.tee("  no time remaining for initial cool")
+          self.tee("  no time remaining for initial %s"%direction_name)
           self._clear_lock('cool')
           return False
 
     # Save data
-    self.tee("Elapsed time for initial cooling of " + \
+    self.tee("Elapsed time for initial %sing of "%direction_name + \
       "%d states: "%len(self.cool_protocol) + \
       HMStime(time.time()-cool_start_time))
     self._clear_lock('cool')
@@ -1083,7 +1109,7 @@ last modified {2}
       The first state of docking is sampled by randomly placing configurations
       from the high temperature ligand simulation into the binding site.
     """
-    # Select samples from the first cooling state and make sure there are enough
+    # Select samples from the high T unbound state and ensure there are enough
     E_MM = []
     confs = []
     for k in range(1,len(self.cool_Es[0])):

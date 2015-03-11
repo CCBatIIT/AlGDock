@@ -38,3 +38,17 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
 #  --phases NAMD_Gas NAMD_GBSA Gas GBSA APBS PBSA \
 #  --site Sphere --site_center 1.91650 1.91650 1.91650 \
 #  --site_max_R 0.01 \
+
+# For cooling, there are ~9 states with a thermodynamic speed of 0.7
+# For undocking, there are ~27 states with a thermodynamic speed of 0.7
+
+# Here are example cooling free energies:
+#  calculated NAMD_Gas solvation free energy of 0.669438 RT using cycles 0 to 0
+#  calculated NAMD_Gas solvation free energy of 0.694241 RT using cycles 1 to 1
+#  calculated NAMD_GBSA solvation free energy of -13.435825 RT using cycles 0 to 0
+#  calculated NAMD_GBSA solvation free energy of -13.662444 RT using cycles 1 to 1
+#  calculated cooling free energy of 60.797888 RT using MBAR for cycles 0 to 0
+#  calculated cooling free energy of 60.563113 RT using MBAR for cycles 1 to 1
+
+# For warming, there are ~10 states with a thermodynamic speed of 0.7
+# Free energies are about the same.
