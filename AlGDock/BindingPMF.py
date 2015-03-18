@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# TODO: Heat capacity calculation
+
 import os # Miscellaneous operating system interfaces
 from os.path import join
 import cPickle as pickle
@@ -592,6 +594,16 @@ last modified {2}
     self._forceFields = {}
     self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self._FNs['forcefield'],mod_files=self._FNs['frcmodList'])
+
+    # If docked poses are available, start with a docked structure
+    if not(isinstance(self.params['dock']['score'],bool)) and \
+      (self.params['dock']['score'].endswith('.mol2') or \
+       self.params['dock']['score'].endswith('.mol2.gz')):
+      (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
+      if len(confs_dock6)>0:
+        self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
+      else:
+        print '  no available configurations from dock 6'
 
     if (self.params['dock']['site']=='Measure'):
       print '\n*** Measuring the binding site ***'
@@ -2480,7 +2492,7 @@ last modified {2}
         'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
       return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
              np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-             np.abs(T_TARGET-T_HIGH)*U_RL_g.std()/(R*T*T)
+             np.abs(da_g_da)*np.abs(T_TARGET-T_HIGH)*U_RL_g.std()/(R*T*T)
     elif process=='cool':
       return self._u_kln([E],[{'MM':True}], noBeta=True).std()/(R*T*T)
     else:
@@ -2513,8 +2525,7 @@ last modified {2}
       lambda_n['LJr'] = a_g
       lambda_n['LJa'] = a_g
       lambda_n['ELE'] = a_g
-      # TODO: Geometric series for temperature?
-      lambda_n['T'] = a*(T_TARGET-T_HIGH) + T_HIGH
+      lambda_n['T'] = a_g*(T_TARGET-T_HIGH) + T_HIGH
     elif process=='cool':
       lambda_n['a'] = a
       lambda_n['T'] = T_HIGH - a*(T_HIGH-T_TARGET)

@@ -17,7 +17,7 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --complex_fixed_atoms prmtopcrd/complex.pdb \
   --rmsd \
   --dir_grid grids \
-  --protocol Adaptive --cool_therm_speed 0.7 --dock_therm_speed 0.7 \
+  --protocol Adaptive --cool_therm_speed 0.5 --dock_therm_speed 0.5 \
   --sampler NUTS \
   --MCMC_moves 1 \
   --seeds_per_state 10 \
@@ -52,3 +52,6 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
 
 # For warming, there are ~10 states with a thermodynamic speed of 0.7
 # Free energies are about the same.
+
+# For undocking with a temperature protocol that follows the normal grid strength,
+# there are ~22 states with a thermodynamic speed of 0.7
