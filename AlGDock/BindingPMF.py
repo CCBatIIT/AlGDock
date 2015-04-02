@@ -886,9 +886,9 @@ last modified {2}
 
       # Randomly select seeds for new trajectory
       logweight = Es_MM/R*(1/T-1/To)
-      weight = np.exp(-logweight+min(logweight))
+      weights = np.exp(-logweight+min(logweight))
       seedIndicies = np.random.choice(len(Es_MM),
-        size = self.params['cool']['seeds_per_state'], p = weight/sum(weight))
+        size = self.params['cool']['seeds_per_state'], p = weights/sum(weights))
 
       # Simulate and store data
       confs_o = confs
@@ -1023,21 +1023,32 @@ last modified {2}
     free_energy_start_time = time.time()
       
     # Estimate cycle at which simulation has equilibrated
-    u_KKs = \
-      [np.sum([self._u_kln([self.cool_Es[k][c]],[self.cool_protocol[k]]) \
-        for k in range(len(self.cool_protocol))],0) \
-          for c in range(self._cool_cycle)]
-    mean_u_KKs = np.array([np.mean(u_KK) for u_KK in u_KKs])
-    std_u_KKs = np.array([np.std(u_KK) for u_KK in u_KKs])
-    for c in range(len(self.stats_L['equilibrated_cycle']), self._cool_cycle):
-      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<std_u_KKs[c]
-      if nearMean.any():
-        nearMean = list(nearMean).index(True)
-      else:
-        nearMean = c
-      if c>0: # If possible, reject burn-in
-        nearMean = max(nearMean,1)
-      self.stats_L['equilibrated_cycle'].append(nearMean)
+    # by clustering configurations and
+    # seeing when all clusters have been accessed
+    #   Gather snapshots
+    import itertools
+    confs = np.array([conf[self.molecule.heavy_atoms,:] \
+      for conf in itertools.chain.from_iterable(\
+      [self.confs['cool']['samples'][-1][k] for k in range(self._cool_cycle)])])
+    cum_Nk = np.cumsum([len(self.confs['cool']['samples'][-1][k]) \
+      for k in range(self._cool_cycle)])
+    #   RMSD matrix
+    import sys
+    original_stdout = sys.stdout
+    sys.stdout = NullDevice()
+    from pyRMSD.matrixHandler import MatrixHandler
+    rmsd_matrix = MatrixHandler().createMatrix(confs,'QCP_SERIAL_CALCULATOR')
+    sys.stdout = original_stdout
+    #   Clustering
+    import scipy.cluster
+    Z = scipy.cluster.hierarchy.complete(rmsd_matrix.get_data())
+    assignments = np.array(\
+      scipy.cluster.hierarchy.fcluster(Z, 0.2, criterion='distance'))
+    cum_Nclusters = [len(set(assignments[:cum_Nk[k]])) \
+      for k in range(self._cool_cycle)]
+    self.stats_L['equilibrated_cycle'] = \
+      [max(cum_Nclusters.index(cum_Nclusters[c]),int(c>0)) \
+      for c in range(len(cum_Nclusters))]
 
     # Calculate solvation free energies that have not already been calculated,
     # in units of RT
@@ -1348,10 +1359,10 @@ last modified {2}
       u_o = self._u_kln([E],[lambda_o])
       u_n = self._u_kln([E],[lambda_n])
       du = u_n-u_o
-      weight = np.exp(-du+min(du))
+      weights = np.exp(-du+min(du))
       seedIndicies = np.random.choice(len(u_o), \
         size = self.params['dock']['seeds_per_state'], \
-        p=weight/sum(weight))
+        p=weights/sum(weights))
 
       if (not undock) and (len(self.dock_protocol)==2):
         # Cooling state 0 configurations, randomly oriented
@@ -1513,7 +1524,7 @@ last modified {2}
       stats_RL += [('Psi_'+FF,[]) \
         for FF in ['grid']+self.params['dock']['phases']]
       stats_RL += [(item,[]) \
-        for item in ['equilibrated_cycle','mean_acc','rmsd']]
+        for item in ['equilibrated_cycle','cum_Nclusters','mean_acc','rmsd']]
       self.stats_RL = dict(stats_RL)
       self.stats_RL['protocol'] = self.dock_protocol
       # Free energy components
@@ -1552,8 +1563,9 @@ last modified {2}
       time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
     BPMF_start_time = time.time()
 
+    updated = False
     K = len(self.dock_protocol)
-  
+    
     # Store stats_RL
     # Internal energies
     self.stats_RL['u_K_ligand'] = \
@@ -1576,6 +1588,7 @@ last modified {2}
           (self.dock_Es[-1][c]['LJr'] + \
            self.dock_Es[-1][c]['LJa'] + \
            self.dock_Es[-1][c]['ELE'])/RT_TARGET)
+      updated = True
     for phase in self.params['dock']['phases']:
       if not 'Psi_'+phase in self.stats_RL:
         self.stats_RL['Psi_'+phase] = []
@@ -1584,39 +1597,92 @@ last modified {2}
           (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
            self.dock_Es[-1][c]['L'+phase][:,-1] - \
            self.original_Es[0][0]['R'+phase][-1])/RT_TARGET)
-
+    
     # Estimate cycle at which simulation has equilibrated
-    mean_u_KKs = np.array([np.mean(u_KK) for u_KK in self.stats_RL['u_KK']])
-    std_u_KKs = np.array([np.std(u_KK) for u_KK in self.stats_RL['u_KK']])
-    for c in range(len(self.stats_RL['equilibrated_cycle']), self._dock_cycle):
-      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<std_u_KKs[c]
-      if nearMean.any():
-        nearMean = list(nearMean).index(True)
-      else:
-        nearMean = c
-      if c>0: # If possible, reject burn-in
-        nearMean = max(nearMean,1)
-      self.stats_RL['equilibrated_cycle'].append(nearMean)
+    # by clustering configurations and
+    # seeing when all clusters have been accessed
+    #   Gather snapshots
+    import itertools
+    confs = np.array([conf[self.molecule.heavy_atoms,:] \
+      for conf in itertools.chain.from_iterable(\
+      [self.confs['dock']['samples'][-1][k] for k in range(self._dock_cycle)])])
+    cum_Nk = np.cumsum([len(self.confs['dock']['samples'][-1][k]) \
+      for k in range(self._dock_cycle)])
+    #   RMSD matrix
+    import sys
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    sys.stdout = NullDevice()
+    sys.stderr = NullDevice()
+    from pyRMSD.matrixHandler import MatrixHandler
+    rmsd_matrix = MatrixHandler().createMatrix(confs,'NOSUP_SERIAL_CALCULATOR')
+    sys.stdout = original_stdout
+    sys.stderr = original_stderr
+    #   Clustering
+    import scipy.cluster
+    Z = scipy.cluster.hierarchy.complete(rmsd_matrix.get_data())
+    assignments = np.array(\
+      scipy.cluster.hierarchy.fcluster(Z, 0.2, criterion='distance'))
+    cum_Nclusters = [len(set(assignments[:cum_Nk[k]])) \
+      for k in range(self._dock_cycle)]
+    if ('cum_Nclusters' not in self.stats_RL.keys()) or \
+       (self.stats_RL['cum_Nclusters']!= cum_Nclusters):
+      updated = True
+    self.stats_RL['cum_Nclusters'] = cum_Nclusters
+    self.stats_RL['equilibrated_cycle'] = \
+      [max(cum_Nclusters.index(cum_Nclusters[c]),int(c>0)) \
+      for c in range(len(cum_Nclusters))]
+
+    equilibrated_cycle = self.stats_RL['equilibrated_cycle'][-1]
+    Neq = cum_Nk[equilibrated_cycle-1]
+    assignments = assignments[Neq:]
+
+    def linear_index_to_pair(ind):
+      indF = ind+Neq
+      cycle = list(indF<cum_Nk).index(True)
+      n = indF-cum_Nk[cycle-1]
+      return (cycle,n)
+
+    # Find lowest energy pose in most populated cluster (after equilibration)
+    pose_ind = {}
+    lowest_e_ind = {}
+    for phase in (['sampled']+self.params['dock']['phases']):
+      un = np.concatenate([self.stats_RL['u_K_'+phase][c] \
+        for c in range(equilibrated_cycle,self._dock_cycle)])
+      uo = np.concatenate([self.stats_RL['u_K_sampled'][c] \
+        for c in range(equilibrated_cycle,self._dock_cycle)])
+      du = un-uo
+      min_du = min(du)
+      weights = np.exp(-du+min_du)
+      cluster_counts = np.histogram(assignments, \
+        bins=np.arange(len(set(assignments))+1)+0.5,
+        weights=weights)[0]
+      top_cluster = np.argmax(cluster_counts)
+      pose_ind[phase] = linear_index_to_pair(\
+        np.argmin(un+(assignments!=top_cluster)*np.max(un)))
+      lowest_e_ind[phase] = linear_index_to_pair(np.argmin(un))
+    self.stats_RL['predicted_pose_index'] = pose_ind
+    self.stats_RL['lowest_energy_pose_index'] = lowest_e_ind
 
     # Store NUTS acceptance statistic
     self.stats_RL['Ht'] = [self.dock_Es[0][c]['Ht'] \
       if 'Ht' in self.dock_Es[-1][c].keys() else [] \
       for c in range(self._dock_cycle)]
       
-    # Autocorrelation time for all replicas (this can take a while)
-    paths = np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
-      for c in range(len(self.dock_Es[0])) \
-      if 'repXpath' in self.dock_Es[0][c].keys()]))
-    self.stats_RL['tau_ac'] = \
-      pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
-    
+    # Autocorrelation time for all replicas
+    if updated:
+      paths = np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
+        for c in range(len(self.dock_Es[0])) \
+        if 'repXpath' in self.dock_Es[0][c].keys()]))
+      self.stats_RL['tau_ac'] = \
+        pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
+
     # Store rmsd values
     self.stats_RL['rmsd'] = [self.dock_Es[-1][c]['rmsd'] \
       if 'rmsd' in self.dock_Es[-1][c].keys() else [] \
       for c in range(self._dock_cycle)]
 
     # Calculate docking free energies that have not already been calculated
-    updated = False
     for c in range(len(self.f_RL['grid_MBAR']), self._dock_cycle):
       extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
       
@@ -1664,8 +1730,8 @@ last modified {2}
         min_du = min(du)
         # Complex solvation
         B_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
-        weight = np.exp(-du+min_du)
-        weight = weight/sum(weight)
+        weights = np.exp(-du+min_du)
+        weights = weights/sum(weights)
         Psi = np.concatenate([self.stats_RL['Psi_'+phase][c] \
           for c in extractCycles])
         min_Psi = min(Psi)
@@ -1674,7 +1740,7 @@ last modified {2}
         self.B[phase+'_min_Psi'].append(min_Psi)
         self.B[phase+'_mean_Psi'].append(np.mean(Psi))
         self.B[phase+'_inverse_FEP'].append(\
-          np.log(sum(weight*np.exp(Psi-min_Psi))) + min_Psi)
+          np.log(sum(weights*np.exp(Psi-min_Psi))) + min_Psi)
         self.B[phase+'_BAR'].append(\
           -self.f_L[phase+'_solv'][-1] - \
            self.original_Es[0][0]['R'+phase][-1]/RT_TARGET - \
