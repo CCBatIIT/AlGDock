@@ -41,7 +41,7 @@ for pkg in ['Scientific','MMTK','AlGDock']:
 
 del os, sys, glob, Scientific, MMTK, AlGDock
 
-a = Analysis(['../AlGDock/BindingPMF.py'],
+a = Analysis(['../AlGDock/BindingPMF_TD.py'],
              pathex=['../AlGDock'],
              hiddenimports=['scipy.special._ufuncs_cxx','netCDF4_utils','netcdftime'],
              hookspath=None,
@@ -58,11 +58,22 @@ for ind in reversed(range(len(a.datas))):
 a.datas += TOC(init_scripts)
 a.datas += TOC(data_files)
 
+## Simbody ##
+simbody_paths = []
+simbody_paths.append('../simbody/')
+simbody_lib_files = list()
+for simpath in simbody_paths:
+  simbody_lib_files += glob.glob(os.path.join(simpath,'*.so'))
+  simbody_lib_files += glob.glob(os.path.join(simpath,'*.exe'))
+simbody_libs = [(os.path.basename(F),F,'BINARY') for F in simbody_lib_files]
+a.binaries += TOC(simbody_libs)
+##
+
 pyz = PYZ(a.pure)
 exe = EXE(pyz,
           a.scripts,
           exclude_binaries=True,
-          name='BindingPMF',
+          name='BindingPMF_TD',
           debug=False,
           strip=None,
           upx=False,
