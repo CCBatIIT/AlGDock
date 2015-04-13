@@ -32,14 +32,9 @@ class TDHamiltonianMonteCarloIntegrator(Dynamics.Integrator):
         self.setCallOptions(options)
 
         random.seed(self.getOption('seed'))
-        #print "seed_0=   ", self.getOption('seed')
         np.random.seed(self.getOption('seed'))
         memid = np.random.randint(2000,9999)
-        #print "seed_np1= ", self.getOption('seed')
-        #print " RAND memid= " + str(memid)
         np.random.seed(int(time.time() + os.getpid()))
-        #print "seed_np2= ", int(time.time() + os.getpid())
-
         Random.initializeRandomNumbersFromTime()
 
         # Check if the universe has features not supported by the integrator
