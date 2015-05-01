@@ -108,7 +108,7 @@ arguments = {
   'therm_speed':{'type':float,
     'help':'Thermodynamic speed during adaptive simulation'},
   'sampler':{
-    'choices':['HMC','NUTS','VV'],
+    'choices':['HMC','NUTS','VV','TDHMC'],
     'help':'Sampling method'},
   'MCMC_moves':{'type':int,
     'help':'Types of MCMC moves to use'},
@@ -679,6 +679,10 @@ last modified {2}
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
         self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'TDHMC':
+        from Integrators.TDHamiltonianMonteCarlo.TDHamiltonianMonteCarlo \
+          import TDHamiltonianMonteCarloIntegrator
+        self.sampler[p] = TDHamiltonianMonteCarloIntegrator(self.universe)
       elif self.params[p]['sampler'] == 'VV':
         from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
           import VelocityVerletIntegrator
