@@ -1259,7 +1259,7 @@ last modified {2}
           self.dock_Es = [[E]]
 
           self.tee("  generated %d configurations "%len(confs) + \
-                   "with progress %f "%lambda_o['a'] + \
+                   "with progress %e "%lambda_o['a'] + \
                    "in " + HMStime(time.time()-sim_start_time))
           self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
             lambda_o['delta_t'],Ht,self._tL_tensor(E,lambda_o)))
@@ -2095,7 +2095,7 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    per_independent = {'cool':5.0, 'dock':30.0}[process]
+    per_independent = {'cool':3.0, 'dock':10.0}[process]
     # There will be at least per_independent and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
@@ -2400,6 +2400,8 @@ last modified {2}
         maximum_iterations = 20).f_k
     except:
       f_k_MBAR = f_k_BAR
+    if np.isnan(f_k_MBAR).any():
+      f_k_MBAR = f_k_BAR
     return (f_k_BAR,f_k_MBAR)
 
   def _u_kln(self,eTs,lambdas,noBeta=False):
@@ -2551,7 +2553,7 @@ last modified {2}
         'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
       return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
              np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-             np.abs(da_g_da)*np.abs(T_TARGET-T_HIGH)*U_RL_g.std()/(R*T*T)
+             np.abs(T_TARGET-T_HIGH)*U_RL_g.std()/(R*T*T)
     elif process=='cool':
       return self._u_kln([E],[{'MM':True}], noBeta=True).std()/(R*T*T)
     else:
@@ -2584,7 +2586,7 @@ last modified {2}
       lambda_n['LJr'] = a_g
       lambda_n['LJa'] = a_g
       lambda_n['ELE'] = a_g
-      lambda_n['T'] = a_g*(T_TARGET-T_HIGH) + T_HIGH
+      lambda_n['T'] = a*(T_TARGET-T_HIGH) + T_HIGH
     elif process=='cool':
       lambda_n['a'] = a
       lambda_n['T'] = T_HIGH - a*(T_HIGH-T_TARGET)
