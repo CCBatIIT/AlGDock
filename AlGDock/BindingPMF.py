@@ -87,6 +87,7 @@ arguments = {
   'grid_LJr':{'help':'DX file for Lennard-Jones repulsive grid'},
   'grid_LJa':{'help':'DX file for Lennard-Jones attractive grid'},
   'grid_ELE':{'help':'DX file for electrostatic grid'},
+  'score':{'help':"Starting configuration(s) for replica exchange. Can be a mol2 file or 'default'"},
   # Simulation settings and constants
   #   Run-dependent 
   'cool_repX_cycles':{'type':int,
@@ -117,10 +118,6 @@ arguments = {
     'help':'Number of starting configurations in each state during initialization'},
   'steps_per_seed':{'type':int,
     'help':'Number of MD steps per state during initialization'},
-  'score':{'nargs':'?', 'const':True, 'default':False,
-    'help':'Start replica exchange from a configuration or set of configurations, which may be passed as an argument. The default configuration is from the ligand_inpcrd argument.'},
-  'score_multiple':{'action':'store_true',
-    'help':'Uses multiple configurations at the start of replica exchange'},
   # For replica exchange
   'repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking and cooling'},
@@ -243,15 +240,18 @@ def convert_dictionary_relpath(d, relpath_o=None, relpath_n=None):
       converted[key] = convert_dictionary_relpath(d[key],
         relpath_o = relpath_o, relpath_n = relpath_n)
     elif isinstance(d[key],str):
-      if relpath_o is not None:
-        p = os.path.abspath(join(relpath_o,d[key]))
+      if d[key]=='default':
+        converted[key] = 'default'
       else:
-        p = os.path.abspath(d[key])
-      if os.path.exists(p): # Only save file names for existent paths
-        if relpath_n is not None:
-          converted[key] = os.path.relpath(p,relpath_n)
+        if relpath_o is not None:
+          p = os.path.abspath(join(relpath_o,d[key]))
         else:
-          converted[key] = p
+          p = os.path.abspath(d[key])
+        if os.path.exists(p): # Only save file names for existent paths
+          if relpath_n is not None:
+            converted[key] = os.path.relpath(p,relpath_n)
+          else:
+            converted[key] = p
   return converted
 
 def HMStime(s):
@@ -389,6 +389,8 @@ last modified {2}
                                join(kwargs['dir_grid'],'pbsa.nc'),
                                join(kwargs['dir_grid'],'pbsa.dx'),
                                join(kwargs['dir_grid'],'pbsa.dx.gz')])},
+      'score':'default' if kwargs['score']=='default' \
+                        else a.findPath([kwargs['score']]),
       'dir_cool':self.dir['cool'],
       'namd':a.findPath([kwargs['namd']] + a.search_paths['namd']),
       'vmd':a.findPath([kwargs['vmd']] + a.search_paths['vmd']),
@@ -467,11 +469,9 @@ last modified {2}
     args['default_dock'] = dict(args['default_cool'].items() + {
       'site':None, 'site_center':None, 'site_direction':None,
       'site_max_X':None, 'site_max_R':None,
-      'site_density':50.,
+      'site_density':50., 'site_measured':None,
       'MCMC_moves':1,
-      'rmsd':False,
-      'score':False,
-      'score_multiple':False}.items() + \
+      'rmsd':False}.items() + \
       [('receptor_'+phase,None) for phase in allowed_phases])
 
     # Store passed arguments in dictionary
@@ -488,7 +488,7 @@ last modified {2}
              (kwargs[key] is not None):
           # Convert these to arrays of floats
           args['new_'+p][key] = np.array(kwargs[key], dtype=float)
-        else:
+        elif key in kwargs.keys():
           # Use the general key
           args['new_'+p][key] = kwargs[key]
 
@@ -583,10 +583,16 @@ last modified {2}
     for i in range(len(self.molecule.prmtop_atom_order)):
       self.molecule.inv_prmtop_atom_order[self.molecule.prmtop_atom_order[i]] = i
 
+    # Create universe and add molecule to universe
     self.universe = MMTK.Universe.InfiniteUniverse()
     self.universe.addObject(self.molecule)
     self._evaluators = {} # Store evaluators
     self._ligand_natoms = self.universe.numberOfAtoms()
+
+    # If poses are being rescored, start with a docked structure
+    (confs_dock6,E_mol2) = self._read_dock6(self._FNs['score'])
+    if len(confs_dock6)>0:
+      self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
 
     # Force fields
     from MMTK.ForceFields import Amber12SBForceField
@@ -594,73 +600,6 @@ last modified {2}
     self._forceFields = {}
     self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self._FNs['forcefield'],mod_files=self._FNs['frcmodList'])
-
-    # If docked poses are available, start with a docked structure
-    if not(isinstance(self.params['dock']['score'],bool)) and \
-      (self.params['dock']['score'].endswith('.mol2') or \
-       self.params['dock']['score'].endswith('.mol2.gz')):
-      (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
-      if len(confs_dock6)>0:
-        self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
-      else:
-        print '  no available configurations from dock 6'
-
-    if (self.params['dock']['site']=='Measure'):
-      print '\n*** Measuring the binding site ***'
-      self.params['dock']['site'] = 'Sphere'
-      (confs, Es) = self._get_confs_to_rescore()
-      if len(confs)>0:
-        # Use the center of mass for configurations
-        # within 20 RT of the lowest energy
-        coms = []
-        for (conf,E) in reversed(zip(confs,Es)):
-          if E<(Es[-1]+20*RT_TARGET):
-            self.universe.setConfiguration(Configuration(self.universe,conf))
-            coms.append(np.array(self.universe.centerOfMass()))
-          else:
-            break
-        print '  %d configurations fit in the binding site'%len(coms)
-        coms = np.array(coms)
-        center = (np.min(coms,0)+np.max(coms,0))/2
-        max_R = max(np.ceil(np.max(np.sqrt(np.sum((coms-center)**2,1)))*10.)/10.,0.6)
-        self.params['dock']['site_max_R'] = max_R
-        self.params['dock']['site_center'] = center
-        self.universe.setConfiguration(Configuration(self.universe,confs[-1]))
-      if ((self.params['dock']['site_max_R'] is None) or \
-          (self.params['dock']['site_center'] is None)):
-        raise Exception('No binding site parameters!')
-# TODO: Develop way to note that measurement has been completed, and to store the measured site
-
-    if (self.params['dock']['site']=='Sphere') and \
-       (self.params['dock']['site_center'] is not None) and \
-       (self.params['dock']['site_max_R'] is not None):
-      from AlGDock.ForceFields.Sphere.Sphere import SphereForceField
-      self._forceFields['site'] = SphereForceField(
-        center=self.params['dock']['site_center'],
-        max_R=self.params['dock']['site_max_R'], name='site')
-    elif (self.params['dock']['site']=='Cylinder') and \
-         (self.params['dock']['site_center'] is not None) and \
-         (self.params['dock']['site_direction'] is not None):
-      from AlGDock.ForceFields.Cylinder.Cylinder import CylinderForceField
-      self._forceFields['site'] = CylinderForceField(
-        origin=self.params['dock']['site_center'],
-        direction=self.params['dock']['site_direction'],
-        max_X=self.params['dock']['site_max_X'],
-        max_R=self.params['dock']['site_max_R'], name='site')
-    else:
-      if do_dock:
-        raise Exception('Binding site type not recognized!')
-      else:
-        print 'Binding site type not recognized!'
-
-    # Randomly rotate the molecule and translate it into the binding site
-    self.universe.setConfiguration(Configuration(self.universe, \
-      np.dot(self.universe.configuration().array,
-      np.transpose(random_rotate()))))
-    if 'site' in self._forceFields.keys():
-      self.universe.translateTo(Vector(self._forceFields['site'].randomPoint()))
-    else:
-      print 'Molecule not translated into binding site'
 
     # Samplers may accept the following options:
     # steps - number of MD steps
@@ -1162,7 +1101,8 @@ last modified {2}
 
     # Set up the force field with full interaction grids
     lambda_scalables = dict(zip(\
-      self._scalables,np.ones(len(self._scalables),dtype=int)) + [('T',T_HIGH)])
+      self._scalables,np.ones(len(self._scalables),dtype=int)) + \
+      [('T',T_HIGH),('site',True)])
     self._set_universe_evaluator(lambda_scalables)
 
     # Either loads or generates the random translations and rotations for the first state of docking
@@ -1202,7 +1142,7 @@ last modified {2}
             np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]))
           for i_trans in range(n_trans_o, n_trans_n):
             self.universe.setConfiguration(conf_rot)
-            self.universe.translateBy(self._random_trans[i_trans])
+            self.universe.translateTo(self._random_trans[i_trans])
             eT = self.universe.energyTerms()
             for (key,value) in eT.iteritems():
               E[term_map[key]][c,i_rot,i_trans] += value
@@ -1770,17 +1710,16 @@ last modified {2}
 
   def pose_energies(self):
     """
-    Calculates the energy for poses from self.params['dock']['score']
+    Calculates the energy for poses from self._FNs['score']
     """
     # Load the poses
-    if isinstance(self.params['dock']['score'],bool):
+    if self._FNs['score']=='default':
       confs = [self.confs['ligand']]
       E = {}
       prefix = 'xtal'
-    elif self.params['dock']['score'].endswith('.mol2') or \
-       self.params['dock']['score'].endswith('.mol2.gz'):
-      (confs,E) = self._read_dock6(self.params['dock']['score'])
-      prefix = os.path.basename(self.params['dock']['score']).split('.')[0]
+    else:
+      (confs,E) = self._read_dock6(self._FNs['score'])
+      prefix = os.path.basename(self._FNs['score']).split('.')[0]
     E = self._calc_E(confs, E, type='all', prefix=prefix)
 
     # Try different grid transformations
@@ -1838,8 +1777,63 @@ last modified {2}
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
       fflist.append(self._forceFields['gaff'])
-    if ('site' in lambda_n.keys()) and lambda_n['site'] and \
-        ('site' in self._forceFields.keys()):
+    if ('site' in lambda_n.keys()) and lambda_n['site']:
+      if not 'site' in self._forceFields.keys():
+        # Set up the binding site in the force field
+        if (self.params['dock']['site']=='Measure'):
+          self.params['dock']['site'] = 'Sphere'
+          if self.params['dock']['site_measured'] is not None:
+            (self.params['dock']['site_max_R'],self.params['dock']['site_center']) = \
+              self.params['dock']['site_measured']
+          else:
+            print '\n*** Measuring the binding site ***'
+            (confs, Es) = self._get_confs_to_rescore()
+            if len(confs)>0:
+              # Use the center of mass for configurations
+              # within 20 RT of the lowest energy
+              coms = []
+              for (conf,E) in reversed(zip(confs,Es)):
+                if E<(Es[-1]+20*RT_TARGET):
+                  self.universe.setConfiguration(Configuration(self.universe,conf))
+                  coms.append(np.array(self.universe.centerOfMass()))
+                else:
+                  break
+              print '  %d configurations fit in the binding site'%len(coms)
+              coms = np.array(coms)
+              center = (np.min(coms,0)+np.max(coms,0))/2
+              max_R = max(np.ceil(np.max(np.sqrt(np.sum((coms-center)**2,1)))*10.)/10.,0.6)
+              self.params['dock']['site_max_R'] = max_R
+              self.params['dock']['site_center'] = center
+              self.universe.setConfiguration(Configuration(self.universe,confs[-1]))
+            if ((self.params['dock']['site_max_R'] is None) or \
+                (self.params['dock']['site_center'] is None)):
+              raise Exception('No binding site parameters!')
+            else:
+              self.params['dock']['site_measured'] = \
+                (self.params['dock']['site_max_R'], \
+                 self.params['dock']['site_center'])
+
+        if (self.params['dock']['site']=='Sphere') and \
+           (self.params['dock']['site_center'] is not None) and \
+           (self.params['dock']['site_max_R'] is not None):
+          from AlGDock.ForceFields.Sphere.Sphere import SphereForceField
+          self._forceFields['site'] = SphereForceField(
+            center=self.params['dock']['site_center'],
+            max_R=self.params['dock']['site_max_R'], name='site')
+        elif (self.params['dock']['site']=='Cylinder') and \
+             (self.params['dock']['site_center'] is not None) and \
+             (self.params['dock']['site_direction'] is not None):
+          from AlGDock.ForceFields.Cylinder.Cylinder import CylinderForceField
+          self._forceFields['site'] = CylinderForceField(
+            origin=self.params['dock']['site_center'],
+            direction=self.params['dock']['site_direction'],
+            max_X=self.params['dock']['site_max_X'],
+            max_R=self.params['dock']['site_max_R'], name='site')
+        else:
+          if do_dock:
+            raise Exception('Binding site type not recognized!')
+          else:
+            print 'Binding site type not recognized!'
       fflist.append(self._forceFields['site'])
     for scalable in self._scalables:
       if (scalable in lambda_n.keys()) and lambda_n[scalable]>0:
@@ -2238,8 +2232,8 @@ last modified {2}
 
       # Score configurations from another program
       if (process=='dock') and (self._dock_cycle==1) and \
-         (self.params['dock']['score'] is not False) and \
-         (self.params['dock']['score_multiple']):
+         (self._FNs['score'] is not None) and \
+         (self._FNs['score']!='default'):
         self._set_lock('dock')
         self.tee(">>> Reinitializing replica exchange configurations")
         (self.confs['dock']['replicas'], Es) = \
@@ -2309,7 +2303,7 @@ last modified {2}
     lambda_1 = self._lambda(1.0,'dock', \
       MM=True, site='site' in self._forceFields.keys())
     
-    if isinstance(self.params['dock']['score'], bool):
+    if self._FNs['score']=='default':
       conf = self.confs['ligand']
       self._set_universe_evaluator(lambda_1)
       self.universe.setConfiguration(Configuration(self.universe, conf))
@@ -2321,23 +2315,18 @@ last modified {2}
     confs = []
     count = {'dock6':0, 'initial_dock':0, 'duplicated':0}
     
-    if self.params['dock']['score'].endswith('.mol2') or \
-       self.params['dock']['score'].endswith('.mol2.gz'):
-      (confs_dock6,E_mol2) = self._read_dock6(self.params['dock']['score'])
-
-      if 'site' in self._forceFields.keys():
-        # Add configurations where the ligand is in the binding site
-        self._set_universe_evaluator({'site':True,'T':T_TARGET})
-        for ind in range(len(confs_dock6)):
-          self.universe.setConfiguration(\
-            Configuration(self.universe, confs_dock6[ind]))
-          if self.universe.energy()<1.:
-            confs.append(confs_dock6[ind])
-      else:
-        confs = confs_dock6
-      count['dock6'] = len(confs)
+    (confs_dock6,E_mol2) = self._read_dock6(self._FNs['score'])
+    if 'site' in self._forceFields.keys():
+      # Add configurations where the ligand is in the binding site
+      self._set_universe_evaluator({'site':True,'T':T_TARGET})
+      for ind in range(len(confs_dock6)):
+        self.universe.setConfiguration(\
+          Configuration(self.universe, confs_dock6[ind]))
+        if self.universe.energy()<1.:
+          confs.append(confs_dock6[ind])
     else:
-      raise Exception('Unrecognized file type for configurations')
+      confs = confs_dock6
+    count['dock6'] = len(confs)
 
     if self.confs['dock']['seeds'] is not None:
       confs = confs + self.confs['dock']['seeds']
@@ -3286,7 +3275,7 @@ END
     else:
       raise Exception('Unknown trajectory type')
       
-  def _read_dock6(self, mol2FN):
+  def _read_dock6(self, pose_FN):
     """
     Read output from UCSF DOCK 6.
     The units of the DOCK suite of programs are 
@@ -3295,19 +3284,24 @@ END
       charges in electron charges units, and 
       energies in kcal/mol
     """
+    crds = []
+    E = {}
+
+    if (pose_FN is None) or (not os.path.isfile(pose_FN)):
+      return (crds,E)
+
     # Specifically to read output from UCSF dock6
-    if not os.path.isfile(mol2FN):
-      raise Exception('mol2 file %s does not exist!'%mol2FN)
-    if mol2FN.endswith('.mol2'):
-      mol2F = open(mol2FN,'r')
-    elif mol2FN.endswith('.mol2.gz'):
-      mol2F = gzip.open(mol2FN,'r')
+    if pose_FN.endswith('.mol2'):
+      mol2F = open(pose_FN,'r')
+    elif pose_FN.endswith('.mol2.gz'):
+      mol2F = gzip.open(pose_FN,'r')
+    else:
+      raise Exception('Unknown file type')
+    
     models = mol2F.read().strip().split('########## Name:')
     mol2F.close()
     models.pop(0)
     
-    crds = []
-    E = {}
     if len(models)>0:
       for line in models[0].split('\n'):
         if line.startswith('##########'):

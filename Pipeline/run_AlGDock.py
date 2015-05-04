@@ -354,7 +354,7 @@ for ligand_FN in ligand_FNs:
           if val is None:
             val = False
           elif val=='xtal':
-            val = True
+            val = 'default'
           elif val=='dock':
             val = os.path.abspath(os.path.join(args_in.dock6, \
                                'ancg-'+labels['complex']+'.mol2.gz'))
