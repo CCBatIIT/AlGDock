@@ -1228,14 +1228,13 @@ last modified {2}
       self.tee("\n>>> Initial docking, starting at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
       if undock:
+        lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
+        self.dock_protocol = [lambda_o]
+        self._set_universe_evaluator(lambda_o)
         (seed, Es) = self._get_confs_to_rescore(nconfs=1)
         if seed==[]:
           undock = False
         else:
-          lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
-          self.dock_protocol = [lambda_o]
-          self._set_universe_evaluator(lambda_o)
-          
           # Ramp up the temperature
           T_LOW = 20.
           T_SERIES = T_LOW*(T_TARGET/T_LOW)**(np.arange(30)/29.)
@@ -2230,15 +2229,15 @@ last modified {2}
        ((getattr(self,'_%s_cycle'%process) < \
          self.params[process]['repX_cycles'])):
 
-      # Score configurations from another program
+      # Load configurations to score from another program
       if (process=='dock') and (self._dock_cycle==1) and \
          (self._FNs['score'] is not None) and \
          (self._FNs['score']!='default'):
-        self._set_lock('dock')
-        self.tee(">>> Reinitializing replica exchange configurations")
-        (self.confs['dock']['replicas'], Es) = \
-          self._get_confs_to_rescore(nconfs=len(self.dock_protocol))
-        self._clear_lock('dock')
+        (confs,Es) = self._get_confs_to_rescore(nconfs=len(self.dock_protocol))
+        if len(confs)>0:
+          self.tee(">>> Reinitializing replica exchange configurations", \
+            process='dock')
+          self.confs['dock']['replicas'] = confs
 
       self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
         process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())), \
@@ -2366,8 +2365,11 @@ last modified {2}
         confs.append(confs[-1])
         Es.append(Es[-1])
         count['duplicated'] += 1
+      count['nconfs'] = nconfs
+    else:
+      count['nconfs'] = len(confs)
 
-    self.tee("  keeping configurations: {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
+    self.tee("  keeping {nconfs} configurations out of {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
     return (confs, Es)
 
   def _run_MBAR(self,u_kln,N_k):
