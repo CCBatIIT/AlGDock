@@ -307,10 +307,14 @@ for ligand_FN in ligand_FNs:
       job_status['missing_file']
       continue # Files are missing
 
+    paths = dict(paths)
+    for key in paths.keys():
+      paths[key] = os.path.abspath(paths[key])
+
     for rep in range(args_in.reps[0],args_in.reps[1]):
       labels['job'] = '%s-%d'%(labels['complex'],rep)
       dir_dock = os.path.join(args_in.tree_dock,labels['job'])
-      paths += [('dir_dock',dir_dock)]
+      paths['dir_dock'] = os.path.abspath(dir_dock)
       if not os.path.isdir(dir_dock):
         os.system('mkdir -p '+dir_dock)
       if (args_in.run_type in ['random_dock','initial_dock', \
@@ -326,11 +330,6 @@ for ligand_FN in ligand_FNs:
           (sum(job_status.values())<args_in.first_ligand):
         job_status['skipped'] += 1
         continue
-
-      path_keys = [p[0] for p in paths]
-      paths = dict(paths)
-      for key in path_keys:
-        paths[key] = os.path.abspath(paths[key])
 
       interactive_to_pass = []
       terminal_to_pass = []

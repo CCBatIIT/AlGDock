@@ -94,10 +94,11 @@ arguments = {
     'help':'Number of replica exchange cycles for cooling'},
   'dock_repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking'},
-  'run_type':{'choices':['pose_energies','store_params', 'cool', \
-             'dock','timed','postprocess',\
-             'redo_postprocess','free_energies','all', \
-             'clear_intermediates', None],
+  'run_type':{'choices':['pose_energies','minimized_pose_energies',
+              'store_params', 'cool', \
+              'dock','timed','postprocess',\
+              'redo_postprocess','free_energies','all', \
+              'clear_intermediates', None],
     'help':'Type of calculation to run'},
   'max_time':{'type':int, 'default':180, \
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
@@ -420,8 +421,8 @@ last modified {2}
 
     # Check for existence of required files
     do_dock = (hasattr(args,'run_type') and \
-              (args.run_type in ['pose_energies','random_dock',\
-                'initial_dock','dock','all']))
+              (args.run_type in ['pose_energies','minimized_pose_energies', \
+                'random_dock','initial_dock','dock','all']))
 
     for key in ['ligand_database','forcefield']:
       if (self._FNs[key] is None) or (not os.path.isfile(self._FNs[key])):
@@ -519,8 +520,8 @@ last modified {2}
     self.timing = {'start':time.time(), 'max':kwargs['max_time']}
 
     self.run_type = kwargs['run_type']
-    if self.run_type=='pose_energies':
-      self.pose_energies()
+    if self.run_type=='pose_energies' or self.run_type=='minimized_pose_energies':
+      self.pose_energies(minimize=(self.run_type=='minimized_pose_energies'))
     elif self.run_type=='store_params':
       self._save('cool', keys=['progress'])
       self._save('dock', keys=['progress'])
@@ -1231,7 +1232,7 @@ last modified {2}
         lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
         self.dock_protocol = [lambda_o]
         self._set_universe_evaluator(lambda_o)
-        (seed, Es) = self._get_confs_to_rescore(nconfs=1)
+        seed = self._get_confs_to_rescore(nconfs=1, site=True)[0]
         if seed==[]:
           undock = False
         else:
@@ -1707,36 +1708,47 @@ last modified {2}
       HMStime(time.time()-BPMF_start_time))
     self._clear_lock('dock')
 
-  def pose_energies(self):
+  def pose_energies(self, minimize=False, grids=False):
     """
     Calculates the energy for poses from self._FNs['score']
     """
     # Load the poses
+    E = {}
     if self._FNs['score']=='default':
       confs = [self.confs['ligand']]
-      E = {}
       prefix = 'xtal'
     else:
-      (confs,E) = self._read_dock6(self._FNs['score'])
+      if not minimize:
+        (confs,E) = self._read_dock6(self._FNs['score'], site=True)
+      else:
+        lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
+        self.dock_protocol = [lambda_o]
+        self._set_universe_evaluator(lambda_o)
+        confs = self._get_confs_to_rescore(site=True)[0]
+        confs.reverse()
       prefix = os.path.basename(self._FNs['score']).split('.')[0]
+      if minimize:
+        prefix = 'min_' + prefix
     E = self._calc_E(confs, E, type='all', prefix=prefix)
 
     # Try different grid transformations
-    from AlGDock.ForceFields.Grid.TrilinearTransformGrid \
-      import TrilinearTransformGridForceField
-    for type in ['LJa','LJr']:
-      E[type+'_transformed'] = np.zeros((12,len(confs)),dtype=np.float)
-      for p in range(12):
-        FF = TrilinearTransformGridForceField(self._FNs['grids'][type], 1.0, \
-          'scaling_factor_'+type, grid_name='%f'%(p+1), \
-          inv_power=-float(p+1), max_val=-1)
-        self.universe.setForceField(FF)
-        for c in range(len(confs)):
-          self.universe.setConfiguration(Configuration(self.universe,confs[c]))
-          E[type+'_transformed'][p,c] = self.universe.energy()
+    if grids:
+      # TODO: Try different transforms
+      from AlGDock.ForceFields.Grid.TrilinearTransformGrid \
+        import TrilinearTransformGridForceField
+      for type in ['LJa','LJr']:
+        E[type+'_transformed'] = np.zeros((12,len(confs)),dtype=np.float)
+        for p in range(12):
+          FF = TrilinearTransformGridForceField(self._FNs['grids'][type], 1.0, \
+            'scaling_factor_'+type, grid_name='%f'%(p+1), \
+            inv_power=-float(p+1), max_val=-1)
+          self.universe.setForceField(FF)
+          for c in range(len(confs)):
+            self.universe.setConfiguration(Configuration(self.universe,confs[c]))
+            E[type+'_transformed'][p,c] = self.universe.energy()
 
     # Store the data
-    self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),E)
+    self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),(confs,E))
 
   ######################
   # Internal Functions #
@@ -1829,10 +1841,7 @@ last modified {2}
             max_X=self.params['dock']['site_max_X'],
             max_R=self.params['dock']['site_max_R'], name='site')
         else:
-          if do_dock:
-            raise Exception('Binding site type not recognized!')
-          else:
-            print 'Binding site type not recognized!'
+          raise Exception('Binding site type not recognized!')
       fflist.append(self._forceFields['site'])
     for scalable in self._scalables:
       if (scalable in lambda_n.keys()) and lambda_n[scalable]>0:
@@ -2233,7 +2242,8 @@ last modified {2}
       if (process=='dock') and (self._dock_cycle==1) and \
          (self._FNs['score'] is not None) and \
          (self._FNs['score']!='default'):
-        (confs,Es) = self._get_confs_to_rescore(nconfs=len(self.dock_protocol))
+        confs = self._get_confs_to_rescore(nconfs=len(self.dock_protocol), \
+          site=True)[0]
         if len(confs)>0:
           self.tee(">>> Reinitializing replica exchange configurations", \
             process='dock')
@@ -2288,7 +2298,7 @@ last modified {2}
 
     return True # The process has completed
 
-  def _get_confs_to_rescore(self, nconfs=None):
+  def _get_confs_to_rescore(self, nconfs=None, site=False):
     """
     Returns configurations to rescore and their corresponding energies 
     as a tuple of lists, ordered by DECREASING energy.
@@ -2310,22 +2320,9 @@ last modified {2}
       if nconfs is None:
         nconfs = 1
       return ([np.copy(conf) for k in range(nconfs)],[E for k in range(nconfs)])
-
-    confs = []
-    count = {'dock6':0, 'initial_dock':0, 'duplicated':0}
     
-    (confs_dock6,E_mol2) = self._read_dock6(self._FNs['score'])
-    if 'site' in self._forceFields.keys():
-      # Add configurations where the ligand is in the binding site
-      self._set_universe_evaluator({'site':True,'T':T_TARGET})
-      for ind in range(len(confs_dock6)):
-        self.universe.setConfiguration(\
-          Configuration(self.universe, confs_dock6[ind]))
-        if self.universe.energy()<1.:
-          confs.append(confs_dock6[ind])
-    else:
-      confs = confs_dock6
-    count['dock6'] = len(confs)
+    (confs,E_mol2) = self._read_dock6(self._FNs['score'], site=site)
+    count = {'dock6':len(confs), 'initial_dock':0, 'duplicated':0}
 
     if self.confs['dock']['seeds'] is not None:
       confs = confs + self.confs['dock']['seeds']
@@ -3279,9 +3276,10 @@ END
     else:
       raise Exception('Unknown trajectory type')
       
-  def _read_dock6(self, pose_FN):
+  def _read_dock6(self, pose_FN, site=False):
     """
     Read output from UCSF DOCK 6.
+    site, if true, will only keep conformations inside the site
     The units of the DOCK suite of programs are 
       lengths in angstroms, 
       masses in atomic mass units, 
@@ -3307,6 +3305,9 @@ END
     models.pop(0)
     
     if len(models)>0:
+      if site:
+        self._set_universe_evaluator({'site':True,'T':T_TARGET})
+
       for line in models[0].split('\n'):
         if line.startswith('##########'):
           label = line[11:line.find(':')].strip()
@@ -3314,12 +3315,18 @@ END
       
       for model in models:
         fields = model.split('<TRIPOS>')
+        
+        crd = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
+          dtype=float)[self.molecule.inv_prmtop_atom_order,:]/10.
+        if site:
+          self.universe.setConfiguration(Configuration(self.universe, crd))
+          if self.universe.energy()>1.:
+            continue
         for line in fields[0].split('\n'):
           if line.startswith('##########'):
             label = line[11:line.find(':')].strip()
             E[label].append(float(line.split()[-1]))
-        crds.append(np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
-          dtype=float)[self.molecule.inv_prmtop_atom_order,:]/10.)
+        crds.append(crd)
     return (crds,E)
 
   def _load_pkl_gz(self, FN):

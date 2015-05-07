@@ -35,15 +35,14 @@ ctypedef np.int_t int_t
 # - The function "evaluate" must have exactly the parameter
 #   list given in this example.
 #
-cdef class BSplineGridTerm(EnergyTerm):
+cdef class BSplineTransformGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
-    cdef float_t strength,inv_power, inv_power_m1, k
+    cdef float_t max_val, strength, inv_power, inv_power_m1, k
     # The __init__ method remembers parameters and loads the potential
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
-
     
     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
         return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
@@ -62,11 +61,11 @@ cdef class BSplineGridTerm(EnergyTerm):
         arr[3] = self.bisplineInterpolate(p[3], y, z)
         return self.splineInterpolate(arr, x)
 
-
     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):
         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(12*p[0]-30*p[1]+24*p[2]-6*p[3]+x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6
 
-# the following functions are used to realize the gradients(first dirivative)
+  # the following functions are used to calculate gradients (first derivative)
+
     cdef float_t derivateOfIntp_X(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
         cdef float_t arr[4]
         arr[0] = self.bisplineInterpolate(p[0], y, z)
@@ -105,7 +104,7 @@ cdef class BSplineGridTerm(EnergyTerm):
         arr[3] = self.derivateOfIntp_Z_2(p[3], y, z)
         return self.splineInterpolate(arr, x)
 
-# the following functions are used to realize the hessian functions(second derivative)
+# the following functions are used to calculate the Hessian (second derivative matrix)
 
     cdef float_t derivateOfIntp_mm(self,float_t p[4],float_t x):
         return (12*p[0]-30*p[1]+24*p[2]-6*p[3]+x*(-6*p[0]+18*p[1]-18*p[2]+6*p[3]))/6
@@ -170,7 +169,7 @@ cdef class BSplineGridTerm(EnergyTerm):
         arr[3] = self.derivateOfIntp_YY_2(p[3], y, z)
         return self.splineInterpolate(arr, x)
 
-# calculate the dvdydz
+# calculate dvdydz
     cdef float_t derivateOfIntp_YZ_2(self,float_t p[4][4],float_t x,float_t y):
         cdef float_t arr[4]
         arr[0] = self.derivateOfIntp(p[0], y)
@@ -187,7 +186,7 @@ cdef class BSplineGridTerm(EnergyTerm):
         arr[3] = self.derivateOfIntp_YZ_2(p[3], y, z)
         return self.splineInterpolate(arr, x)
 
-# calculate the dvdzdz
+# calculate dvdzdz
     cdef float_t derivateOfIntp_ZZ_2(self,float_t p[4][4],float_t x,float_t y):
         cdef float_t arr[4]
         arr[0] = self.derivateOfIntp_mm(p[0], y)
@@ -207,16 +206,17 @@ cdef class BSplineGridTerm(EnergyTerm):
 
 
     def __init__(self, universe, spacing, counts, vals, strength,
-                 scaling_factor, inv_power,grid_name):
+                 scaling_factor, inv_power, grid_name, max_val):
         print "------------test start---------------"
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
-        self.eval_func = <void *>BSplineGridTerm.evaluate
+        self.eval_func = <void *>BSplineTransformGridTerm.evaluate
 
         self.strength = strength
         self.scaling_factor = np.array(scaling_factor, dtype=float)
         self.natoms = len(self.scaling_factor)
         self.grid_name = grid_name
+        self.max_val = max_val
         self.inv_power = float(inv_power)
         self.inv_power_m1 = inv_power - 1.
 
@@ -229,6 +229,12 @@ cdef class BSplineGridTerm(EnergyTerm):
                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
         # To keep atoms within the grid
         self.k = 10000. # kJ/mol nm**2
+
+        # "Cap" the grid values
+        if max_val>0.0:
+          self.vals = max_val*np.tanh(self.vals/max_val)
+        else:
+          self.vals = np.copy(vals)
 
           
     # This method is called for every single energy evaluation, so make
@@ -312,8 +318,9 @@ cdef class BSplineGridTerm(EnergyTerm):
             interpolated=self.trisplineInterpolate(vertex,fx,fy,fz)
             if interpolated==0.0:
                 continue
-            gridEnergy += scaling_factor[atom_index]*interpolated*self.inv_power
+            gridEnergy += scaling_factor[atom_index]*interpolated**self.inv_power
                 # hessian funciton          ************************
+              # TODO: Check whether this is implemented correctly.
             if energy.force_constants !=NULL:
                # x direction
               dvdxdx = self.derivateOfIntp_XX(vertex,fx,fy,fz)

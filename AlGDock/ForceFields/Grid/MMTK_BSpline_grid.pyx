@@ -44,7 +44,6 @@ cdef class BSplineGridTerm(EnergyTerm):
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
 
-    
     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
         return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):
@@ -62,11 +61,11 @@ cdef class BSplineGridTerm(EnergyTerm):
         arr[3] = self.bisplineInterpolate(p[3], y, z)
         return self.splineInterpolate(arr, x)
 
-
     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):
         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(12*p[0]-30*p[1]+24*p[2]-6*p[3]+x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6
 
-# the following functions are used to realize the gradients(first dirivative)
+  # the following functions are used to calculate gradients (first derivative)
+
     cdef float_t derivateOfIntp_X(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
         cdef float_t arr[4]
         arr[0] = self.bisplineInterpolate(p[0], y, z)
