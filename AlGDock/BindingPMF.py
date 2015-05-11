@@ -977,6 +977,9 @@ last modified {2}
     # by clustering configurations and
     # seeing when all clusters have been accessed
     #   Gather snapshots
+    for k in range(self._cool_cycle):
+      if not isinstance(self.confs['cool']['samples'][-1][k], list):
+        self.confs['cool']['samples'][-1][k] = [self.confs['cool']['samples'][-1][k]]
     import itertools
     confs = np.array([conf[self.molecule.heavy_atoms,:] \
       for conf in itertools.chain.from_iterable(\
@@ -1553,6 +1556,9 @@ last modified {2}
     # by clustering configurations and
     # seeing when all clusters have been accessed
     #   Gather snapshots
+    for k in range(self._dock_cycle):
+      if not isinstance(self.confs['dock']['samples'][-1][k], list):
+        self.confs['dock']['samples'][-1][k] = [self.confs['dock']['samples'][-1][k]]
     import itertools
     confs = np.array([conf[self.molecule.heavy_atoms,:] \
       for conf in itertools.chain.from_iterable(\
@@ -1719,23 +1725,35 @@ last modified {2}
     """
     Calculates the energy for poses from self._FNs['score']
     """
+    # Set up universe for minimization
+    if minimize:
+      lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
+      self.dock_protocol = [lambda_o]
+      self._set_universe_evaluator(lambda_o)
+
     # Load the poses
     E = {}
     if self._FNs['score']=='default':
-      confs = [self.confs['ligand']]
-      prefix = 'xtal'
-    else:
-      if not minimize:
-        (confs,E) = self._read_dock6(self._FNs['score'], site=True)
+      if minimize:
+        from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
+        minimizer = SteepestDescentMinimizer(self.universe)
+        self.universe.setConfiguration(\
+          Configuration(self.universe, self.confs['ligand']))
+        minimizer(steps = 1000)
+        confs = [np.copy(self.universe.configuration().array)]
+        prefix = 'min_xtal'
       else:
-        lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
-        self.dock_protocol = [lambda_o]
-        self._set_universe_evaluator(lambda_o)
+        confs = [self.confs['ligand']]
+        prefix = 'xtal'
+    else:
+      if minimize:
         confs = self._get_confs_to_rescore(site=True)[0]
         confs.reverse()
-      prefix = os.path.basename(self._FNs['score']).split('.')[0]
-      if minimize:
-        prefix = 'min_' + prefix
+        prefix = 'min_' + os.path.basename(self._FNs['score']).split('.')[0]
+      else:
+        (confs,E) = self._read_dock6(self._FNs['score'], site=True)
+        prefix = os.path.basename(self._FNs['score']).split('.')[0]
+        
     E = self._calc_E(confs, E, type='all', prefix=prefix)
 
     # Try different grid transformations
@@ -2451,7 +2469,7 @@ last modified {2}
 
     return True # The process has completed
 
-  def _get_confs_to_rescore(self, nconfs=None, site=False):
+  def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True):
     """
     Returns configurations to rescore and their corresponding energies 
     as a tuple of lists, ordered by DECREASING energy.
@@ -2462,50 +2480,49 @@ last modified {2}
     If nconfs is larger than the number of unique configurations, 
     then the lowest energy configuration will be duplicated.
     """
-    lambda_1 = self._lambda(1.0,'dock', \
-      MM=True, site='site' in self._forceFields.keys())
-    
+    # Get configurations
+    count = {'xtal':0, 'dock6':0, 'initial_dock':0, 'duplicated':0}
     if self._FNs['score']=='default':
-      conf = self.confs['ligand']
-      self._set_universe_evaluator(lambda_1)
-      self.universe.setConfiguration(Configuration(self.universe, conf))
-      E = self.universe.energy()
+      confs = [np.copy(self.confs['ligand'])]
       if nconfs is None:
         nconfs = 1
-      return ([np.copy(conf) for k in range(nconfs)],[E for k in range(nconfs)])
-    
-    (confs,E_mol2) = self._read_dock6(self._FNs['score'], site=site)
-    count = {'dock6':len(confs), 'initial_dock':0, 'duplicated':0}
-
-    if self.confs['dock']['seeds'] is not None:
-      confs = confs + self.confs['dock']['seeds']
-      count['initial_dock'] = len(self.confs['dock']['seeds'])
+    else:
+      (confs,E_mol2) = self._read_dock6(self._FNs['score'], site=site)
+      count['dock6'] = len(confs)
+      if self.confs['dock']['seeds'] is not None:
+        confs = confs + self.confs['dock']['seeds']
+        count['initial_dock'] = len(self.confs['dock']['seeds'])
     
     if len(confs)==0:
       return ([],[])
     
     # Minimize each configuration
-    self._set_universe_evaluator(lambda_1)
-    
-    from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
-    minimizer = SteepestDescentMinimizer(self.universe)
+    self._set_universe_evaluator(\
+      self._lambda(1.0,'dock', MM=True, site=site, crossed=False))
 
-    minimized_confs = []
-    minimized_conf_Es = []
+    if minimize:
+      from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
+      minimizer = SteepestDescentMinimizer(self.universe)
 
-    min_start_time = time.time()
-    for conf in confs:
+      minimized_confs = []
+      min_start_time = time.time()
+      for conf in confs:
+        self.universe.setConfiguration(Configuration(self.universe, conf))
+        minimizer(steps = 1000)
+        minimized_confs.append(np.copy(self.universe.configuration().array))
+      confs = minimized_confs
+      self.tee("\n  minimized %d configurations in "%len(confs) + \
+        HMStime(time.time()-min_start_time))
+
+    # Evaluate energies
+    conf_Es = []
+    for confs in confs:
       self.universe.setConfiguration(Configuration(self.universe, conf))
-      minimizer(steps = 1000)
-      minimized_confs.append(np.copy(self.universe.configuration().array))
-      minimized_conf_Es.append(self.universe.energy())
-    self.tee("\n  minimized %d configurations in "%len(confs) + \
-      HMStime(time.time()-min_start_time))
+      conf_Es.append(self.universe.energy())
 
-    # Sort minimized configurations by DECREASING energy
-    Es, confs = \
-      (list(l) for l in zip(*sorted(zip(minimized_conf_Es, minimized_confs), \
-        key=lambda p:p[0], reverse=True)))
+    # Sort configurations by DECREASING energy
+    Es, confs = (list(l) for l in zip(*sorted(zip(conf_Es, confs), \
+      key=lambda p:p[0], reverse=True)))
 
     # Shrink or extend configuration and energy array
     if nconfs is not None:
@@ -2518,8 +2535,9 @@ last modified {2}
       count['nconfs'] = nconfs
     else:
       count['nconfs'] = len(confs)
+    count['minimized'] = {True:'minimized', False:''}[minimized]
 
-    self.tee("  keeping {nconfs} configurations out of {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
+    self.tee("  keeping {nconfs} {minimized} configurations out of {xtal} for xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
     return (confs, Es)
 
   def _run_MBAR(self,u_kln,N_k):
