@@ -1732,29 +1732,20 @@ last modified {2}
       self._set_universe_evaluator(lambda_o)
 
     # Load the poses
-    E = {}
-    if self._FNs['score']=='default':
-      if minimize:
-        from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
-        minimizer = SteepestDescentMinimizer(self.universe)
-        self.universe.setConfiguration(\
-          Configuration(self.universe, self.confs['ligand']))
-        minimizer(steps = 1000)
-        confs = [np.copy(self.universe.configuration().array)]
-        prefix = 'min_xtal'
-      else:
-        confs = [self.confs['ligand']]
-        prefix = 'xtal'
-    else:
-      if minimize:
-        confs = self._get_confs_to_rescore(site=True)[0]
-        confs.reverse()
-        prefix = 'min_' + os.path.basename(self._FNs['score']).split('.')[0]
-      else:
-        (confs,E) = self._read_dock6(self._FNs['score'], site=True)
-        prefix = os.path.basename(self._FNs['score']).split('.')[0]
-        
-    E = self._calc_E(confs, E, type='all', prefix=prefix)
+    (confs, Es) = self._get_confs_to_rescore(site=True, minimize=minimize)
+
+    # Calculate MM energies
+    prefix = 'xtal' if self._FNs['score']=='default' else \
+      os.path.basename(self._FNs['score']).split('.')[0]
+    if minimize:
+      prefix = 'min_' + prefix
+    Es = self._calc_E(confs, Es, type='all', prefix=prefix)
+
+    # Calculate RMSD
+    if self.params['dock']['rmsd'] is not False:
+      Es['rmsd'] = np.array([np.sqrt(((confs[c][self.molecule.heavy_atoms,:] - \
+        self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
+          for c in range(len(confs))])
 
     # Try different grid transformations
     if grids:
@@ -1762,7 +1753,7 @@ last modified {2}
       from AlGDock.ForceFields.Grid.TrilinearTransformGrid \
         import TrilinearTransformGridForceField
       for type in ['LJa','LJr']:
-        E[type+'_transformed'] = np.zeros((12,len(confs)),dtype=np.float)
+        Es[type+'_transformed'] = np.zeros((12,len(confs)),dtype=np.float)
         for p in range(12):
           FF = TrilinearTransformGridForceField(self._FNs['grids'][type], 1.0, \
             'scaling_factor_'+type, grid_name='%f'%(p+1), \
@@ -1770,10 +1761,10 @@ last modified {2}
           self.universe.setForceField(FF)
           for c in range(len(confs)):
             self.universe.setConfiguration(Configuration(self.universe,confs[c]))
-            E[type+'_transformed'][p,c] = self.universe.energy()
+            Es[type+'_transformed'][p,c] = self.universe.energy()
 
     # Store the data
-    self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),(confs,E))
+    self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),(confs,Es))
 
   ######################
   # Internal Functions #
@@ -2274,7 +2265,7 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    per_independent = {'cool':3.0, 'dock':10.0}[process]
+    per_independent = {'cool':5.0, 'dock':25.0}[process]
     # There will be at least per_independent and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
@@ -2484,10 +2475,12 @@ last modified {2}
     count = {'xtal':0, 'dock6':0, 'initial_dock':0, 'duplicated':0}
     if self._FNs['score']=='default':
       confs = [np.copy(self.confs['ligand'])]
+      count['xtal'] = 1
+      Es = {}
       if nconfs is None:
         nconfs = 1
     else:
-      (confs,E_mol2) = self._read_dock6(self._FNs['score'], site=site)
+      (confs,Es) = self._read_dock6(self._FNs['score'], site=site)
       count['dock6'] = len(confs)
       if self.confs['dock']['seeds'] is not None:
         confs = confs + self.confs['dock']['seeds']
@@ -2501,6 +2494,7 @@ last modified {2}
       self._lambda(1.0,'dock', MM=True, site=site, crossed=False))
 
     if minimize:
+      Es = {}
       from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
       minimizer = SteepestDescentMinimizer(self.universe)
 
@@ -2515,29 +2509,30 @@ last modified {2}
         HMStime(time.time()-min_start_time))
 
     # Evaluate energies
-    conf_Es = []
-    for confs in confs:
+    Etot = []
+    for conf in confs:
       self.universe.setConfiguration(Configuration(self.universe, conf))
-      conf_Es.append(self.universe.energy())
+      Etot.append(self.universe.energy())
 
     # Sort configurations by DECREASING energy
-    Es, confs = (list(l) for l in zip(*sorted(zip(conf_Es, confs), \
+    Etot, confs = (list(l) for l in zip(*sorted(zip(Etot, confs), \
       key=lambda p:p[0], reverse=True)))
 
     # Shrink or extend configuration and energy array
     if nconfs is not None:
       confs = confs[-nconfs:]
-      Es = Es[-nconfs:]
+      Etot = Etot[-nconfs:]
       while len(confs)<nconfs:
         confs.append(confs[-1])
-        Es.append(Es[-1])
+        Etot.append(Etot[-1])
         count['duplicated'] += 1
       count['nconfs'] = nconfs
     else:
       count['nconfs'] = len(confs)
-    count['minimized'] = {True:'minimized', False:''}[minimized]
+    count['minimized'] = {True:' minimized', False:''}[minimize]
+    Es['total'] = Etot
 
-    self.tee("  keeping {nconfs} {minimized} configurations out of {xtal} for xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
+    self.tee("  keeping {nconfs}{minimized} configurations out of {xtal} from xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
     return (confs, Es)
 
   def _run_MBAR(self,u_kln,N_k):
