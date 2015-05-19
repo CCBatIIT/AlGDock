@@ -128,6 +128,8 @@ arguments = {
     'help':'Number of replica exchange attempts per sweep'},
   'steps_per_sweep':{'type':int,
     'help':'Number of MD steps per replica exchange sweep'},
+  'snaps_per_independent':{'type':int,
+    'help':'Number of snapshots per independent sample'},
   'keep_intermediate':{'action':'store_true',
     'help':'Keep configurations for intermediate states?'},
   'min_repX_acc':{'type':float,
@@ -160,7 +162,7 @@ for process in ['cool','dock']:
   for key in ['protocol', 'therm_speed', 'sampler',
       'seeds_per_state', 'steps_per_seed',
       'sweeps_per_cycle', 'attempts_per_sweep', 'steps_per_sweep',
-      'keep_intermediate']:
+      'snaps_per_independent', 'keep_intermediate']:
     arguments[process+'_'+key] = copy.deepcopy(arguments[key])
 
 for phase in allowed_phases:
@@ -460,7 +462,7 @@ last modified {2}
     
     args['default_cool'] = {
         'protocol':'Adaptive',
-        'therm_speed':0.9,
+        'therm_speed':0.2,
         'sampler':'NUTS',
         'seeds_per_state':100,
         'steps_per_seed':2500,
@@ -469,6 +471,7 @@ last modified {2}
         'sweeps_per_cycle':200,
         'attempts_per_sweep':100,
         'steps_per_sweep':1000,
+        'snaps_per_independent':3.0,
         'phases':['NAMD_Gas','NAMD_GBSA'],
         'keep_intermediate':False,
         'GMC_attempts': 0,
@@ -481,6 +484,7 @@ last modified {2}
       'MCMC_moves':1,
       'rmsd':False}.items() + \
       [('receptor_'+phase,None) for phase in allowed_phases])
+    args['default_dock']['snaps_per_independent'] = 25.0
 
     # Store passed arguments in dictionary
     for p in ['cool','dock']:
@@ -525,49 +529,8 @@ last modified {2}
       print self.params[p]
 
     self.timing = {'start':time.time(), 'max':kwargs['max_time']}
-
-    self.run_type = kwargs['run_type']
-    if self.run_type=='pose_energies' or self.run_type=='minimized_pose_energies':
-      self.pose_energies(minimize=(self.run_type=='minimized_pose_energies'))
-    elif self.run_type=='store_params':
-      self._save('cool', keys=['progress'])
-      self._save('dock', keys=['progress'])
-    elif self.run_type=='cool': # Sample the cooling process
-      self.cool()
-    elif self.run_type=='dock': # Sample the docking process
-      self.dock()
-    elif self.run_type=='timed': # Timed replica exchange sampling
-      cool_complete = self.cool()
-      if cool_complete:
-        pp_complete = self._postprocess([('cool',-1,-1,'L')])
-        if pp_complete:
-          self.calc_f_L()
-          dock_complete = self.dock()
-          if dock_complete:
-            pp_complete = self._postprocess()
-            if pp_complete:
-              self.calc_f_RL()
-    elif self.run_type=='postprocess': # Postprocessing
-      self._postprocess()
-    elif self.run_type=='redo_postprocess':
-      self._postprocess(redo_dock=True)
-    elif self.run_type=='free_energies': # All free energies
-      self.calc_f_L()
-      self.calc_f_RL()
-    elif self.run_type=='all':
-      self.cool()
-      self.dock()
-      self._postprocess()
-      self.calc_f_L()
-      self.calc_f_RL()
-    elif self.run_type=='clear_intermediates':
-      for process in ['cool','dock']:
-        print 'Clearing intermediates for '+process
-        for state_ind in range(1,len(self.confs[process]['samples'])-1):
-          for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
-            self.confs[process]['samples'][state_ind][cycle_ind] = []
-        self._save(process)
-
+    self._run(kwargs['run_type'])
+    
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
   
@@ -727,6 +690,50 @@ last modified {2}
     self._postprocess(readOnly=True)
     self.calc_f_L(readOnly=True)
     self.calc_f_RL(readOnly=True)
+
+  def _run(self, run_type):
+    self.run_type = run_type
+    if run_type=='pose_energies' or run_type=='minimized_pose_energies':
+      self.pose_energies(minimize=(run_type=='minimized_pose_energies'))
+    elif run_type=='store_params':
+      self._save('cool', keys=['progress'])
+      self._save('dock', keys=['progress'])
+    elif run_type=='cool': # Sample the cooling process
+      self.cool()
+    elif run_type=='dock': # Sample the docking process
+      self.dock()
+    elif run_type=='timed': # Timed replica exchange sampling
+      cool_complete = self.cool()
+      if cool_complete:
+        pp_complete = self._postprocess([('cool',-1,-1,'L')])
+        if pp_complete:
+          self.calc_f_L()
+          dock_complete = self.dock()
+          if dock_complete:
+            pp_complete = self._postprocess()
+            if pp_complete:
+              self.calc_f_RL()
+    elif run_type=='postprocess': # Postprocessing
+      self._postprocess()
+    elif run_type=='redo_postprocess':
+      self._postprocess(redo_dock=True)
+    elif run_type=='free_energies': # All free energies
+      self.calc_f_L()
+      self.calc_f_RL()
+    elif run_type=='all':
+      self.cool()
+      self._postprocess([('cool',-1,-1,'L')])
+      self.calc_f_L()
+      self.dock()
+      self._postprocess()
+      self.calc_f_RL()
+    elif run_type=='clear_intermediates':
+      for process in ['cool','dock']:
+        print 'Clearing intermediates for '+process
+        for state_ind in range(1,len(self.confs[process]['samples'])-1):
+          for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
+            self.confs[process]['samples'][state_ind][cycle_ind] = []
+        self._save(process)
 
   ###########
   # Cooling #
@@ -1424,17 +1431,30 @@ last modified {2}
 
         self._dock_cycle += 1
 
-      # Save progress
-      self._save('dock')
-      self.tee("")
-
+      # Save progress every 5 minutes
+      if ('last_dock_save' not in self._timing) or \
+         ((time.time()-self._timing['last_dock_save'])>5*60):
+        self._save('dock')
+        self.tee("")
+        self._timing['last_dock_save'] = time.time()
+        saved = True
+      else:
+        saved = False
+      
       if self.run_type=='timed':
         remaining_time = self.timing['max']*60 - \
           (time.time()-self.timing['start'])
         if remaining_time<0:
+          if not saved:
+            self._save('dock')
+            self.tee("")
           self.tee("  no time remaining for initial dock")
           self._clear_lock('dock')
           return False
+
+    if not saved:
+      self._save('dock')
+      self.tee("")
 
     self.tee("Elapsed time for initial docking of " + \
       "%d states: "%len(self.dock_protocol) + \
@@ -2019,7 +2039,7 @@ last modified {2}
       #
       BAT_converter.BAT_to_crossover = torsions_to_crossover
       if len( BAT_converter.BAT_to_crossover ) == 0:
-        print '  GMC No BAT to crossover.'
+        self.tee('  GMC No BAT to crossover')
       state_indices = range( K )
       state_indices_to_swap = zip( state_indices[0::2], state_indices[1::2] ) + \
                       zip( state_indices[1::2], state_indices[2::2] )
@@ -2062,7 +2082,7 @@ last modified {2}
       while True:
         sweep_count += 1
         if (sweep_count * K) > (1000 * nr_attempts):
-          print '  GMC Sweep too many times, but few attempted. Consider reducing torsion_threshold.'
+          self.tee('  GMC Sweep too many times, but few attempted. Consider reducing torsion_threshold.')
           return attempt_count, acc_count
         #
         for state_pair in state_indices_to_swap:
@@ -2153,19 +2173,14 @@ last modified {2}
     # GMC
     whether_do_gMC = self.params[process]['GMC_attempts'] > 0
     if whether_do_gMC:
-      print ' '
-      print '  GMC in %s process' %process
+      self.tee('  Using GMC for %s' %process)
       nr_gMC_attempts = K * self.params[process]['GMC_attempts']
       torsion_threshold = self.params[process]['GMC_tors_threshold']
       gMC_attempt_count = 0
       gMC_acc_count     = 0
       gMC_time = 0.0
       BAT_converter, state_indices_to_swap = gMC_initial_setup()
-    else:
-      print ' '
-      print '  Not doing GMC'
-      print ' '
-    #
+
     # Do replica exchange
     MC_time = 0.0
     repX_time = 0.0
@@ -2246,12 +2261,12 @@ last modified {2}
 
     # GMC
     if whether_do_gMC:
-      print '  GMC Number of attempts = %d' % gMC_attempt_count
-      print '  GMC Number of accepted attempts = %d' % gMC_acc_count
-      acc_rate = float(gMC_acc_count) / float( gMC_attempt_count ) if gMC_attempt_count > 0 else 0 
-      print '  GMC Acceptance rate = %10.5f' % acc_rate
-      print '  GMC Time spent on gMC = %s' % HMStime(gMC_time)
-      print ' '
+      self.tee('  {0}/{1} crossover attempts ({2:.3g}) accepted in {3}'.format(\
+        gMC_acc_count, gMC_attempt_count, \
+        float(gMC_acc_count)/float(gMC_attempt_count) \
+          if gMC_attempt_count > 0 else 0, \
+        HMStime(gMC_time)))
+
     # Estimate relaxation time from empirical state transition matrix
     state_inds = np.array(storage['state_inds'])
     Nij = np.zeros((K,K),dtype=int)
@@ -2265,12 +2280,12 @@ last modified {2}
     
     # Estimate relaxation time from autocorrelation
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    per_independent = {'cool':5.0, 'dock':25.0}[process]
     # There will be at least per_independent and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
     # max(self.params['dock']['sweeps_per_cycle']/per_independent)
     # is the maximum stride, which gives per_independent samples if possible.
+    per_independent = self.params[process]['snaps_per_independent']
     stride = min(max(int(np.ceil((1+2*tau_ac)/per_independent)),1), \
                  max(int(np.ceil(self.params[process]['sweeps_per_cycle']/per_independent)),1))
 
@@ -2404,11 +2419,12 @@ last modified {2}
       if (process=='dock') and (self._dock_cycle==1) and \
          (self._FNs['score'] is not None) and \
          (self._FNs['score']!='default'):
-        confs = self._get_confs_to_rescore(nconfs=len(self.dock_protocol), \
-          site=True)[0]
+        self._set_lock('dock')
+        self.tee(">>> Reinitializing replica exchange configurations")
+        confs = self._get_confs_to_rescore(\
+          nconfs=len(self.dock_protocol), site=True)[0]
+        self._clear_lock('dock')
         if len(confs)>0:
-          self.tee(">>> Reinitializing replica exchange configurations", \
-            process='dock')
           self.confs['dock']['replicas'] = confs
 
       self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\

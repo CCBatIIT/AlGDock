@@ -64,7 +64,7 @@ search_paths = {
     'modeller':['/Library/modeller-9.13/bin/mod9.14',
                 '/share/apps/modeller/9.13/bin/mod9.14'],
                # Submits a command to the queue
-'qsub_command':['/Users/dminh/Documents/scripts/qsub_command.py',
+'qsub_command':['/Users/dminh/scripts/qsub_command.py',
                 '~/scripts/qsub_command.py',
                 '/home/dminh/scripts/qsub_command.py',
                 '/home/daveminh/scripts/qsub_command.py'],
