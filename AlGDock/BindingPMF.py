@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# TODO: Heat capacity calculation
-
 import os # Miscellaneous operating system interfaces
 from os.path import join
 import cPickle as pickle
@@ -980,10 +978,6 @@ last modified {2}
       time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
     free_energy_start_time = time.time()
       
-    # Estimate cycle at which simulation has equilibrated
-    # by clustering configurations and
-    # seeing when all clusters have been accessed
-    #   Gather snapshots
     for k in range(self._cool_cycle):
       if not isinstance(self.confs['cool']['samples'][-1][k], list):
         self.confs['cool']['samples'][-1][k] = [self.confs['cool']['samples'][-1][k]]
@@ -993,23 +987,9 @@ last modified {2}
       [self.confs['cool']['samples'][-1][k] for k in range(self._cool_cycle)])])
     cum_Nk = np.cumsum([len(self.confs['cool']['samples'][-1][k]) \
       for k in range(self._cool_cycle)])
-    #   RMSD matrix
-    import sys
-    original_stdout = sys.stdout
-    sys.stdout = NullDevice()
-    from pyRMSD.matrixHandler import MatrixHandler
-    rmsd_matrix = MatrixHandler().createMatrix(confs,'QCP_SERIAL_CALCULATOR')
-    sys.stdout = original_stdout
-    #   Clustering
-    import scipy.cluster
-    Z = scipy.cluster.hierarchy.complete(rmsd_matrix.get_data())
-    assignments = np.array(\
-      scipy.cluster.hierarchy.fcluster(Z, 0.2, criterion='distance'))
-    cum_Nclusters = [len(set(assignments[:cum_Nk[k]])) \
-      for k in range(self._cool_cycle)]
-    self.stats_L['equilibrated_cycle'] = \
-      [max(cum_Nclusters.index(cum_Nclusters[c]),int(c>0)) \
-      for c in range(len(cum_Nclusters))]
+
+    (self.stats_L['equilibrated_cycle'], assignments) = \
+      self._get_equilibrated_cycle(confs, cum_Nk, 'cool')
 
     # Calculate solvation free energies that have not already been calculated,
     # in units of RT
@@ -1432,11 +1412,11 @@ last modified {2}
         self._dock_cycle += 1
 
       # Save progress every 5 minutes
-      if ('last_dock_save' not in self._timing) or \
-         ((time.time()-self._timing['last_dock_save'])>5*60):
+      if ('last_dock_save' not in self.timing) or \
+         ((time.time()-self.timing['last_dock_save'])>5*60):
         self._save('dock')
         self.tee("")
-        self._timing['last_dock_save'] = time.time()
+        self.timing['last_dock_save'] = time.time()
         saved = True
       else:
         saved = False
@@ -1585,33 +1565,15 @@ last modified {2}
       [self.confs['dock']['samples'][-1][k] for k in range(self._dock_cycle)])])
     cum_Nk = np.cumsum([len(self.confs['dock']['samples'][-1][k]) \
       for k in range(self._dock_cycle)])
-    #   RMSD matrix
-    import sys
-    original_stdout = sys.stdout
-    original_stderr = sys.stderr
-    sys.stdout = NullDevice()
-    sys.stderr = NullDevice()
-    from pyRMSD.matrixHandler import MatrixHandler
-    rmsd_matrix = MatrixHandler().createMatrix(confs,'NOSUP_SERIAL_CALCULATOR')
-    sys.stdout = original_stdout
-    sys.stderr = original_stderr
-    #   Clustering
-    import scipy.cluster
-    Z = scipy.cluster.hierarchy.complete(rmsd_matrix.get_data())
-    assignments = np.array(\
-      scipy.cluster.hierarchy.fcluster(Z, 0.2, criterion='distance'))
-    cum_Nclusters = [len(set(assignments[:cum_Nk[k]])) \
-      for k in range(self._dock_cycle)]
-    if ('cum_Nclusters' not in self.stats_RL.keys()) or \
-       (self.stats_RL['cum_Nclusters']!= cum_Nclusters):
+    
+    eqc_o = self.stats_RL['equilibrated_cycle']
+    (self.stats_RL['equilibrated_cycle'], assignments) = \
+      self._get_equilibrated_cycle(confs, cum_Nk, 'dock')
+    
+    if self.stats_RL['equilibrated_cycle']!=eqc_o:
       updated = True
-    self.stats_RL['cum_Nclusters'] = cum_Nclusters
-    self.stats_RL['equilibrated_cycle'] = \
-      [max(cum_Nclusters.index(cum_Nclusters[c]),int(c>0)) \
-      for c in range(len(cum_Nclusters))]
-
-    equilibrated_cycle = self.stats_RL['equilibrated_cycle'][-1]
-    Neq = cum_Nk[equilibrated_cycle-1]
+    
+    Neq = cum_Nk[max(self.stats_RL['equilibrated_cycle'][-1]-1,0)]
     assignments = assignments[Neq:]
 
     def linear_index_to_pair(ind):
@@ -1625,9 +1587,9 @@ last modified {2}
     lowest_e_ind = {}
     for phase in (['sampled']+self.params['dock']['phases']):
       un = np.concatenate([self.stats_RL['u_K_'+phase][c] \
-        for c in range(equilibrated_cycle,self._dock_cycle)])
+        for c in range(self.stats_RL['equilibrated_cycle'][-1],self._dock_cycle)])
       uo = np.concatenate([self.stats_RL['u_K_sampled'][c] \
-        for c in range(equilibrated_cycle,self._dock_cycle)])
+        for c in range(self.stats_RL['equilibrated_cycle'][-1],self._dock_cycle)])
       du = un-uo
       min_du = min(du)
       weights = np.exp(-du+min_du)
@@ -1740,6 +1702,43 @@ last modified {2}
     self.tee("\nElapsed time for binding PMF estimation: " + \
       HMStime(time.time()-BPMF_start_time))
     self._clear_lock('dock')
+
+  def _get_equilibrated_cycle(self, confs, cum_Nk, process):
+    # RMSD matrix
+    import sys
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    sys.stdout = NullDevice()
+    sys.stderr = NullDevice()
+    from pyRMSD.matrixHandler import MatrixHandler
+    rmsd_matrix = MatrixHandler().createMatrix(confs, \
+      {'cool':'QCP_SERIAL_CALCULATOR', \
+       'dock':'NOSUP_SERIAL_CALCULATOR'}[process])
+    sys.stdout = original_stdout
+    sys.stderr = original_stderr
+
+    # Clustering
+    import scipy.cluster
+    Z = scipy.cluster.hierarchy.complete(rmsd_matrix.get_data())
+    assignments = np.array(\
+      scipy.cluster.hierarchy.fcluster(Z, 0.1, criterion='distance'))
+
+    # Reindexes the assignments in order of appearance
+    new_index = 0
+    mapping_to_new_index = {}
+    for assignment in assignments:
+      if not assignment in mapping_to_new_index.keys():
+        mapping_to_new_index[assignment] = new_index
+        new_index += 1
+    assignments = [mapping_to_new_index[a] for a in assignments]
+
+    # The equilibrated cycle is when the mode is first observed
+    mode_observed = [\
+      np.argmax(assignments==scipy.stats.mode(assignments[:cum_Nk[c]])[0][0]) \
+      for c in range(getattr(self,'_%s_cycle'%process))]
+    equilibrated_cycle = [max(np.argmax(mode_observed[c]<cum_Nk),int(c>0)) \
+      for c in range(getattr(self,'_%s_cycle'%process))]
+    return (equilibrated_cycle, assignments)
 
   def pose_energies(self, minimize=False, grids=False):
     """

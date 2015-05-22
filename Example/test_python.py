@@ -26,8 +26,8 @@ for run_type in ['cool','dock','postprocess','free_energies']:
     site_density=10., \
     phases=['NAMD_Gas','NAMD_GBSA'], \
     cores=-1, \
-    rmsd=True, \
-    run_type=run_type)
+    rmsd=True)
+  self._run(run_type)
   del self
 
 # site='Sphere', site_center=[1.91650, 1.91650, 1.91650], site_max_R=0.01, \
