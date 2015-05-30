@@ -85,7 +85,7 @@ arguments = {
   'grid_LJr':{'help':'DX file for Lennard-Jones repulsive grid'},
   'grid_LJa':{'help':'DX file for Lennard-Jones attractive grid'},
   'grid_ELE':{'help':'DX file for electrostatic grid'},
-  'score':{'help':"Starting configuration(s) for replica exchange. Can be a mol2 file or 'default'"},
+  'score':{'help':"Starting configuration(s) for replica exchange. Can be a mol2 file, .pkl.gz file, or 'default'"},
   # Simulation settings and constants
   #   Run-dependent 
   'cool_repX_cycles':{'type':int,
@@ -413,7 +413,10 @@ last modified {2}
   
     # Default: a force field modification is in the same directory as the ligand
     if (self._FNs['frcmodList'] is None):
-      dir_lig = os.path.dirname(self._FNs['prmtop']['L'])
+      if self._FNs['prmtop']['L'] is not None:
+        dir_lig = os.path.dirname(self._FNs['prmtop']['L'])
+      else:
+        dir_lig = '.'
       frcmod = a.findPath([\
         os.path.abspath(join(dir_lig, \
           os.path.basename(self._FNs['prmtop']['L'])[:-7]+'.frcmod')),\
@@ -558,11 +561,6 @@ last modified {2}
     self._evaluators = {} # Store evaluators
     self._ligand_natoms = self.universe.numberOfAtoms()
 
-    # If poses are being rescored, start with a docked structure
-    (confs_dock6,E_mol2) = self._read_dock6(self._FNs['score'])
-    if len(confs_dock6)>0:
-      self.universe.setConfiguration(Configuration(self.universe,confs_dock6[0]))
-
     # Force fields
     from MMTK.ForceFields import Amber12SBForceField
 
@@ -684,6 +682,11 @@ last modified {2}
         'gcent':[full_center, focus_center], \
         'spacing':[full_spacing, focus_spacing]}
 
+    # If poses are being rescored, start with a docked structure
+    (confs,Es) = self._get_confs_to_rescore(energies=False)
+    if len(confs)>0:
+      self.universe.setConfiguration(Configuration(self.universe,confs[-1]))
+
     # Load progress
     self._postprocess(readOnly=True)
     self.calc_f_L(readOnly=True)
@@ -698,8 +701,10 @@ last modified {2}
       self._save('dock', keys=['progress'])
     elif run_type=='cool': # Sample the cooling process
       self.cool()
+      self.calc_f_L()
     elif run_type=='dock': # Sample the docking process
       self.dock()
+      self.calc_f_RL()
     elif run_type=='timed': # Timed replica exchange sampling
       cool_complete = self.cool()
       if cool_complete:
@@ -977,19 +982,25 @@ last modified {2}
     start_string = "\n>>> Ligand free energy calculations, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
     free_energy_start_time = time.time()
-      
-    for k in range(self._cool_cycle):
-      if not isinstance(self.confs['cool']['samples'][-1][k], list):
-        self.confs['cool']['samples'][-1][k] = [self.confs['cool']['samples'][-1][k]]
-    import itertools
-    confs = np.array([conf[self.molecule.heavy_atoms,:] \
-      for conf in itertools.chain.from_iterable(\
-      [self.confs['cool']['samples'][-1][k] for k in range(self._cool_cycle)])])
-    cum_Nk = np.cumsum([len(self.confs['cool']['samples'][-1][k]) \
-      for k in range(self._cool_cycle)])
 
-    (self.stats_L['equilibrated_cycle'], assignments) = \
-      self._get_equilibrated_cycle(confs, cum_Nk, 'cool')
+    # Store stats_L internal energies
+    self.stats_L['u_K_sampled'] = \
+      [self._u_kln([self.cool_Es[-1][c]],[self.cool_protocol[-1]]) \
+        for c in range(self._cool_cycle)]
+    self.stats_L['u_KK'] = \
+      [np.sum([self._u_kln([self.cool_Es[k][c]],[self.cool_protocol[k]]) \
+        for k in range(len(self.cool_protocol))],0) \
+          for c in range(self._cool_cycle)]
+    for phase in self.params['cool']['phases']:
+      self.stats_L['u_K_'+phase] = \
+        [self.cool_Es[-1][c]['L'+phase][:,-1]/RT_TARGET \
+          for c in range(self._cool_cycle)]
+
+    # Estimate cycle at which simulation has equilibrated and predict native pose
+    self.stats_L['equilibrated_cycle'] = self._get_equilibrated_cycle('cool')
+    (self.stats_L['predicted_pose_index'], \
+     self.stats_L['lowest_energy_pose_index']) = \
+      self._get_pose_prediction('cool', self.stats_L['equilibrated_cycle'][-1])
 
     # Calculate solvation free energies that have not already been calculated,
     # in units of RT
@@ -1553,61 +1564,16 @@ last modified {2}
            self.original_Es[0][0]['R'+phase][-1])/RT_TARGET)
     
     # Estimate cycle at which simulation has equilibrated
-    # by clustering configurations and
-    # seeing when all clusters have been accessed
-    #   Gather snapshots
-    for k in range(self._dock_cycle):
-      if not isinstance(self.confs['dock']['samples'][-1][k], list):
-        self.confs['dock']['samples'][-1][k] = [self.confs['dock']['samples'][-1][k]]
-    import itertools
-    confs = np.array([conf[self.molecule.heavy_atoms,:] \
-      for conf in itertools.chain.from_iterable(\
-      [self.confs['dock']['samples'][-1][k] for k in range(self._dock_cycle)])])
-    cum_Nk = np.cumsum([len(self.confs['dock']['samples'][-1][k]) \
-      for k in range(self._dock_cycle)])
-    
     eqc_o = self.stats_RL['equilibrated_cycle']
-    (self.stats_RL['equilibrated_cycle'], assignments) = \
-      self._get_equilibrated_cycle(confs, cum_Nk, 'dock')
-    
+    self.stats_RL['equilibrated_cycle'] = self._get_equilibrated_cycle('dock')
     if self.stats_RL['equilibrated_cycle']!=eqc_o:
       updated = True
     
-    Neq = cum_Nk[max(self.stats_RL['equilibrated_cycle'][-1]-1,0)]
-    assignments = assignments[Neq:]
+    # Predict native pose
+    (self.stats_RL['predicted_pose_index'], \
+     self.stats_RL['lowest_energy_pose_index']) = \
+      self._get_pose_prediction('dock', self.stats_RL['equilibrated_cycle'][-1])
 
-    def linear_index_to_pair(ind):
-      indF = ind+Neq
-      cycle = list(indF<cum_Nk).index(True)
-      n = indF-cum_Nk[cycle-1]
-      return (cycle,n)
-
-    # Find lowest energy pose in most populated cluster (after equilibration)
-    pose_ind = {}
-    lowest_e_ind = {}
-    for phase in (['sampled']+self.params['dock']['phases']):
-      un = np.concatenate([self.stats_RL['u_K_'+phase][c] \
-        for c in range(self.stats_RL['equilibrated_cycle'][-1],self._dock_cycle)])
-      uo = np.concatenate([self.stats_RL['u_K_sampled'][c] \
-        for c in range(self.stats_RL['equilibrated_cycle'][-1],self._dock_cycle)])
-      du = un-uo
-      min_du = min(du)
-      weights = np.exp(-du+min_du)
-      cluster_counts = np.histogram(assignments, \
-        bins=np.arange(len(set(assignments))+1)+0.5,
-        weights=weights)[0]
-      top_cluster = np.argmax(cluster_counts)
-      pose_ind[phase] = linear_index_to_pair(\
-        np.argmin(un+(assignments!=top_cluster)*np.max(un)))
-      lowest_e_ind[phase] = linear_index_to_pair(np.argmin(un))
-    self.stats_RL['predicted_pose_index'] = pose_ind
-    self.stats_RL['lowest_energy_pose_index'] = lowest_e_ind
-
-    # Store NUTS acceptance statistic
-    self.stats_RL['Ht'] = [self.dock_Es[0][c]['Ht'] \
-      if 'Ht' in self.dock_Es[-1][c].keys() else [] \
-      for c in range(self._dock_cycle)]
-      
     # Autocorrelation time for all replicas
     if updated:
       paths = np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
@@ -1635,6 +1601,9 @@ last modified {2}
       self.f_RL['grid_MBAR'].append(MBAR)
       self.f_RL['grid_BAR'].append(BAR)
       updated = True
+
+      self.B['MBAR'].append(\
+        self.f_L['cool_MBAR'][-1][-1] + self.f_RL['grid_MBAR'][-1][-1])
 
       # Average acceptance probabilities
       mean_acc = np.zeros(K-1)
@@ -1666,8 +1635,8 @@ last modified {2}
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
         du = np.concatenate([self.stats_RL['u_K_'+phase][c] - \
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
-        min_du = min(du)
         # Complex solvation
+        min_du = min(du)
         B_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
         weights = np.exp(-du+min_du)
         weights = weights/sum(weights)
@@ -1703,7 +1672,40 @@ last modified {2}
       HMStime(time.time()-BPMF_start_time))
     self._clear_lock('dock')
 
-  def _get_equilibrated_cycle(self, confs, cum_Nk, process):
+  def _get_equilibrated_cycle(self, process):
+    # Estimate cycle at which simulation has equilibrated
+    u_KKs = [np.sum([self._u_kln(\
+      [getattr(self,process+'_Es')[k][c]], [getattr(self,process+'_protocol')[k]]) \
+        for k in range(len(getattr(self,process+'_protocol')))],0) \
+          for c in range(getattr(self,'_%s_cycle'%process))]
+    mean_u_KKs = np.array([np.mean(u_KK) for u_KK in u_KKs])
+    std_u_KKs = np.array([np.std(u_KK) for u_KK in u_KKs])
+
+    equilibrated_cycle = []
+    for c in range(getattr(self,'_%s_cycle'%process)):
+      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<std_u_KKs[c]
+      if nearMean.any():
+        nearMean = list(nearMean).index(True)
+      else:
+        nearMean = c
+      if c>0: # If possible, reject burn-in
+        nearMean = max(nearMean,1)
+      equilibrated_cycle.append(nearMean)
+    return equilibrated_cycle
+  
+  def _get_pose_prediction(self, process, equilibrated_cycle):
+    # Gather snapshots
+    for k in range(getattr(self,'_%s_cycle'%process)):
+      if not isinstance(self.confs[process]['samples'][-1][k], list):
+        self.confs[process]['samples'][-1][k] = [self.confs[process]['samples'][-1][k]]
+    import itertools
+    confs = np.array([conf[self.molecule.heavy_atoms,:] \
+      for conf in itertools.chain.from_iterable(\
+      [self.confs[process]['samples'][-1][c] \
+        for c in range(getattr(self,'_%s_cycle'%process))])])
+    cum_Nk = np.cumsum([len(self.confs[process]['samples'][-1][c]) \
+      for c in range(getattr(self,'_%s_cycle'%process))])
+
     # RMSD matrix
     import sys
     original_stdout = sys.stdout
@@ -1732,13 +1734,39 @@ last modified {2}
         new_index += 1
     assignments = [mapping_to_new_index[a] for a in assignments]
 
-    # The equilibrated cycle is when the mode is first observed
-    mode_observed = [\
-      np.argmax(assignments==scipy.stats.mode(assignments[:cum_Nk[c]])[0][0]) \
-      for c in range(getattr(self,'_%s_cycle'%process))]
-    equilibrated_cycle = [max(np.argmax(mode_observed[c]<cum_Nk),int(c>0)) \
-      for c in range(getattr(self,'_%s_cycle'%process))]
-    return (equilibrated_cycle, assignments)
+    Neq = cum_Nk[max(equilibrated_cycle - 1,0)]
+    assignments = assignments[Neq:]
+
+    def linear_index_to_pair(ind):
+      indF = ind+Neq
+      cycle = list(indF<cum_Nk).index(True)
+      n = indF-cum_Nk[cycle-1]
+      return (cycle,n)
+
+    if process=='dock':
+      stats = self.stats_RL
+    else:
+      stats = self.stats_L
+
+    # Find lowest energy pose in most populated cluster (after equilibration)
+    pose_ind = {}
+    lowest_e_ind = {}
+    for phase in (['sampled']+self.params[process]['phases']):
+      un = np.concatenate([stats['u_K_'+phase][c] \
+        for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+      uo = np.concatenate([stats['u_K_sampled'][c] \
+        for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+      du = un-uo
+      min_du = min(du)
+      weights = np.exp(-du+min_du)
+      cluster_counts = np.histogram(assignments, \
+        bins=np.arange(len(set(assignments))+1)+0.5,
+        weights=weights)[0]
+      top_cluster = np.argmax(cluster_counts)
+      pose_ind[phase] = linear_index_to_pair(\
+        np.argmin(un+(assignments!=top_cluster)*np.max(un)))
+      lowest_e_ind[phase] = linear_index_to_pair(np.argmin(un))
+    return (pose_ind, lowest_e_ind)
 
   def pose_energies(self, minimize=False, grids=False):
     """
@@ -2475,7 +2503,7 @@ last modified {2}
 
     return True # The process has completed
 
-  def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True):
+  def _get_confs_to_rescore(self, nconfs=None, site=False, energies=True, minimize=True):
     """
     Returns configurations to rescore and their corresponding energies 
     as a tuple of lists, ordered by DECREASING energy.
@@ -2494,15 +2522,25 @@ last modified {2}
       Es = {}
       if nconfs is None:
         nconfs = 1
-    else:
+    elif self._FNs['score'].endswith('.mol2'):
       (confs,Es) = self._read_dock6(self._FNs['score'], site=site)
       count['dock6'] = len(confs)
       if self.confs['dock']['seeds'] is not None:
         confs = confs + self.confs['dock']['seeds']
         count['initial_dock'] = len(self.confs['dock']['seeds'])
+    elif self._FNs['score'].endswith('.pkl.gz'):
+      F = gzip.open(self._FNs['score'],'r')
+      confs = pickle.load(F)
+      F.close()
+      if not isinstance(confs, list):
+        confs = [confs]
+      Es = {}
     
     if len(confs)==0:
       return ([],[])
+    
+    if not energies:
+      return (confs,[])
     
     # Minimize each configuration
     self._set_universe_evaluator(\
@@ -3545,14 +3583,12 @@ END
       data_FN = join(self.dir[p],'%s_data.pkl.gz.BAK'%(p))
       saved = {'progress':self._load_pkl_gz(progress_FN),
                'data':self._load_pkl_gz(data_FN)}
-      if (saved['progress'] is None) or (saved['data'] is None):
-        if os.path.isfile(progress_FN):
-          os.remove(progress_FN)
-        if os.path.isfile(data_FN):
-          os.remove(data_FN)
+      if (saved['progress'] is None):
+        print '  missing progress information in %s'%p
+      elif (saved['data'] is None):
+        print '  missing data in %s'%p
       else:
-        print '  using backed up progress and data for %s progress'%p
-
+        print '  using stored progress and data in %s'%p
     self._clear(p)
     
     params = None
