@@ -36,10 +36,6 @@ import psutil
 #############
 
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
-T_HIGH = 600.0 * MMTK.Units.K
-T_TARGET = 300.0 * MMTK.Units.K
-RT_HIGH = R * T_HIGH
-RT_TARGET = R * T_TARGET
 
 term_map = {
   'cosine dihedral angle':'MM',
@@ -112,6 +108,10 @@ arguments = {
     'help':'Sampling method'},
   'MCMC_moves':{'type':int,
     'help':'Types of MCMC moves to use'},
+  'T_HIGH':{'type':float, 'default':600.0,
+    'help':'High temperature'},
+  'T_TARGET':{'type':float, 'default':300.0,
+    'help':'Target temperature'},
   # For initialization
   'seeds_per_state':{'type':int,
     'help':'Number of starting configurations in each state during initialization'},
@@ -464,6 +464,8 @@ last modified {2}
     args['default_cool'] = {
         'protocol':'Adaptive',
         'therm_speed':0.2,
+        'T_HIGH':600.,
+        'T_TARGET':300.,
         'sampler':'NUTS',
         'seeds_per_state':100,
         'steps_per_seed':2500,
@@ -520,6 +522,10 @@ last modified {2}
           self.params['dock']['receptor_'+phase]
       else:
         self.original_Es[0][0]['R'+phase] = None
+        
+    self.T_HIGH = self.params['cool']['T_HIGH']
+    self.T_TARGET = self.params['cool']['T_TARGET']
+    self.RT_TARGET = R * self.params['cool']['T_TARGET']
 
     print '\n*** Setting up the simulation ***'
     self._setup_universe(do_dock = do_dock)
@@ -656,7 +662,7 @@ last modified {2}
       def roundUpDime(x):
         return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
 
-      self._set_universe_evaluator({'MM':True, 'T':T_HIGH, 'ELE':1})
+      self._set_universe_evaluator({'MM':True, 'T':self.T_HIGH, 'ELE':1})
       gd = self._forceFields['ELE'].grid_data
       focus_dims = roundUpDime(gd['counts'])
       focus_center = factor*(gd['counts']*gd['spacing']/2. + gd['origin'])
@@ -743,8 +749,8 @@ last modified {2}
   ###########
   def initial_cool(self, warm=True):
     """
-    Warms the ligand from T_TARGET to T_HIGH, or
-    cools the ligand from T_HIGH to T_TARGET
+    Warms the ligand from self.T_TARGET to self.T_HIGH, or
+    cools the ligand from self.T_HIGH to self.T_TARGET
     
     Intermediate thermodynamic states are chosen such that
     thermodynamic length intervals are approximately constant.
@@ -758,10 +764,10 @@ last modified {2}
     cool_start_time = time.time()
 
     if warm:
-      T_START, T_END = T_TARGET, T_HIGH
+      T_START, T_END = self.T_TARGET, self.T_HIGH
       direction_name = 'warm'
     else:
-      T_START, T_END = T_HIGH, T_TARGET
+      T_START, T_END = self.T_HIGH, self.T_TARGET
       direction_name = 'cool'
 
     if self.cool_protocol==[]:
@@ -832,18 +838,18 @@ last modified {2}
         dL = self.params['cool']['therm_speed']/tL_tensor
         if warm:
           T = To + dL
-          if T > T_HIGH:
-            T = T_HIGH
+          if T > self.T_HIGH:
+            T = self.T_HIGH
             crossed = True
         else:
           T = To - dL
-          if T < T_TARGET:
-            T = T_TARGET
+          if T < self.T_TARGET:
+            T = self.T_TARGET
             crossed = True
       else:
         raise Exception('No variance in configuration energies')
       self.cool_protocol.append(\
-        {'T':T, 'a':(T_HIGH-T)/(T_HIGH-T_TARGET), 'MM':True, 'crossed':crossed})
+        {'T':T, 'a':(self.T_HIGH-T)/(self.T_HIGH-self.T_TARGET), 'MM':True, 'crossed':crossed})
 
       # Randomly select seeds for new trajectory
       logweight = Es_MM/R*(1/T-1/To)
@@ -936,7 +942,7 @@ last modified {2}
   def cool(self):
     """
     Samples different ligand configurations 
-    at thermodynamic states between T_HIGH and T_TARGET
+    at thermodynamic states between self.T_HIGH and self.T_TARGET
     """
     return self._sim_process('cool')
 
@@ -945,7 +951,7 @@ last modified {2}
     Calculates ligand-specific free energies:
     1. solvation free energy of the ligand using single-step 
        free energy perturbation
-    2. reduced free energy of cooling the ligand from T_HIGH to T_TARGET
+    2. reduced free energy of cooling the ligand from self.T_HIGH to self.T_TARGET
     """
     # Initialize variables as empty lists or by loading data
     f_L_FN = join(self.dir['cool'],'f_L.pkl.gz')
@@ -993,7 +999,7 @@ last modified {2}
           for c in range(self._cool_cycle)]
     for phase in self.params['cool']['phases']:
       self.stats_L['u_K_'+phase] = \
-        [self.cool_Es[-1][c]['L'+phase][:,-1]/RT_TARGET \
+        [self.cool_Es[-1][c]['L'+phase][:,-1]/self.RT_TARGET \
           for c in range(self._cool_cycle)]
 
     # Estimate cycle at which simulation has equilibrated and predict native pose
@@ -1026,7 +1032,7 @@ last modified {2}
           self.cool_Es[-1][n]['L'+phase] for n in range(fromCycle,toCycle)])
         u_MM = np.concatenate([\
           self.cool_Es[-1][n]['MM'] for n in range(fromCycle,toCycle)])
-        du_F = (u_phase[:,-1] - u_MM)/RT_TARGET
+        du_F = (u_phase[:,-1] - u_MM)/self.RT_TARGET
         min_du_F = min(du_F)
         f_L_solv = -np.log(np.exp(-du_F+min_du_F).mean()) + min_du_F
 
@@ -1111,7 +1117,7 @@ last modified {2}
     # Set up the force field with full interaction grids
     lambda_scalables = dict(zip(\
       self._scalables,np.ones(len(self._scalables),dtype=int)) + \
-      [('T',T_HIGH),('site',True)])
+      [('T',self.T_HIGH),('site',True)])
     self._set_universe_evaluator(lambda_scalables)
 
     # Either loads or generates the random translations and rotations for the first state of docking
@@ -1246,7 +1252,7 @@ last modified {2}
         else:
           # Ramp up the temperature
           T_LOW = 20.
-          T_SERIES = T_LOW*(T_TARGET/T_LOW)**(np.arange(30)/29.)
+          T_SERIES = T_LOW*(self.T_TARGET/T_LOW)**(np.arange(30)/29.)
           self.universe.setConfiguration(Configuration(self.universe,seed[0]))
           for T in T_SERIES:
             self.sampler['init'](steps = 500, T=T,\
@@ -1458,7 +1464,7 @@ last modified {2}
     Docks the ligand into the binding site
     by simulating at thermodynamic states
     between decoupled and fully interacting and
-    between T_HIGH and T_TARGET
+    between self.T_HIGH and self.T_TARGET
     """
     return self._sim_process('dock')
 
@@ -1496,7 +1502,7 @@ last modified {2}
       self.f_RL = dict([(key,[]) for key in ['grid_BAR','grid_MBAR'] + \
         [phase+'_solv' for phase in self.params['dock']['phases']]])
       # Binding PMF estimates
-      self.B = {}
+      self.B = {'MBAR':[]}
       for phase in self.params['dock']['phases']:
         for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
           self.B[phase+'_'+method] = []
@@ -1534,7 +1540,7 @@ last modified {2}
     # Store stats_RL
     # Internal energies
     self.stats_RL['u_K_ligand'] = \
-      [self.dock_Es[-1][c]['MM']/RT_TARGET for c in range(self._dock_cycle)]
+      [self.dock_Es[-1][c]['MM']/self.RT_TARGET for c in range(self._dock_cycle)]
     self.stats_RL['u_K_sampled'] = \
       [self._u_kln([self.dock_Es[-1][c]],[self.dock_protocol[-1]]) \
         for c in range(self._dock_cycle)]
@@ -1544,7 +1550,7 @@ last modified {2}
           for c in range(self._dock_cycle)]
     for phase in self.params['dock']['phases']:
       self.stats_RL['u_K_'+phase] = \
-        [self.dock_Es[-1][c]['RL'+phase][:,-1]/RT_TARGET \
+        [self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_TARGET \
           for c in range(self._dock_cycle)]
 
     # Interaction energies
@@ -1552,7 +1558,7 @@ last modified {2}
       self.stats_RL['Psi_grid'].append(
           (self.dock_Es[-1][c]['LJr'] + \
            self.dock_Es[-1][c]['LJa'] + \
-           self.dock_Es[-1][c]['ELE'])/RT_TARGET)
+           self.dock_Es[-1][c]['ELE'])/self.RT_TARGET)
       updated = True
     for phase in self.params['dock']['phases']:
       if not 'Psi_'+phase in self.stats_RL:
@@ -1561,7 +1567,7 @@ last modified {2}
         self.stats_RL['Psi_'+phase].append(
           (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
            self.dock_Es[-1][c]['L'+phase][:,-1] - \
-           self.original_Es[0][0]['R'+phase][-1])/RT_TARGET)
+           self.original_Es[0][0]['R'+phase][-1])/self.RT_TARGET)
     
     # Estimate cycle at which simulation has equilibrated
     eqc_o = self.stats_RL['equilibrated_cycle']
@@ -1651,12 +1657,12 @@ last modified {2}
           np.log(sum(weights*np.exp(Psi-min_Psi))) + min_Psi)
         self.B[phase+'_BAR'].append(\
           -self.f_L[phase+'_solv'][-1] - \
-           self.original_Es[0][0]['R'+phase][-1]/RT_TARGET - \
+           self.original_Es[0][0]['R'+phase][-1]/self.RT_TARGET - \
            self.f_L['cool_BAR'][-1][-1] + \
            self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
         self.B[phase+'_MBAR'].append(\
           -self.f_L[phase+'_solv'][-1] - \
-           self.original_Es[0][0]['R'+phase][-1]/RT_TARGET - \
+           self.original_Es[0][0]['R'+phase][-1]/self.RT_TARGET - \
            self.f_L['cool_MBAR'][-1][-1] + \
            self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
 
@@ -1867,7 +1873,7 @@ last modified {2}
               # within 20 RT of the lowest energy
               coms = []
               for (conf,E) in reversed(zip(confs,Es)):
-                if E<(Es[-1]+20*RT_TARGET):
+                if E<(Es[-1]+20*self.RT_TARGET):
                   self.universe.setConfiguration(Configuration(self.universe,conf))
                   coms.append(np.array(self.universe.centerOfMass()))
                 else:
@@ -2522,6 +2528,9 @@ last modified {2}
       Es = {}
       if nconfs is None:
         nconfs = 1
+    elif (self._FNs['score'] is None) or (not os.path.isfile(self._FNs['score'])):
+      confs = []
+      Es = {}
     elif self._FNs['score'].endswith('.mol2'):
       (confs,Es) = self._read_dock6(self._FNs['score'], site=site)
       count['dock6'] = len(confs)
@@ -2771,7 +2780,7 @@ last modified {2}
         'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
       return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
              np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-             np.abs(T_TARGET-T_HIGH)*U_RL_g.std()/(R*T*T)
+             np.abs(self.T_TARGET-self.T_HIGH)*U_RL_g.std()/(R*T*T)
     elif process=='cool':
       return self._u_kln([E],[{'MM':True}], noBeta=True).std()/(R*T*T)
     else:
@@ -2804,10 +2813,10 @@ last modified {2}
       lambda_n['LJr'] = a_g
       lambda_n['LJa'] = a_g
       lambda_n['ELE'] = a_g
-      lambda_n['T'] = a*(T_TARGET-T_HIGH) + T_HIGH
+      lambda_n['T'] = a*(self.T_TARGET-self.T_HIGH) + self.T_HIGH
     elif process=='cool':
       lambda_n['a'] = a
-      lambda_n['T'] = T_HIGH - a*(T_HIGH-T_TARGET)
+      lambda_n['T'] = self.T_HIGH - a*(self.T_HIGH-self.T_TARGET)
     else:
       raise Exception("Unknown process!")
 
@@ -3124,7 +3133,7 @@ last modified {2}
     if E is None:
       E = {}
 
-    lambda_full = {'T':T_HIGH,'MM':True,'site':True}
+    lambda_full = {'T':self.T_HIGH,'MM':True,'site':True}
     for scalable in self._scalables:
       lambda_full[scalable] = 1
     
@@ -3525,7 +3534,7 @@ END
     
     if len(models)>0:
       if site:
-        self._set_universe_evaluator({'site':True,'T':T_TARGET})
+        self._set_universe_evaluator({'site':True,'T':self.T_TARGET})
 
       for line in models[0].split('\n'):
         if line.startswith('##########'):

@@ -181,7 +181,7 @@ Queue 1
     transfer_input_files, transfer_output_files, \
     hold_string, args.max_job_time, \
     {True:'',
-    False:'periodic_release = ((CurrentTime - EnteredCurrentStatus) > 60)'}[\
+    False:'periodic_release = ((CurrentTime - EnteredCurrentStatus) > 60) && (NumJobStarts < 40)'}[\
       args.no_release])
 
   if command.find('$ALGDOCK')!=-1:

@@ -32,7 +32,9 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --score prmtopcrd/anchor_and_grow_scored.mol2 \
   --rmsd \
   --run_type timed \
-  --max_time 10
+  --max_time 10 \
+  --T_HIGH 800.
+
 
 #  --score_multiple \
 #  --phases NAMD_Gas NAMD_GBSA Gas GBSA APBS PBSA \
