@@ -8,9 +8,12 @@ def findPath(locations):
   If none exist, then None is returned.
   """
   import os.path
+  locations = [l for l in locations if l is not None]
   for location in locations:
-    if location is not None and os.path.exists(location):
+    if os.path.exists(location):
       return os.path.abspath(location)
+  if len(locations)>0:
+    print '  failed to find file in: '+', '.join(locations)
   return None
 
 def findPaths(keys):

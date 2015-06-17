@@ -415,14 +415,15 @@ last modified {2}
     if (self._FNs['frcmodList'] is None):
       if self._FNs['prmtop']['L'] is not None:
         dir_lig = os.path.dirname(self._FNs['prmtop']['L'])
+        frcmodpaths = [os.path.abspath(join(dir_lig, \
+          os.path.basename(self._FNs['prmtop']['L'])[:-7]+'.frcmod'))]
       else:
         dir_lig = '.'
-      frcmod = a.findPath([\
-        os.path.abspath(join(dir_lig, \
-          os.path.basename(self._FNs['prmtop']['L'])[:-7]+'.frcmod')),\
-        os.path.abspath(join(dir_lig,'lig.frcmod')),\
-        os.path.abspath(join(dir_lig,'ligand.frcmod'))])
+        frcmodpaths = []
       if kwargs['frcmodList'] is None:
+        frcmodpaths.extend([os.path.abspath(join(dir_lig,'lig.frcmod')),\
+                            os.path.abspath(join(dir_lig,'ligand.frcmod'))])
+        frcmod = a.findPath(frcmodpaths)
         self._FNs['frcmodList'] = [frcmod]
     elif isinstance(self._FNs['frcmodList'],str):
       self._FNs['frcmodList'] = [self._FNs['frcmodList']]
