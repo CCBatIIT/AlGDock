@@ -77,8 +77,14 @@ search_paths = {
       'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],
              # For visualizing (not essential)
-       'vmd':['/Applications/VMD 1.9.1.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',
-              '/share/apps/vmd/1.9.1/bin/vmd']}
+       'vmd':['/Applications/VMD.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',
+              '/share/apps/vmd/1.9.1/bin/vmd'],
+             # For making movies (not essential)
+   'convert':['/Applications/ImageMagick-6.9.1/bin/convert',
+              '/share/apps/imagemagick/6.9.1-6/bin/convert'],
+             # For labeling images (not essential)
+      'font':['/Library/Fonts/Microsoft/Arial.ttf',
+              '/home/dminh/shared/TTF/Arial.ttf']}
 
 download_paths = {
   'namd':('namd.tar.gz','','namd2'),

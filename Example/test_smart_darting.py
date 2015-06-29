@@ -33,9 +33,17 @@ self = AlGDock.BindingPMF_plots.BPMF_plots(\
 # Convert to bond-angle-torsion (BAT)
 # Figure out how to move from one docked pose to another. This is your MCMC move set.
 
+import AlGDock.BAT
+c = AlGDock.BAT.converter()
+c.BAT() # Calculates BAT coordinates
+
+# Basically need to loope over docked poses to get "darts."
+# _get_confs_to_rescore will get you docked poses in AlGDock
+
 # What pose are you in?
 # Your current configuration is: self.universe.configuration().array
 # Get rmsd values between your current pose and pose of interest. Here a quick one-liner that will do it:
 # np.array([np.sqrt(((conf_c - confs[c][self.molecule.heavy_atoms,:])**2).sum()/self.molecule.nhatoms) for c in range(len(confs))])
 
 # Select a new pose to dart to with a probability that satisfies detailed balance.
+# See _MC_translate_rotate in AlGDock.BindingPMF.BPMF for an example for how to do an MCMC move.

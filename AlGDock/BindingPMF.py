@@ -64,6 +64,8 @@ arguments = {
   'namd':{'help':'Location of Not Another Molecular Dynamics (NAMD)'},
   'vmd':{'help':'Location of Visual Molecular Dynamics (VMD)'},
   'sander':{'help':'Location of sander (from AMBER)'},
+  'convert':{'help':'Location of convert (from ImageMagick)'},
+  'font':{'help':'Location of font file (readable by PIL)'},
   #   Stored in both dir_cool and dir_dock
   'ligand_database':{'help':'MMTK molecule definition for ligand'},
   'forcefield':{'help':'AMBER force field file'},
@@ -92,6 +94,7 @@ arguments = {
               'store_params', 'cool', \
               'dock','timed','postprocess',\
               'redo_postprocess','free_energies','all', \
+              'render_docked', 'render_intermediates', \
               'clear_intermediates', None],
     'help':'Type of calculation to run'},
   'max_time':{'type':int, 'default':180, \
@@ -400,7 +403,9 @@ last modified {2}
       'dir_cool':self.dir['cool'],
       'namd':a.findPath([kwargs['namd']] + a.search_paths['namd']),
       'vmd':a.findPath([kwargs['vmd']] + a.search_paths['vmd']),
-      'sander':a.findPath([kwargs['vmd']] + a.search_paths['sander'])}
+      'sander':a.findPath([kwargs['sander']] + a.search_paths['sander']),
+      'convert':a.findPath([kwargs['convert']] + a.search_paths['convert']),
+      'font':a.findPath([kwargs['font']] + a.search_paths['font'])}
 
     if not (FNs['cool']=={} and FNs['dock']=={}):
       print 'from arguments and defaults:'
@@ -737,6 +742,19 @@ last modified {2}
       self.dock()
       self._postprocess()
       self.calc_f_RL()
+    elif run_type=='render_docked':
+      self.show_samples(show_ref_ligand=True, show_starting_pose=True, \
+        show_receptor=True, save_image=True, execute=True, quit=True, \
+        view_args={'axes_off':True, 'size':[504,504], 'scale_by':0.70, \
+                   'render':'TachyonInternal'})
+    elif run_type=='render_intermediates':
+      self.render_intermediates(\
+        movie_name=os.path.join(self.dir['dock'],'dock-intermediates.gif'), \
+        view_args={'axes_off':True, 'size':[800,800], 'scale_by':0.70, \
+                   'render':'TachyonInternal'})
+      self.render_intermediates(nframes=8, \
+        view_args={'axes_off':True, 'size':[504,504], 'scale_by':0.70, \
+                   'render':'TachyonInternal'})
     elif run_type=='clear_intermediates':
       for process in ['cool','dock']:
         print 'Clearing intermediates for '+process
@@ -1251,6 +1269,8 @@ last modified {2}
         if seed==[]:
           undock = False
         else:
+          self.confs['dock']['starting_pose'] = seed
+
           # Ramp up the temperature
           T_LOW = 20.
           T_SERIES = T_LOW*(self.T_TARGET/T_LOW)**(np.arange(30)/29.)
@@ -2554,7 +2574,7 @@ last modified {2}
     
     # Minimize each configuration
     self._set_universe_evaluator(\
-      self._lambda(1.0,'dock', MM=True, site=site, crossed=False))
+      self._lambda(1.0, 'dock', MM=True, site=site, crossed=False))
 
     if minimize:
       Es = {}
@@ -3659,7 +3679,7 @@ END
     elif p=='dock':
       fn_dict = convert_dictionary_relpath(
           dict([tp for tp in self._FNs.items() \
-            if not tp[0] in ['namd','vmd','sander']]),
+            if not tp[0] in ['namd','vmd','sander','convert','font']]),
           relpath_o=None, relpath_n=self.dir['dock'])
     params = (fn_dict,arg_dict)
     
@@ -3727,4 +3747,9 @@ if __name__ == '__main__':
     parser.add_argument('--'+key, **arguments[key])
   
   args = parser.parse_args()
-  self = BPMF(**vars(args))
+
+  if args.run_type in ['render_docked', 'render_intermediates']:
+    from AlGDock.BindingPMF_plots import BPMF_plots
+    self = BPMF_plots(**vars(args))
+  else:
+    self = BPMF(**vars(args))

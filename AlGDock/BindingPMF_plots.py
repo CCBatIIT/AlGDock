@@ -2,6 +2,67 @@
 
 from AlGDock.BindingPMF import *
 
+# vmd procedure to align the principal axes of the ligand to y and x.
+vmd_principal_axes_procedure = '''
+package require Orient
+namespace import Orient::orient
+
+set sel [atomselect top "all"]
+set I [Orient::calc_principalaxes $sel]
+set M1 [orient $sel [lindex $I 2] {0 1 0}]
+$sel move $M1
+set I [Orient::calc_principalaxes $sel]
+set M2 [orient $sel [lindex $I 1] {1 0 0}]
+$sel move $M2
+
+for {set molid 1} {$molid < %d} {incr molid} {
+  set nframes [molinfo $molid get numframes]
+  for {set frameid 0} {$frameid < $nframes} {incr frameid} {
+    set sel [atomselect $molid "all" frame $frameid]
+    $sel move $M1
+    $sel move $M2
+  }
+}
+'''
+
+# If the protein center of mass is positive (in front of the ligand),
+# flip it around
+vmd_unblock_procedure = '''
+proc center_of_mass {selection} {
+  # some error checking
+  if {[$selection num] < 0} {
+          error "center_of_mass: needs a selection with atoms"
+  }
+  # set the center of mass to 0
+  set com [veczero]
+  # set the total mass to 0
+  set mass 0
+  # [$selection get {x y z}] returns the coordinates {x y z} 
+  # [$selection get {mass}] returns the masses
+  # so the following says "for each pair of {coordinates} and masses,
+  #  do the computation ..."
+  foreach coord [$selection get {x y z}] m [$selection get mass] {
+     # sum of the masses
+     set mass [expr $mass + $m]
+     # sum up the product of mass and coordinate
+     set com [vecadd $com [vecscale $m $coord]]
+  }
+  # and scale by the inverse of the number of atoms
+  if {$mass == 0} {
+          error "center_of_mass: total mass is zero"
+  }
+  # The "1.0" can't be "1", since otherwise integer division is done
+  return [vecscale [expr 1.0/$mass] $com]
+}
+
+set sel [atomselect %d "all"]
+if {[expr [lindex [center_of_mass $sel] 2]>0]} {
+  echo Flipped to unblock view
+  rotate x by 180
+}
+
+'''
+
 class BPMF_plots(BPMF):
   def plot_energies(self, process='cool', firstCycle=0, toCycle=None):
     """
@@ -62,130 +123,241 @@ class BPMF_plots(BPMF):
       e_ratio.append(e_ratio_k)
     plt.plot(np.transpose(e_ratio))
 
-  def show_replicas(self, process='dock'):
+  def show_samples(self, process='dock', state=-1, show_replicas=False, \
+        show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
+        save_image=False, image_labels=None, execute=True, quit=False, \
+        view_args={}):
+    # Gather ligand coordinates
+    if show_replicas:
+      confs = self.confs['dock']['replicas']
+      prefix = 'replicas'
+    else:
+      if state==-1:
+        state = len(self.confs[process]['samples'])-1
+        prefix = '%s-last'%(process)
+      else:
+        prefix = '%s-%05d'%(process,state)
+
+      confs = []
+      for c in range(len(self.confs[process]['samples'][state])):
+        if len(self.confs[process]['samples'][state][c])>0:
+          if not isinstance(self.confs[process]['samples'][state][c],list):
+            self.confs[process]['samples'][state][c] = \
+              [self.confs[process]['samples'][state][c]]
+          confs += self.confs[process]['samples'][state][c]
+
+    # Write ligand coordinates
     import AlGDock.IO
     IO_dcd = AlGDock.IO.dcd(self.molecule,
       ligand_atom_order = self.molecule.prmtop_atom_order, \
       receptorConf = self.confs['receptor'], \
       ligand_first_atom = self._ligand_first_atom)
-      
-    dcd_FN = 'replicas.dcd'
-    confs = self.confs['dock']['replicas']
-    IO_dcd.write(dcd_FN, confs, includeLigand=True, includeReceptor=False)
-    
-    script = ''
-    
-    # Show the original ligand position
-    original_ligand_dcd_FN = 'L.dcd'
-    IO_dcd.write(original_ligand_dcd_FN, self.confs['ligand'], \
-      includeLigand=True, includeReceptor=False)
-    script += 'set original_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-    script += 'mol addfile '+original_ligand_dcd_FN+' type dcd waitfor all\n'
-    script += 'mol modstyle 0 $original_ligand ' + \
-              'Licorice 0.300000 10.000000 10.000000\n'
-    
-    # Show receptor coordinates
-    receptor_dcd_FN = 'R.dcd'
-    IO_dcd.write(receptor_dcd_FN, self.confs['receptor'], \
-      includeLigand=False, includeReceptor=True)
-    script += 'set receptor [mol new '+self._FNs['prmtop']['R']+']\n'
-    script += 'mol addfile '+receptor_dcd_FN+' type dcd waitfor all\n'
-    script += 'mol modstyle 0 $receptor NewCartoon 0.300000 10.000000 4.100000 0\n'
-    script += 'mol modmaterial 0 $receptor Transparent\n'
 
-    # Show samples
-    script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-    script += 'mol addfile '+dcd_FN+' type dcd waitfor all\n'
-
-    script_FN = 'show_samples.vmd'
-    script_F = open('show_samples.vmd','w')
-    script_F.write(script)
-    script_F.close()
-
-    import subprocess
-    subprocess.call([self._FNs['vmd'], '-e', script_FN, '-size', '800', '800'])
-    for FN in [dcd_FN, original_ligand_dcd_FN, \
-               dcd_FN, 'show_samples.vmd']:
-      if os.path.isfile(FN):
-        os.remove(FN)
-
-  def show_samples(self, process='dock', state=-1, \
-      show_original_ligand=True, show_receptor=False, \
-      save_image=False, scale=True, execute=True, quit=False):
-    if state==-1:
-      state = len(self.confs[process]['samples'])-1
-    import AlGDock.IO
-    IO_dcd = AlGDock.IO.dcd(self.molecule,
-      ligand_atom_order = self.molecule.prmtop_atom_order, \
-      receptorConf = self.confs['receptor'], \
-      ligand_first_atom = self._ligand_first_atom)
-      
-    # Gather and write ligand coordinates
-    confs = []
-    for c in range(len(self.confs[process]['samples'][state])):
-      if len(self.confs[process]['samples'][state][c])>0:
-        if not isinstance(self.confs[process]['samples'][state][c],list):
-          self.confs[process]['samples'][state][c] = \
-            [self.confs[process]['samples'][state][c]]
-        confs += self.confs[process]['samples'][state][c]
     rep = 0
-    while os.path.isfile('%s-%05d-%d.dcd'%(process,state,rep)):
+    import os
+    while os.path.isfile('%s-%d.dcd'%(prefix,rep)):
       rep += 1
-    ligand_dcd_FN = '%s-%05d-%d.dcd'%(process,state,rep)
+    ligand_dcd_FN = os.path.join(self.dir[process],'%s-%d.dcd'%(prefix,rep))
     IO_dcd.write(ligand_dcd_FN, confs, includeLigand=True, includeReceptor=False)
     
     script = ''
+    molids = []
     
-    # Show the original ligand position
-    original_ligand_dcd_FN = 'L.dcd'
-    if show_original_ligand:
-      IO_dcd.write(original_ligand_dcd_FN, self.confs['ligand'], \
+    # Show the reference ligand position
+    ref_ligand_dcd_FN = os.path.join(self.dir[process],'L.dcd')
+    if show_ref_ligand:
+      IO_dcd.write(ref_ligand_dcd_FN, self.confs['ligand'], \
         includeLigand=True, includeReceptor=False)
-      script += 'set original_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-      script += 'mol addfile '+original_ligand_dcd_FN+' type dcd waitfor all\n'
-      script += 'mol modstyle 0 $original_ligand ' + \
-                'Licorice 0.300000 10.000000 10.000000\n'
+      script += 'set ref_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+      script += 'mol addfile '+ref_ligand_dcd_FN+' type dcd waitfor all\n'
+      script += 'mol modstyle 0 $ref_ligand ' + \
+                'Licorice 0.250000 10.000000 10.000000\n'
+      script += 'mol rename $ref_ligand {Reference Pose}\n'
+      # Change atom type to change coloring
+      script += 'set sel [atomselect $ref_ligand carbon]\n'
+      script += '$sel set type J\n'
+      script += 'color Type J purple\n'
+      script += 'mol modcolor 0 $ref_ligand Type\n'
+      molids.append('Reference Pose')
+      
+    # Show the starting pose
+    start_ligand_dcd_FN = os.path.join(self.dir[process],'L_start.dcd')
+    if show_starting_pose:
+      if not 'starting_pose' in self.confs['dock'].keys():
+        self.confs['dock']['starting_pose'] = self._get_confs_to_rescore(nconfs=1, site=True)[0]
+      if self.confs['dock']['starting_pose'] is not None:
+        IO_dcd.write(start_ligand_dcd_FN, self.confs['dock']['starting_pose'], \
+          includeLigand=True, includeReceptor=False)
+        script += 'set start_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+        script += 'mol addfile '+start_ligand_dcd_FN+' type dcd waitfor all\n'
+        script += 'mol modstyle 0 $start_ligand ' + \
+                  'Licorice 0.250000 10.000000 10.000000\n'
+        # Change atom type to change coloring
+        script += 'set sel [atomselect $start_ligand carbon]\n'
+        script += '$sel set type R\n'
+        script += 'color Type R green2\n'
+        script += 'mol modcolor 0 $start_ligand Type\n' # green
+        script += 'mol rename $start_ligand {Starting Pose}\n'
+        molids.append('Starting Pose')
     
-    # For docking, write receptor coordinates
-    receptor_dcd_FN = 'R.dcd'
+    # For docking, write complex coordinates
+    complex_dcd_FN = os.path.join(self.dir[process],'RL.dcd')
     if show_receptor:
-      IO_dcd.write(receptor_dcd_FN, self.confs['receptor'], \
-        includeLigand=False, includeReceptor=True)
-      script += 'set receptor [mol new '+self._FNs['prmtop']['R']+']\n'
-      script += 'mol addfile '+receptor_dcd_FN+' type dcd waitfor all\n'
-      script += 'mol modstyle 0 $receptor NewCartoon 0.300000 10.000000 4.100000 0\n'
-      script += 'mol modmaterial 0 $receptor Transparent\n'
+      IO_dcd.write(complex_dcd_FN, self.confs['ligand'], \
+        includeLigand=True, includeReceptor=True)
+      script += 'set complex [mol new '+self._FNs['prmtop']['RL']+']\n'
+      script += 'mol addfile '+complex_dcd_FN+' type dcd waitfor all\n'
+      script += 'mol modstyle 0 $complex Ribbons 0.200000 25.000000 2.000000\n'
+      script += 'mol modcolor 0 $complex ColorID 9\n' # Pink backbone
+      script += 'mol modmaterial 0 $complex MetallicPastel\n'
+      script += 'mol rename $complex {Complex}\n'
+      molids.append('Receptor')
+      molid_receptor = len(molids)-1
+    else:
+      molid_receptor = None
 
     # Show samples
     script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
     script += 'mol addfile '+ligand_dcd_FN+' type dcd waitfor all\n'
     script += 'mol drawframes $ligand 0 {0:%d}\n'%len(confs)
+    if len(self.dir[process].split('/'))>3:
+      label = '/'.join(self.dir[process].split('/')[-3:])
+      script += 'mol rename $ligand {%s}\n'%(label)
+    molids.append('Samples')
 
-    if scale:
-      script += 'scale to 0.07\n'
-      script += 'axes location Off\n'
+    # Use the reference ligand structure as a basis for setting the view
+    if show_ref_ligand:
+      script += 'mol top $ref_ligand\n'
+    elif show_starting_pose:
+      script += 'mol top $start_ligand\n'
+    script += 'display resetview\n'
+
+    script += self.parse_view_args(view_args,\
+      principal_axes_alignment=(show_receptor and show_ref_ligand), \
+      nmolecules=len(molids), molid_receptor=molid_receptor)
 
     if save_image:
-      script += 'render snapshot %s-%05d.tga\n'%(process,state)
+      image_path = os.path.join(self.dir['dock'],prefix+'.tga')
+      if 'render' in view_args.keys():
+        render = view_args['render']
+      else:
+        render = 'snapshot'
+      script += 'render %s %s\n'%(render,image_path)
     if quit:
       script += 'quit\n'
     if execute:
-      script_FN = 'show_samples.vmd'
-      script_F = open('show_samples.vmd','w')
+      script_FN = os.path.join(self.dir[process],'show_samples.vmd')
+      script_F = open(script_FN,'w')
       script_F.write(script)
       script_F.close()
 
+      import os
+      os.environ['VMDNOCUDA'] = "True"
+
       import subprocess
-      subprocess.call([self._FNs['vmd'], '-e', script_FN, '-size', '800', '800'])
-      for FN in [ligand_dcd_FN, original_ligand_dcd_FN, \
-                 receptor_dcd_FN, 'show_samples.vmd']:
+      vmd_args = [self._FNs['vmd']]
+      if quit:
+        vmd_args.extend(['-dispdev', 'text'])
+      if 'size' in view_args.keys():
+        vmd_args.extend(['-size',\
+          '%d'%view_args['size'][0],'%d'%view_args['size'][1]])
+      vmd_args.extend(['-e', script_FN])
+      print vmd_args
+      p = subprocess.Popen(vmd_args, \
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      (vmd_stdout, vmd_stderr) = p.communicate()
+      p.wait()
+
+      print 'script:'
+      print script
+      print 'stdout:'
+      print vmd_stdout
+      print 'stderr:'
+      print vmd_stderr
+      
+      for FN in [ligand_dcd_FN, ref_ligand_dcd_FN, start_ligand_dcd_FN, \
+                 complex_dcd_FN, script_FN]:
         if os.path.isfile(FN):
           os.remove(FN)
 
+    if save_image and os.path.isfile(image_path) and (image_labels is not None):
+      import PIL.Image
+      im = PIL.Image.open(image_path)
+      import PIL.ImageDraw
+      draw = PIL.ImageDraw.Draw(im)
+      import PIL.ImageFont
+      if self._FNs['font'] is not None:
+        font = PIL.ImageFont.truetype(self._FNs['font'],size=42)
+        draw.text((10,im.size[1]-55),image_labels[0],font=font)
+        draw.text((im.size[0]/2.+10,im.size[1]-55),image_labels[1],font=font)
+      else:
+        draw.text((10,im.size[1]-55),image_labels[0])
+        draw.text((im.size[0]/2.+10,im.size[1]-55),image_labels[0])
+      im.save(image_path)
+
+    return script
+  
+  def parse_view_args(self, view_args, principal_axes_alignment=False, \
+      nmolecules=None, molid_receptor=None):
+    script = 'display projection Orthographic\n'
+    
+    if ('rotate_matrix' in view_args.keys()) or principal_axes_alignment:
+      if ('rotate_matrix' in view_args.keys()):
+        script += 'set view_rotate_matrix %s\n'%view_args['rotate_matrix']
+      elif principal_axes_alignment and (nmolecules is not None):
+        script += vmd_principal_axes_procedure%nmolecules
+        if molid_receptor is not None:
+          script += vmd_unblock_procedure%molid_receptor
+    elif 'rotate_by' in view_args.keys():
+      script += 'rotate x by %d\n'%(view_args['rotate_by'][0])
+      script += 'rotate y by %d\n'%(view_args['rotate_by'][1])
+      script += 'rotate z by %d\n'%(view_args['rotate_by'][2])
+
+    if 'scale_by' in view_args.keys():
+      script += 'scale by %f\n'%view_args['scale_by']
+    if 'scale_to' in view_args.keys():
+      script += 'scale to %f\n'%view_args['scale_to']
+    if 'nearclip' in view_args.keys():
+      script += 'display nearclip set %f\n'%view_args['nearclip']
+    if ('axes_off' in view_args.keys()) and (view_args['axes_off'] is True):
+      script += 'axes location Off\n'
     return script
 
-  def show_all_samples(self, process='dock', stride=1):
-    for state_ind in range(0,len(self.confs[process]['samples']),stride):
-      self.show_samples(process, state=state_ind, quit=True)
-    os.system('convert -delay 10 dock*.tga dock-movie.gif')
+  def render_intermediates(self, process='dock', movie_name=None, \
+        stride=1, nframes=None, view_args={}):
+    # Determine state indices by the number of frames of by the stride
+    if nframes is not None:
+      state_inds = [int(s) \
+        for s in np.linspace(0,len(self.dock_protocol)-1,nframes)]
+    else:
+      state_inds = range(0,len(self.confs[process]['samples']),stride)
 
+    # Generate each snapshot
+    view_args['render'] = 'TachyonInternal' # This works without the vmd display
+    for s in range(len(state_inds)):
+      # Format label for snapshot
+      lambda_s = getattr(self,'%s_protocol'%process)[state_inds[s]]
+      if process=='dock':
+        labels = [u'\u03B1 = %-8.2g'%lambda_s['a']]
+      else:
+        labels = []
+      labels.append('T = %4.1f K'%lambda_s['T'])
+      # Generate the snapshot
+      self.show_samples(process, state=state_inds[s], show_replicas=False, \
+        show_ref_ligand=True, show_starting_pose=False, show_receptor=True, \
+        save_image=True, image_labels=labels, execute=True, quit=True, \
+        view_args=view_args)
+
+    # Make a movie
+    if movie_name is not None:
+      if self._FNs['convert'] is not None:
+        import subprocess
+        subprocess.call([self._FNs['convert'],'-delay','15',\
+          os.path.join(self.dir[process],'dock*.tga'), movie_name])
+      else:
+        raise Exception('ImageMagick convert required to make movies')
+    
+      import glob
+      tga_FNs = glob.glob(os.path.join(self.dir[process],'dock*.tga'))
+      for tga_FN in tga_FNs:
+        os.remove(tga_FN)
