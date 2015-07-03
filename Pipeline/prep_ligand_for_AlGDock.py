@@ -1,6 +1,8 @@
 # Prepares a ligand for AlGDock
 # Run from: [TARGET]/ligand/AlGDock_in/
 
+# TODO: Create a tar.gz file will all ligands
+
 try:
   import argparse
   parser = argparse.ArgumentParser()

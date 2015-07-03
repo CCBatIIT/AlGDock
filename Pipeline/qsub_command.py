@@ -64,9 +64,10 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 
   if command.find('cores')>-1:
     cores = command[command.find('cores')+5:]
-    cores = cores[:cores.find('\n')]
-    cores = int(cores.strip().split(' ')[0])
-    args.ppn = cores
+    cores = cores[:cores.find('\n')].strip()
+    cores = cores.split(' ')[0]
+    if cores!='':
+      args.ppn = int(cores)
 
   if args.ambertools:
     modules += 'module load ambertools/14\n'
@@ -145,12 +146,14 @@ elif os.path.exists('/stash'):   # Open Science Grid
 
   if command.find('$ALGDOCK')!=-1:
     hold_string = 'on_exit_hold = (ExitCode == 100)'
+    requirements_string = '&& (HAS_CVMFS_oasis_opensciencegrid_org =?= TRUE)'
   else:
     hold_string = '''
 # stay in queue if there was an error and 
 # the job ran for less than min_job_time minutes
 on_exit_hold = (ExitCode != 0) && ((CurrentTime - JobStartDate) < ({0}*60))
 '''.format(args.min_job_time)
+    requirements_string = ''
 
   # Write the submission script
   submit_script = """Universe       = vanilla
@@ -159,25 +162,25 @@ Executable     = {0}
 Error   = jobs/{1}.$(Cluster)-$(Process).err
 Output  = jobs/{1}.$(Cluster)-$(Process).out
 Log     = jobs/{1}.$(Cluster).log
-Requirements = (FileSystemDomain != "") && (OpSys == "LINUX" ) && (Arch == "X86_64") 
-request_disk = {2}
-request_memory = {3}GB
+Requirements = (FileSystemDomain != "") && (OpSys == "LINUX" ) && (Arch == "X86_64") {2}
+request_disk = {3}
+request_memory = {4}GB
 
 # File transfer
 should_transfer_files = YES
-transfer_input_files = {4}
-{5}
+transfer_input_files = {5}
+{6}
 when_to_transfer_output = ON_EXIT_OR_EVICT
 want_graceful_removal = (ExitCode == 100)
 
-{6}
+{7}
 # protect against hung jobs (taking more than max_job_time hours)
-periodic_hold = (JobStatus==2) && ((CurrentTime - EnteredCurrentStatus) > {7}*60*60)
+periodic_hold = (JobStatus==2) && ((CurrentTime - EnteredCurrentStatus) > {8}*60*60)
 # make sure the job is being retried and rematched
-{8}
+{9}
 +ProjectName="AlGDock"
 Queue 1
-""".format(sh_FN, args.name, args.disk, args.mem, \
+""".format(sh_FN, args.name, requirements_string, args.disk, args.mem, \
     transfer_input_files, transfer_output_files, \
     hold_string, args.max_job_time, \
     {True:'',
@@ -186,6 +189,8 @@ Queue 1
 
   if command.find('$ALGDOCK')!=-1:
     command = """
+
+module load libgfortran
 
 # Download data
 wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
@@ -201,7 +206,9 @@ search_paths = {
   'ambpdb':[None],
   'molsurf':[None],
   'MMTK':['$WORK_DIR/AlGDock/MMTK'],
-  'vmd':[None]}
+  'vmd':[None],
+  'convert':[None],
+  'font':[None]}
 " | cat AlGDock/AlGDock/_external_paths.py - > AlGDock/AlGDock/paths.py
 mv AlGDock/AlGDock/paths.py AlGDock/AlGDock/_external_paths.py
 export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF

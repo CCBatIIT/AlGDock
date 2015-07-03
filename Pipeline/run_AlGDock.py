@@ -28,7 +28,7 @@ parser.add_argument('--tree_cool', default='cool/',
 parser.add_argument('--tree_dock', default='dock/',
   help='Directory tree to store docking results')
 # Arguments related to job management
-parser.add_argument('--reps', default=[0,1], nargs=2, type=int, \
+parser.add_argument('--reps', default=None, nargs=2, type=int, \
   help='Range of repetitions')
 parser.add_argument('--max_jobs', default=None, type=int)
 parser.add_argument('--first_ligand', default=None, type=int)
@@ -51,9 +51,11 @@ parser.add_argument('--cool_repX_cycles', type=int,
 parser.add_argument('--dock_repX_cycles', type=int,
   help='Number of replica exchange cycles for docking')
 parser.add_argument('--run_type',
-  choices=['pose_energies','store_params', 'cool', \
+  choices=['pose_energies','minimized_pose_energies', \
+           'store_params', 'cool', \
            'dock','timed','postprocess',\
            'redo_postprocess','free_energies','all', \
+           'render_docked', 'render_intermediates', \
            'clear_intermediates', None],
   help='Type of calculation to run')
 parser.add_argument('--max_time', type=int, default = 180, \
@@ -70,6 +72,10 @@ parser.add_argument('--sampler',
   help='Sampling method')
 parser.add_argument('--MCMC_moves', type=int,
   help='Types of MCMC moves to use')
+parser.add_argument('--T_HIGH', type=float,
+  help='High temperature')
+parser.add_argument('--T_TARGET', type=float,
+  help='Target temperature')
 # For initialization
 parser.add_argument('--seeds_per_state', type=int,
   help='Number of starting configurations in each state during initialization')
@@ -248,7 +254,7 @@ sim_arg_keys = general_sim_arg_keys + \
   ['dock_'+a for a in general_sim_arg_keys] + \
   ['MCMC_moves', 'score', 'rmsd', 'run_type', 'cores'] + \
   ['site', 'site_center', 'site_direction', \
-   'site_max_X', 'site_max_R', 'site_density']
+   'site_max_X', 'site_max_R', 'site_density','reps']
 
 if (args_in.saved_arguments is not None) and nonzero(args_in.saved_arguments):
   print 'Passed arguments:'
@@ -262,79 +268,84 @@ else:
   class args_saved:
     pass
 
+if args_in.reps is None:
+  args_in.reps = [0,1]
+if args_in.first_ligand is None:
+  args_in.first_ligand = 0
+if args_in.max_ligands is None:
+  args_in.max_ligands = len(ligand_FNs)
+
+print 'Arguments:'
+print args_in
+
 namespace = locals()
 
 job_status = {'submitted':0, 'skipped':0, 'no_complex':0, 'no_dock6':0, \
   'missing_file':0, 'onq':0, 'complete':0}
-for ligand_FN in ligand_FNs:
-  labels = {'ligand':os.path.basename(ligand_FN)[:-7]}
-  dir_cool = os.path.join(args_in.tree_cool,labels['ligand'])
-  paths = [('forcefield',command_paths['gaff.dat'])]
-  paths += [(key[0], ligand_FN[:-6]+key[1]) \
+
+for rep in range(args_in.reps[0],args_in.reps[1]):
+  for ligand_FN in ligand_FNs[args_in.first_ligand:args_in.first_ligand+args_in.max_ligands]:
+    labels = {'ligand':os.path.basename(ligand_FN)[:-7]}
+    paths = {'dir_cool':os.path.join(args_in.tree_cool,'%s-%d'%(labels['ligand'],rep)), 
+             'forcefield':command_paths['gaff.dat']}
     for key in [('ligand_prmtop','prmtop'),('ligand_inpcrd','inpcrd'), \
-                ('frcmodList','frcmod')]]
-  paths += [('ligand_database', \
-    os.path.join(os.path.dirname(ligand_FN),
-                 os.path.basename(ligand_FN)[:-6].lower()+'db'))]
-  if not os.path.isdir(dir_cool):
-    os.system('mkdir -p '+dir_cool)
-  paths += [('dir_cool', os.path.join(args_in.tree_cool,labels['ligand']))]
-  if (args_in.run_type in ['initial_cool','cool']) and \
-      nonzero(join(dir_cool,'f_L.pkl.gz')):
-    job_status['complete'] += 1
-    continue # Cooling is already done
-  for receptor_FN in receptor_FNs:
-    labels['receptor'] = os.path.basename(receptor_FN)[:-7]
-    labels['complex'] = labels['ligand']+'-'+labels['receptor']
-    if not (labels['complex'] in complex_labels):
-      print 'No prmtop and inpcrd for '+labels['complex']
-      job_status['no_complex'] += 1
-      continue # Complex files are missing
-    paths += [('receptor_'+key, os.path.abspath(receptor_FN[:-6]+key)) \
-      for key in ['prmtop','inpcrd']]
-    paths += \
-      [('complex_'+key[0],
-       os.path.join(args_in.complex,'%s.%s'%(labels['complex'],key[1]))) \
-        for key in [('prmtop','prmtop.gz'),('inpcrd','inpcrd.gz')]]
-    paths += \
-      [(key[0], \
-       os.path.join(args_in.receptor_grids, '%s.%s'%(labels['receptor'],key[1]))) \
-        for key in [('grid_LJa','LJa.25.nc'),('grid_LJr','LJr.25.nc'),\
-                    ('grid_ELE','PB.nc')]]
-
-    if not np.array([nonzero(FN[1]) for FN in paths]).all():
-      print 'Files are missing'
-      job_status['missing_file']
-      continue # Files are missing
-
-    paths = dict(paths)
-    for key in paths.keys():
-      paths[key] = os.path.abspath(paths[key])
-
-    for rep in range(args_in.reps[0],args_in.reps[1]):
+                ('frcmodList','frcmod')]:
+      paths[key[0]] = ligand_FN[:-6]+key[1]
+    paths['ligand_database'] = os.path.join(\
+      os.path.dirname(ligand_FN), os.path.basename(ligand_FN)[:-6].lower()+'db')
+    if not os.path.isdir(paths['dir_cool']):
+      os.system('mkdir -p '+paths['dir_cool'])
+    if (args_in.run_type in ['initial_cool','cool']) and \
+        nonzero(join(paths['dir_cool'],'f_L.pkl.gz')):
+      job_status['complete'] += 1
+      continue # Cooling is already done
+    for receptor_FN in receptor_FNs:
+      labels['receptor'] = os.path.basename(receptor_FN)[:-7]
+      labels['complex'] = labels['ligand']+'-'+labels['receptor']
+      if not (labels['complex'] in complex_labels):
+        print 'No prmtop and inpcrd for '+labels['complex']
+        job_status['no_complex'] += 1
+        continue # Complex files are missing
+      for key in ['prmtop','inpcrd']:
+        paths['receptor_'+key] = os.path.abspath(receptor_FN[:-6]+key)
+      for key in [('prmtop','prmtop.gz'),('inpcrd','inpcrd.gz')]:
+        # TODO: Integrate fixed atoms files into the pipeline ,('fixed_atoms','pdb')]:
+        paths['complex_'+key[0]] = os.path.join(\
+          args_in.complex,'%s.%s'%(labels['complex'],key[1]))
+      for key in [('grid_LJa','LJa.25.nc'), ('grid_LJr','LJr.25.nc'), \
+                  ('grid_ELE','PB.nc')]:
+        paths[key[0]] = os.path.join(args_in.receptor_grids, \
+          '%s.%s'%(labels['receptor'],key[1]))
+  
+      input_FNs = paths.values()
+      input_FNs_missing = np.array([not nonzero(FN) for FN in input_FNs])
+      if input_FNs_missing.any():
+        print 'Files are missing: ' + ', '.join(input_FNs[input_FNs_missing])
+        job_status['missing_file']
+        continue # Files are missing
+  
+      for key in paths.keys():
+        paths[key] = os.path.abspath(paths[key])
+  
       labels['job'] = '%s-%d'%(labels['complex'],rep)
-      dir_dock = os.path.join(args_in.tree_dock,labels['job'])
-      paths['dir_dock'] = os.path.abspath(dir_dock)
-      if not os.path.isdir(dir_dock):
-        os.system('mkdir -p '+dir_dock)
+      paths['dir_dock'] = os.path.abspath(os.path.join(args_in.tree_dock,labels['job']))
+      if not os.path.isdir(paths['dir_dock']):
+        os.system('mkdir -p '+paths['dir_dock'])
       if (args_in.run_type in ['random_dock','initial_dock', \
                                'dock','all','timed']) and \
-          nonzero(os.path.join(dir_dock,'f_RL.pkl.gz')):
+          nonzero(os.path.join(paths['dir_dock'],'f_RL.pkl.gz')):
         job_status['complete'] += 1
         continue # Docking is done
       jobname = '-'.join(dirs['current'].split('/')[-2:]+[labels['job']])
       if jobname in onq:
         job_status['onq'] += 1
+        print jobname + ' is on the queue'
         continue # Job is on the queue
-      if (args_in.first_ligand is not None) and \
-          (sum(job_status.values())<args_in.first_ligand):
-        job_status['skipped'] += 1
-        continue
 
       interactive_to_pass = []
       terminal_to_pass = []
       passError = False
-      for key in (path_keys + sim_arg_keys):
+      for key in (paths.keys() + sim_arg_keys):
         # Priority is passed arguments (which may include saved arguments),
         #   local variables,
         #   and then the path dictionary
@@ -342,7 +353,7 @@ for ligand_FN in ligand_FNs:
           val = getattr(args_in,key)
         elif (key in namespace.keys()) and (namespace[key] is not None):
           val = namespace[key]
-        elif key in path_keys:
+        elif key in paths.keys():
           val = paths[key]
         else:
           continue
@@ -400,12 +411,12 @@ for ligand_FN in ligand_FNs:
           'cool_progress.pkl.gz','cool_progress.pkl.gz.BAK',
           'cool_data.pkl.gz','cool_data.pkl.gz.BAK',
           'f_L.pkl.gz']:
-        outputFNs[FN] = os.path.join(dir_cool,FN)
+        outputFNs[FN] = os.path.join(paths['dir_cool'],FN)
       for FN in ['dock_log.txt',
           'dock_progress.pkl.gz', 'dock_progress.pkl.gz.BAK',
           'dock_data.pkl.gz', 'dock_data.pkl.gz.BAK',
           'f_RL.pkl.gz']:
-        outputFNs[FN] = os.path.join(dir_dock,FN)
+        outputFNs[FN] = os.path.join(paths['dir_dock'],FN)
       for k in outputFNs.keys():
         if not os.path.isfile(outputFNs[k]):
           open(outputFNs[k], 'a').close()
@@ -444,28 +455,14 @@ for ligand_FN in ligand_FNs:
       
       job_status['submitted'] += 1
 
-      num_ligands = sum(job_status.values())
       if (args_in.max_jobs is not None) and \
          (job_status['submitted']>=args_in.max_jobs):
         break
-      if (args_in.max_ligands is not None) and \
-         (num_ligands>=args_in.max_ligands):
-        break
-
-    num_ligands = sum(job_status.values())
     if (args_in.max_jobs is not None) and \
        (job_status['submitted']>=args_in.max_jobs):
       break
-    if (args_in.max_ligands is not None) and \
-       (num_ligands>=args_in.max_ligands):
-      break
-      
-  num_ligands = sum(job_status.values())
   if (args_in.max_jobs is not None) and \
      (job_status['submitted']>=args_in.max_jobs):
-    break
-  if (args_in.max_ligands is not None) and \
-     (num_ligands>=args_in.max_ligands):
     break
 
 print "Jobs: {submitted} submitted, {skipped} skipped, {no_complex} without complex files, {no_dock6} without dock6 files, {missing_file} missing other files, {onq} on the queue, {complete} complete".format(**job_status)

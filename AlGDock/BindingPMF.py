@@ -101,6 +101,7 @@ arguments = {
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
   'cores':{'type':int, \
     'help':'Number of CPU cores to use'},
+  'rotate_matrix':{'help':'Rotation matrix for viewing'},
   #   Defaults
   'protocol':{'choices':['Adaptive','Set'],
     'help':'Approach to determining series of thermodynamic states'},
@@ -324,6 +325,9 @@ last modified {2}
       self._cores = min(kwargs['cores'], available_cores)
     print "using %d/%d available cores"%(self._cores, available_cores)
 
+    if kwargs['rotate_matrix'] is not None:
+      self._view_args_rotate_matrix = kwargs['rotate_matrix']
+
     self.confs = {'cool':{}, 'dock':{}}
     
     self.dir = {}
@@ -435,8 +439,7 @@ last modified {2}
 
     # Check for existence of required files
     do_dock = (hasattr(args,'run_type') and \
-              (args.run_type in ['pose_energies','minimized_pose_energies', \
-                'random_dock','initial_dock','dock','all']))
+              (args.run_type not in ['store_params', 'cool']))
 
     for key in ['ligand_database','forcefield']:
       if (self._FNs[key] is None) or (not os.path.isfile(self._FNs[key])):
@@ -448,7 +451,7 @@ last modified {2}
         raise Exception('File for %s %s is missing'%(key1,key2))
 
     for (key1,key2) in [\
-        ('prmtop','RL'), ('inpcrd','RL'), ('fixed_atoms','RL'), \
+        ('prmtop','RL'), ('inpcrd','RL'), \
         ('grids','LJr'), ('grids','LJa'), ('grids','ELE')]:
       FN = self._FNs[key1][key2]
       errstring = 'Missing file %s %s required for docking!'%(key1,key2)
@@ -743,18 +746,22 @@ last modified {2}
       self._postprocess()
       self.calc_f_RL()
     elif run_type=='render_docked':
+      view_args = {'axes_off':True, 'size':[1008,1008], 'scale_by':0.80, \
+                   'render':'TachyonInternal'}
+      if hasattr(self, '_view_args_rotate_matrix'):
+        view_args['rotate_matrix'] = getattr(self, '_view_args_rotate_matrix')
       self.show_samples(show_ref_ligand=True, show_starting_pose=True, \
         show_receptor=True, save_image=True, execute=True, quit=True, \
-        view_args={'axes_off':True, 'size':[504,504], 'scale_by':0.70, \
-                   'render':'TachyonInternal'})
+        view_args=view_args)
     elif run_type=='render_intermediates':
+      view_args = {'axes_off':True, 'size':[1008,1008], 'scale_by':0.80, \
+                   'render':'TachyonInternal'}
+      if hasattr(self, '_view_args_rotate_matrix'):
+        view_args['rotate_matrix'] = getattr(self, '_view_args_rotate_matrix')
       self.render_intermediates(\
         movie_name=os.path.join(self.dir['dock'],'dock-intermediates.gif'), \
-        view_args={'axes_off':True, 'size':[800,800], 'scale_by':0.70, \
-                   'render':'TachyonInternal'})
-      self.render_intermediates(nframes=8, \
-        view_args={'axes_off':True, 'size':[504,504], 'scale_by':0.70, \
-                   'render':'TachyonInternal'})
+        view_args=view_args)
+      self.render_intermediates(nframes=8, view_args=view_args)
     elif run_type=='clear_intermediates':
       for process in ['cool','dock']:
         print 'Clearing intermediates for '+process
@@ -1658,6 +1665,14 @@ last modified {2}
       for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
         if not phase+'_'+method in self.B:
           self.B[phase+'_'+method] = []
+      
+      # Receptor solvation
+      if 'RNAMD_Gas' in self.original_Es[0][0].keys():
+        B_R_solv = (self.original_Es[0][0]['R'+phase][-1] - \
+                    self.original_Es[0][0]['RNAMD_Gas'][-1])/self.RT_TARGET
+      else:
+        B_R_solv = self.original_Es[0][0]['R'+phase][-1]/self.RT_TARGET
+
       for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
         du = np.concatenate([self.stats_RL['u_K_'+phase][c] - \
@@ -1676,16 +1691,12 @@ last modified {2}
         self.B[phase+'_mean_Psi'].append(np.mean(Psi))
         self.B[phase+'_inverse_FEP'].append(\
           np.log(sum(weights*np.exp(Psi-min_Psi))) + min_Psi)
-        self.B[phase+'_BAR'].append(\
-          -self.f_L[phase+'_solv'][-1] - \
-           self.original_Es[0][0]['R'+phase][-1]/self.RT_TARGET - \
-           self.f_L['cool_BAR'][-1][-1] + \
-           self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
-        self.B[phase+'_MBAR'].append(\
-          -self.f_L[phase+'_solv'][-1] - \
-           self.original_Es[0][0]['R'+phase][-1]/self.RT_TARGET - \
-           self.f_L['cool_MBAR'][-1][-1] + \
-           self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
+        self.B[phase+'_BAR'].append(-B_R_solv \
+          - self.f_L[phase+'_solv'][-1] - self.f_L['cool_BAR'][-1][-1] \
+          + self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
+        self.B[phase+'_MBAR'].append(-B_R_solv \
+          - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
+          + self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
 
         self.tee("  calculated %s binding PMF of %f RT with cycles %d to %d"%(\
           phase, self.B[phase+'_MBAR'][-1], \
@@ -1719,6 +1730,12 @@ last modified {2}
         nearMean = max(nearMean,1)
       equilibrated_cycle.append(nearMean)
     return equilibrated_cycle
+  
+#  correlation_times = [pymbar.timeseries.integratedAutocorrelationTimeMultiple(\
+#    np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
+#      for c in range(start_c,len(self.dock_Es[0])) \
+#      if 'repXpath' in self.dock_Es[0][c].keys()]))) \
+#        for start_c in range(1,len(self.dock_Es[0]))]
   
   def _get_pose_prediction(self, process, equilibrated_cycle):
     # Gather snapshots
@@ -1892,9 +1909,10 @@ last modified {2}
             if len(confs)>0:
               # Use the center of mass for configurations
               # within 20 RT of the lowest energy
+              cutoffE = Es['total'][-1] + 20*self.RT_TARGET
               coms = []
-              for (conf,E) in reversed(zip(confs,Es)):
-                if E<(Es[-1]+20*self.RT_TARGET):
+              for (conf,E) in reversed(zip(confs,Es['total'])):
+                if E<cutoffE:
                   self.universe.setConfiguration(Configuration(self.universe,conf))
                   coms.append(np.array(self.universe.centerOfMass()))
                 else:
@@ -2530,7 +2548,8 @@ last modified {2}
 
     return True # The process has completed
 
-  def _get_confs_to_rescore(self, nconfs=None, site=False, energies=True, minimize=True):
+  def _get_confs_to_rescore(self, nconfs=None, site=False, \
+      energies=True, minimize=True):
     """
     Returns configurations to rescore and their corresponding energies 
     as a tuple of lists, ordered by DECREASING energy.
@@ -2552,7 +2571,8 @@ last modified {2}
     elif (self._FNs['score'] is None) or (not os.path.isfile(self._FNs['score'])):
       confs = []
       Es = {}
-    elif self._FNs['score'].endswith('.mol2'):
+    elif self._FNs['score'].endswith('.mol2') or \
+         self._FNs['score'].endswith('.mol2.gz'):
       (confs,Es) = self._read_dock6(self._FNs['score'], site=site)
       count['dock6'] = len(confs)
       if self.confs['dock']['seeds'] is not None:
@@ -2565,6 +2585,8 @@ last modified {2}
       if not isinstance(confs, list):
         confs = [confs]
       Es = {}
+    else:
+      raise Exception('Input configuration format not recognized')
     
     if len(confs)==0:
       return ([],[])
@@ -3614,7 +3636,7 @@ END
       saved = {'progress':self._load_pkl_gz(progress_FN),
                'data':self._load_pkl_gz(data_FN)}
       if (saved['progress'] is None):
-        print '  missing progress information in %s'%p
+        print '  no progress information for %s'%p
       elif (saved['data'] is None):
         print '  missing data in %s'%p
       else:

@@ -3,6 +3,8 @@
 # for AMBER and AlGDock
 # Run from the [TARGET]/ directory
 
+# TODO: Generated a complex_fixed_atoms pdb file
+
 # Constants
 job_block = 10
 

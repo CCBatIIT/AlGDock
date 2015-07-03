@@ -138,8 +138,13 @@ class BPMF_plots(BPMF):
       else:
         prefix = '%s-%05d'%(process,state)
 
+      if process == 'dock':
+        first_cycle = self.stats_RL['equilibrated_cycle'][-1]
+      else:
+        first_cycle = self.stats_L['equilibrated_cycle'][-1]
+
       confs = []
-      for c in range(len(self.confs[process]['samples'][state])):
+      for c in range(first_cycle, len(self.confs[process]['samples'][state])):
         if len(self.confs[process]['samples'][state][c])>0:
           if not isinstance(self.confs[process]['samples'][state][c],list):
             self.confs[process]['samples'][state][c] = \
@@ -287,12 +292,28 @@ class BPMF_plots(BPMF):
       draw = PIL.ImageDraw.Draw(im)
       import PIL.ImageFont
       if self._FNs['font'] is not None:
-        font = PIL.ImageFont.truetype(self._FNs['font'],size=42)
-        draw.text((10,im.size[1]-55),image_labels[0],font=font)
-        draw.text((im.size[0]/2.+10,im.size[1]-55),image_labels[1],font=font)
+        font = PIL.ImageFont.truetype(self._FNs['font'],size=84)
+        textsize = draw.textsize(image_labels[0], font=font)
+        ytop = im.size[1] - textsize[1] - 20
+        draw.rectangle((5, ytop-5, 15+textsize[0], im.size[1] - 5), \
+          fill='Black', outline='White')
+        draw.text((10,ytop),image_labels[0],font=font)
+        textsize = draw.textsize(image_labels[1], font=font)
+        draw.rectangle((im.size[0]/2.+5, ytop-5, \
+          im.size[0]/2.+15+textsize[0], im.size[1] - 5), \
+          fill='Black', outline='White')
+        draw.text((im.size[0]/2.+10,ytop),image_labels[1],font=font)
       else:
-        draw.text((10,im.size[1]-55),image_labels[0])
-        draw.text((im.size[0]/2.+10,im.size[1]-55),image_labels[0])
+        textsize = draw.textsize(image_labels[0])
+        ytop = im.size[1] - textsize[1] - 20
+        draw.rectangle((5, ytop-5, 15+textsize[0], im.size[1] - 5), \
+          fill='Black', outline='White')
+        draw.text((10,ytop),image_labels[0])
+        textsize = draw.textsize(image_labels[1])
+        draw.rectangle((im.size[0]/2.+5, ytop-5, \
+          im.size[0]/2.+15+textsize[0], im.size[1] - 5), \
+          fill='Black', outline='White')
+        draw.text((im.size[0]/2.+10,ytop),image_labels[0])
       im.save(image_path)
 
     return script

@@ -1,5 +1,7 @@
 # Prepares a PDB file for docking
 
+# TODO: Generated a receptor_fixed_atoms pdb file
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('pdb_in', default=None, help='Input PDB file')
