@@ -76,6 +76,8 @@ class converter():
     :param extended: whether to include external coordinates or not
     :param Cartesian: Cartesian coordinates. If None, then the molecules' coordinates will be used
     """
+    if Cartesian is not None:
+      self.universe.setConfiguration(MMTK.Configuration(self.universe,Cartesian))
     root = [self.universe.distance(self.root[0],self.root[1]),\
       self.universe.distance(self.root[1],self.root[2]),\
       self.universe.angle(self.root[0],self.root[1],self.root[2])]
