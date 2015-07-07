@@ -50,15 +50,6 @@ converted_confs_BAT = []
 for i in range(len(confs)):
   converted_confs_BAT.append(c.BAT(Cartesian=confs[i]))
 
-# Basically need to loope over docked poses to get "darts."
-# _get_confs_to_rescore will get you docked poses in AlGDock
-
-# What pose are you in?
-# Your current configuration is: self.universe.configuration().array
-# Get root mean square deviation (rmsd) values between your current pose and pose of interest. Here a quick one-liner that will do it:
-# np.array([np.sqrt(((conf_c - confs[c][self.molecule.heavy_atoms,:])**2).sum()/self.molecule.nhatoms) for c in range(len(confs))])
-""" The line above shows an example of "comprehensive for" structure"""
-
 def calculate_RMSD_confs(confs):
   current_conf = self.universe.configuration().array
   RMSD_of_confs = []
