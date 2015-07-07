@@ -618,14 +618,16 @@ last modified {2}
       IO_prmtop = AlGDock.IO.prmtop()
       prmtop_R = IO_prmtop.read(self._FNs['prmtop']['R'])
       prmtop_RL = IO_prmtop.read(self._FNs['prmtop']['RL'])
-      ligand_ind = [ind for (r,ind) in \
-        zip(prmtop_RL['RESIDUE_LABEL'],range(len(prmtop_RL['RESIDUE_LABEL']))) \
-        if r not in prmtop_R['RESIDUE_LABEL']]
+      ligand_ind = [ind for ind in range(len(prmtop_RL['RESIDUE_LABEL']))
+        if prmtop_RL['RESIDUE_LABEL'][ind] not in prmtop_R['RESIDUE_LABEL']]
       if len(ligand_ind)==0:
         raise Exception('Ligand not found in complex prmtop')
       elif len(ligand_ind) > 1:
-        raise Exception('Ligand residue label is ambiguous')
-      self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[0]] - 1
+        print '  possible ligand residue labels: '+\
+          ', '.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
+      print '  considering a residue named "%s" as the ligand'%\
+        prmtop_RL['RESIDUE_LABEL'][ligand_ind[-1]].strip()
+      self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[-1]] - 1
     else:
       self._ligand_first_atom = 0
       if do_dock:
