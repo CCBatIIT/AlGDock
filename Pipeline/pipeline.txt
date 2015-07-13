@@ -134,7 +134,16 @@ and populate
 [TARGET]/receptor/2-binding_site/receptor_trans/
 [TARGET]/receptor/2-binding_site/complexes_trans/
 
-The ligand_trans directory contains com.py and com_box.pdb. If opened in chimera, they will show all the ligand centers of mass and a box that surrounds them, respectively.
+The ligand_trans directory contains com.py and com_box.pdb. If opened in chimera, they will show all the ligand centers of mass and a box that surrounds them, respectively. 
+
+You should check that com_box.pdb has a reasonable size. 
+If it is too small, you will not be able to dock any ligands in the binding site.
+You may want to go back and modify 
+[TARGET]/receptor/search_options.py 
+so that more crystal structures are included. 
+Alternatively, you can manually modify
+[TARGET]/receptor/2-binding_site/measured_binding_site.py
+to encompass a larger region.
 
 Iterate editing of xtal_ligand_selection.py and running measure_binding_site.py until the desired binding site is specified.
 
