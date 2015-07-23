@@ -67,15 +67,18 @@ arguments = {
   'convert':{'help':'Location of convert (from ImageMagick)'},
   'font':{'help':'Location of font file (readable by PIL)'},
   #   Stored in both dir_cool and dir_dock
+  'ligand_tarball':{'help':'tar file that contains database, prmtop, and inpcrd for ligand'},
   'ligand_database':{'help':'MMTK molecule definition for ligand'},
   'forcefield':{'help':'AMBER force field file'},
   'frcmodList':{'help':'AMBER force field modifications file(s)', 'nargs':'+'},
   'ligand_prmtop':{'help':'AMBER prmtop for the ligand'},
   'ligand_inpcrd':{'help':'AMBER coordinates for the ligand'},
   #   Stored in dir_dock
+  'receptor_tarball':{'help':'tar file that contains prmtop, inpcrd, and fixed_atoms files for the receptor'},
   'receptor_prmtop':{'help':'AMBER prmtop for the receptor'},
   'receptor_inpcrd':{'help':'AMBER coordinates for the receptor'},
   'receptor_fixed_atoms':{'help':'PDB file with fixed atoms labeled by 1 in the occupancy column'},
+  'complex_tarball':{'help':'tar file that contains prmtop, inpcrd, and fixed_atoms files for the complex'},
   'complex_prmtop':{'help':'AMBER prmtop file for the complex'},
   'complex_inpcrd':{'help':'AMBER coordinates for the complex'},
   'complex_fixed_atoms':{'help':'PDB file with fixed atoms labeled by 1 in the occupancy column'},
@@ -257,11 +260,11 @@ def convert_dictionary_relpath(d, relpath_o=None, relpath_n=None):
           p = os.path.abspath(join(relpath_o,d[key]))
         else:
           p = os.path.abspath(d[key])
-        if os.path.exists(p): # Only save file names for existent paths
-          if relpath_n is not None:
-            converted[key] = os.path.relpath(p,relpath_n)
-          else:
-            converted[key] = p
+        # if os.path.exists(p): # Only save file names for existent paths
+        if relpath_n is not None:
+          converted[key] = os.path.relpath(p,relpath_n)
+        else:
+          converted[key] = p
   return converted
 
 def HMStime(s):
@@ -274,6 +277,28 @@ def HMStime(s):
     return '%d:%.3f'%(int(s/60%60),s%60)
   else:
     return '%d:%d:%.3f'%(int(s/3600),int(s/60%60),s%60)
+
+def dict_view(dict_c, indent=2, relpath=None, show_None=False):
+  view_string = ''
+  for key in dict_c.keys():
+    if dict_c[key] is None:
+      if show_None:
+        view_string += ' '*indent + key + ': None\n'
+    elif isinstance(dict_c[key],dict):
+      subdict_string = dict_view(dict_c[key], indent+2, relpath=relpath)
+      if subdict_string!='':
+        view_string += ' '*indent + key + ':\n' + subdict_string
+    elif isinstance(dict_c[key],str):
+      view_string += ' '*indent + key + ': '
+      if relpath is not None:
+        view_string += os.path.relpath(dict_c[key],relpath) + '\n'
+        if not os.path.exists(dict_c[key]):
+          view_string += ' '*(indent+len(key)) + 'DOES NOT EXIST\n'
+      else:
+        view_string += dict_c[key] + '\n'
+    else:
+      view_string += ' '*indent + key + ': ' + repr(dict_c[key]) + '\n'
+  return view_string
 
 class NullDevice():
   """
@@ -363,22 +388,88 @@ last modified {2}
         args[p] = {}
   
     print '\n*** Directories ***'
-    print self.dir
+    print dict_view(self.dir)
   
+    # Identify tarballs
+    tarFNs = [kwargs[prefix + '_tarball'] \
+      for prefix in ['ligand','receptor','complex'] \
+      if (prefix + '_tarball') in kwargs.keys() and
+      kwargs[(prefix + '_tarball')] is not None]
+    for p in ['cool','dock']:
+      if (p in FNs.keys()) and ('tarball' in FNs[p].keys()):
+        tarFNs += [tarFN for tarFN in FNs[p]['tarball'].values() \
+          if tarFN is not None]
+    tarFNs = set(tarFNs)
+
+    # Identify files to look for in the tarballs
+    seekFNs = []
+    if len(tarFNs)>0:
+      for prefix in ['ligand','receptor','complex']:
+        for postfix in ('database','prmtop','inpcrd','fixed_atoms'):
+          key = '%s_%s'%(prefix,postfix)
+          if (key in kwargs.keys()) and (kwargs[key] is not None):
+            FN = os.path.abspath(kwargs[key])
+            if not os.path.isfile(FN):
+              seekFNs.append(FN)
+      for p in ['cool','dock']:
+        if p in FNs.keys():
+          for level1 in ['ligand_database','prmtop','inpcrd','fixed_atoms']:
+            if level1 in FNs[p].keys():
+              if isinstance(FNs[p][level1],dict):
+                for level2 in ['L','R','RL']:
+                  if level2 in FNs[p][level1].keys():
+                    seekFNs.append(FNs[p][level1][level2])
+              else:
+                seekFNs.append(FNs[p][level1])
+      seekFNs = set(seekFNs)
+
+    # Decompress tarballs
+    self._toClear = []
+
+    if len(seekFNs)>0:
+      import tarfile
+
+      print '>>> Decompressing tarballs'
+      print 'looking for:\n  ' + \
+        '\n  '.join([os.path.relpath(FN,self.dir['start']) for FN in seekFNs])
+
+      for tarFN in tarFNs:
+        print 'reading '+tarFN
+        tarF = tarfile.open(tarFN,'r')
+        for member in tarF.getmembers():
+          for seekFN in seekFNs:
+            if member.name.endswith(os.path.basename(seekFN)):
+              tarF.extract(member, path = os.path.dirname(seekFN))
+              self._toClear.append(seekFN)
+              print '  extracted '+os.path.relpath(seekFN,self.dir['start'])
+          if member.name.endswith('frcmod') and ((kwargs['frcmodList'] is None) or not os.path.isfile(kwargs['frcmodList'][0])):
+            FN = os.path.abspath(os.path.join(self.dir['start'],member.name))
+            if not os.path.isfile(FN):
+              tarF.extract(member, path = self.dir['start'])
+              kwargs['frcmodList'] = [FN]
+              self._toClear.append(FN)
+              print '  extracted '+os.path.relpath(seekFN,self.dir['start'])
+
     # Set up file name dictionary
     print '\n*** Files ***'
 
     for p in ['cool','dock']:
       if p in FNs.keys():
         if FNs[p]!={}:
-          print 'previous stored in %s directory:'%p
-          print FNs[p]
+          print 'previously stored in %s directory:'%p
+          print dict_view(FNs[p], relpath=self.dir['start'])
+
+    if not (FNs['cool']=={} and FNs['dock']=={}):
+      print 'from arguments and defaults:'
 
     FNs['new'] = {
       'ligand_database':a.findPath([kwargs['ligand_database']]),
       'forcefield':a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + \
                                a.search_paths['gaff.dat']),
       'frcmodList':kwargs['frcmodList'],
+      'tarball':{'L':a.findPath([kwargs['ligand_tarball']]),
+                'R':a.findPath([kwargs['receptor_tarball']]),
+                'RL':a.findPath([kwargs['complex_tarball']])},
       'prmtop':{'L':a.findPath([kwargs['ligand_prmtop']]),
                 'R':a.findPath([kwargs['receptor_prmtop']]),
                 'RL':a.findPath([kwargs['complex_prmtop']])},
@@ -412,9 +503,8 @@ last modified {2}
       'font':a.findPath([kwargs['font']] + a.search_paths['font'])}
 
     if not (FNs['cool']=={} and FNs['dock']=={}):
-      print 'from arguments and defaults:'
-      print FNs['new']
-      print '\nto be used:'
+      print dict_view(FNs['new'], relpath=self.dir['start'])
+      print 'to be used:'
 
     self._FNs = merge_dictionaries(
       [FNs[src] for src in ['new','cool','dock']],
@@ -468,7 +558,7 @@ last modified {2}
         else:
           print 'Receptor coordinates needed for docking!'
 
-    print self._FNs
+    print dict_view(self._FNs, relpath=self.dir['start'], show_None=True)
     
     args['default_cool'] = {
         'protocol':'Adaptive',
@@ -536,13 +626,13 @@ last modified {2}
     self.T_TARGET = self.params['cool']['T_TARGET']
     self.RT_TARGET = R * self.params['cool']['T_TARGET']
 
-    print '\n*** Setting up the simulation ***'
+    print '>>> Setting up the simulation'
     self._setup_universe(do_dock = do_dock)
 
     print '\n*** Simulation parameters and constants ***'
     for p in ['cool','dock']:
       print 'for %s:'%p
-      print self.params[p]
+      print dict_view(self.params[p])
 
     self.timing = {'start':time.time(), 'max':kwargs['max_time']}
     self._run(kwargs['run_type'])
@@ -3697,6 +3787,7 @@ END
           'ligand_database':self._FNs['ligand_database'],
           'forcefield':self._FNs['forcefield'],
           'frcmodList':self._FNs['frcmodList'],
+          'tarball':{'L':self._FNs['tarball']['L']},
           'prmtop':{'L':self._FNs['prmtop']['L']},
           'inpcrd':{'L':self._FNs['inpcrd']['L']}},
           relpath_o=None, relpath_n=self.dir['cool'])
@@ -3761,6 +3852,14 @@ END
         self.log.write(repr(var)+'\n')
       self.log.flush()
       self._clear_lock(process)
+
+  def __del__(self):
+    if len(self._toClear)>0:
+      print '\n>>> Clearing files'
+      for FN in self._toClear:
+        if os.path.isfile(FN):
+          os.remove(FN)
+          print '  removed '+os.path.relpath(FN,self.dir['start'])
 
 if __name__ == '__main__':
   import argparse

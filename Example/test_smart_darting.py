@@ -5,13 +5,16 @@ import numpy as np
 
 self = AlGDock.BindingPMF_plots.BPMF_plots(\
     dir_dock='dock', dir_cool='cool',\
+    ligand_tarball='prmtopcrd/ligand.tar.gz', \
     ligand_database='prmtopcrd/ligand.db', \
     forcefield='prmtopcrd/gaff.dat', \
     ligand_prmtop='prmtopcrd/ligand.prmtop', \
     ligand_inpcrd='prmtopcrd/ligand.trans.inpcrd', \
+    receptor_tarball='prmtopcrd/receptor.tar.gz', \
     receptor_prmtop='prmtopcrd/receptor.prmtop', \
     receptor_inpcrd='prmtopcrd/receptor.trans.inpcrd', \
     receptor_fixed_atoms='prmtopcrd/receptor.pdb', \
+    complex_tarball='prmtopcrd/complex.tar.gz', \
     complex_prmtop='prmtopcrd/complex.prmtop', \
     complex_inpcrd='prmtopcrd/complex.trans.inpcrd', \
     complex_fixed_atoms='prmtopcrd/complex.pdb', \
