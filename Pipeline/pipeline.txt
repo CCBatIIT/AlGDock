@@ -126,7 +126,7 @@ site_R = None
 From [TARGET]/receptor/2-binding_site/, run
 python $ALGDOCKHOME/Pipeline/measure_binding_site.py
 which will create 
-[TARGET]/receptor/2-binding_site/clusters.png 
+[TARGET]/receptor/2-binding_site/figures/clusters.png 
 [TARGET]/receptor/2-binding_site/measured_binding_site.py
 and populate
 [TARGET]/receptor/2-binding_site/ligands_aligned/

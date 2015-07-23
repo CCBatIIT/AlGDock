@@ -125,7 +125,7 @@ if not (os.path.isfile('dock_prep/'+name+'.all.sph') or \
   if os.path.isfile('dock_prep/'+name+'.all.sph'):
     os.remove('dock_prep/{0}.ms'.format(name))
   else:
-    raise Exception('Shere generation failed!')
+    raise Exception('Sphere generation failed!')
 else:
   print 'Spheres already generated'
 
