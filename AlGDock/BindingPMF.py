@@ -96,7 +96,7 @@ arguments = {
   'run_type':{'choices':['pose_energies','minimized_pose_energies',
               'store_params', 'cool', \
               'dock','timed','postprocess',\
-              'redo_postprocess','free_energies','all', \
+              'redo_postprocess','free_energies','redo_free_energies', 'all', \
               'render_docked', 'render_intermediates', \
               'clear_intermediates', None],
     'help':'Type of calculation to run'},
@@ -399,7 +399,7 @@ last modified {2}
       if (p in FNs.keys()) and ('tarball' in FNs[p].keys()):
         tarFNs += [tarFN for tarFN in FNs[p]['tarball'].values() \
           if tarFN is not None]
-    tarFNs = set(tarFNs)
+    tarFNs = set([FN for FN in tarFNs if os.path.isfile(FN)])
 
     # Identify files to look for in the tarballs
     seekFNs = []
@@ -507,8 +507,7 @@ last modified {2}
       print 'to be used:'
 
     self._FNs = merge_dictionaries(
-      [FNs[src] for src in ['new','cool','dock']],
-      required_consistency=['L','R','RL','ligand_database'])
+      [FNs[src] for src in ['new','cool','dock']])
   
     # Default: a force field modification is in the same directory as the ligand
     if (self._FNs['frcmodList'] is None):
@@ -827,9 +826,9 @@ last modified {2}
       self._postprocess()
     elif run_type=='redo_postprocess':
       self._postprocess(redo_dock=True)
-    elif run_type=='free_energies': # All free energies
-      self.calc_f_L()
-      self.calc_f_RL()
+    elif (run_type=='free_energies') or (run_type=='redo_free_energies'):
+      self.calc_f_L(redo=(run_type=='redo_free_energies'))
+      self.calc_f_RL(redo=(run_type=='redo_free_energies'))
     elif run_type=='all':
       self.cool()
       self._postprocess([('cool',-1,-1,'L')])
@@ -1597,12 +1596,12 @@ last modified {2}
 
     # Initialize variables as empty lists or by loading data
     f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
-    if redo:
-      if os.path.isfile(f_RL_FN):
-        os.remove(f_RL_FN)
-      dat = None
-    else:
-      dat = self._load_pkl_gz(f_RL_FN)
+#    if redo:
+#      if os.path.isfile(f_RL_FN):
+#        os.remove(f_RL_FN)
+#      dat = None
+#    else:
+    dat = self._load_pkl_gz(f_RL_FN)
     if (dat is not None):
       (self.f_L, self.stats_RL, self.f_RL, self.B) = dat
     else:
@@ -1728,9 +1727,6 @@ last modified {2}
       self.f_RL['grid_BAR'].append(BAR)
       updated = True
 
-      self.B['MBAR'].append(\
-        self.f_L['cool_MBAR'][-1][-1] + self.f_RL['grid_MBAR'][-1][-1])
-
       # Average acceptance probabilities
       mean_acc = np.zeros(K-1)
       for k in range(0, K-1):
@@ -1739,6 +1735,10 @@ last modified {2}
         acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
         mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
       self.stats_RL['mean_acc'].append(mean_acc)
+
+    # Calculate MBABR free energy
+    self.B['MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
+      self.f_RL['grid_MBAR'][c][-1] for c in range(len(self.f_RL['grid_MBAR']))]
 
 # How to estimate the change in potential energy for GBSA:
 #              This is the NAMD result
@@ -1795,7 +1795,7 @@ last modified {2}
           self.stats_RL['equilibrated_cycle'][c], c))
         updated = True
 
-    if updated:
+    if updated or redo:
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
 
     self.tee("\nElapsed time for binding PMF estimation: " + \
@@ -2670,6 +2670,12 @@ last modified {2}
       if self.confs['dock']['seeds'] is not None:
         confs = confs + self.confs['dock']['seeds']
         count['initial_dock'] = len(self.confs['dock']['seeds'])
+    elif self._FNs['score'].endswith('.nc'):
+      from netCDF4 import Dataset
+      dock6_nc = Dataset(self._FNs['score'],'r')
+      confs = [dock6_nc.variables['confs'][n][self.molecule.inv_prmtop_atom_order,:] for n in range(dock6_nc.variables['confs'].shape[0])]
+      Es = dict([(key,dock6_nc.variables[key][:]) for key in dock6_nc.variables.keys() if key !='confs'])
+      dock6_nc.close()
     elif self._FNs['score'].endswith('.pkl.gz'):
       F = gzip.open(self._FNs['score'],'r')
       confs = pickle.load(F)
@@ -3649,48 +3655,24 @@ END
       charges in electron charges units, and 
       energies in kcal/mol
     """
-    crds = []
-    E = {}
+    import AlGDock.IO
+    IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
+    (crds_o, E_o) = IO_dock6_mol2.read(pose_FN, \
+      reorder=self.molecule.inv_prmtop_atom_order)
 
-    if (pose_FN is None) or (not os.path.isfile(pose_FN)):
-      return (crds,E)
-
-    # Specifically to read output from UCSF dock6
-    if pose_FN.endswith('.mol2'):
-      mol2F = open(pose_FN,'r')
-    elif pose_FN.endswith('.mol2.gz'):
-      mol2F = gzip.open(pose_FN,'r')
+    if site:
+      crds = []
+      E = dict([(label,[]) for label in E_o.keys()])
+      self._set_universe_evaluator({'site':True,'T':self.T_TARGET})
+      for n in range(len(crds_o)):
+        self.universe.setConfiguration(Configuration(self.universe, crds_o[n]))
+        if self.universe.energy()<1.:
+          crds.append(crds_o[n])
+          for label in E_o.keys():
+            E[label].append(E_o[label][n])
+      return (crds, E)
     else:
-      raise Exception('Unknown file type')
-    
-    models = mol2F.read().strip().split('########## Name:')
-    mol2F.close()
-    models.pop(0)
-    
-    if len(models)>0:
-      if site:
-        self._set_universe_evaluator({'site':True,'T':self.T_TARGET})
-
-      for line in models[0].split('\n'):
-        if line.startswith('##########'):
-          label = line[11:line.find(':')].strip()
-          E[label] = []
-      
-      for model in models:
-        fields = model.split('<TRIPOS>')
-        
-        crd = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
-          dtype=float)[self.molecule.inv_prmtop_atom_order,:]/10.
-        if site:
-          self.universe.setConfiguration(Configuration(self.universe, crd))
-          if self.universe.energy()>1.:
-            continue
-        for line in fields[0].split('\n'):
-          if line.startswith('##########'):
-            label = line[11:line.find(':')].strip()
-            E[label].append(float(line.split()[-1]))
-        crds.append(crd)
-    return (crds,E)
+      return (crds_o, E_o)
 
   def _load_pkl_gz(self, FN):
     if os.path.isfile(FN) and os.path.getsize(FN)>0:

@@ -2,6 +2,8 @@
 # Dock 6 Anchor and Grow #
 ##########################
 
+# TODO: Convert dock6 output to netcdf format
+
 From the [TARGET]/ directory, if you run 
 python $ALGDOCKHOME/Pipeline/count.py,
 it will tell you how many ligands, receptors, complexes, and completed calculations there are.
@@ -163,6 +165,9 @@ It can be omitted to build models for all the chains.
 From [TARGET]/receptor/3-models/, run 
 python $ALGDOCKHOME/Pipeline/prep_receptor_for_dock.py pdb_noH/[reference].pdb
 
+You can see how the ligands fit into the spheres from [TARGET]/receptor by running:
+open 2-binding_site/ligand_trans/*.pdb dock_in/*.sph 
+
 *** PREPARE THE LIGAND MODELS ***
 
 For every chemical library, create [TARGET]/ligand/[library].ism, text files that have SMILES strings at the beginning of every line.
@@ -198,6 +203,10 @@ From [TARGET]/receptor/AlGDock_in/, execute
 python $ALGDOCKHOME/Pipeline/run_alchemicalGrids.py
 which will prepare the Lennard Jones and Poisson-Boltzmann grids.
 
+---
+
+TODO: This part is under construction
+
 It is probably unnecessary to calculate a binding PMF for every single molecule from docking.
 From [TARGET]/, execute
 python $ALGDOCKHOME/Pipeline/analyze_scores.py 
@@ -209,6 +218,11 @@ python $ALGDOCKHOME/Pipeline/run_prep_ligand_and_complex_for_AlGDock.py --help
 To prepare the 50 top-scoring active molecules and 150 top-scoring decoys, execute:
 python $ALGDOCKHOME/Pipeline/run_prep_ligand_and_complex_for_AlGDock.py --complex_list analysis/DUDE.active_dock6_scores.txt --prepare_first 50
 python $ALGDOCKHOME/Pipeline/run_prep_ligand_and_complex_for_AlGDock.py --complex_list analysis/DUDE.decoy_dock6_scores.txt --prepare_first 150
+
+---
+
+To prepare 250 ligands with the string '.active.' in the library,
+python $ALGDOCKHOME/Pipeline/run_prep_ligand_and_complex_for_AlGDock.py --library_requirement .active. --prepare_number 250
 
 To run AlGDock, from [TARGET]/AlGDock/, execute
 python $ALGDOCKHOME/Pipeline/run_AlGDock.py

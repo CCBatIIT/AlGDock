@@ -33,99 +33,97 @@ self = AlGDock.BindingPMF_plots.BPMF_plots(\
     rmsd=True)
 
 # These are cartesian coordinates of docked poses
-(confs, Es) = self._get_confs_to_rescore(minimize=False)
+(confs, Es) = self._get_confs_to_rescore(minimize=True)
 
-#  len(confs)
-#  for key in Es: #Es has a lot of keys, including 'total'. The 'total'key shows the energies associated with each docked pose
-#      print key
-#  Es['total'] # Use this to obtain the individual values of energy for each docked pose
-#  len(Es['total']) # 180 values of energy
+# Use a force field without grids
+self._set_universe_evaluator(self._lambda(0.0, 'dock', site=False, MM=True))
 
-# Convert to bond-angle-torsion (BAT)
-# Figure out how to move from one docked pose to another. This is your MCMC move set.
+conf_energies = []
+for conf in confs:
+  self.universe.setConfiguration(MMTK.Configuration(self.universe,conf))
+  conf_energies.append(self.universe.energy())
+Es['total'] = conf_energies
 
-import AlGDock.BAT
-c = AlGDock.BAT.converter(self.universe, self.molecule)
-#  x = c.BAT() # x stores the universe BAT coordinates
-#  x = c.BAT(Cartesian=confs[0]) # x stores the universe BAT coordinates
+from NUTS import NUTSIntegrator  # @UnresolvedImport
+NUTS_sampler = NUTSIntegrator(self.universe)
 
-converted_confs_BAT = []
-for i in range(len(confs)):
-  converted_confs_BAT.append(c.BAT(Cartesian=confs[i]))
-
-def calculate_RMSD_confs(confs):
-  current_conf = self.universe.configuration().array
-  RMSD_of_confs = []
-  for docked_pose in range(0,len(confs)):
-    RMSD_value = 0
-    for i in range(0,len(confs[docked_pose])):
-      RMSD_value = RMSD_value + (current_conf[i][0]-confs[docked_pose][i][0])**2 + (current_conf[i][1]-confs[docked_pose][i][1])**2 + (current_conf[i][2]-confs[docked_pose][i][2])**2
-    RMSD_value = np.sqrt(RMSD_value/len(confs[docked_pose]))
-    RMSD_of_confs.append(RMSD_value)
-  return RMSD_of_confs
-
-def calculate_closest_pose(confs):
-    return np.argmin(calculate_RMSD_confs(confs))
-
-# All of the following are part of the MCMC move:
-
-dart_from = calculate_closest_pose(confs)
-
-# Chooses one of the configurations to jump to with probability proportional
-# to exp(-E/RT).
-weights = np.exp(-np.array(Es['total'])/(8.314*300))
-weights[dart_from] = 0
+import AlGDock.RigidBodies
+BAT_util = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
+confs_BAT = [np.array(BAT_util.BAT(Cartesian=confs[n],extended=True)) \
+  for n in range(len(confs))]
+# Perturb external coordinates and primary torsions
+BAT_to_perturb = range(6)+list(len(confs_BAT[0])-BAT_util.ntorsions+np.array(sorted(list(set(BAT_util._firstTorsionInd)))))
+# darts[j][k] will jump from conformation j to conformation k
+darts = [[confs_BAT[j][BAT_to_perturb]-confs_BAT[k][BAT_to_perturb] \
+  for j in range(len(confs))] for k in range(len(confs))]
+# Probabilty of jumping to a conformation k is proportional to exp(-E/RT).
+weights = np.exp(-np.array(Es['total'])/self.RT)
 weights = weights/sum(weights)
-dart_to = np.random.choice(len(weights), p=weights)
 
-# Here is what you will need to add to the current BAT to do the move:
-differece_array = np.array(converted_confs_BAT[dart_to])-np.array(converted_confs_BAT[dart_from])
+def closest_pose(conf, confs):
+  return np.argmin(np.array([np.sqrt(((\
+    confs[c][self.molecule.heavy_atoms,:] - conf)**2).sum()\
+    /self.molecule.nhatoms) for c in range(len(confs))]))
 
-# 1. Select elements of the difference array that correspond to external
-# coordinates and torsions. This makes your "dart"
-# 2. Add these darts to the current BAT
-# 3. Convert the BAT of the new configuration to Cartesian.
-# 4. Evaluate the energy of the new configuration.
-# 5. Evaluate the probability of jumping from the new configuration
-#    to the original configuration.
-#    (a) What is the closest pose to the new configuration. dart_from_n
-#    (b) What is the probability of going from dart_from_n to dart_from
+def p_attempt(weights,dart_from,dart_to):
+  return weights[dart_to]/(1.-weights[dart_from])
 
+acc = 0.
+trials = 25
+energies = []
+closest_poses = []
+for rep in range(100):
+  NUTS_sampler(steps=50,T=300)
+  xo_Cartesian = self.universe.copyConfiguration()
+  xo_BAT = np.array(BAT_util.BAT(extended=True))
+  eo = self.universe.energy()
+  closest_pose_o = closest_pose(xo_Cartesian.array[self.molecule.heavy_atoms,:], confs)
 
+  for t in range(trials):
+    # Choose a pose to dart towards
+    dart_towards = closest_pose_o
+    while dart_towards==closest_pose_o:
+      dart_towards = np.random.choice(len(weights), p=weights)
+    # Generate a trial move
+    xn_BAT = np.copy(xo_BAT)
+    xn_BAT[BAT_to_perturb] = xo_BAT[BAT_to_perturb] + darts[closest_pose_o][dart_towards]
+    xn_Cartesian = BAT_util.Cartesian(xn_BAT) # Sets the universe
+    en = self.universe.energy()
+    closest_pose_n = closest_pose(\
+      self.universe.configuration().array[self.molecule.heavy_atoms,:], confs)
+#
+#      if closest_pose_n!=dart_towards:
+#        print 'The closest pose was not the target!'
+#        raise Exception('Testing')
 
-# To satisfy the Metropolis criterion, you will need: weights[dart_to]
-# Here is an example of an MCMC move
-#    acc = 0
-#    xo = self.universe.copyConfiguration()
-#    eo = self.universe.energy()
-#    com = self.universe.centerOfMass().array
-#    
-#    for c in range(trials):
-#      step = np.random.randn(3)*step_size
-#      xn = np.dot((xo.array - com), random_rotate()) + com + step
-#      self.universe.setConfiguration(Configuration(self.universe,xn))
-#      en = self.universe.energy()
-#      # The following line is the Metropolis acceptance criterion:
-#      if ((en<eo) or (np.random.random()<np.exp(-(en-eo)/self.RT))):
-#        acc += 1
-#        xo = self.universe.copyConfiguration()
-#        eo = en
-#        com += step
-#      else:
-#        self.universe.setConfiguration(xo)
+    if (en<eo) or (np.random.random()<np.exp(-(en-eo)/self.RT)*\
+        p_attempt(weights,closest_pose_n,closest_pose_o)/\
+        p_attempt(weights,closest_pose_o,dart_towards)):
+      
+      if en>(1000):
+        print 'eo: %f, en: %f'%(eo,en)
+        print 'closest_pose_o %d, closest_pose_n %d'%(\
+          closest_pose_o,closest_pose_n)
+        print 'p_attempt, forward %f, backwards %f'%(\
+          p_attempt(weights,closest_pose_o,dart_towards), \
+          p_attempt(weights,closest_pose_n,closest_pose_o))
+        raise Exception('High energy pose!')
+      acc += 1
+    else:
+      self.universe.setConfiguration(xo_Cartesian)
 
+  energies.append(eo)
+  closest_poses.append(closest_pose_o)
 
-# Select a new pose to dart to with a probability that satisfies detailed balance. Look up Metropolis acceptance criterion. Make sure it includes the proposal probability.
-# See _MC_translate_rotate in AlGDock.BindingPMF.BPMF for an example for how to do an MCMC move.
+print acc/trials/100.
+
+import matplotlib.pyplot as plt
+plt.plot(energies,'.-')
+plt.show()
 
 """ THIS IS HOW YOU CREATE A PBD FILE TO LATER RUN ON VMD:
     from MMTK.PDB import PDBOutputFile
     pdb_file = PDBOutputFile('test.pdb')
     pdb_file.write(self.universe, self.universe.configuration() )
     pdb_file.close() """
-
-""" This is how to run a short MD simulation
-from NUTS import NUTSIntegrator  # @UnresolvedImport
-NUTS_sampler = NUTSIntegrator(self.universe)
-NUTS_sampler(steps=500,T=300) """
 

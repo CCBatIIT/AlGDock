@@ -1,5 +1,5 @@
 # Runs an anchor and grow calculation with UCSF DOCK 6
-# To be run from the [TARGET]/dock/ directory
+# To be run from the [TARGET]/dock6/ directory
 
 try:
   import argparse
@@ -10,15 +10,22 @@ try:
   parser.add_argument('receptor', \
     default='../receptor/dock_in/3cqwA.0.sph', \
     help='Receptor site file (spheres). Grids should have the same prefix.')
+  parser.add_argument('output', \
+    help='mol2.gz file for anchor and grow output')
   args = parser.parse_args()
 except:
   import sys
   class args:
     ligand = sys.argv[1]
     receptor = sys.argv[2]
+    output = sys.argv[3]
+
+import os
+args.ligand = os.path.abspath(args.ligand)
+args.receptor = os.path.abspath(args.receptor)
+args.output = os.path.abspath(args.output)
 
 # Check for the existence of input files
-import os
 for FN in [args.ligand, args.receptor, \
     args.receptor[:-4]+'.bmp', args.receptor[:-4]+'.nrg']:
   if not os.path.isfile(FN):
@@ -35,18 +42,22 @@ dirs['dock6'] = os.path.abspath(os.path.join(\
   os.path.dirname(command_paths['dock6']),'..'))
 
 # Create directories if necessary
-labels = {'ligand':os.path.basename(args.ligand)[:-5],
-          'receptor':os.path.basename(args.receptor)[:-4]}
-labels['complex'] = labels['ligand']+'-'+labels['receptor']
-ancg_in = {'ligand':os.path.abspath(args.ligand),
-           'receptor_prefix':os.path.abspath(args.receptor[:-4]),
-           'grid_prefix':os.path.abspath(args.receptor[:-4]),
-           'dir_dock6':dirs['dock6'],
-           'outfile_prefix':labels['complex']}
+labels = {'key':os.path.basename(args.ligand)[:-5],
+  'library':'.'.join(os.path.dirname(args.ligand).split('/')[-1].split('.')[:-1]),
+  'receptor':os.path.basename(args.receptor)[:-4]}
+labels['complex'] = labels['library']+'.'+labels['key']+'-'+labels['receptor']
+ancg_in = {'ligand':args.ligand,
+           'receptor_prefix':args.receptor[:-4],
+           'grid_prefix':args.receptor[:-4],
+           'dir_dock6':dirs['dock6']}
+dirs['output'] = os.path.dirname(args.output)
+if not os.path.isdir(dirs['output']):
+  os.system('mkdir -p '+dirs['output'])
 
 F = open(labels['complex']+'.in','w')
 F.write('''
-ligand_atom_file                                             ''' + ancg_in['ligand'] + '''
+ligand_atom_file                                             ''' + \
+  ancg_in['ligand'] + '''
 limit_max_ligands                                            no
 skip_molecule                                                no
 read_mol_solvation                                           no
@@ -54,7 +65,8 @@ calculate_rmsd                                               no
 use_database_filter                                          no
 orient_ligand                                                yes
 automated_matching                                           yes
-receptor_site_file                                           ''' + ancg_in['receptor_prefix'] + '''.sph
+receptor_site_file                                           ''' + \
+  ancg_in['receptor_prefix'] + '''.sph
 max_orientations                                             5000
 critical_points                                              no
 chemical_matching                                            no
@@ -72,7 +84,8 @@ pruning_conformer_score_cutoff                               25.0
 use_clash_overlap                                            no
 write_growth_tree                                            no
 bump_filter                                                  yes
-bump_grid_prefix                                             ''' + ancg_in['receptor_prefix'] + '''
+bump_grid_prefix                                             ''' + \
+  ancg_in['receptor_prefix'] + '''
 max_bumps_anchor                                             12
 max_bumps_growth                                             12
 score_molecules                                              yes
@@ -83,7 +96,8 @@ grid_score_secondary                                         no
 grid_score_rep_rad_scale                                     1
 grid_score_vdw_scale                                         1
 grid_score_es_scale                                          1
-grid_score_grid_prefix                                       ''' + ancg_in['receptor_prefix'] + '''
+grid_score_grid_prefix                                       ''' + \
+  ancg_in['receptor_prefix'] + '''
 multigrid_score_secondary                                    no
 dock3.5_score_secondary                                      no
 continuous_score_secondary                                   no
@@ -108,10 +122,14 @@ simplex_grow_tors_premin_iterations                          0
 simplex_random_seed                                          0
 simplex_restraint_min                                        no
 atom_model                                                   all
-vdw_defn_file                                                ''' + ancg_in['dir_dock6'] + '''/parameters/vdw_AMBER_parm99.defn
-flex_defn_file                                               ''' + ancg_in['dir_dock6'] + '''/parameters/flex.defn
-flex_drive_file                                              ''' + ancg_in['dir_dock6'] + '''/parameters/flex_drive.tbl
-ligand_outfile_prefix                                        ''' + ancg_in['outfile_prefix'] + '''
+vdw_defn_file                                                ''' + \
+  ancg_in['dir_dock6'] + '''/parameters/vdw_AMBER_parm99.defn
+flex_defn_file                                               ''' + \
+  ancg_in['dir_dock6'] + '''/parameters/flex.defn
+flex_drive_file                                              ''' + \
+  ancg_in['dir_dock6'] + '''/parameters/flex_drive.tbl
+ligand_outfile_prefix                                        ''' + \
+  labels['complex'] + '''
 write_orientations                                           no
 num_scored_conformers                                        1000
 write_conformations                                          yes
@@ -123,7 +141,7 @@ F.close()
 
 command = dirs['dock6'] + '/bin/dock6 -i '+labels['complex']+'.in; ' + \
   'gzip '+labels['complex']+'_scored.mol2; ' + \
-  'mv '+labels['complex']+'_scored.mol2.gz ancg-'+labels['complex']+'.mol2.gz; ' + \
+  'mv '+labels['complex']+'_scored.mol2.gz ' + args.output + '; ' + \
   'rm '+labels['complex']+'_conformers.mol2; ' + \
   'rm '+labels['complex']+'.in'
 print command

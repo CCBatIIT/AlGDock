@@ -89,25 +89,6 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 '''.format(args.name, args.mem, args.nodes, args.ppn, \
            curdir, out_FN, err_FN, \
            modules, command, args.comment)
-elif os.path.exists('/home/dbchem/dm225/scripts/qsub_command.py'): # DSCR Cluster
-  cluster = 'DSCR'
-  if not (args.nodes==1):
-    nodes = "\n#$ -pe threaded %s\n"%args.nodes
-  else:
-    nodes = ""
-
-  submit_script = '''#!/bin/bash
-#
-#$ -S /bin/bash -cwd
-#$ -N {0}
-#$ -l mem_free={1}G{2}
-#$ -o {3} -j y
-
-{4}
-
-# {5}
-'''.format(args.name, args.mem, nodes,
-           out_FN, args.command, args.comment)
 elif os.path.exists('/stash'):   # Open Science Grid
   cluster = 'OSG'
   
@@ -215,11 +196,11 @@ export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF
 
 """ + command + """
 
-rm -rf AlGDock namd* sander* ambpdb* molsurf* APBS*
-rm algdock.tar.gz*
-rm *.inpcrd* *.prmtop*
-rm *.out *.namd *.dcd
-rm .lock
+rm -f AlGDock namd* sander* ambpdb* molsurf* APBS*
+rm -f algdock.tar.gz*
+rm -f *.inpcrd* *.prmtop* *.frcmod *.pdb *.db
+rm -f *.out *.namd *.dcd
+rm -f .lock
 
 """
   execute_script = """#!/bin/bash

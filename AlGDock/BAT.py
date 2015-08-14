@@ -175,6 +175,8 @@ class converter():
       # MMTK, but it seems to be correct
       p = rotatePoint(p, Line(a2.position(), a2.position()-a3.position()), torsion)
       a1.setPosition(p)
+    
+    return self.universe.configuration().array
 
   def showMolecule(self, colorBy=None, label=False, dcdFN=None):
     """

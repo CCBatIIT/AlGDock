@@ -1,7 +1,5 @@
 # Prepares a PDB file for docking
 
-# TODO: Generated a receptor_fixed_atoms pdb file
-
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('pdb_in', default=None, help='Input PDB file')
@@ -86,6 +84,16 @@ if not os.path.isfile('amber_prep/{0}.bres.pdb'.format(name)):
   command = dirs['amber']+'/bin/ambpdb -p ../amber_in/{0}.prmtop -bres' + \
     ' < ../amber_in/{0}.inpcrd > amber_prep/{0}.bres.pdb'
   command = command.format(name)
+  os.system(command)
+
+if not os.path.isfile('../amber_in/{0}.pdb'.format(name)):
+  print '\n*** Writing standard PDB file for fixed atoms (AMBER Residue Names) ***'
+  command = dirs['amber']+'/bin/ambpdb -p ../amber_in/{0}.prmtop' + \
+    ' < ../amber_in/{0}.inpcrd > ../amber_in/{0}.pdb'
+  command = command.format(name)
+  os.system(command)
+  command = 'python {0}/label_fixed_atoms.py ../amber_in/{1}.pdb'
+  command = command.format(dirs['script'], name)
   os.system(command)
 
 # Create a molecular surface file
@@ -176,7 +184,6 @@ if not os.path.isfile('../dock_in/'+name+'.sph'):
   osphF.close()
   if os.path.isfile('../dock_in/'+name+'.sph'):
     pass
-    # os.remove('dock_prep/'+name+'.all.sph')
   else:
     raise Exception('Sphere selection failed!')
 else:

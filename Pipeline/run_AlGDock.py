@@ -6,17 +6,22 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--saved_arguments', default='saved_arguments.py',
   help='File containing default values of parameters' + \
        '(can be overwritten by flags)')
+parser.add_argument('--include_ligand', nargs='+', default=None, \
+  help='Only runs AlGDock for a these ligands')
+parser.add_argument('--exclude_ligand', nargs='+', default=None, \
+  help='Does not run AlGDock for a these ligands')
 
 # Arguments related to file locations
 parser.add_argument('--ligand', default='../ligand/AlGDock_in/', \
-  help='The directory/file to look for ligand files' + \
-       ' (prmtop, inpcrd, frcmod, and db)')
+  help='The directory/file tree to look for ligand files')
+parser.add_argument('--library_requirement', default=None, \
+  help='The ligand file name must contain the string LIBRARY_REQUIREMENT')
 parser.add_argument('--receptor', default='../receptor/amber_in', \
   help='The directory/file to look for receptor files (prmtop and inpcrd)')
 parser.add_argument('--receptor_grids', default='../receptor/AlGDock_in', \
   help='The directory to look for receptor grids (nc)')
 parser.add_argument('--complex', default='../complex/AlGDock_in', \
-  help='The directory to look for complex files (prmtop and inpcrd)')
+  help='The directory tree to look for complex files (prmtop and inpcrd)')
 parser.add_argument('--site_info', \
   default='../receptor/2-binding_site/measured_binding_site.py', \
   help='Python script with binding site parameters' + \
@@ -38,6 +43,10 @@ parser.add_argument('--dry', action='store_true', default=False, \
 parser.add_argument('--no_release', action='store_true', default=False, \
   help='Does not release held jobs')
 parser.add_argument('--interactive', action='store_true', default=False, help='Output command for running in an interactive python environment')
+parser.add_argument('--check_tarballs', action='store_true', default=False, \
+  help='Check inside tarballs for files')
+parser.add_argument('--skip_onq', action='store_true', default=False, \
+  help='Skips looking for the job on the queue')
 # Arguments related to scoring and assessment
 parser.add_argument('--score', choices=['xtal','dock',None], default=None,
   help='Does a scoring rather than ab initio docking. xtal means the crystal structure and dock means from another docking program.')
@@ -54,7 +63,7 @@ parser.add_argument('--run_type',
   choices=['pose_energies','minimized_pose_energies', \
            'store_params', 'cool', \
            'dock','timed','postprocess',\
-           'redo_postprocess','free_energies','all', \
+           'redo_postprocess','free_energies','redo_free_energies', 'all', \
            'render_docked', 'render_intermediates', \
            'clear_intermediates', None],
   help='Type of calculation to run')
@@ -179,61 +188,23 @@ dirs['current'] = os.getcwd()
 dirs['script'] = os.path.dirname(os.path.abspath(\
   inspect.getfile(inspect.currentframe())))
 execfile(os.path.join(dirs['script'],'_external_paths.py'))
-execfile(os.path.join(dirs['script'],'_jobs_on_queue.py'))
-onq = jobs_on_queue()
+
+for path in ['ligand','receptor','receptor_grids','complex']:
+  setattr(args_in,path,os.path.abspath(getattr(args_in,path)))
+
+if not args_in.skip_onq:
+  execfile(os.path.join(dirs['script'],'_jobs_on_queue.py'))
+  onq = jobs_on_queue()
+else:
+  onq = []
 command_paths = findPaths(['qsub_command','gaff.dat'])
 algdock_path = findPath(search_paths['algdock'])
 
 import numpy as np
+
 def nonzero(path):
   return (os.path.isfile(path) and os.path.getsize(path)>0) or \
          (os.path.isdir(path))
-
-# Look for ligand files
-if os.path.isfile(args_in.ligand):
-  ligand_FNs = [args_in.ligand]
-elif os.path.isdir(args_in.ligand):
-  ligand_FNs = glob.glob(os.path.join(args_in.ligand,'*.prmtop'))
-  ligand_FNs.sort()
-else:
-  raise Exception('Ligand input %s is not a file or directory!'%args_in.ligand)
-# Require inpcrd, frcmod, and db files
-ligand_FNs = [FN for FN in ligand_FNs if
-  (np.array([nonzero(FN[:-6]+key) \
-    for key in ['prmtop','inpcrd','frcmod']]).all() and
-   nonzero(os.path.join(os.path.dirname(FN),
-                 os.path.basename(FN)[:-6].lower()+'db')))]
-
-# Look for receptor files
-if os.path.isfile(args_in.receptor):
-  receptor_FNs = [args_in.receptor]
-elif os.path.isdir(args_in.receptor):
-  receptor_FNs = glob.glob(os.path.join(args_in.receptor,'*.prmtop'))
-else:
-  raise Exception('Receptor input %s is not a file or directory!'%args_in.receptor)
-# Require inpcrd as well as prmtop files
-receptor_FNs = [FN for FN in receptor_FNs if
-  np.array([nonzero(FN[:-6]+key) \
-    for key in ['prmtop','inpcrd']]).all()]
-# Require inpcrd as well as prmtop files
-receptor_FNs = [FN for FN in receptor_FNs if np.array(\
-  [nonzero(os.path.join(args_in.receptor_grids,os.path.basename(FN)[:-6]+key)) \
-    for key in ['LJa.25.nc','LJr.25.nc','PB.nc']]).all()]
-
-if os.path.isfile(args_in.complex):
-  complex_FNs = [args_in.complex]
-elif os.path.isdir(args_in.complex):
-  complex_FNs = glob.glob(os.path.join(args_in.complex,'*.prmtop.gz'))
-else:
-  raise Exception('Complex input %s is not a file or directory!'%args_in.complex)
-# Require gzipped inpcrd and frcmod files
-complex_FNs = [FN for FN in complex_FNs if
-  np.array([nonzero(FN[:-9]+key) \
-    for key in ['prmtop.gz','inpcrd.gz']]).all()]
-complex_labels = [os.path.basename(FN)[:-10] for FN in complex_FNs]
-
-print 'Found %d ligands, %d receptors, and %d complexes ready for AlGDock'%(\
-  len(ligand_FNs),len(receptor_FNs),len(complex_FNs))
 
 # Load the binding site radius and half edge length
 site = args_in.site
@@ -268,6 +239,60 @@ else:
   class args_saved:
     pass
 
+# Look for ligand files
+if os.path.isfile(args_in.ligand):
+  ligand_FNs = [args_in.ligand]
+elif os.path.isdir(args_in.ligand):
+  ligand_FNs = glob.glob(os.path.join(args_in.ligand,'*/*.tar.gz'))
+  ligand_FNs = sorted([os.path.abspath(FN) for FN in ligand_FNs])
+else:
+  raise Exception('Ligand input %s is not a file or directory!'%args_in.ligand)
+# Check that ligand tarball has nonzero size
+ligand_FNs = [FN for FN in ligand_FNs if os.path.getsize(FN)>0]
+# Filter ligands
+if args_in.include_ligand is not None:
+  ligand_FNs = [FN for FN in ligand_FNs \
+    if np.array([FN.find(ligN)!=-1 for ligN in args_in.include_ligand]).any()]
+if args_in.exclude_ligand is not None:
+  ligand_FNs = [FN for FN in ligand_FNs \
+    if not np.array([FN.find(ligN)!=-1 for ligN in args_in.include_ligand]).any()]
+
+# Look for receptor files
+if os.path.isfile(args_in.receptor):
+  receptor_FNs = [args_in.receptor]
+elif os.path.isdir(args_in.receptor):
+  receptor_FNs = glob.glob(os.path.join(args_in.receptor,'*.prmtop'))
+else:
+  raise Exception('Receptor input %s is not a file or directory!'%args_in.receptor)
+receptor_FNs = [os.path.abspath(FN) for FN in receptor_FNs]
+
+# Require inpcrd as well as prmtop files
+receptor_FNs = [FN for FN in receptor_FNs if
+  np.array([nonzero(FN[:-6]+key) \
+    for key in ['prmtop','inpcrd']]).all()]
+# Require grid files
+receptor_FNs = [FN for FN in receptor_FNs if np.array(\
+  [nonzero(os.path.join(args_in.receptor_grids,os.path.basename(FN)[:-6]+key)) \
+    for key in ['LJa.25.nc','LJr.25.nc','PB.nc']]).all()]
+
+# Look for complex files
+if os.path.isfile(args_in.complex):
+  complex_FNs = [args_in.complex]
+elif os.path.isdir(args_in.complex):
+  complex_FNs = glob.glob(os.path.join(args_in.complex,'*/*/*.tar.gz'))
+else:
+  raise Exception('Complex input %s is not a file or directory!'%args_in.complex)
+# Require that complex tarball has nonzero size
+complex_FNs = [FN for FN in complex_FNs if nonzero(FN)]
+
+print 'Found %d ligands, %d receptors, and %d complexes ready for AlGDock'%(\
+  len(ligand_FNs),len(receptor_FNs),len(complex_FNs))
+
+if (args_in.library_requirement is not None):
+  ligand_FNs = [FN for FN in ligand_FNs \
+    if FN[len(args_in.ligand)+1:].find(args_in.library_requirement)>-1]
+  print '%d ligand(s) meet the library requirement'%(len(ligand_FNs))
+
 if args_in.reps is None:
   args_in.reps = [0,1]
 if args_in.first_ligand is None:
@@ -283,16 +308,39 @@ namespace = locals()
 job_status = {'submitted':0, 'skipped':0, 'no_complex':0, 'no_dock6':0, \
   'missing_file':0, 'onq':0, 'complete':0}
 
+import tarfile
+checked = []
+
 for rep in range(args_in.reps[0],args_in.reps[1]):
   for ligand_FN in ligand_FNs[args_in.first_ligand:args_in.first_ligand+args_in.max_ligands]:
-    labels = {'ligand':os.path.basename(ligand_FN)[:-7]}
-    paths = {'dir_cool':os.path.join(args_in.tree_cool,'%s-%d'%(labels['ligand'],rep)), 
-             'forcefield':command_paths['gaff.dat']}
+    labels = {}
+    labels['relpath_ligand'] = ligand_FN[len(args_in.ligand)+1:]
+    labels['key'] = os.path.basename(ligand_FN[:-7])
+    labels['library'] = '.'.join(os.path.dirname(labels['relpath_ligand']).split('.')[:-1])
+    labels['lib_subdir'] = labels['library']+'.'+labels['key'][:-2]+'__'
+    labels['ligand'] = labels['library']+'.'+labels['key']
+    paths = {'dir_cool':os.path.join(args_in.tree_cool, \
+                labels['lib_subdir'], '%s-%d'%(labels['key'],rep)),
+             'forcefield':command_paths['gaff.dat'],
+             'ligand_tarball':ligand_FN}
+
+    # Define and check files within the ligand tarball
+    paths_in_tar = {'ligand_database':labels['ligand'].lower()+'.db'}
     for key in [('ligand_prmtop','prmtop'),('ligand_inpcrd','inpcrd'), \
                 ('frcmodList','frcmod')]:
-      paths[key[0]] = ligand_FN[:-6]+key[1]
-    paths['ligand_database'] = os.path.join(\
-      os.path.dirname(ligand_FN), os.path.basename(ligand_FN)[:-6].lower()+'db')
+      paths_in_tar[key[0]] = labels['ligand']+'.'+key[1]
+    if args_in.check_tarballs and (ligand_FN not in checked):
+      tarF = tarfile.open(ligand_FN)
+      names = [m.name for m in tarF.getmembers()]
+      not_found = [paths_in_tar[key] for key in paths_in_tar.keys() \
+        if not paths_in_tar[key] in names]
+      if len(not_found)>0:
+        print 'The following files were missing in '+ligand_FN+':'
+        print ' '.join(not_found)
+        continue
+      else:
+        checked.append(ligand_FN)
+        
     if not os.path.isdir(paths['dir_cool']):
       os.system('mkdir -p '+paths['dir_cool'])
     if (args_in.run_type in ['initial_cool','cool']) and \
@@ -301,34 +349,62 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
       continue # Cooling is already done
     for receptor_FN in receptor_FNs:
       labels['receptor'] = os.path.basename(receptor_FN)[:-7]
-      labels['complex'] = labels['ligand']+'-'+labels['receptor']
-      if not (labels['complex'] in complex_labels):
-        print 'No prmtop and inpcrd for '+labels['complex']
-        job_status['no_complex'] += 1
-        continue # Complex files are missing
+      labels['complex'] = labels['library']+'.'+labels['key']+'-'+labels['receptor']
+      # Identify receptor files
       for key in ['prmtop','inpcrd']:
         paths['receptor_'+key] = os.path.abspath(receptor_FN[:-6]+key)
-      for key in [('prmtop','prmtop.gz'),('inpcrd','inpcrd.gz')]:
-        # TODO: Integrate fixed atoms files into the pipeline ,('fixed_atoms','pdb')]:
-        paths['complex_'+key[0]] = os.path.join(\
-          args_in.complex,'%s.%s'%(labels['complex'],key[1]))
+      paths['receptor_fixed_atoms'] = os.path.abspath(receptor_FN[:-6]+'pdb')
       for key in [('grid_LJa','LJa.25.nc'), ('grid_LJr','LJr.25.nc'), \
                   ('grid_ELE','PB.nc')]:
         paths[key[0]] = os.path.join(args_in.receptor_grids, \
           '%s.%s'%(labels['receptor'],key[1]))
-  
+
+      # Identify complex tarball
+      complex_FN = os.path.join(args_in.complex, \
+        labels['lib_subdir'], labels['key'], labels['receptor']+'.tar.gz')
+      paths['complex_tarball'] = complex_FN
+
+      if not (os.path.isfile(paths['complex_tarball'])):
+        print 'No complex tarfile ' + paths['complex_tarball']
+        job_status['no_complex'] += 1
+        continue # Complex files are missing
+
+      # Define and check files within the complex tarball
+      for key in ['prmtop','inpcrd']:
+        paths_in_tar['complex_'+key] = labels['complex']+'.'+key
+      paths_in_tar['complex_fixed_atoms'] = labels['complex']+'.pdb'
+      if args_in.check_tarballs and (complex_FN not in checked):
+        tarF = tarfile.open(complex_FN)
+        names = [m.name for m in tarF.getmembers()]
+        not_found = [paths_in_tar[key] for key in paths_in_tar.keys() \
+          if key.startswith('complex') and not paths_in_tar[key] in names]
+        if len(not_found)>0:
+          print 'The following files were missing in '+complex_FN+':'
+          print ' '.join(not_found)
+          continue
+        else:
+          checked.append(complex_FN)
+
       input_FNs = paths.values()
       input_FNs_missing = np.array([not nonzero(FN) for FN in input_FNs])
       if input_FNs_missing.any():
-        print 'Files are missing: ' + ', '.join(input_FNs[input_FNs_missing])
+        print 'Necessary files:'
+        print paths
+        print 'Files are missing: ' + ', '.join(np.array(input_FNs)[input_FNs_missing])
         job_status['missing_file']
         continue # Files are missing
-  
+
+      # Convert relative path to absolute paths
       for key in paths.keys():
         paths[key] = os.path.abspath(paths[key])
-  
+
+      # Add paths that are within tarballs
+      for key in paths_in_tar.keys():
+        paths[key] = paths_in_tar[key]
+
       labels['job'] = '%s-%d'%(labels['complex'],rep)
-      paths['dir_dock'] = os.path.abspath(os.path.join(args_in.tree_dock,labels['job']))
+      paths['dir_dock'] = os.path.join(args_in.tree_dock, \
+        labels['lib_subdir'], labels['key'], '%s-%d'%(labels['receptor'],rep))
       if not os.path.isdir(paths['dir_dock']):
         os.system('mkdir -p '+paths['dir_dock'])
       if (args_in.run_type in ['random_dock','initial_dock', \
@@ -367,7 +443,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
             val = 'default'
           elif val=='dock':
             val = os.path.abspath(os.path.join(args_in.dock6, \
-                               'ancg-'+labels['complex']+'.mol2.gz'))
+              labels['lib_subdir'], labels['key'], labels['receptor'] + '.nc'))
             if (not nonzero(val)):
               print 'No dock6 output in '+val
               job_status['no_dock6'] += 1
@@ -404,6 +480,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           raise Exception('Type not known!')
 
       if passError:
+        print 'Pass error for %s and %s'%(ligand_FN, receptor_FN)
         continue
       
       outputFNs = {}

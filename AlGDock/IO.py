@@ -296,6 +296,55 @@ class crd:
 
     F.close()
 
+class dock6_mol2:
+  """
+  Class to read output from UCSF DOCK 6
+  """
+  def __init__(self):
+    pass
+
+  def read(self, FN, reorder=None):
+    crds = []
+    E = {}
+
+    if (FN is None) or (not os.path.isfile(FN)):
+      return (crds,E)
+
+    # Specifically to read output from UCSF dock6
+    if FN.endswith('.mol2'):
+      mol2F = open(FN,'r')
+    elif FN.endswith('.mol2.gz'):
+      import gzip
+      mol2F = gzip.open(FN,'r')
+    else:
+      raise Exception('Unknown file type')
+    
+    models = mol2F.read().strip().split('########## Name:')
+    mol2F.close()
+    models.pop(0)
+    
+    if len(models)>0:
+      for line in models[0].split('\n'):
+        if line.startswith('##########'):
+          label = line[11:line.find(':')].strip()
+          E[label] = []
+      
+      for model in models:
+        fields = model.split('<TRIPOS>')
+        
+        crd = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
+          dtype=float)/10.
+        if reorder is not None:
+          crd = crd[reorder,:]
+
+        for line in fields[0].split('\n'):
+          if line.startswith('##########'):
+            label = line[11:line.find(':')].strip()
+            E[label].append(float(line.split()[-1]))
+
+        crds.append(crd)
+    return (crds,E)
+
 class dcd:
   """
   Class to write DCD files

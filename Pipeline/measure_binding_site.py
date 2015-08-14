@@ -133,31 +133,32 @@ if clustering_method is None:
     knee = np.diff(z[::-1, 2], 2)
     axes[0].plot(range(2, len(z)), knee)
 
-    # Good cluster sizes
-    num_clust1 = knee.argmax() + 2
-    knee[knee.argmax()] = 0
-    num_clust2 = knee.argmax() + 2
+    if len(knee)>0:
+      # Good cluster sizes
+      num_clust1 = knee.argmax() + 2
+      knee[knee.argmax()] = 0
+      num_clust2 = knee.argmax() + 2
 
-    axes[0].text(num_clust1, z[::-1, 2][num_clust1-1], \
-      'possible\n<- knee point')
+      axes[0].text(num_clust1, z[::-1, 2][num_clust1-1], \
+        'possible\n<- knee point')
 
-    part1 = hierarchy.fcluster(z, num_clust1, 'maxclust')
-    part2 = hierarchy.fcluster(z, num_clust2, 'maxclust')
+      part1 = hierarchy.fcluster(z, num_clust1, 'maxclust')
+      part2 = hierarchy.fcluster(z, num_clust2, 'maxclust')
 
-    assignments[(method,num_clust1)] = part1
-    assignments[(method,num_clust2)] = part2
+      assignments[(method,num_clust1)] = part1
+      assignments[(method,num_clust2)] = part2
 
-    for part, ax in zip([part1, part2], axes[1:]):
-      for cluster in set(part):
-        if cluster<12: # TO DO: Use more colors
-          ax.scatter(com[part==cluster,0], com[part==cluster,1],
-                       color=clr[cluster])
+      for part, ax in zip([part1, part2], axes[1:]):
+        for cluster in set(part):
+          if cluster<12: # TO DO: Use more colors
+            ax.scatter(com[part==cluster,0], com[part==cluster,1],
+                         color=clr[cluster])
 
-    m = '\n(method: {})'.format(method)
-    plt.setp(axes[0], title='Screeplot{}'.format(m), xlabel='partition',
-             ylabel='{}\ncluster distance'.format(m))
-    plt.setp(axes[1], title='{} Clusters'.format(num_clust1))
-    plt.setp(axes[2], title='{} Clusters'.format(num_clust2))
+      m = '\n(method: {})'.format(method)
+      plt.setp(axes[0], title='Screeplot{}'.format(m), xlabel='partition',
+               ylabel='{}\ncluster distance'.format(m))
+      plt.setp(axes[1], title='{} Clusters'.format(num_clust1))
+      plt.setp(axes[2], title='{} Clusters'.format(num_clust2))
   part = np.ones(com.shape[0],dtype=int)
 else:
   z = hierarchy.linkage(com, method=clustering_method[0])

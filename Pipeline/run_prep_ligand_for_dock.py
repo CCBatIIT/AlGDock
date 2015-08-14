@@ -32,6 +32,9 @@ parser.add_argument('--count', default=None, type=int, \
   help='Number of ligands to process')
 parser.add_argument('--job_block', default=job_block, type=int, \
   help='Number of ligands per job')
+parser.add_argument('--run_number', default=None, type=int,
+  help='Up to RUN_NUMBER jobs will run' + \
+    ' (if an argument is passed)')
 parser.add_argument('--max_jobs', default=None, type=int)
 parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')
@@ -51,12 +54,12 @@ else:
 if args.library.endswith('.ism'):
   ligands = F.read().strip().split('\n')
   args.library = args.library[:-4]
-  mol2 = False
+  args.mol2 = False
 elif args.library.endswith('.mol2'):
   ligands = F.read().strip().split('@<TRIPOS>MOLECULE')
   ligands.pop(0)
   args.library = args.library[:-5]
-  mol2 = True
+  args.mol2 = True
 else:
   raise Exception('Unknown library type')
 F.close()
@@ -85,9 +88,9 @@ code_list = []
 job_count = 0
 for ind in inds:
   code_i = code(ind)
-  out_FN = 'dock_in/{0}.{1}.mol2'.format(args.library,code_i)
+  out_FN = 'dock_in/{0}.{1}__/{2}.mol2'.format(args.library,code_i[0],code_i)
   if not os.path.exists(out_FN):
-    if mol2:
+    if args.mol2:
       threeD_FN = '3D/{0}.{1}.mol2'.format(args.library,code_i)
       F = open(threeD_FN,'w')
       F.write("@<TRIPOS>MOLECULE"+ligands[ind])

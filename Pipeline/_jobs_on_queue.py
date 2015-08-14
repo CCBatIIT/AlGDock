@@ -4,8 +4,16 @@ def jobs_on_queue():
   import os
   import subprocess
 
-  if os.path.exists('/home/daveminh/stash'):
-    condor_q = subprocess.Popen(['condor_q','-long','daveminh'], \
+  pwd = os.getcwd().split('/')
+  if len(pwd)>1 and pwd[1]=='home':
+    username = pwd[2]
+  elif len(pwd)>3 and pwd[1]=='stash':
+    username = pwd[3]
+  else:
+    username = ''
+
+  if os.path.exists('/home/%s/stash'%username):
+    condor_q = subprocess.Popen(['condor_q','-long',username], \
       stdout=subprocess.PIPE).stdout.read().split('\n\n')
     condor_q = [dict([(line[:line.find('=')-1],line[line.find('=')+2:]) for line in c.split('\n')]) for c in condor_q if c!='']
     onq = [q['Cmd'][1:-1] for q in condor_q if q['JobStatus']!='3'] # 3 is removed
