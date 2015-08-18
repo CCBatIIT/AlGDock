@@ -155,8 +155,8 @@ parser.add_argument('--site',
   choices=['Sphere','Cylinder','Measure'], \
   help='Type of binding site. "Measure" means that parameters' + \
          ' for a sphere will be measured from docked poses.')
-#  parser.add_argument('--site_center', nargs=3, type=float,
-#    help='Position of binding site center')
+parser.add_argument('--site_center', nargs=3, type=float,
+  help='Position of binding site center')
 #  parser.add_argument('--site_direction', nargs=3, type=float,
 #    help='Principal axis of a cylindrical binding site')
 #  parser.add_argument('--site_max_X', type=float,
@@ -206,16 +206,6 @@ def nonzero(path):
   return (os.path.isfile(path) and os.path.getsize(path)>0) or \
          (os.path.isdir(path))
 
-# Load the binding site radius and half edge length
-site = args_in.site
-if os.path.isfile(args_in.site_info):
-  execfile(args_in.site_info)
-else:
-  raise Exception('No binding site information')
-# These should be in nanometers, not Angstroms
-site_center = [half_edge_length*0.1, half_edge_length*0.1, half_edge_length*0.1]
-site_max_R = site_R/10.
-
 # Get other parameters
 general_sim_arg_keys = ['protocol', 'therm_speed',\
   'sampler', 'seeds_per_state', 'steps_per_seed', 'repX_cycles', \
@@ -238,6 +228,21 @@ if (args_in.saved_arguments is not None) and nonzero(args_in.saved_arguments):
 else:
   class args_saved:
     pass
+
+# Determine the binding site radius and half edge length
+site = args_in.site
+if hasattr(args_in,'site_center') and hasattr(args_in,'site_max_R'):
+  site_center = args_in.site_center
+  site_max_R = args_in.site_max_R
+else:
+  # If no argument, load in a file
+  if os.path.isfile(args_in.site_info):
+    execfile(args_in.site_info)
+  else:
+    raise Exception('No binding site information')
+  # These should be in nanometers, not Angstroms
+  site_center = [half_edge_length*0.1, half_edge_length*0.1, half_edge_length*0.1]
+  site_max_R = site_R/10.
 
 # Look for ligand files
 if os.path.isfile(args_in.ligand):
@@ -353,7 +358,8 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
       # Identify receptor files
       for key in ['prmtop','inpcrd']:
         paths['receptor_'+key] = os.path.abspath(receptor_FN[:-6]+key)
-      paths['receptor_fixed_atoms'] = os.path.abspath(receptor_FN[:-6]+'pdb')
+      if os.path.isfile(os.path.abspath(receptor_FN[:-6]+'pdb')):
+        paths['receptor_fixed_atoms'] = os.path.abspath(receptor_FN[:-6]+'pdb')
       for key in [('grid_LJa','LJa.25.nc'), ('grid_LJr','LJr.25.nc'), \
                   ('grid_ELE','PB.nc')]:
         paths[key[0]] = os.path.join(args_in.receptor_grids, \
@@ -372,7 +378,8 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
       # Define and check files within the complex tarball
       for key in ['prmtop','inpcrd']:
         paths_in_tar['complex_'+key] = labels['complex']+'.'+key
-      paths_in_tar['complex_fixed_atoms'] = labels['complex']+'.pdb'
+      if 'receptor_fixed_atoms' in paths.keys():
+        paths_in_tar['complex_fixed_atoms'] = labels['complex']+'.pdb'
       if args_in.check_tarballs and (complex_FN not in checked):
         tarF = tarfile.open(complex_FN)
         names = [m.name for m in tarF.getmembers()]
@@ -391,16 +398,12 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
         print 'Necessary files:'
         print paths
         print 'Files are missing: ' + ', '.join(np.array(input_FNs)[input_FNs_missing])
-        job_status['missing_file']
+        job_status['missing_file'] += 1
         continue # Files are missing
 
       # Convert relative path to absolute paths
       for key in paths.keys():
         paths[key] = os.path.abspath(paths[key])
-
-      # Add paths that are within tarballs
-      for key in paths_in_tar.keys():
-        paths[key] = paths_in_tar[key]
 
       labels['job'] = '%s-%d'%(labels['complex'],rep)
       paths['dir_dock'] = os.path.join(args_in.tree_dock, \
@@ -418,10 +421,17 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
         print jobname + ' is on the queue'
         continue # Job is on the queue
 
+      # Consolidate paths to pass
+      paths_to_pass = {}
+      for key in paths.keys():
+        paths_to_pass[key] = paths[key]
+      for key in paths_in_tar.keys():
+        paths_to_pass[key] = paths_in_tar[key]
+
       interactive_to_pass = []
       terminal_to_pass = []
       passError = False
-      for key in (paths.keys() + sim_arg_keys):
+      for key in (paths_to_pass.keys() + sim_arg_keys):
         # Priority is passed arguments (which may include saved arguments),
         #   local variables,
         #   and then the path dictionary
@@ -429,8 +439,8 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           val = getattr(args_in,key)
         elif (key in namespace.keys()) and (namespace[key] is not None):
           val = namespace[key]
-        elif key in paths.keys():
-          val = paths[key]
+        elif key in paths_to_pass.keys():
+          val = paths_to_pass[key]
         else:
           continue
         # Special cases
@@ -477,6 +487,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
             terminal_to_pass.append("--%s %s"%(key,
               " ".join(['%.5f'%a for a in val])))
         else:
+          print 'Value:', val
           raise Exception('Type not known!')
 
       if passError:
@@ -488,12 +499,12 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           'cool_progress.pkl.gz','cool_progress.pkl.gz.BAK',
           'cool_data.pkl.gz','cool_data.pkl.gz.BAK',
           'f_L.pkl.gz']:
-        outputFNs[FN] = os.path.join(paths['dir_cool'],FN)
+        outputFNs[FN] = os.path.join(paths_to_pass['dir_cool'],FN)
       for FN in ['dock_log.txt',
           'dock_progress.pkl.gz', 'dock_progress.pkl.gz.BAK',
           'dock_data.pkl.gz', 'dock_data.pkl.gz.BAK',
           'f_RL.pkl.gz']:
-        outputFNs[FN] = os.path.join(paths['dir_dock'],FN)
+        outputFNs[FN] = os.path.join(paths_to_pass['dir_dock'],FN)
       for k in outputFNs.keys():
         if not os.path.isfile(outputFNs[k]):
           open(outputFNs[k], 'a').close()
