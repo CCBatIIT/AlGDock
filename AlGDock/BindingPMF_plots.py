@@ -7,7 +7,7 @@ vmd_principal_axes_procedure = '''
 package require Orient
 namespace import Orient::orient
 
-set sel [atomselect top "all"]
+set sel [atomselect 0 "all"]
 set I [Orient::calc_principalaxes $sel]
 set M1 [orient $sel [lindex $I 2] {0 1 0}]
 $sel move $M1

@@ -1628,6 +1628,12 @@ last modified {2}
     if readOnly:
       return True
 
+    if redo:
+      self.B = {'MBAR':[]}
+      for phase in self.params['dock']['phases']:
+        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
+          self.B[phase+'_'+method] = []
+
     # Make sure postprocessing is complete
     pp_complete = self._postprocess()
     if not pp_complete:
@@ -1759,11 +1765,7 @@ last modified {2}
           self.B[phase+'_'+method] = []
       
       # Receptor solvation
-      if 'RNAMD_Gas' in self.original_Es[0][0].keys():
-        B_R_solv = (self.original_Es[0][0]['R'+phase][-1] - \
-                    self.original_Es[0][0]['RNAMD_Gas'][-1])/self.RT_TARGET
-      else:
-        B_R_solv = self.original_Es[0][0]['R'+phase][-1]/self.RT_TARGET
+      f_R_solv = self.original_Es[0][0]['R'+phase][-1]/self.RT_TARGET
 
       for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
@@ -1771,24 +1773,24 @@ last modified {2}
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
         # Complex solvation
         min_du = min(du)
-        B_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
+        f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
         weights = np.exp(-du+min_du)
         weights = weights/sum(weights)
         Psi = np.concatenate([self.stats_RL['Psi_'+phase][c] \
           for c in extractCycles])
         min_Psi = min(Psi)
         
-        self.f_RL[phase+'_solv'].append(B_RL_solv)
+        self.f_RL[phase+'_solv'].append(f_RL_solv)
         self.B[phase+'_min_Psi'].append(min_Psi)
         self.B[phase+'_mean_Psi'].append(np.mean(Psi))
         self.B[phase+'_inverse_FEP'].append(\
           np.log(sum(weights*np.exp(Psi-min_Psi))) + min_Psi)
-        self.B[phase+'_BAR'].append(-B_R_solv \
+        self.B[phase+'_BAR'].append(-f_R_solv \
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_BAR'][-1][-1] \
-          + self.f_RL['grid_BAR'][-1][-1] + B_RL_solv)
-        self.B[phase+'_MBAR'].append(-B_R_solv \
+          + self.f_RL['grid_BAR'][-1][-1] + f_RL_solv)
+        self.B[phase+'_MBAR'].append(-f_R_solv \
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
-          + self.f_RL['grid_MBAR'][-1][-1] + B_RL_solv)
+          + self.f_RL['grid_MBAR'][-1][-1] + f_RL_solv)
 
         self.tee("  calculated %s binding PMF of %f RT with cycles %d to %d"%(\
           phase, self.B[phase+'_MBAR'][-1], \
@@ -1822,7 +1824,7 @@ last modified {2}
         nearMean = max(nearMean,1)
       equilibrated_cycle.append(nearMean)
     return equilibrated_cycle
-  
+
 #  correlation_times = [pymbar.timeseries.integratedAutocorrelationTimeMultiple(\
 #    np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
 #      for c in range(start_c,len(self.dock_Es[0])) \

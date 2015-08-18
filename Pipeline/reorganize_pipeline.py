@@ -89,6 +89,18 @@ for FN in FNs:
   os.system('rm %s.*'%ligand.lower())
 os.chdir(cdir)
 
+# Move ligand files
+FNs = [os.path.abspath(FN) for FN in glob.glob('%s/ligand/AlGDock_in/*.tar.gz'%args.prefix)]
+for FN in FNs:
+  ligand = os.path.basename(FN)[:-7]
+  dirN = os.path.join(os.path.dirname(FN), ligand[:-2]+'__')
+  if not os.path.isdir(dirN):
+    os.system('mkdir -p '+dirN)
+  os.chdir(os.path.dirname(FN))
+  print 'Moving %s to %s/%s.tar.gz'%(FN, dirN, ligand.split('.')[-1])
+  os.system('mv %s %s/%s.tar.gz'%(FN, dirN, ligand.split('.')[-1]))
+os.chdir(cdir)
+
 # Compress complex files
 FNs = [os.path.abspath(FN) for FN in glob.glob('%s/complex/AlGDock_in/*.gz'%args.prefix)]
 if len(FNs)>0:
@@ -107,6 +119,21 @@ for FN in FNs:
   print 'Creating %s/%s.tar.gz'%(dirN,receptor)
   os.system('tar -cf %s/%s.tar.gz %s-%s.*'%(dirN,receptor,ligand,receptor))
   os.system('rm %s-%s.*'%(ligand,receptor))
+os.chdir(cdir)
+
+FNs = [os.path.abspath(FN) for FN in glob.glob('%s/complex/AlGDock_in/*.tar'%args.prefix)]
+for FN in FNs:
+  baseN_split = os.path.basename(FN).split('-')
+  ligand = '-'.join(baseN_split[:-1])
+  receptor = '.'.join(baseN_split[-1].split('.')[:-1])
+  dirN = os.path.abspath(os.path.join(os.path.dirname(FN), ligand[:-2]+'__', ligand.split('.')[-1]))
+  if not os.path.isdir(dirN):
+    os.system('mkdir -p '+dirN)
+  os.chdir(os.path.dirname(FN))
+  print 'Moving %s to %s/%s.tar'%(FN,dirN,receptor)
+  os.system('mv %s %s/%s.tar'%(FN,dirN,receptor))
+  print 'Gzipping %s/%s.tar'%(dirN,receptor)
+  os.system('gzip %s/%s.tar'%(dirN,receptor))
 os.chdir(cdir)
 
 # Reorganize AlGDock cool directory
