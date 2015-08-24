@@ -196,7 +196,7 @@ export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF
 
 """ + command + """
 
-rm -f AlGDock namd* sander* ambpdb* molsurf* APBS*
+rm -rf AlGDock namd* sander* ambpdb* molsurf* APBS*
 rm -f algdock.tar.gz*
 rm -f *.inpcrd* *.prmtop* *.frcmod *.pdb *.db
 rm -f *.out *.namd *.dcd
@@ -247,7 +247,7 @@ if (not args.dry) and cluster in ['OSG','CCB','DSCR']:
   print 'Submitting job script: ' + submit_FN
 
 print('Job name: ' + args.name)
-print('Script contents: ' + submit_script)
+# print('Script contents: ' + submit_script)
 
 if not args.dry:
   if cluster=='OSG':

@@ -15,6 +15,8 @@ IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
 (confs, Es) = IO_dock6_mol2.read(inFN)
 
 if confs==[]:
+  F = open(inFN,'w')
+  F.close()
   sys.exit()
 
 import numpy as np
@@ -35,3 +37,5 @@ for key in Es.keys():
     zlib=True, complevel=9, shuffle=True)
   dock6_nc.variables[key][:] = np.array(Es[key])
 dock6_nc.close()
+
+os.remove(inFN)

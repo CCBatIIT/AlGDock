@@ -2,8 +2,6 @@
 # Dock 6 Anchor and Grow #
 ##########################
 
-# TODO: Convert dock6 output to netcdf format
-
 From the [TARGET]/ directory, if you run 
 python $ALGDOCKHOME/Pipeline/count.py,
 it will tell you how many ligands, receptors, complexes, and completed calculations there are.
@@ -192,6 +190,11 @@ antechamber, start in
 [TARGET]/dock6/
 on the group cluster or on the open science grid submit node and run
 python $ALGDOCKHOME/Pipeline/run_anchor_and_grow.py
+
+To convert the dock6 output to netcdf format, start in
+[TARGET]/
+on the group cluster (has not been tested on OSG) and run
+python $ALGDOCKHOME/Pipeline/run_dock6_to_nc.py
 
 #######################
 # AlGDock Binding PMF #

@@ -410,7 +410,7 @@ last modified {2}
           if (key in kwargs.keys()) and (kwargs[key] is not None):
             FN = os.path.abspath(kwargs[key])
             if not os.path.isfile(FN):
-              seekFNs.append(FN)
+              seekFNs.append(os.path.basename(FN))
       for p in ['cool','dock']:
         if p in FNs.keys():
           for level1 in ['ligand_database','prmtop','inpcrd','fixed_atoms']:
@@ -418,37 +418,40 @@ last modified {2}
               if isinstance(FNs[p][level1],dict):
                 for level2 in ['L','R','RL']:
                   if level2 in FNs[p][level1].keys():
-                    seekFNs.append(FNs[p][level1][level2])
+                    seekFNs.append(os.path.basename(FNs[p][level1][level2]))
               else:
-                seekFNs.append(FNs[p][level1])
+                seekFNs.append(os.path.basename(FNs[p][level1]))
       seekFNs = set(seekFNs)
+    seek_frcmod = (kwargs['frcmodList'] is None) or \
+      (not os.path.isfile(kwargs['frcmodList'][0]))
 
-    # Decompress tarballs
+    # Decompress tarballs into self.dir['dock']
     self._toClear = []
 
     if len(seekFNs)>0:
       import tarfile
 
       print '>>> Decompressing tarballs'
-      print 'looking for:\n  ' + \
-        '\n  '.join([os.path.relpath(FN,self.dir['start']) for FN in seekFNs])
+      print 'looking for:\n  ' + '\n  '.join(seekFNs)
+      if seek_frcmod:
+        print '  and frcmod files'
 
       for tarFN in tarFNs:
         print 'reading '+tarFN
         tarF = tarfile.open(tarFN,'r')
         for member in tarF.getmembers():
           for seekFN in seekFNs:
-            if member.name.endswith(os.path.basename(seekFN)):
-              tarF.extract(member, path = os.path.dirname(seekFN))
-              self._toClear.append(seekFN)
-              print '  extracted '+os.path.relpath(seekFN,self.dir['start'])
-          if member.name.endswith('frcmod') and ((kwargs['frcmodList'] is None) or not os.path.isfile(kwargs['frcmodList'][0])):
-            FN = os.path.abspath(os.path.join(self.dir['start'],member.name))
+            if member.name.endswith(seekFN):
+              tarF.extract(member, path = self.dir['dock'])
+              self._toClear.append(os.path.join(self.dir['dock'],seekFN))
+              print '  extracted '+seekFN
+          if seek_frcmod and member.name.endswith('frcmod'):
+            FN = os.path.abspath(os.path.join(self.dir['dock'],member.name))
             if not os.path.isfile(FN):
-              tarF.extract(member, path = self.dir['start'])
+              tarF.extract(member, path = self.dir['dock'])
               kwargs['frcmodList'] = [FN]
               self._toClear.append(FN)
-              print '  extracted '+os.path.relpath(seekFN,self.dir['start'])
+              print '  extracted '+FN
 
     # Set up file name dictionary
     print '\n*** Files ***'
@@ -462,37 +465,47 @@ last modified {2}
     if not (FNs['cool']=={} and FNs['dock']=={}):
       print 'from arguments and defaults:'
 
+    def cdir_or_dir_dock(FN):
+      if FN is not None:
+        return a.findPath([FN,join(self.dir['dock'],FN)])
+      else:
+        return None
+
+    if kwargs['frcmodList'] is not None:
+      kwargs['frcmodList'] = [cdir_or_dir_dock(FN) \
+        for FN in kwargs['frcmodList']]
+
     FNs['new'] = {
-      'ligand_database':a.findPath([kwargs['ligand_database']]),
+      'ligand_database':cdir_or_dir_dock(kwargs['ligand_database']),
       'forcefield':a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + \
                                a.search_paths['gaff.dat']),
       'frcmodList':kwargs['frcmodList'],
       'tarball':{'L':a.findPath([kwargs['ligand_tarball']]),
                 'R':a.findPath([kwargs['receptor_tarball']]),
                 'RL':a.findPath([kwargs['complex_tarball']])},
-      'prmtop':{'L':a.findPath([kwargs['ligand_prmtop']]),
-                'R':a.findPath([kwargs['receptor_prmtop']]),
-                'RL':a.findPath([kwargs['complex_prmtop']])},
-      'inpcrd':{'L':a.findPath([kwargs['ligand_inpcrd']]),
-                'R':a.findPath([kwargs['receptor_inpcrd']]),
-                'RL':a.findPath([kwargs['complex_inpcrd']])},
-      'fixed_atoms':{'R':a.findPath([kwargs['receptor_fixed_atoms']]),
-                     'RL':a.findPath([kwargs['complex_fixed_atoms']])},
+      'prmtop':{'L':cdir_or_dir_dock(kwargs['ligand_prmtop']),
+                'R':cdir_or_dir_dock(kwargs['receptor_prmtop']),
+                'RL':cdir_or_dir_dock(kwargs['complex_prmtop'])},
+      'inpcrd':{'L':cdir_or_dir_dock(kwargs['ligand_inpcrd']),
+                'R':cdir_or_dir_dock(kwargs['receptor_inpcrd']),
+                'RL':cdir_or_dir_dock(kwargs['complex_inpcrd'])},
+      'fixed_atoms':{'R':cdir_or_dir_dock(kwargs['receptor_fixed_atoms']),
+                     'RL':cdir_or_dir_dock(kwargs['complex_fixed_atoms'])},
       'grids':{'LJr':a.findPath([kwargs['grid_LJr'],
-                               join(kwargs['dir_grid'],'LJr.nc'),
-                               join(kwargs['dir_grid'],'LJr.dx'),
-                               join(kwargs['dir_grid'],'LJr.dx.gz')]),
+                        join(kwargs['dir_grid'],'LJr.nc'),
+                        join(kwargs['dir_grid'],'LJr.dx'),
+                        join(kwargs['dir_grid'],'LJr.dx.gz')]),
                'LJa':a.findPath([kwargs['grid_LJa'],
-                               join(kwargs['dir_grid'],'LJa.nc'),
-                               join(kwargs['dir_grid'],'LJa.dx'),
-                               join(kwargs['dir_grid'],'LJa.dx.gz')]),
+                        join(kwargs['dir_grid'],'LJa.nc'),
+                        join(kwargs['dir_grid'],'LJa.dx'),
+                        join(kwargs['dir_grid'],'LJa.dx.gz')]),
                'ELE':a.findPath([kwargs['grid_ELE'],
-                               join(kwargs['dir_grid'],'electrostatic.nc'),
-                               join(kwargs['dir_grid'],'electrostatic.dx'),
-                               join(kwargs['dir_grid'],'electrostatic.dx.gz'),
-                               join(kwargs['dir_grid'],'pbsa.nc'),
-                               join(kwargs['dir_grid'],'pbsa.dx'),
-                               join(kwargs['dir_grid'],'pbsa.dx.gz')])},
+                        join(kwargs['dir_grid'],'electrostatic.nc'),
+                        join(kwargs['dir_grid'],'electrostatic.dx'),
+                        join(kwargs['dir_grid'],'electrostatic.dx.gz'),
+                        join(kwargs['dir_grid'],'pbsa.nc'),
+                        join(kwargs['dir_grid'],'pbsa.dx'),
+                        join(kwargs['dir_grid'],'pbsa.dx.gz')])},
       'score':'default' if kwargs['score']=='default' \
                         else a.findPath([kwargs['score']]),
       'dir_cool':self.dir['cool'],
@@ -743,11 +756,16 @@ last modified {2}
         lig_crd = IO_crd.read(self._FNs['inpcrd']['L'], multiplier=0.1)
     else:
       lig_crd = None
-    self.confs['ligand'] = lig_crd[self.molecule.inv_prmtop_atom_order,:]
+
+    if lig_crd is not None:
+      self.confs['ligand'] = lig_crd[self.molecule.inv_prmtop_atom_order,:]
     
     if self.params['dock']['rmsd'] is not False:
       if self.params['dock']['rmsd'] is True:
-        rmsd_crd = self.confs['ligand']
+        if lig_crd is not None:
+          rmsd_crd = lig_crd
+        else:
+          raise Exception('Reference structure for rmsd calculations unknown')
       else:
         rmsd_crd = IO_crd.read(self.params['dock']['rmsd'], \
           natoms=self.universe.numberOfAtoms(), multiplier=0.1)
@@ -827,7 +845,7 @@ last modified {2}
     elif run_type=='redo_postprocess':
       self._postprocess(redo_dock=True)
     elif (run_type=='free_energies') or (run_type=='redo_free_energies'):
-      self.calc_f_L(redo=(run_type=='redo_free_energies'))
+      self.calc_f_L()
       self.calc_f_RL(redo=(run_type=='redo_free_energies'))
     elif run_type=='all':
       self.cool()
@@ -1686,7 +1704,7 @@ last modified {2}
            self.dock_Es[-1][c]['ELE'])/self.RT_TARGET)
       updated = True
     for phase in self.params['dock']['phases']:
-      if not 'Psi_'+phase in self.stats_RL:
+      if (not 'Psi_'+phase in self.stats_RL) or redo:
         self.stats_RL['Psi_'+phase] = []
       for c in range(len(self.stats_RL['Psi_'+phase]), self._dock_cycle):
         self.stats_RL['Psi_'+phase].append(
@@ -1707,11 +1725,13 @@ last modified {2}
 
     # Autocorrelation time for all replicas
     if updated:
-      paths = np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
+      paths = [np.array(self.dock_Es[0][c]['repXpath']) \
         for c in range(len(self.dock_Es[0])) \
-        if 'repXpath' in self.dock_Es[0][c].keys()]))
-      self.stats_RL['tau_ac'] = \
-        pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
+        if 'repXpath' in self.dock_Es[0][c].keys()]
+      if len(paths)>0:
+        paths = np.transpose(np.hstack(paths))
+        self.stats_RL['tau_ac'] = \
+          pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
 
     # Store rmsd values
     self.stats_RL['rmsd'] = [self.dock_Es[-1][c]['rmsd'] \
@@ -1742,21 +1762,11 @@ last modified {2}
         mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
       self.stats_RL['mean_acc'].append(mean_acc)
 
-    # Calculate MBABR free energy
+    # BPMF assuming receptor and complex solvation cancel
     self.B['MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
       self.f_RL['grid_MBAR'][c][-1] for c in range(len(self.f_RL['grid_MBAR']))]
 
-# How to estimate the change in potential energy for GBSA:
-#              This is the NAMD result
-#              v
-# RLGBSAflex = RLGBSAfixedR + RMM
-# RLMMTK = RMMTK + LMMTK + PsiMMTK
-#
-# du = (RLGBSAfixedR + RMM) - (RMMTK + LMMTK + PsiMMTK)
-#
-# Because RMM and RMMTK are both zero,
-# du = (RLGBSAfixedR) - (LMMTK + PsiMMTK)
-
+    # BPMFs
     for phase in self.params['dock']['phases']:
       if not phase+'_solv' in self.f_RL:
         self.f_RL[phase+'_solv'] = []
@@ -1779,12 +1789,18 @@ last modified {2}
         Psi = np.concatenate([self.stats_RL['Psi_'+phase][c] \
           for c in extractCycles])
         min_Psi = min(Psi)
+        # If the range is too large, filter Psi
+        if np.any((Psi-min_Psi)>1000):
+          keep = (Psi-min_Psi)<1000
+          weights = weights[keep]
+          Psi = Psi[keep]
         
         self.f_RL[phase+'_solv'].append(f_RL_solv)
         self.B[phase+'_min_Psi'].append(min_Psi)
         self.B[phase+'_mean_Psi'].append(np.mean(Psi))
         self.B[phase+'_inverse_FEP'].append(\
           np.log(sum(weights*np.exp(Psi-min_Psi))) + min_Psi)
+        
         self.B[phase+'_BAR'].append(-f_R_solv \
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_BAR'][-1][-1] \
           + self.f_RL['grid_BAR'][-1][-1] + f_RL_solv)
@@ -1833,16 +1849,16 @@ last modified {2}
   
   def _get_pose_prediction(self, process, equilibrated_cycle):
     # Gather snapshots
-    for k in range(getattr(self,'_%s_cycle'%process)):
+    for k in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process)):
       if not isinstance(self.confs[process]['samples'][-1][k], list):
         self.confs[process]['samples'][-1][k] = [self.confs[process]['samples'][-1][k]]
     import itertools
     confs = np.array([conf[self.molecule.heavy_atoms,:] \
       for conf in itertools.chain.from_iterable(\
       [self.confs[process]['samples'][-1][c] \
-        for c in range(getattr(self,'_%s_cycle'%process))])])
-    cum_Nk = np.cumsum([len(self.confs[process]['samples'][-1][c]) \
-      for c in range(getattr(self,'_%s_cycle'%process))])
+        for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])])
+    cum_Nk = np.cumsum([0] + [len(self.confs[process]['samples'][-1][c]) \
+      for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
 
     # RMSD matrix
     import sys
@@ -1872,14 +1888,10 @@ last modified {2}
         new_index += 1
     assignments = [mapping_to_new_index[a] for a in assignments]
 
-    Neq = cum_Nk[max(equilibrated_cycle - 1,0)]
-    assignments = assignments[Neq:]
-
     def linear_index_to_pair(ind):
-      indF = ind+Neq
-      cycle = list(indF<cum_Nk).index(True)
-      n = indF-cum_Nk[cycle-1]
-      return (cycle,n)
+      cycle = list(ind<cum_Nk).index(True)-1
+      n = ind-cum_Nk[cycle]
+      return (cycle + equilibrated_cycle,n)
 
     if process=='dock':
       stats = self.stats_RL

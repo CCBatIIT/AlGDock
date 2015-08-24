@@ -10,6 +10,11 @@ parser.add_argument('--include_ligand', nargs='+', default=None, \
   help='Only runs AlGDock for a these ligands')
 parser.add_argument('--exclude_ligand', nargs='+', default=None, \
   help='Does not run AlGDock for a these ligands')
+parser.add_argument('--older_than', type=int, default=None, \
+  help='Only runs redo_free_energies jobs if f_RL.pkl.gz ' + \
+       'is older than OLDER_THAN hours')
+parser.add_argument('--check_complete', action='store_true', default=False, \
+  help='Checks whether f_RL.pkl.gz is complete')
 
 # Arguments related to file locations
 parser.add_argument('--ligand', default='../ligand/AlGDock_in/', \
@@ -24,8 +29,8 @@ parser.add_argument('--complex', default='../complex/AlGDock_in', \
   help='The directory tree to look for complex files (prmtop and inpcrd)')
 parser.add_argument('--site_info', \
   default='../receptor/2-binding_site/measured_binding_site.py', \
-  help='Python script with binding site parameters' + \
-       ' (site_R, half_edge_length)')
+  help='Python script with binding site parameters ' + \
+       '(site_R, half_edge_length)')
 parser.add_argument('--dock6', default='../dock6/', \
   help='The directory to look for dock6 results (*.mol2.gz)')
 parser.add_argument('--tree_cool', default='cool/',
@@ -42,16 +47,19 @@ parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')
 parser.add_argument('--no_release', action='store_true', default=False, \
   help='Does not release held jobs')
-parser.add_argument('--interactive', action='store_true', default=False, help='Output command for running in an interactive python environment')
+parser.add_argument('--interactive', action='store_true', default=False, \
+  help='Output command for running in an interactive python environment')
 parser.add_argument('--check_tarballs', action='store_true', default=False, \
   help='Check inside tarballs for files')
 parser.add_argument('--skip_onq', action='store_true', default=False, \
   help='Skips looking for the job on the queue')
 # Arguments related to scoring and assessment
 parser.add_argument('--score', choices=['xtal','dock',None], default=None,
-  help='Does a scoring rather than ab initio docking. xtal means the crystal structure and dock means from another docking program.')
+  help='Does a scoring rather than ab initio docking. ' + \
+  'xtal means the crystal structure and dock means from another docking program.')
 parser.add_argument('--rmsd', choices=['xtal',None], default=None,
-  help='Calulates the rmsd between snapshots a configuration. xtal means the crystal structure.')
+  help='Calulates the rmsd between snapshots a configuration. ' + \
+       'xtal means the crystal structure.')
 
 # Simulation settings and constants
 #   Run-dependent 
@@ -310,8 +318,8 @@ print args_in
 
 namespace = locals()
 
-job_status = {'submitted':0, 'skipped':0, 'no_complex':0, 'no_dock6':0, \
-  'missing_file':0, 'onq':0, 'complete':0}
+job_status = {'submitted':0, 'skipped':0, 'no_complex':0, 'no_poses':0, \
+  'no_dock6':0, 'missing_file':0, 'onq':0, 'recently_redone':0, 'complete':0}
 
 import tarfile
 checked = []
@@ -410,11 +418,45 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
         labels['lib_subdir'], labels['key'], '%s-%d'%(labels['receptor'],rep))
       if not os.path.isdir(paths['dir_dock']):
         os.system('mkdir -p '+paths['dir_dock'])
-      if (args_in.run_type in ['random_dock','initial_dock', \
-                               'dock','all','timed']) and \
-          nonzero(os.path.join(paths['dir_dock'],'f_RL.pkl.gz')):
-        job_status['complete'] += 1
-        continue # Docking is done
+        
+      f_RL_FN = os.path.join(paths['dir_dock'],'f_RL.pkl.gz')
+      if nonzero(f_RL_FN):
+        import time
+        # Check if the calculation was recently redone
+        if (args_in.run_type=='redo_free_energies') and \
+            (args_in.older_than is not None) and \
+            (time.time()-os.path.getmtime(f_RL_FN))/60./60.<args_in.older_than:
+          job_status['recently_redone'] += 1
+          continue
+
+        if (args_in.run_type in \
+            ['random_dock','initial_dock', 'dock','all','timed']):
+          if args_in.check_complete:
+            F = gzip.open(f_RL_FN,'r')
+            dat = pickle.load(F)
+            F.close()
+            try:
+              completed_cycles = len(dat[2]['grid_BAR'])
+              complete = (completed_cycles >= int(args.dock_repX_cycles))
+            except:
+              print 'Error in %s/f_RL.pkl.gz'%dir_dock
+              completed_cycles = 0
+              complete = False
+            if complete:
+              # Docking is done
+              job_status['complete'] += 1
+              continue
+            else:
+              print '%d/%d cycles in %s'%(\
+                completed_cycles, args.dock_repX_cycles, dir_dock)
+          else:
+              # Docking is done
+              job_status['complete'] += 1
+              continue
+      elif (args_in.run_type=='redo_free_energies'):
+        job_status['missing_file'] += 1
+        continue
+        
       jobname = '-'.join(dirs['current'].split('/')[-2:]+[labels['job']])
       if jobname in onq:
         job_status['onq'] += 1
@@ -430,7 +472,6 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
 
       interactive_to_pass = []
       terminal_to_pass = []
-      passError = False
       for key in (paths_to_pass.keys() + sim_arg_keys):
         # Priority is passed arguments (which may include saved arguments),
         #   local variables,
@@ -455,10 +496,13 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
             val = os.path.abspath(os.path.join(args_in.dock6, \
               labels['lib_subdir'], labels['key'], labels['receptor'] + '.nc'))
             if (not nonzero(val)):
-              print 'No dock6 output in '+val
-              job_status['no_dock6'] += 1
-              passError = True
-              continue # Dock6 files are missing
+              if os.path.isfile(val[:-3]+'.mol2.gz'):
+                job_status['no_poses'] += 1
+                continue #
+              else:
+                print 'No dock6 output in '+val
+                job_status['no_dock6'] += 1
+                continue # Dock6 files are missing
         elif key=='frcmodList':
           val = [val]
         # Actual strings to pass
@@ -490,10 +534,6 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           print 'Value:', val
           raise Exception('Type not known!')
 
-      if passError:
-        print 'Pass error for %s and %s'%(ligand_FN, receptor_FN)
-        continue
-      
       outputFNs = {}
       for FN in ['cool_log.txt',
           'cool_progress.pkl.gz','cool_progress.pkl.gz.BAK',
@@ -553,4 +593,9 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
      (job_status['submitted']>=args_in.max_jobs):
     break
 
-print "Jobs: {submitted} submitted, {skipped} skipped, {no_complex} without complex files, {no_dock6} without dock6 files, {missing_file} missing other files, {onq} on the queue, {complete} complete".format(**job_status)
+format_str = "Jobs: {submitted} submitted, {skipped} skipped, " + \
+  "{no_complex} without complex files, {no_dock6} without dock6 files, " + \
+  "{no_poses} have no docked poses, " + \
+  "{missing_file} missing other files, {onq} on the queue, " + \
+  "{recently_redone} recently redone, {complete} complete"
+print format_str.format(**job_status)

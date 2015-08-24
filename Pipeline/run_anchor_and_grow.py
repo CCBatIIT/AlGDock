@@ -97,8 +97,7 @@ for receptor_FN in receptor_FNs:
     if not (os.path.exists(out_prefix+'.mol2.gz') or os.path.exists(out_prefix+'.nc')):
       out_FN = out_prefix + '.mol2.gz'
       command = 'python {0} {1} {2} {3}'.format(
-        os.path.join(dirs['script'],'anchor_and_grow.py'), \
-        ligand_FN, receptor_FN, out_FN)
+        ancg_script, ligand_FN, receptor_FN, out_FN)
       command_list.append(command)
       out_FNs.append(out_FN)
       if os.path.basename(out_FN)!=out_FN:
