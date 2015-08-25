@@ -1,3 +1,5 @@
+# TODO: Procedure for dimers and other multimers, e.g. HIV protease
+
 ##########################
 # Dock 6 Anchor and Grow #
 ##########################
@@ -30,7 +32,7 @@ LKKDPKQRLGGGSEDAKEIMQHRFFAGIVWQHVYEKKLSPPFKPQVTSETDTRYFDEEFT
 AQMITITPPDQDDSMECVDSERRPHFPQFSYSASGTA*
 
 From [TARGET]/receptor/1-search/, you should run,
-python $ALGDOCKHOME/Pipeline/profile.modeller.py
+mod9.15 $ALGDOCKHOME/Pipeline/profile.modeller.py
 which will give you 
 [TARGET]/receptor/1-search/profile.prf
 [TARGET]/receptor/1-search/profile.ali

@@ -3726,6 +3726,7 @@ END
       if (saved['progress'] is None):
         print '  no progress information for %s'%p
       elif (saved['data'] is None):
+        saved['progress'] = None
         print '  missing data in %s'%p
       else:
         print '  using stored progress and data in %s'%p

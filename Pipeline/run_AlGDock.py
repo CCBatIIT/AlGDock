@@ -432,14 +432,15 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
         if (args_in.run_type in \
             ['random_dock','initial_dock', 'dock','all','timed']):
           if args_in.check_complete:
+            import gzip, pickle
             F = gzip.open(f_RL_FN,'r')
             dat = pickle.load(F)
             F.close()
             try:
               completed_cycles = len(dat[2]['grid_BAR'])
-              complete = (completed_cycles >= int(args.dock_repX_cycles))
+              complete = (completed_cycles >= int(args_in.dock_repX_cycles))
             except:
-              print 'Error in %s/f_RL.pkl.gz'%dir_dock
+              print 'Error in '+f_RL_FN
               completed_cycles = 0
               complete = False
             if complete:
@@ -448,7 +449,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
               continue
             else:
               print '%d/%d cycles in %s'%(\
-                completed_cycles, args.dock_repX_cycles, dir_dock)
+                completed_cycles, args_in.dock_repX_cycles, paths['dir_dock'])
           else:
               # Docking is done
               job_status['complete'] += 1
@@ -472,6 +473,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
 
       interactive_to_pass = []
       terminal_to_pass = []
+      skip_job = False
       for key in (paths_to_pass.keys() + sim_arg_keys):
         # Priority is passed arguments (which may include saved arguments),
         #   local variables,
@@ -495,14 +497,17 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           elif val=='dock':
             val = os.path.abspath(os.path.join(args_in.dock6, \
               labels['lib_subdir'], labels['key'], labels['receptor'] + '.nc'))
-            if (not nonzero(val)):
+            if not nonzero(val):
               if os.path.isfile(val[:-3]+'.mol2.gz'):
+                print 'No poses in '+val[:-3]+'.mol2.gz'
                 job_status['no_poses'] += 1
-                continue #
+                skip_job = True
+                break # No poses in dock6
               else:
                 print 'No dock6 output in '+val
                 job_status['no_dock6'] += 1
-                continue # Dock6 files are missing
+                skip_job = True
+                break # Dock6 files are missing
         elif key=='frcmodList':
           val = [val]
         # Actual strings to pass
@@ -533,6 +538,9 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
         else:
           print 'Value:', val
           raise Exception('Type not known!')
+
+      if skip_job:
+        continue
 
       outputFNs = {}
       for FN in ['cool_log.txt',
