@@ -1,7 +1,10 @@
 import AlGDock.BindingPMF_plots
 import os, shutil, glob
 import MMTK
+from MMTK import Units, Configuration
 import numpy as np
+
+R = 8.3144621*Units.J/Units.mol/Units.K
 
 self = AlGDock.BindingPMF_plots.BPMF_plots(\
   dir_dock='dock', dir_cool='cool',\
@@ -33,7 +36,7 @@ self = AlGDock.BindingPMF_plots.BPMF_plots(\
   rmsd=True)
 
 # These are cartesian coordinates of docked poses
-(confs, Es) = self._get_confs_to_rescore(minimize=True)
+(confs, Es) = self._get_confs_to_rescore(minimize=False)
 
 # Use a force field without grids
 self._set_universe_evaluator(self._lambda(0.0, 'dock', site=False, MM=True))
@@ -42,10 +45,9 @@ conf_energies = []
 for conf in confs:
   self.universe.setConfiguration(MMTK.Configuration(self.universe,conf))
   conf_energies.append(self.universe.energy())
-Es['total'] = conf_energies
-
-from NUTS import NUTSIntegrator  # @UnresolvedImport
-NUTS_sampler = NUTSIntegrator(self.universe)
+# Probabilty of jumping to a conformation k is proportional to exp(-E/RT).
+weights = np.exp(-np.array(conf_energies)/(R*1000.0))
+weights = weights/sum(weights)
 
 import AlGDock.RigidBodies
 BAT_util = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
@@ -56,9 +58,6 @@ BAT_to_perturb = range(6)+list(len(confs_BAT[0])-BAT_util.ntorsions+np.array(sor
 # darts[j][k] will jump from conformation j to conformation k
 darts = [[confs_BAT[j][BAT_to_perturb]-confs_BAT[k][BAT_to_perturb] \
   for j in range(len(confs))] for k in range(len(confs))]
-# Probabilty of jumping to a conformation k is proportional to exp(-E/RT).
-weights = np.exp(-np.array(Es['total'])/self.RT)
-weights = weights/sum(weights)
 
 def closest_pose(conf, confs):
   return np.argmin(np.array([np.sqrt(((\
@@ -68,11 +67,14 @@ def closest_pose(conf, confs):
 def p_attempt(weights,dart_from,dart_to):
   return weights[dart_to]/(1.-weights[dart_from])
 
+from NUTS import NUTSIntegrator  # @UnresolvedImport
+NUTS_sampler = NUTSIntegrator(self.universe)
+
 acc = 0.
 trials = 25
 energies = []
 closest_poses = []
-for rep in range(100):
+for rep in range(10):
   NUTS_sampler(steps=50,T=300)
   xo_Cartesian = self.universe.copyConfiguration()
   xo_BAT = np.array(BAT_util.BAT(extended=True))
@@ -87,14 +89,10 @@ for rep in range(100):
     # Generate a trial move
     xn_BAT = np.copy(xo_BAT)
     xn_BAT[BAT_to_perturb] = xo_BAT[BAT_to_perturb] + darts[closest_pose_o][dart_towards]
-    xn_Cartesian = BAT_util.Cartesian(xn_BAT) # Sets the universe
+    xn_Cartesian = Configuration(self.universe, BAT_util.Cartesian(xn_BAT)) # Sets the universe
     en = self.universe.energy()
     closest_pose_n = closest_pose(\
       self.universe.configuration().array[self.molecule.heavy_atoms,:], confs)
-#
-#      if closest_pose_n!=dart_towards:
-#        print 'The closest pose was not the target!'
-#        raise Exception('Testing')
 
     if (en<eo) or (np.random.random()<np.exp(-(en-eo)/self.RT)*\
         p_attempt(weights,closest_pose_n,closest_pose_o)/\
@@ -109,21 +107,34 @@ for rep in range(100):
           p_attempt(weights,closest_pose_n,closest_pose_o))
         raise Exception('High energy pose!')
       acc += 1
+      
+      xo_Cartesian = xn_Cartesian
+      xo_BAT = xn_BAT
+      eo = en
+      closest_pose_o = closest_pose_n
+      
     else:
       self.universe.setConfiguration(xo_Cartesian)
 
   energies.append(eo)
   closest_poses.append(closest_pose_o)
 
-print acc/trials/100.
+print 'Acceptance rate: ', acc/trials/10.
+#  import matplotlib.pyplot as plt
+#  plt.plot(energies,'.-')
+#  plt.show()
 
-import matplotlib.pyplot as plt
-plt.plot(energies,'.-')
-plt.show()
+BPMF = self
 
-""" THIS IS HOW YOU CREATE A PBD FILE TO LATER RUN ON VMD:
-    from MMTK.PDB import PDBOutputFile
-    pdb_file = PDBOutputFile('test.pdb')
-    pdb_file.write(self.universe, self.universe.configuration() )
-    pdb_file.close() """
+from AlGDock.Integrators.SmartDarting.SmartDarting import SmartDartingIntegrator
+self = SmartDartingIntegrator(BPMF.universe, BPMF.molecule, \
+  confs, extended=False)
+print 'Coordinates to perturb:', ' '.join(['%d'%d for d in self._BAT_to_perturb])
+print 'Acceptance rate, no extended coordinates: ', self(T=300, ntrials=100)[2]
 
+del self
+self = SmartDartingIntegrator(BPMF.universe, BPMF.molecule, \
+  confs, extended=True)
+print 'Coordinates to perturb:', ' '.join(['%d'%d for d in self._BAT_to_perturb])
+print 'Acceptance rate:    extended coordinates:', self(T=300, ntrials=100)[2]
+del self

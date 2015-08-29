@@ -3,8 +3,8 @@
 # Written by David Minh
 #
 
-import numpy as N
-cimport numpy as N
+import numpy as np
+cimport numpy as np
 import cython
 
 cimport MMTK_trajectory_generator
@@ -64,7 +64,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
   """
 
   cdef double RT
-  cdef N.ndarray x, v, g, m
+  cdef np.ndarray x, v, g, m
   cdef energy_data energy
 
   def __init__(self, universe, **options):
@@ -161,7 +161,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     cdef Py_ssize_t i_atm, i_dim
 
     cdef double joint, logu, e_m
-    cdef N.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, x_m
+    cdef np.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, x_m
     cdef int j, n, steps_m
         
     # For dual averaging
@@ -202,7 +202,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       gamma = 0.05
       t0 = 10
       kappa = 0.75
-      mu = N.log(10*delta_t)
+      mu = np.log(10*delta_t)
       # Initialize dual averaging algorithm.
       delta_t_bar = 1.
       Hbar = 0.
@@ -211,19 +211,19 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
 
     # Seed the random number generator
     if 'seed' in self.call_options.keys():
-      N.random.seed(self.getOption('seed'))
+      np.random.seed(self.getOption('seed'))
     else:
-      N.random.seed()
+      np.random.seed()
 
     # For efficiency, the Cython code works at the array
     # level rather than at the ParticleProperty level.
     self.x = configuration.array
     self.v = velocities.array
     self.g = gradients.array
-    self.m = N.repeat(N.expand_dims(masses.array,1),3,axis=1)
+    self.m = np.repeat(np.expand_dims(masses.array,1),3,axis=1)
 
     # Weight matrix for velocity assignment
-    sigma_MB = N.sqrt((self.getOption('T')*Units.k_B)/self.m)
+    sigma_MB = np.sqrt((self.getOption('T')*Units.k_B)/self.m)
     
     # Ask for energy gradients to be calculated and stored in
     # the array g. Force constants are not requested.
@@ -264,12 +264,12 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     # Initialize the NUTS algorithm
     self.calculateEnergies(self.x, &self.energy, 0)
 
-    xs = [N.copy(self.x)]
+    xs = [np.copy(self.x)]
     energies = [1.*self.energy.energy]
     
     # Initialize the next sample.
     # If all else fails, the next sample is the previous sample.
-    x_m = N.copy(self.x)
+    x_m = np.copy(self.x)
     e_m = 1.*self.energy.energy
 
     # Main integration loop
@@ -277,21 +277,21 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     m = 1
     while elapsed_steps < nsteps:
       # Resample velocities
-      self.v = N.multiply(sigma_MB,N.random.randn(natoms,3))
-      ke = 0.5*N.sum(N.multiply(self.m,N.multiply(self.v,self.v)))
+      self.v = np.multiply(sigma_MB,np.random.randn(natoms,3))
+      ke = 0.5*np.sum(np.multiply(self.m,np.multiply(self.v,self.v)))
 
       # Joint log-probabiity of positions and velocities
       joint = -(e_m + ke)/self.RT
 
-      # Resample u ~ uniform([0, N.exp(joint)]).
+      # Resample u ~ uniform([0, np.exp(joint)]).
       # Equivalent to (log(u) - joint) ~ exponential(1).
-      logu = joint - N.random.exponential(1)
+      logu = joint - np.random.exponential(1)
       
       # Initialize tree.
-      xminus = N.copy(x_m)
-      xplus = N.copy(x_m)
-      vminus = N.copy(self.v)
-      vplus = N.copy(self.v)
+      xminus = np.copy(x_m)
+      xplus = np.copy(x_m)
+      vminus = np.copy(self.v)
+      vplus = np.copy(self.v)
 
       # Initial height j = 0.
       j = 0
@@ -304,7 +304,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       s = True
       while (s==1):
         # Double the size of the tree
-        if N.random.rand()<0.5:
+        if np.random.rand()<0.5:
           # Backwards
           self.x = xminus
           self.v = vminus
@@ -324,7 +324,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
             self.build_tree(logu, j, delta_t, steps_m, joint)
         # Use Metropolis-Hastings to decide whether or not to move to a
         # point from the half-tree we just generated
-        if (sprime and (N.random.rand() < float(nprime)/n)):
+        if (sprime and (np.random.rand() < float(nprime)/n)):
           x_m = xprime
           e_m = eprime
         # Update number of valid points we've seen.
@@ -342,16 +342,16 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
 
       # Adapt the time step
       if adapt:
-        delta_t = N.exp(mu - N.sqrt(m)/gamma*Hbar)
+        delta_t = np.exp(mu - np.sqrt(m)/gamma*Hbar)
         eta = m**-kappa
-        delta_t_bar = N.exp((1-eta)*N.log(delta_t_bar) + eta*N.log(delta_t))
+        delta_t_bar = np.exp((1-eta)*np.log(delta_t_bar) + eta*np.log(delta_t))
 
       if normalize:
         self.universe.setConfiguration(Configuration(self.universe, x_m), block=False)
         self.universe.normalizePosition()
         x_m = self.universe.configuration().array
         
-      xs.append(N.copy(x_m))
+      xs.append(np.copy(x_m))
       energies.append(1.*e_m)
             
       time += steps_m*delta_t
@@ -373,7 +373,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
   # The main recursion
   def build_tree(NUTSIntegrator self, double logu, int j, double delta_t, int steps, double joint_o):
     cdef double ke, joint, e_o, eprime, eprime2
-    cdef N.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, xprime, xprime2, NA0, NA1
+    cdef np.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, xprime, xprime2, NA0, NA1
     
     cdef double alphaprime, alphaprime2
     cdef int nalphaprime, nalphaprime2
@@ -382,14 +382,14 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       # Base case: Take a single leapfrog step
       # First half-step
       e_o = 1.*self.energy.energy
-      self.v += -0.5*delta_t*N.divide(self.g,self.m)
+      self.v += -0.5*delta_t*np.divide(self.g,self.m)
       self.x += delta_t*self.v      
       # Mid-step energy calculation
       self.foldCoordinatesIntoBox()
       self.calculateEnergies(self.x, &self.energy, 1)
       # Second half-step
-      self.v += -0.5*delta_t*N.divide(self.g,self.m)
-      ke = 0.5*N.sum(N.multiply(self.m,N.multiply(self.v,self.v)))
+      self.v += -0.5*delta_t*np.divide(self.g,self.m)
+      ke = 0.5*np.sum(np.multiply(self.m,np.multiply(self.v,self.v)))
       steps += 1
 
       eprime = 1.*self.energy.energy
@@ -397,14 +397,14 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       # Is the new point in the slice?
       nprime = (logu < joint)
       # Is the simulation wildly inaccurate
-      sprime = (N.abs(joint_o - joint) < 50.) and (N.abs((e_o - eprime)/self.RT) < 50.)
+      sprime = (np.abs(joint_o - joint) < 50.) and (np.abs((e_o - eprime)/self.RT) < 50.)
       # Compute the acceptance probability
-      alphaprime = min(1, N.exp(joint - joint_o))
+      alphaprime = min(1, np.exp(joint - joint_o))
       # Set the return values---minus=plus for all things here, since the
       # "tree" is of depth 0.
-      return (N.copy(self.x), N.copy(self.v),
-              N.copy(self.x), N.copy(self.v), 
-              N.copy(self.x),
+      return (np.copy(self.x), np.copy(self.v),
+              np.copy(self.x), np.copy(self.v), 
+              np.copy(self.x),
               eprime, nprime, sprime, steps,
               alphaprime, 1)
     else:
@@ -427,7 +427,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
               self.build_tree(logu, j-1, delta_t, steps, joint_o)
         # Choose which subtree to propagate a sample up from.
         if ((nprime + nprime2) > 0) and \
-           (N.random.rand() < float(nprime2) / (nprime + nprime2)):
+           (np.random.rand() < float(nprime2) / (nprime + nprime2)):
             xprime = xprime2
             eprime = eprime2
         # Update the number of valid points.
@@ -443,7 +443,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
               alphaprime, nalphaprime)
 
   def stop_criterion(NUTSIntegrator self, xminus, xplus, vminus, vplus):
-    cdef N.ndarray[double] thetavec
-    thetavec = N.ravel(xplus-xminus)
-    return (N.dot(thetavec,N.ravel(vminus))>0) and \
-           (N.dot(thetavec,N.ravel(vplus))>0)
+    cdef np.ndarray[double] thetavec
+    thetavec = np.ravel(xplus-xminus)
+    return (np.dot(thetavec,np.ravel(vminus))>0) and \
+           (np.dot(thetavec,np.ravel(vplus))>0)

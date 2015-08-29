@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# TODO: Save tarballs in/load tarballs from progress pickle file
+# TODO: Integrate Smart Darting
+# TODO: OpenMM GBSA
+
 import os # Miscellaneous operating system interfaces
 from os.path import join
 import cPickle as pickle
@@ -1790,8 +1794,8 @@ last modified {2}
           for c in extractCycles])
         min_Psi = min(Psi)
         # If the range is too large, filter Psi
-        if np.any((Psi-min_Psi)>1000):
-          keep = (Psi-min_Psi)<1000
+        if np.any((Psi-min_Psi)>500):
+          keep = (Psi-min_Psi)<500
           weights = weights[keep]
           Psi = Psi[keep]
         
@@ -3744,6 +3748,7 @@ END
       self.confs[p]['replicas'] = saved['data'][1]
       self.confs[p]['seeds'] = saved['data'][2]
       self.confs[p]['samples'] = saved['data'][3]
+      # TODO: Check if conformations are empty
       setattr(self,'%s_Es'%p, saved['data'][4])
       if saved['data'][3] is not None:
         cycle = len(saved['data'][3][-1])

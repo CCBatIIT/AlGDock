@@ -1,5 +1,15 @@
 # To be run from the [TARGET] directory, or
 # the parent directory with the multi_target option
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--clean_dock_not_complex', action='store_true', \
+  default=False, \
+  help='Removes docking results if there is not an AMBER complex')
+parser.add_argument('--multi_target', action='store_true', default=False, \
+  help='Performs counts for multiple targets')
+args = parser.parse_args()
+
 import os, sys
 import glob
 import numpy as np
@@ -58,7 +68,7 @@ def loopISM(ism_FNs, search_strings, field_width, nonzero=True):
   return outstr
 
 start_dir = os.getcwd()
-if sys.argv[-1] == '--multi_target':
+if args.multi_target:
   dirs = sorted([d for d in glob.glob('*') if os.path.isdir(d)])
   print 'Parsing multiple targets'
 else:
@@ -130,6 +140,11 @@ for dir in dirs:
   print loopISM(ism_FNs, ['AlGDock/dock/%s*/*/*/f_RL.pkl.gz'], \
     first_field_width)
 
+  if args.clean_dock_not_complex:
+    (complex_not_dock,dock_not_complex) = complex_nonoverlap(['complex/AlGDock_in/*/*/*.tar.gz'], ['dock6/*/*/*.mol2.gz', 'dock6/*/*/*.nc'])
+    for p in dock_not_complex:
+      os.system('rm dock6/%s*'%p)
+
   # print "\nComparing AlGDock and dock sets"
 #  (AlGDock_not_nc,nc_not_AlGDock) = complex_nonoverlap(['AlGDock/dock/*/*/*/f_RL.pkl.gz'], ['dock6/*/*/*.nc'])
 #  (AlGDock_not_dock,dock_not_AlGDock) = complex_nonoverlap(['AlGDock/dock/*/*/*/f_RL.pkl.gz'], ['dock6/*/*/*.mol2.gz', 'dock6/*/*/*.nc'])
@@ -145,4 +160,3 @@ for dir in dirs:
 #    os.system('rm -rf AlGDock/dock/%s-0'%path)
 
   os.chdir(start_dir)
-

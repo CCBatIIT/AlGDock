@@ -7,9 +7,13 @@ parser.add_argument('--saved_arguments', default='saved_arguments.py',
   help='File containing default values of parameters' + \
        '(can be overwritten by flags)')
 parser.add_argument('--include_ligand', nargs='+', default=None, \
-  help='Only runs AlGDock for a these ligands')
+  help='Only runs AlGDock for these ligands')
 parser.add_argument('--exclude_ligand', nargs='+', default=None, \
-  help='Does not run AlGDock for a these ligands')
+  help='Does not run AlGDock for these ligands')
+parser.add_argument('--include_receptor', nargs='+', default=None, \
+  help='Only runs AlGDock for these receptors')
+parser.add_argument('--exclude_receptor', nargs='+', default=None, \
+  help='Does not run AlGDock for these receptor')
 parser.add_argument('--older_than', type=int, default=None, \
   help='Only runs redo_free_energies jobs if f_RL.pkl.gz ' + \
        'is older than OLDER_THAN hours')
@@ -207,6 +211,7 @@ else:
   onq = []
 command_paths = findPaths(['qsub_command','gaff.dat'])
 algdock_path = findPath(search_paths['algdock'])
+current_path = os.getcwd()
 
 import numpy as np
 
@@ -265,10 +270,12 @@ ligand_FNs = [FN for FN in ligand_FNs if os.path.getsize(FN)>0]
 # Filter ligands
 if args_in.include_ligand is not None:
   ligand_FNs = [FN for FN in ligand_FNs \
-    if np.array([FN.find(ligN)!=-1 for ligN in args_in.include_ligand]).any()]
+    if np.array([FN.find(ligN)!=-1 \
+    for ligN in args_in.include_ligand]).any()]
 if args_in.exclude_ligand is not None:
   ligand_FNs = [FN for FN in ligand_FNs \
-    if not np.array([FN.find(ligN)!=-1 for ligN in args_in.include_ligand]).any()]
+    if not np.array([FN.find(ligN)!=-1 \
+    for ligN in args_in.exclude_ligand]).any()]
 
 # Look for receptor files
 if os.path.isfile(args_in.receptor):
@@ -278,6 +285,15 @@ elif os.path.isdir(args_in.receptor):
 else:
   raise Exception('Receptor input %s is not a file or directory!'%args_in.receptor)
 receptor_FNs = [os.path.abspath(FN) for FN in receptor_FNs]
+# Filter receptors
+if args_in.include_receptor is not None:
+  receptor_FNs = [FN for FN in receptor_FNs \
+    if np.array([FN.find(recN)!=-1 \
+    for recN in args_in.include_receptor]).any()]
+if args_in.exclude_receptor is not None:
+  receptor_FNs = [FN for FN in receptor_FNs \
+    if not np.array([FN.find(recN)!=-1 \
+    for recN in args_in.exclude_receptor]).any()]
 
 # Require inpcrd as well as prmtop files
 receptor_FNs = [FN for FN in receptor_FNs if
@@ -357,7 +373,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
     if not os.path.isdir(paths['dir_cool']):
       os.system('mkdir -p '+paths['dir_cool'])
     if (args_in.run_type in ['initial_cool','cool']) and \
-        nonzero(join(paths['dir_cool'],'f_L.pkl.gz')):
+        nonzero(os.path.join(paths['dir_cool'],'f_L.pkl.gz')):
       job_status['complete'] += 1
       continue # Cooling is already done
     for receptor_FN in receptor_FNs:
@@ -499,7 +515,6 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
               labels['lib_subdir'], labels['key'], labels['receptor'] + '.nc'))
             if not nonzero(val):
               if os.path.isfile(val[:-3]+'.mol2.gz'):
-                print 'No poses in '+val[:-3]+'.mol2.gz'
                 job_status['no_poses'] += 1
                 skip_job = True
                 break # No poses in dock6
@@ -579,6 +594,10 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           mem=16
         else:
           mem=2
+        if args.run_type in ['initial_cool','cool']:
+          os.chdir(paths['dir_cool'])
+        else:
+          os.chdir(paths['dir_dock'])
         import subprocess
         subprocess.call(['python', command_paths['qsub_command'], \
           jobname, terminal_command, '--mem', '%d'%mem] + \
@@ -588,6 +607,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           ['--comment', interactive_command.replace(' \\\n','')] + \
           {True:['--dry'],False:[]}[args_in.dry] + \
           {True:['--no_release'],False:[]}[args_in.no_release])
+        os.chdir(current_path)
       
       job_status['submitted'] += 1
 
