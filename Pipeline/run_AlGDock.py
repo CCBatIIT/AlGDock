@@ -594,7 +594,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           mem=16
         else:
           mem=2
-        if args.run_type in ['initial_cool','cool']:
+        if args_in.run_type in ['initial_cool','cool']:
           os.chdir(paths['dir_cool'])
         else:
           os.chdir(paths['dir_dock'])
