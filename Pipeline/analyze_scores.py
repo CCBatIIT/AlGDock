@@ -66,6 +66,14 @@ else:
     F = Dataset(nc_FN,'r')
     scores['dock6'][key] =  F.variables['Grid Score'][0]
     F.close()
+  mol2_FNs = glob.glob(os.path.join(args.dock6,'*/*/*.mol2.gz'))
+  mol2_FNs = [FN for FN in mol2_FNs if os.path.getsize(FN)==0]
+  for mol2_FN in mol2_FNs:
+    (dock6_dir, library, key, receptor) = nc_FN.split('/')
+    library = '.'.join(library.split('.')[:-1])
+    receptor = receptor[:-3]
+    key = '%s.%s-%s'%(library,key,receptor)
+    scores['dock6'][key] = np.inf
   F = gzip.open(dock6_scores_FN,'w')
   pickle.dump(scores['dock6'],F)
   F.close()
@@ -90,6 +98,7 @@ else:
     F = gzip.open(f_RL_FN)
     (f_L, stats_RL, f_RL, B) = pickle.load(F)
     F.close()
+    # TODO: Handle infinite scores
     if 'grid_MBAR' in scores.keys():
       scores['grid_MBAR'][key] = f_RL['grid_MBAR'][-1][-1]
     else:

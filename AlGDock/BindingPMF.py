@@ -1448,10 +1448,12 @@ last modified {2}
       if len(self.dock_protocol)>1000:
         self._clear('dock')
         self._save('dock')
+        self._store_infinite_f_RL()
         raise Exception('Too many replicas!')
       if abs(rejectStage)>20:
         self._clear('dock')
         self._save('dock')
+        self._store_infinite_f_RL()
         raise Exception('Too many consecutive rejected stages!')
 
       # Randomly select seeds for new trajectory
@@ -1823,6 +1825,10 @@ last modified {2}
     self.tee("\nElapsed time for binding PMF estimation: " + \
       HMStime(time.time()-BPMF_start_time))
     self._clear_lock('dock')
+    
+  def _store_infinite_f_RL(self):
+    f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+    self._write_pkl_gz(f_RL_FN, (self.f_L, [], np.inf, np.inf))
 
   def _get_equilibrated_cycle(self, process):
     # Estimate cycle at which simulation has equilibrated
@@ -2022,7 +2028,7 @@ last modified {2}
               cutoffE = Es['total'][-1] + 20*self.RT_TARGET
               coms = []
               for (conf,E) in reversed(zip(confs,Es['total'])):
-                if E<cutoffE:
+                if E<=cutoffE:
                   self.universe.setConfiguration(Configuration(self.universe,conf))
                   coms.append(np.array(self.universe.centerOfMass()))
                 else:
@@ -2672,6 +2678,8 @@ last modified {2}
     """
     # Get configurations
     count = {'xtal':0, 'dock6':0, 'initial_dock':0, 'duplicated':0}
+    
+    # based on the score option
     if self._FNs['score']=='default':
       confs = [np.copy(self.confs['ligand'])]
       count['xtal'] = 1
@@ -2685,15 +2693,13 @@ last modified {2}
          self._FNs['score'].endswith('.mol2.gz'):
       (confs,Es) = self._read_dock6(self._FNs['score'], site=site)
       count['dock6'] = len(confs)
-      if self.confs['dock']['seeds'] is not None:
-        confs = confs + self.confs['dock']['seeds']
-        count['initial_dock'] = len(self.confs['dock']['seeds'])
     elif self._FNs['score'].endswith('.nc'):
       from netCDF4 import Dataset
       dock6_nc = Dataset(self._FNs['score'],'r')
       confs = [dock6_nc.variables['confs'][n][self.molecule.inv_prmtop_atom_order,:] for n in range(dock6_nc.variables['confs'].shape[0])]
       Es = dict([(key,dock6_nc.variables[key][:]) for key in dock6_nc.variables.keys() if key !='confs'])
       dock6_nc.close()
+      count['dock6'] = len(confs)
     elif self._FNs['score'].endswith('.pkl.gz'):
       F = gzip.open(self._FNs['score'],'r')
       confs = pickle.load(F)
@@ -2703,7 +2709,12 @@ last modified {2}
       Es = {}
     else:
       raise Exception('Input configuration format not recognized')
-    
+
+    # based on the seeds
+    if self.confs['dock']['seeds'] is not None:
+      confs = confs + self.confs['dock']['seeds']
+      count['initial_dock'] = len(self.confs['dock']['seeds'])
+
     if len(confs)==0:
       return ([],[])
     

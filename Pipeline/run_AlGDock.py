@@ -201,7 +201,8 @@ dirs['script'] = os.path.dirname(os.path.abspath(\
   inspect.getfile(inspect.currentframe())))
 execfile(os.path.join(dirs['script'],'_external_paths.py'))
 
-for path in ['ligand','receptor','receptor_grids','complex']:
+for path in ['ligand','receptor','receptor_grids','complex',\
+             'tree_dock','tree_cool','dock6']:
   setattr(args_in,path,os.path.abspath(getattr(args_in,path)))
 
 if not args_in.skip_onq:
@@ -211,7 +212,6 @@ else:
   onq = []
 command_paths = findPaths(['qsub_command','gaff.dat'])
 algdock_path = findPath(search_paths['algdock'])
-current_path = os.getcwd()
 
 import numpy as np
 
@@ -607,7 +607,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           ['--comment', interactive_command.replace(' \\\n','')] + \
           {True:['--dry'],False:[]}[args_in.dry] + \
           {True:['--no_release'],False:[]}[args_in.no_release])
-        os.chdir(current_path)
+        os.chdir(dirs['current'])
       
       job_status['submitted'] += 1
 
