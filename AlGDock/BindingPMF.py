@@ -1928,7 +1928,7 @@ last modified {2}
       lowest_e_ind[phase] = linear_index_to_pair(np.argmin(un))
     return (pose_ind, lowest_e_ind)
 
-  def pose_energies(self, minimize=False, grids=False):
+  def pose_energies(self, minimize=False):
     """
     Calculates the energy for poses from self._FNs['score']
     """
@@ -1939,7 +1939,7 @@ last modified {2}
       self._set_universe_evaluator(lambda_o)
 
     # Load the poses
-    (confs, Es) = self._get_confs_to_rescore(site=True, minimize=minimize)
+    (confs, Es) = self._get_confs_to_rescore(minimize=minimize)
 
     # Calculate MM energies
     prefix = 'xtal' if self._FNs['score']=='default' else \
@@ -1954,24 +1954,28 @@ last modified {2}
         self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
           for c in range(len(confs))])
 
-    # Try different grid transformations
-    if grids:
-      # TODO: Try different transforms
-      from AlGDock.ForceFields.Grid.TrilinearTransformGrid \
-        import TrilinearTransformGridForceField
-      for type in ['LJa','LJr']:
-        Es[type+'_transformed'] = np.zeros((12,len(confs)),dtype=np.float)
+    # Grid interpolation energies
+    from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
+    for grid_type in ['LJa','LJr']:
+      for interpolation_type in ['Trilinear','BSpline', 'CatmullRom']:
+        key = '%s_%sTransform'%(grid_type,interpolation_type)
+        Es[key] = np.zeros((12,len(confs)),dtype=np.float)
         for p in range(12):
-          FF = TrilinearTransformGridForceField(self._FNs['grids'][type], 1.0, \
-            'scaling_factor_'+type, grid_name='%f'%(p+1), \
-            inv_power=-float(p+1), max_val=-1)
+          print interpolation_type + ' interpolation of the ' + \
+            grid_type + ' grid with an inverse power of %d'%(p+1)
+          FF = InterpolationForceField(self._FNs['grids'][grid_type], \
+            name='%f'%(p+1),
+            interpolation_type=interpolation_type, strength=1.0,
+            scaling_property='scaling_factor_'+grid_type, \
+            inv_power=-float(p+1))
           self.universe.setForceField(FF)
           for c in range(len(confs)):
             self.universe.setConfiguration(Configuration(self.universe,confs[c]))
-            Es[type+'_transformed'][p,c] = self.universe.energy()
+            Es[key][p,c] = self.universe.energy()
 
     # Store the data
     self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),(confs,Es))
+    return (confs,Es)
 
   ######################
   # Internal Functions #
@@ -2077,14 +2081,12 @@ last modified {2}
           grid_scaling_factor = 'scaling_factor_' + \
             {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
              'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
-          if scalable=='LJr':
-            from AlGDock.ForceFields.Grid.TrilinearISqrtGrid import TrilinearISqrtGridForceField
-            self._forceFields[scalable] = TrilinearISqrtGridForceField(grid_FN,
-              lambda_n[scalable], grid_scaling_factor,
-              grid_name=scalable, max_val=-1)
-          else:
+
+          # Determine the grid threshold
+          grid_thresh = -1
+          if scalable!='LJr':
             if scalable=='sLJr':
-              max_val = 10.0
+              grid_thresh = 10.0
             elif scalable=='sELE':
               # The maximum value is set so that the electrostatic energy
               # less than or equal to the Lennard-Jones repulsive energy
@@ -2097,14 +2099,15 @@ last modified {2}
                   for a in self.molecule.atomList()],dtype=float)
               scaling_factors_ELE = scaling_factors_ELE[scaling_factors_LJr>10]
               scaling_factors_LJr = scaling_factors_LJr[scaling_factors_LJr>10]
-              max_val = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
-            else:
-              max_val = -1
-              
-            from AlGDock.ForceFields.Grid.TrilinearGrid import TrilinearGridForceField
-            self._forceFields[scalable] = TrilinearGridForceField(grid_FN,
-              lambda_n[scalable], grid_scaling_factor,
-              grid_name=scalable, max_val=max_val)
+              grid_thresh = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
+
+          from AlGDock.ForceFields.Grid.Interpolation \
+            import InterpolationForceField
+          self._forceFields[scalable] = InterpolationForceField(grid_FN, \
+            name=scalable, interpolation_type='Trilinear', \
+            strength=lambda_n[scalable], scaling_property=grid_scaling_factor,
+            inv_power=-2 if scalable=='LJr' else None, \
+            grid_thresh=grid_thresh)
           self.tee('  %s grid loaded from %s in %s'%(scalable, grid_FN, \
             HMStime(time.time()-loading_start_time)))
 

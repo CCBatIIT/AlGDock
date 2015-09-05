@@ -1,4 +1,4 @@
-# Cython force field implementation for BSpline grid
+# Cython force field implementation for Catmull-Rom grid
 
 #
 # Get all the required declarations
@@ -35,7 +35,7 @@ ctypedef np.int_t int_t
 # - The function "evaluate" must have exactly the parameter
 #   list given in this example.
 #
-cdef class BSplineGridTerm(EnergyTerm):
+cdef class CatmullRomTransformGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
@@ -64,7 +64,7 @@ cdef class BSplineGridTerm(EnergyTerm):
 
 
     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):
-        return -.5*p[0]+.5*p[2]+x*(-4.*f[0]+7.*p[1]-2.*p[2]-p[3]+1.5*x*(3.*p[0]-5.*p[1]+p[2]+p[3]))
+        return -.5*p[0]+.5*p[2]+x*(-4.*p[0]+7.*p[1]-2.*p[2]-p[3]+1.5*x*(3.*p[0]-5.*p[1]+p[2]+p[3]))
 
 
 # the following functions are used to realize the gradients(first dirivative)
@@ -109,7 +109,7 @@ cdef class BSplineGridTerm(EnergyTerm):
 # the following functions are used to realize the hessian functions(second derivative)
 
     cdef float_t derivateOfIntp_mm(self,float_t p[4],float_t x):
-        return -4.*f[0]+7.*p[1]-2.*p[2]-p[3]+3*x*(3.*p[0]-5.*p[1]+p[2]+p[3])
+        return -4.*p[0]+7.*p[1]-2.*p[2]-p[3]+3*x*(3.*p[0]-5.*p[1]+p[2]+p[3])
 
 # calculate the dvdxdx
     cdef float_t derivateOfIntp_XX(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
@@ -208,11 +208,11 @@ cdef class BSplineGridTerm(EnergyTerm):
 
 
     def __init__(self, universe, spacing, counts, vals, strength,
-                 scaling_factor, inv_power,grid_name):
+                 scaling_factor, grid_name, inv_power):
         print "------------test start---------------"
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
-        self.eval_func = <void *>BSplineGridTerm.evaluate
+        self.eval_func = <void *>CatmullRomTransformGridTerm.evaluate
 
         self.strength = strength
         self.scaling_factor = np.array(scaling_factor, dtype=float)

@@ -37,13 +37,13 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
-    cdef float_t Ethresh, strength, k
+    cdef float_t energy_thresh, strength, k
 
     # The __init__ method remembers parameters and loads the potential
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
     def __init__(self, universe, spacing, counts, vals, strength,
-                 scaling_factor, grid_name, Ethresh):
+                 scaling_factor, grid_name, energy_thresh):
 
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
@@ -53,7 +53,7 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
         self.scaling_factor = np.array(scaling_factor, dtype=float)
         self.natoms = len(self.scaling_factor)
         self.grid_name = grid_name
-        self.Ethresh = Ethresh
+        self.energy_thresh = energy_thresh
         
         self.spacing = spacing
         self.counts = counts
@@ -88,8 +88,7 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
         cdef float_t vmm, vmp, vpm, vpp, vm, vp
         cdef float_t fx, fy, fz, ax, ay, az
         cdef float_t dvdx, dvdy, dvdz
-        cdef float_t Eo, dEthresh, coshEo, sinhEo
-        # , en2x
+        cdef float_t Eo, denergy_thresh, coshEo, sinhEo
 
         gridEnergy = 0
         coordinates = <vector3 *>input.coordinates.data
@@ -155,15 +154,15 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
             Eo = (ax*vm + fx*vp)
 
             # This is slow
-            gridEnergy += scaling_factor[atom_index]*self.Ethresh*np.tanh(Eo/self.Ethresh)
+            gridEnergy += scaling_factor[atom_index]*self.energy_thresh*np.tanh(Eo/self.energy_thresh)
 
             # These overflow
             # en2x = np.exp(-2.*Eo)
-            # gridEnergy += scaling_factor[atom_index]*self.Ethresh*(1.-en2x)/(1.+en2x)
+            # gridEnergy += scaling_factor[atom_index]*self.energy_thresh*(1.-en2x)/(1.+en2x)
             
             # sinhEo = np.sinh(Eo)
             # coshEo = np.cosh(Eo)
-            # gridEnergy += scaling_factor[atom_index]*self.Ethresh*sinhEo/coshEo
+            # gridEnergy += scaling_factor[atom_index]*self.energy_thresh*sinhEo/coshEo
           
             if energy.gradients != NULL:
               # x coordinate
@@ -174,16 +173,16 @@ cdef class TrilinearThreshGridTerm(EnergyTerm):
               dvdz = ((-vmmm + vmmp)*ay + (-vmpm + vmpp)*fy)*ax + ((-vpmm + vpmp)*ay + (-vppm + vppp)*fy)*fx
               
               # This is slow
-              dEthresh = (1./np.cosh(Eo/self.Ethresh))
-              dEthresh = 1./dEthresh
+              denergy_thresh = (1./np.cosh(Eo/self.energy_thresh))
+              denergy_thresh = 1./denergy_thresh
 
               # These overflow
-              # dEthresh = 4.*en2x/(1.+en2x)
-              # dEthresh = 1./coshEo/coshEo
+              # denergy_thresh = 4.*en2x/(1.+en2x)
+              # denergy_thresh = 1./coshEo/coshEo
             
-              gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dEthresh*dvdx/spacing[0]
-              gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dEthresh*dvdy/spacing[1]
-              gradients[atom_index][2] += self.strength*scaling_factor[atom_index]*dEthresh*dvdz/spacing[2]
+              gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*denergy_thresh*dvdx/spacing[0]
+              gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*denergy_thresh*dvdy/spacing[1]
+              gradients[atom_index][2] += self.strength*scaling_factor[atom_index]*denergy_thresh*dvdz/spacing[2]
           else:
             for i in range(3):
               if (coordinates[atom_index][i]<0):

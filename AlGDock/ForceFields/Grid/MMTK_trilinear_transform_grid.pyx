@@ -43,7 +43,7 @@ cdef class TrilinearTransformGridTerm(EnergyTerm):
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
     def __init__(self, universe, spacing, counts, vals, strength,
-                 scaling_factor, inv_power, grid_name):
+                 scaling_factor, grid_name, inv_power):
 
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
