@@ -47,6 +47,13 @@ def findPaths(keys):
         raise Exception('Missing file for '+key)
   return paths
 
+def loadModules(programs):
+  import os
+  for program in programs:
+    if program in modules.keys() and \
+        os.path.isfile('/share/apps/modules/'+modules[program]):
+      os.system('module load '+modules[program])
+
 # Define search paths for external programs and files
 # Defined for
 # David's IIT MacBook Pro, DSCR cluster, and CCB cluster
@@ -94,3 +101,8 @@ download_paths = {
     'export LD_LIBRARY_PATH=./molsurf:$LD_LIBRARY_PATH', \
     'molsurf/molsurf'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs')}
+
+modules = {'namd':'namd/2.9', \
+  'sander':'ambertools/14', \
+  'ambpdb':'ambertools/14', \
+  'openmm':'openmm/6.2'}

@@ -687,7 +687,7 @@ typedef npy_double __pyx_t_5numpy_double_t;
  */
 typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
 
-/* "MMTK_CatmullRom_grid.pyx":19
+/* "MMTK_CatmullRom_grid.pyx":21
  * cimport numpy as np
  * 
  * ctypedef np.float_t float_t             # <<<<<<<<<<<<<<
@@ -696,7 +696,7 @@ typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
  */
 typedef __pyx_t_5numpy_float_t __pyx_t_20MMTK_CatmullRom_grid_float_t;
 
-/* "MMTK_CatmullRom_grid.pyx":20
+/* "MMTK_CatmullRom_grid.pyx":22
  * 
  * ctypedef np.float_t float_t
  * ctypedef np.int_t int_t             # <<<<<<<<<<<<<<
@@ -764,7 +764,7 @@ typedef npy_clongdouble __pyx_t_5numpy_clongdouble_t;
  */
 typedef npy_cdouble __pyx_t_5numpy_complex_t;
 
-/* "MMTK_CatmullRom_grid.pyx":38
+/* "MMTK_CatmullRom_grid.pyx":40
  * #   list given in this example.
  * #
  * cdef class CatmullRomGridTerm(EnergyTerm):             # <<<<<<<<<<<<<<
@@ -1344,7 +1344,7 @@ static PyObject *__pyx_tuple__7;
 static PyObject *__pyx_tuple__8;
 static PyObject *__pyx_tuple__9;
 
-/* "MMTK_CatmullRom_grid.pyx":48
+/* "MMTK_CatmullRom_grid.pyx":50
  * 
  * 
  *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
@@ -1357,7 +1357,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("splineInterpolate", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":49
+  /* "MMTK_CatmullRom_grid.pyx":51
  * 
  *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
  *         return p[0]+.5*x*(-p[0]+p[2]+x*(-4.*p[0]+7.*p[1]-2.*p[2]-p[3]+x*(3.*p[0]-5.*p[1]+p[2]+p[3])))             # <<<<<<<<<<<<<<
@@ -1367,7 +1367,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((__pyx_v_p[0]) + ((.5 * __pyx_v_x) * (((-(__pyx_v_p[0])) + (__pyx_v_p[2])) + (__pyx_v_x * (((((-4. * (__pyx_v_p[0])) + (7. * (__pyx_v_p[1]))) - (2. * (__pyx_v_p[2]))) - (__pyx_v_p[3])) + (__pyx_v_x * ((((3. * (__pyx_v_p[0])) - (5. * (__pyx_v_p[1]))) + (__pyx_v_p[2])) + (__pyx_v_p[3]))))))));
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":48
+  /* "MMTK_CatmullRom_grid.pyx":50
  * 
  * 
  *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
@@ -1381,7 +1381,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":50
+/* "MMTK_CatmullRom_grid.pyx":52
  *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
  *         return p[0]+.5*x*(-p[0]+p[2]+x*(-4.*p[0]+7.*p[1]-2.*p[2]-p[3]+x*(3.*p[0]-5.*p[1]+p[2]+p[3])))
  *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -1395,7 +1395,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("bisplineInterpolate", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":52
+  /* "MMTK_CatmullRom_grid.pyx":54
  *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)             # <<<<<<<<<<<<<<
@@ -1404,7 +1404,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":53
+  /* "MMTK_CatmullRom_grid.pyx":55
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)             # <<<<<<<<<<<<<<
@@ -1413,7 +1413,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":54
+  /* "MMTK_CatmullRom_grid.pyx":56
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)             # <<<<<<<<<<<<<<
@@ -1422,7 +1422,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":55
+  /* "MMTK_CatmullRom_grid.pyx":57
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)             # <<<<<<<<<<<<<<
@@ -1431,7 +1431,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":56
+  /* "MMTK_CatmullRom_grid.pyx":58
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -1441,7 +1441,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":50
+  /* "MMTK_CatmullRom_grid.pyx":52
  *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
  *         return p[0]+.5*x*(-p[0]+p[2]+x*(-4.*p[0]+7.*p[1]-2.*p[2]-p[3]+x*(3.*p[0]-5.*p[1]+p[2]+p[3])))
  *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -1455,7 +1455,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":57
+/* "MMTK_CatmullRom_grid.pyx":59
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.splineInterpolate(arr, x)
  *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1469,7 +1469,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("trisplineInterpolate", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":59
+  /* "MMTK_CatmullRom_grid.pyx":61
  *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -1478,7 +1478,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":60
+  /* "MMTK_CatmullRom_grid.pyx":62
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -1487,7 +1487,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":61
+  /* "MMTK_CatmullRom_grid.pyx":63
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -1496,7 +1496,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":62
+  /* "MMTK_CatmullRom_grid.pyx":64
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)
  *         arr[3] = self.bisplineInterpolate(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -1505,7 +1505,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":63
+  /* "MMTK_CatmullRom_grid.pyx":65
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)
  *         arr[3] = self.bisplineInterpolate(p[3], y, z)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -1515,7 +1515,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":57
+  /* "MMTK_CatmullRom_grid.pyx":59
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.splineInterpolate(arr, x)
  *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1529,7 +1529,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":66
+/* "MMTK_CatmullRom_grid.pyx":68
  * 
  * 
  *     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
@@ -1542,7 +1542,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":67
+  /* "MMTK_CatmullRom_grid.pyx":69
  * 
  *     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):
  *         return -.5*p[0]+.5*p[2]+x*(-4.*p[0]+7.*p[1]-2.*p[2]-p[3]+1.5*x*(3.*p[0]-5.*p[1]+p[2]+p[3]))             # <<<<<<<<<<<<<<
@@ -1552,7 +1552,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = (((-.5 * (__pyx_v_p[0])) + (.5 * (__pyx_v_p[2]))) + (__pyx_v_x * (((((-4. * (__pyx_v_p[0])) + (7. * (__pyx_v_p[1]))) - (2. * (__pyx_v_p[2]))) - (__pyx_v_p[3])) + ((1.5 * __pyx_v_x) * ((((3. * (__pyx_v_p[0])) - (5. * (__pyx_v_p[1]))) + (__pyx_v_p[2])) + (__pyx_v_p[3]))))));
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":66
+  /* "MMTK_CatmullRom_grid.pyx":68
  * 
  * 
  *     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
@@ -1566,7 +1566,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":70
+/* "MMTK_CatmullRom_grid.pyx":72
  * 
  * # the following functions are used to realize the gradients(first dirivative)
  *     cdef float_t derivateOfIntp_X(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1580,7 +1580,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_X", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":72
+  /* "MMTK_CatmullRom_grid.pyx":74
  *     cdef float_t derivateOfIntp_X(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -1589,7 +1589,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":73
+  /* "MMTK_CatmullRom_grid.pyx":75
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -1598,7 +1598,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":74
+  /* "MMTK_CatmullRom_grid.pyx":76
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -1607,7 +1607,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":75
+  /* "MMTK_CatmullRom_grid.pyx":77
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)
  *         arr[3] = self.bisplineInterpolate(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -1616,7 +1616,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":76
+  /* "MMTK_CatmullRom_grid.pyx":78
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)
  *         arr[3] = self.bisplineInterpolate(p[3], y, z)
  *         return self.derivateOfIntp(arr, x)             # <<<<<<<<<<<<<<
@@ -1626,7 +1626,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":70
+  /* "MMTK_CatmullRom_grid.pyx":72
  * 
  * # the following functions are used to realize the gradients(first dirivative)
  *     cdef float_t derivateOfIntp_X(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1640,7 +1640,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":78
+/* "MMTK_CatmullRom_grid.pyx":80
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_Y_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -1654,7 +1654,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_Y_2", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":80
+  /* "MMTK_CatmullRom_grid.pyx":82
  *     cdef float_t derivateOfIntp_Y_2(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)             # <<<<<<<<<<<<<<
@@ -1663,7 +1663,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":81
+  /* "MMTK_CatmullRom_grid.pyx":83
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)             # <<<<<<<<<<<<<<
@@ -1672,7 +1672,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":82
+  /* "MMTK_CatmullRom_grid.pyx":84
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)             # <<<<<<<<<<<<<<
@@ -1681,7 +1681,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":83
+  /* "MMTK_CatmullRom_grid.pyx":85
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)             # <<<<<<<<<<<<<<
@@ -1690,7 +1690,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":84
+  /* "MMTK_CatmullRom_grid.pyx":86
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.derivateOfIntp(arr, x)             # <<<<<<<<<<<<<<
@@ -1700,7 +1700,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":78
+  /* "MMTK_CatmullRom_grid.pyx":80
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_Y_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -1714,7 +1714,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":86
+/* "MMTK_CatmullRom_grid.pyx":88
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_Y(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1728,7 +1728,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_Y", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":88
+  /* "MMTK_CatmullRom_grid.pyx":90
  *     cdef float_t derivateOfIntp_Y(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_Y_2(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -1737,7 +1737,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Y_2(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":89
+  /* "MMTK_CatmullRom_grid.pyx":91
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_Y_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_Y_2(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -1746,7 +1746,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Y_2(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":90
+  /* "MMTK_CatmullRom_grid.pyx":92
  *         arr[0] = self.derivateOfIntp_Y_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_Y_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_Y_2(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -1755,7 +1755,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Y_2(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":91
+  /* "MMTK_CatmullRom_grid.pyx":93
  *         arr[1] = self.derivateOfIntp_Y_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_Y_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_Y_2(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -1764,7 +1764,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Y_2(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":92
+  /* "MMTK_CatmullRom_grid.pyx":94
  *         arr[2] = self.derivateOfIntp_Y_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_Y_2(p[3], y, z)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -1774,7 +1774,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":86
+  /* "MMTK_CatmullRom_grid.pyx":88
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_Y(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1788,7 +1788,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":93
+/* "MMTK_CatmullRom_grid.pyx":95
  *         arr[3] = self.derivateOfIntp_Y_2(p[3], y, z)
  *         return self.splineInterpolate(arr, x)
  *     cdef float_t derivateOfIntp_Z_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -1802,7 +1802,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_Z_2", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":95
+  /* "MMTK_CatmullRom_grid.pyx":97
  *     cdef float_t derivateOfIntp_Z_2(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp(p[0], y)             # <<<<<<<<<<<<<<
@@ -1811,7 +1811,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":96
+  /* "MMTK_CatmullRom_grid.pyx":98
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp(p[0], y)
  *         arr[1] = self.derivateOfIntp(p[1], y)             # <<<<<<<<<<<<<<
@@ -1820,7 +1820,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":97
+  /* "MMTK_CatmullRom_grid.pyx":99
  *         arr[0] = self.derivateOfIntp(p[0], y)
  *         arr[1] = self.derivateOfIntp(p[1], y)
  *         arr[2] = self.derivateOfIntp(p[2], y)             # <<<<<<<<<<<<<<
@@ -1829,7 +1829,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":98
+  /* "MMTK_CatmullRom_grid.pyx":100
  *         arr[1] = self.derivateOfIntp(p[1], y)
  *         arr[2] = self.derivateOfIntp(p[2], y)
  *         arr[3] = self.derivateOfIntp(p[3], y)             # <<<<<<<<<<<<<<
@@ -1838,7 +1838,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":99
+  /* "MMTK_CatmullRom_grid.pyx":101
  *         arr[2] = self.derivateOfIntp(p[2], y)
  *         arr[3] = self.derivateOfIntp(p[3], y)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -1848,7 +1848,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":93
+  /* "MMTK_CatmullRom_grid.pyx":95
  *         arr[3] = self.derivateOfIntp_Y_2(p[3], y, z)
  *         return self.splineInterpolate(arr, x)
  *     cdef float_t derivateOfIntp_Z_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -1862,7 +1862,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":100
+/* "MMTK_CatmullRom_grid.pyx":102
  *         arr[3] = self.derivateOfIntp(p[3], y)
  *         return self.splineInterpolate(arr, x)
  *     cdef float_t derivateOfIntp_Z(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1876,7 +1876,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_Z", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":102
+  /* "MMTK_CatmullRom_grid.pyx":104
  *     cdef float_t derivateOfIntp_Z(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_Z_2(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -1885,7 +1885,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Z_2(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":103
+  /* "MMTK_CatmullRom_grid.pyx":105
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_Z_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_Z_2(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -1894,7 +1894,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Z_2(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":104
+  /* "MMTK_CatmullRom_grid.pyx":106
  *         arr[0] = self.derivateOfIntp_Z_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_Z_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_Z_2(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -1903,7 +1903,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Z_2(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":105
+  /* "MMTK_CatmullRom_grid.pyx":107
  *         arr[1] = self.derivateOfIntp_Z_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_Z_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_Z_2(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -1912,7 +1912,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Z_2(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":106
+  /* "MMTK_CatmullRom_grid.pyx":108
  *         arr[2] = self.derivateOfIntp_Z_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_Z_2(p[3], y, z)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -1922,7 +1922,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":100
+  /* "MMTK_CatmullRom_grid.pyx":102
  *         arr[3] = self.derivateOfIntp(p[3], y)
  *         return self.splineInterpolate(arr, x)
  *     cdef float_t derivateOfIntp_Z(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1936,7 +1936,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":110
+/* "MMTK_CatmullRom_grid.pyx":112
  * # the following functions are used to realize the hessian functions(second derivative)
  * 
  *     cdef float_t derivateOfIntp_mm(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
@@ -1949,7 +1949,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_mm", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":111
+  /* "MMTK_CatmullRom_grid.pyx":113
  * 
  *     cdef float_t derivateOfIntp_mm(self,float_t p[4],float_t x):
  *         return -4.*p[0]+7.*p[1]-2.*p[2]-p[3]+3*x*(3.*p[0]-5.*p[1]+p[2]+p[3])             # <<<<<<<<<<<<<<
@@ -1959,7 +1959,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = (((((-4. * (__pyx_v_p[0])) + (7. * (__pyx_v_p[1]))) - (2. * (__pyx_v_p[2]))) - (__pyx_v_p[3])) + ((3.0 * __pyx_v_x) * ((((3. * (__pyx_v_p[0])) - (5. * (__pyx_v_p[1]))) + (__pyx_v_p[2])) + (__pyx_v_p[3]))));
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":110
+  /* "MMTK_CatmullRom_grid.pyx":112
  * # the following functions are used to realize the hessian functions(second derivative)
  * 
  *     cdef float_t derivateOfIntp_mm(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
@@ -1973,7 +1973,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":114
+/* "MMTK_CatmullRom_grid.pyx":116
  * 
  * # calculate the dvdxdx
  *     cdef float_t derivateOfIntp_XX(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -1987,7 +1987,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_XX", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":116
+  /* "MMTK_CatmullRom_grid.pyx":118
  *     cdef float_t derivateOfIntp_XX(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -1996,7 +1996,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":117
+  /* "MMTK_CatmullRom_grid.pyx":119
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -2005,7 +2005,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":118
+  /* "MMTK_CatmullRom_grid.pyx":120
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -2014,7 +2014,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":119
+  /* "MMTK_CatmullRom_grid.pyx":121
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)
  *         arr[3] = self.bisplineInterpolate(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -2023,7 +2023,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->bisplineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":120
+  /* "MMTK_CatmullRom_grid.pyx":122
  *         arr[2] = self.bisplineInterpolate(p[2], y, z)
  *         arr[3] = self.bisplineInterpolate(p[3], y, z)
  *         return self.derivateOfIntp_mm(arr, x)             # <<<<<<<<<<<<<<
@@ -2033,7 +2033,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_mm(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":114
+  /* "MMTK_CatmullRom_grid.pyx":116
  * 
  * # calculate the dvdxdx
  *     cdef float_t derivateOfIntp_XX(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2047,7 +2047,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":123
+/* "MMTK_CatmullRom_grid.pyx":125
  * 
  * # calculate the dvdxdy
  *     cdef float_t derivateOfIntp_XY_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2061,7 +2061,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_XY_2", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":125
+  /* "MMTK_CatmullRom_grid.pyx":127
  *     cdef float_t derivateOfIntp_XY_2(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)             # <<<<<<<<<<<<<<
@@ -2070,7 +2070,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":126
+  /* "MMTK_CatmullRom_grid.pyx":128
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)             # <<<<<<<<<<<<<<
@@ -2079,7 +2079,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":127
+  /* "MMTK_CatmullRom_grid.pyx":129
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)             # <<<<<<<<<<<<<<
@@ -2088,7 +2088,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":128
+  /* "MMTK_CatmullRom_grid.pyx":130
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)             # <<<<<<<<<<<<<<
@@ -2097,7 +2097,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":129
+  /* "MMTK_CatmullRom_grid.pyx":131
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.derivateOfIntp(arr, x)             # <<<<<<<<<<<<<<
@@ -2107,7 +2107,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":123
+  /* "MMTK_CatmullRom_grid.pyx":125
  * 
  * # calculate the dvdxdy
  *     cdef float_t derivateOfIntp_XY_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2121,7 +2121,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":131
+/* "MMTK_CatmullRom_grid.pyx":133
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_XY(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2135,7 +2135,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_XY", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":133
+  /* "MMTK_CatmullRom_grid.pyx":135
  *     cdef float_t derivateOfIntp_XY(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_XY_2(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -2144,7 +2144,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XY_2(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":134
+  /* "MMTK_CatmullRom_grid.pyx":136
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_XY_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_XY_2(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -2153,7 +2153,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XY_2(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":135
+  /* "MMTK_CatmullRom_grid.pyx":137
  *         arr[0] = self.derivateOfIntp_XY_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_XY_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_XY_2(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -2162,7 +2162,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XY_2(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":136
+  /* "MMTK_CatmullRom_grid.pyx":138
  *         arr[1] = self.derivateOfIntp_XY_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_XY_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_XY_2(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -2171,7 +2171,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XY_2(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":137
+  /* "MMTK_CatmullRom_grid.pyx":139
  *         arr[2] = self.derivateOfIntp_XY_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_XY_2(p[3], y, z)
  *         return self.derivateOfIntp(arr, x)             # <<<<<<<<<<<<<<
@@ -2181,7 +2181,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":131
+  /* "MMTK_CatmullRom_grid.pyx":133
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_XY(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2195,7 +2195,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":140
+/* "MMTK_CatmullRom_grid.pyx":142
  * 
  * # calculate the dvdxdz
  *     cdef float_t derivateOfIntp_XZ_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2209,7 +2209,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_XZ_2", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":142
+  /* "MMTK_CatmullRom_grid.pyx":144
  *     cdef float_t derivateOfIntp_XZ_2(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp(p[0], y)             # <<<<<<<<<<<<<<
@@ -2218,7 +2218,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":143
+  /* "MMTK_CatmullRom_grid.pyx":145
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp(p[0], y)
  *         arr[1] = self.derivateOfIntp(p[1], y)             # <<<<<<<<<<<<<<
@@ -2227,7 +2227,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":144
+  /* "MMTK_CatmullRom_grid.pyx":146
  *         arr[0] = self.derivateOfIntp(p[0], y)
  *         arr[1] = self.derivateOfIntp(p[1], y)
  *         arr[2] = self.derivateOfIntp(p[2], y)             # <<<<<<<<<<<<<<
@@ -2236,7 +2236,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":145
+  /* "MMTK_CatmullRom_grid.pyx":147
  *         arr[1] = self.derivateOfIntp(p[1], y)
  *         arr[2] = self.derivateOfIntp(p[2], y)
  *         arr[3] = self.derivateOfIntp(p[3], y)             # <<<<<<<<<<<<<<
@@ -2245,7 +2245,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":146
+  /* "MMTK_CatmullRom_grid.pyx":148
  *         arr[2] = self.derivateOfIntp(p[2], y)
  *         arr[3] = self.derivateOfIntp(p[3], y)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -2255,7 +2255,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":140
+  /* "MMTK_CatmullRom_grid.pyx":142
  * 
  * # calculate the dvdxdz
  *     cdef float_t derivateOfIntp_XZ_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2269,7 +2269,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":148
+/* "MMTK_CatmullRom_grid.pyx":150
  *         return self.splineInterpolate(arr, x)
  * 
  *     cdef float_t derivateOfIntp_XZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2283,7 +2283,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_XZ", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":150
+  /* "MMTK_CatmullRom_grid.pyx":152
  *     cdef float_t derivateOfIntp_XZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_XZ_2(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -2292,7 +2292,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XZ_2(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":151
+  /* "MMTK_CatmullRom_grid.pyx":153
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_XZ_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_XZ_2(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -2301,7 +2301,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XZ_2(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":152
+  /* "MMTK_CatmullRom_grid.pyx":154
  *         arr[0] = self.derivateOfIntp_XZ_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_XZ_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_XZ_2(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -2310,7 +2310,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XZ_2(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":153
+  /* "MMTK_CatmullRom_grid.pyx":155
  *         arr[1] = self.derivateOfIntp_XZ_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_XZ_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_XZ_2(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -2319,7 +2319,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XZ_2(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":154
+  /* "MMTK_CatmullRom_grid.pyx":156
  *         arr[2] = self.derivateOfIntp_XZ_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_XZ_2(p[3], y, z)
  *         return self.derivateOfIntp(arr, x)             # <<<<<<<<<<<<<<
@@ -2329,7 +2329,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":148
+  /* "MMTK_CatmullRom_grid.pyx":150
  *         return self.splineInterpolate(arr, x)
  * 
  *     cdef float_t derivateOfIntp_XZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2343,7 +2343,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":157
+/* "MMTK_CatmullRom_grid.pyx":159
  * 
  * # calculate the dvdydy
  *     cdef float_t derivateOfIntp_YY_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2357,7 +2357,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_YY_2", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":159
+  /* "MMTK_CatmullRom_grid.pyx":161
  *     cdef float_t derivateOfIntp_YY_2(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)             # <<<<<<<<<<<<<<
@@ -2366,7 +2366,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":160
+  /* "MMTK_CatmullRom_grid.pyx":162
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)             # <<<<<<<<<<<<<<
@@ -2375,7 +2375,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":161
+  /* "MMTK_CatmullRom_grid.pyx":163
  *         arr[0] = self.splineInterpolate(p[0], y)
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)             # <<<<<<<<<<<<<<
@@ -2384,7 +2384,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":162
+  /* "MMTK_CatmullRom_grid.pyx":164
  *         arr[1] = self.splineInterpolate(p[1], y)
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)             # <<<<<<<<<<<<<<
@@ -2393,7 +2393,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":163
+  /* "MMTK_CatmullRom_grid.pyx":165
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.derivateOfIntp_mm(arr, x)             # <<<<<<<<<<<<<<
@@ -2403,7 +2403,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_mm(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":157
+  /* "MMTK_CatmullRom_grid.pyx":159
  * 
  * # calculate the dvdydy
  *     cdef float_t derivateOfIntp_YY_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2417,7 +2417,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":165
+/* "MMTK_CatmullRom_grid.pyx":167
  *         return self.derivateOfIntp_mm(arr, x)
  * 
  *     cdef float_t derivateOfIntp_YY(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2431,7 +2431,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_YY", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":167
+  /* "MMTK_CatmullRom_grid.pyx":169
  *     cdef float_t derivateOfIntp_YY(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_YY_2(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -2440,7 +2440,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YY_2(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":168
+  /* "MMTK_CatmullRom_grid.pyx":170
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_YY_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_YY_2(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -2449,7 +2449,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YY_2(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":169
+  /* "MMTK_CatmullRom_grid.pyx":171
  *         arr[0] = self.derivateOfIntp_YY_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_YY_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_YY_2(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -2458,7 +2458,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YY_2(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":170
+  /* "MMTK_CatmullRom_grid.pyx":172
  *         arr[1] = self.derivateOfIntp_YY_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_YY_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_YY_2(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -2467,7 +2467,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YY_2(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":171
+  /* "MMTK_CatmullRom_grid.pyx":173
  *         arr[2] = self.derivateOfIntp_YY_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_YY_2(p[3], y, z)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -2477,7 +2477,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":165
+  /* "MMTK_CatmullRom_grid.pyx":167
  *         return self.derivateOfIntp_mm(arr, x)
  * 
  *     cdef float_t derivateOfIntp_YY(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2491,7 +2491,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":174
+/* "MMTK_CatmullRom_grid.pyx":176
  * 
  * # calculate the dvdydz
  *     cdef float_t derivateOfIntp_YZ_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2505,7 +2505,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_YZ_2", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":176
+  /* "MMTK_CatmullRom_grid.pyx":178
  *     cdef float_t derivateOfIntp_YZ_2(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp(p[0], y)             # <<<<<<<<<<<<<<
@@ -2514,7 +2514,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":177
+  /* "MMTK_CatmullRom_grid.pyx":179
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp(p[0], y)
  *         arr[1] = self.derivateOfIntp(p[1], y)             # <<<<<<<<<<<<<<
@@ -2523,7 +2523,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":178
+  /* "MMTK_CatmullRom_grid.pyx":180
  *         arr[0] = self.derivateOfIntp(p[0], y)
  *         arr[1] = self.derivateOfIntp(p[1], y)
  *         arr[2] = self.derivateOfIntp(p[2], y)             # <<<<<<<<<<<<<<
@@ -2532,7 +2532,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":179
+  /* "MMTK_CatmullRom_grid.pyx":181
  *         arr[1] = self.derivateOfIntp(p[1], y)
  *         arr[2] = self.derivateOfIntp(p[2], y)
  *         arr[3] = self.derivateOfIntp(p[3], y)             # <<<<<<<<<<<<<<
@@ -2541,7 +2541,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":180
+  /* "MMTK_CatmullRom_grid.pyx":182
  *         arr[2] = self.derivateOfIntp(p[2], y)
  *         arr[3] = self.derivateOfIntp(p[3], y)
  *         return self.derivateOfIntp(arr, x)             # <<<<<<<<<<<<<<
@@ -2551,7 +2551,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":174
+  /* "MMTK_CatmullRom_grid.pyx":176
  * 
  * # calculate the dvdydz
  *     cdef float_t derivateOfIntp_YZ_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2565,7 +2565,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":182
+/* "MMTK_CatmullRom_grid.pyx":184
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_YZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2579,7 +2579,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_YZ", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":184
+  /* "MMTK_CatmullRom_grid.pyx":186
  *     cdef float_t derivateOfIntp_YZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_YZ_2(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -2588,7 +2588,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YZ_2(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":185
+  /* "MMTK_CatmullRom_grid.pyx":187
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_YZ_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_YZ_2(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -2597,7 +2597,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YZ_2(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":186
+  /* "MMTK_CatmullRom_grid.pyx":188
  *         arr[0] = self.derivateOfIntp_YZ_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_YZ_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_YZ_2(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -2606,7 +2606,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YZ_2(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":187
+  /* "MMTK_CatmullRom_grid.pyx":189
  *         arr[1] = self.derivateOfIntp_YZ_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_YZ_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_YZ_2(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -2615,7 +2615,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YZ_2(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":188
+  /* "MMTK_CatmullRom_grid.pyx":190
  *         arr[2] = self.derivateOfIntp_YZ_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_YZ_2(p[3], y, z)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -2625,7 +2625,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":182
+  /* "MMTK_CatmullRom_grid.pyx":184
  *         return self.derivateOfIntp(arr, x)
  * 
  *     cdef float_t derivateOfIntp_YZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2639,7 +2639,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":191
+/* "MMTK_CatmullRom_grid.pyx":193
  * 
  * # calculate the dvdzdz
  *     cdef float_t derivateOfIntp_ZZ_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2653,7 +2653,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_ZZ_2", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":193
+  /* "MMTK_CatmullRom_grid.pyx":195
  *     cdef float_t derivateOfIntp_ZZ_2(self,float_t p[4][4],float_t x,float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_mm(p[0], y)             # <<<<<<<<<<<<<<
@@ -2662,7 +2662,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_mm(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":194
+  /* "MMTK_CatmullRom_grid.pyx":196
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_mm(p[0], y)
  *         arr[1] = self.derivateOfIntp_mm(p[1], y)             # <<<<<<<<<<<<<<
@@ -2671,7 +2671,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_mm(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":195
+  /* "MMTK_CatmullRom_grid.pyx":197
  *         arr[0] = self.derivateOfIntp_mm(p[0], y)
  *         arr[1] = self.derivateOfIntp_mm(p[1], y)
  *         arr[2] = self.derivateOfIntp_mm(p[2], y)             # <<<<<<<<<<<<<<
@@ -2680,7 +2680,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_mm(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":196
+  /* "MMTK_CatmullRom_grid.pyx":198
  *         arr[1] = self.derivateOfIntp_mm(p[1], y)
  *         arr[2] = self.derivateOfIntp_mm(p[2], y)
  *         arr[3] = self.derivateOfIntp_mm(p[3], y)             # <<<<<<<<<<<<<<
@@ -2689,7 +2689,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_mm(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
-  /* "MMTK_CatmullRom_grid.pyx":197
+  /* "MMTK_CatmullRom_grid.pyx":199
  *         arr[2] = self.derivateOfIntp_mm(p[2], y)
  *         arr[3] = self.derivateOfIntp_mm(p[3], y)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -2699,7 +2699,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":191
+  /* "MMTK_CatmullRom_grid.pyx":193
  * 
  * # calculate the dvdzdz
  *     cdef float_t derivateOfIntp_ZZ_2(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
@@ -2713,7 +2713,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":199
+/* "MMTK_CatmullRom_grid.pyx":201
  *         return self.splineInterpolate(arr, x)
  * 
  *     cdef float_t derivateOfIntp_ZZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2727,7 +2727,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("derivateOfIntp_ZZ", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":201
+  /* "MMTK_CatmullRom_grid.pyx":203
  *     cdef float_t derivateOfIntp_ZZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_ZZ_2(p[0], y, z)             # <<<<<<<<<<<<<<
@@ -2736,7 +2736,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[0]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_ZZ_2(__pyx_v_self, (__pyx_v_p[0]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":202
+  /* "MMTK_CatmullRom_grid.pyx":204
  *         cdef float_t arr[4]
  *         arr[0] = self.derivateOfIntp_ZZ_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_ZZ_2(p[1], y, z)             # <<<<<<<<<<<<<<
@@ -2745,7 +2745,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[1]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_ZZ_2(__pyx_v_self, (__pyx_v_p[1]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":203
+  /* "MMTK_CatmullRom_grid.pyx":205
  *         arr[0] = self.derivateOfIntp_ZZ_2(p[0], y, z)
  *         arr[1] = self.derivateOfIntp_ZZ_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_ZZ_2(p[2], y, z)             # <<<<<<<<<<<<<<
@@ -2754,7 +2754,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[2]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_ZZ_2(__pyx_v_self, (__pyx_v_p[2]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":204
+  /* "MMTK_CatmullRom_grid.pyx":206
  *         arr[1] = self.derivateOfIntp_ZZ_2(p[1], y, z)
  *         arr[2] = self.derivateOfIntp_ZZ_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_ZZ_2(p[3], y, z)             # <<<<<<<<<<<<<<
@@ -2763,7 +2763,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_ZZ_2(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y, __pyx_v_z);
 
-  /* "MMTK_CatmullRom_grid.pyx":205
+  /* "MMTK_CatmullRom_grid.pyx":207
  *         arr[2] = self.derivateOfIntp_ZZ_2(p[2], y, z)
  *         arr[3] = self.derivateOfIntp_ZZ_2(p[3], y, z)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
@@ -2773,7 +2773,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   __pyx_r = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
-  /* "MMTK_CatmullRom_grid.pyx":199
+  /* "MMTK_CatmullRom_grid.pyx":201
  *         return self.splineInterpolate(arr, x)
  * 
  *     cdef float_t derivateOfIntp_ZZ(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
@@ -2787,7 +2787,7 @@ static __pyx_t_20MMTK_CatmullRom_grid_float_t __pyx_f_20MMTK_CatmullRom_grid_18C
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":209
+/* "MMTK_CatmullRom_grid.pyx":211
  * 
  * 
  *     def __init__(self, universe, spacing, counts, vals, strength,             # <<<<<<<<<<<<<<
@@ -2836,36 +2836,36 @@ static int __pyx_pw_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_1__init__(PyObje
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_spacing)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  2:
         if (likely((values[2] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_counts)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 2); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 2); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  3:
         if (likely((values[3] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_vals)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 3); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 3); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  4:
         if (likely((values[4] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_strength)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 4); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 4); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  5:
         if (likely((values[5] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_scaling_factor)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 5); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 5); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  6:
         if (likely((values[6] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_grid_name)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 6); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, 6); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 7) {
       goto __pyx_L5_argtuple_error;
@@ -2888,7 +2888,7 @@ static int __pyx_pw_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_1__init__(PyObje
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 209; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("__init__", 1, 7, 7, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
   __Pyx_AddTraceback("MMTK_CatmullRom_grid.CatmullRomGridTerm.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2919,33 +2919,33 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__init__", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":211
+  /* "MMTK_CatmullRom_grid.pyx":213
  *     def __init__(self, universe, spacing, counts, vals, strength,
  *                  scaling_factor, grid_name):
  *         print "------------test start---------------"             # <<<<<<<<<<<<<<
  *         EnergyTerm.__init__(self, universe,
  *                             grid_name, (grid_name,))
  */
-  if (__Pyx_PrintOne(0, __pyx_kp_s_test_start) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_PrintOne(0, __pyx_kp_s_test_start) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 213; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "MMTK_CatmullRom_grid.pyx":212
+  /* "MMTK_CatmullRom_grid.pyx":214
  *                  scaling_factor, grid_name):
  *         print "------------test start---------------"
  *         EnergyTerm.__init__(self, universe,             # <<<<<<<<<<<<<<
  *                             grid_name, (grid_name,))
  *         self.eval_func = <void *>CatmullRomGridTerm.evaluate
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)((PyObject*)__pyx_ptype_20MMTK_CatmullRom_grid_EnergyTerm)), __pyx_n_s_init); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 212; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)((PyObject*)__pyx_ptype_20MMTK_CatmullRom_grid_EnergyTerm)), __pyx_n_s_init); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 214; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "MMTK_CatmullRom_grid.pyx":213
+  /* "MMTK_CatmullRom_grid.pyx":215
  *         print "------------test start---------------"
  *         EnergyTerm.__init__(self, universe,
  *                             grid_name, (grid_name,))             # <<<<<<<<<<<<<<
  *         self.eval_func = <void *>CatmullRomGridTerm.evaluate
  * 
  */
-  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 213; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_INCREF(__pyx_v_grid_name);
   PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_v_grid_name);
@@ -2962,7 +2962,7 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
       __pyx_t_5 = 1;
     }
   }
-  __pyx_t_6 = PyTuple_New(4+__pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 212; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyTuple_New(4+__pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 214; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   if (__pyx_t_4) {
     PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_4); __Pyx_GIVEREF(__pyx_t_4); __pyx_t_4 = NULL;
@@ -2979,13 +2979,13 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
   PyTuple_SET_ITEM(__pyx_t_6, 3+__pyx_t_5, __pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
   __pyx_t_3 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 212; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 214; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":214
+  /* "MMTK_CatmullRom_grid.pyx":216
  *         EnergyTerm.__init__(self, universe,
  *                             grid_name, (grid_name,))
  *         self.eval_func = <void *>CatmullRomGridTerm.evaluate             # <<<<<<<<<<<<<<
@@ -2994,49 +2994,49 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
  */
   __pyx_v_self->__pyx_base.eval_func = ((void *)__pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate);
 
-  /* "MMTK_CatmullRom_grid.pyx":216
+  /* "MMTK_CatmullRom_grid.pyx":218
  *         self.eval_func = <void *>CatmullRomGridTerm.evaluate
  * 
  *         self.strength = strength             # <<<<<<<<<<<<<<
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)
  *         self.natoms = len(self.scaling_factor)
  */
-  __pyx_t_7 = __pyx_PyFloat_AsDouble(__pyx_v_strength); if (unlikely((__pyx_t_7 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = __pyx_PyFloat_AsDouble(__pyx_v_strength); if (unlikely((__pyx_t_7 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->strength = __pyx_t_7;
 
-  /* "MMTK_CatmullRom_grid.pyx":217
+  /* "MMTK_CatmullRom_grid.pyx":219
  * 
  *         self.strength = strength
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)             # <<<<<<<<<<<<<<
  *         self.natoms = len(self.scaling_factor)
  *         self.grid_name = grid_name
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_scaling_factor);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_scaling_factor);
   __Pyx_GIVEREF(__pyx_v_scaling_factor);
-  __pyx_t_6 = PyDict_New(); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyDict_New(); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
-  if (PyDict_SetItem(__pyx_t_6, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_6); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_6, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_6); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  if (!(likely(((__pyx_t_3) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_3, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_t_3) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_3, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GIVEREF(__pyx_t_3);
   __Pyx_GOTREF(__pyx_v_self->scaling_factor);
   __Pyx_DECREF(((PyObject *)__pyx_v_self->scaling_factor));
   __pyx_v_self->scaling_factor = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":218
+  /* "MMTK_CatmullRom_grid.pyx":220
  *         self.strength = strength
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)
  *         self.natoms = len(self.scaling_factor)             # <<<<<<<<<<<<<<
@@ -3045,28 +3045,28 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
  */
   __pyx_t_3 = ((PyObject *)__pyx_v_self->scaling_factor);
   __Pyx_INCREF(__pyx_t_3);
-  __pyx_t_5 = PyObject_Length(__pyx_t_3); if (unlikely(__pyx_t_5 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = PyObject_Length(__pyx_t_3); if (unlikely(__pyx_t_5 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 220; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_self->natoms = __pyx_t_5;
 
-  /* "MMTK_CatmullRom_grid.pyx":219
+  /* "MMTK_CatmullRom_grid.pyx":221
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)
  *         self.natoms = len(self.scaling_factor)
  *         self.grid_name = grid_name             # <<<<<<<<<<<<<<
  * 
  *         self.spacing = spacing
  */
-  __pyx_t_8 = __Pyx_PyObject_AsString(__pyx_v_grid_name); if (unlikely((!__pyx_t_8) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyObject_AsString(__pyx_v_grid_name); if (unlikely((!__pyx_t_8) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 221; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->grid_name = __pyx_t_8;
 
-  /* "MMTK_CatmullRom_grid.pyx":221
+  /* "MMTK_CatmullRom_grid.pyx":223
  *         self.grid_name = grid_name
  * 
  *         self.spacing = spacing             # <<<<<<<<<<<<<<
  *         self.counts = counts
  *         self.vals = vals
  */
-  if (!(likely(((__pyx_v_spacing) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_spacing, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 221; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_v_spacing) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_spacing, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_3 = __pyx_v_spacing;
   __Pyx_INCREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3075,14 +3075,14 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
   __pyx_v_self->spacing = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":222
+  /* "MMTK_CatmullRom_grid.pyx":224
  * 
  *         self.spacing = spacing
  *         self.counts = counts             # <<<<<<<<<<<<<<
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
  */
-  if (!(likely(((__pyx_v_counts) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_counts, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_v_counts) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_counts, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_3 = __pyx_v_counts;
   __Pyx_INCREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3091,14 +3091,14 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
   __pyx_v_self->counts = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":223
+  /* "MMTK_CatmullRom_grid.pyx":225
  *         self.spacing = spacing
  *         self.counts = counts
  *         self.vals = vals             # <<<<<<<<<<<<<<
  *         self.nyz = self.counts[1]*self.counts[2]
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
  */
-  if (!(likely(((__pyx_v_vals) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_vals, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_v_vals) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_vals, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_3 = __pyx_v_vals;
   __Pyx_INCREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3107,95 +3107,95 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
   __pyx_v_self->vals = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":224
+  /* "MMTK_CatmullRom_grid.pyx":226
  *         self.counts = counts
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]             # <<<<<<<<<<<<<<
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
  *                         self.spacing[1]*(self.counts[1]-1),
  */
-  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_6 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_6 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_6 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_6 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_1 = PyNumber_Multiply(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyNumber_Multiply(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->nyz = __pyx_t_9;
 
-  /* "MMTK_CatmullRom_grid.pyx":225
+  /* "MMTK_CatmullRom_grid.pyx":227
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),             # <<<<<<<<<<<<<<
  *                         self.spacing[1]*(self.counts[1]-1),
  *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = PyNumber_Subtract(__pyx_t_3, __pyx_int_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyNumber_Subtract(__pyx_t_3, __pyx_int_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = PyNumber_Multiply(__pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = PyNumber_Multiply(__pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":226
+  /* "MMTK_CatmullRom_grid.pyx":228
  *         self.nyz = self.counts[1]*self.counts[2]
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
  *                         self.spacing[1]*(self.counts[1]-1),             # <<<<<<<<<<<<<<
  *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
  *         # To keep atoms within the grid
  */
-  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 228; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 228; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = PyNumber_Subtract(__pyx_t_1, __pyx_int_1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyNumber_Subtract(__pyx_t_1, __pyx_int_1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 228; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyNumber_Multiply(__pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyNumber_Multiply(__pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 228; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":227
+  /* "MMTK_CatmullRom_grid.pyx":229
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
  *                         self.spacing[1]*(self.counts[1]-1),
  *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)             # <<<<<<<<<<<<<<
  *         # To keep atoms within the grid
  *         self.k = 10000. # kJ/mol nm**2
  */
-  __pyx_t_4 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_4 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_4 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_4 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_10 = PyNumber_Subtract(__pyx_t_2, __pyx_int_1); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = PyNumber_Subtract(__pyx_t_2, __pyx_int_1); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyNumber_Multiply(__pyx_t_4, __pyx_t_10); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyNumber_Multiply(__pyx_t_4, __pyx_t_10); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":225
+  /* "MMTK_CatmullRom_grid.pyx":227
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),             # <<<<<<<<<<<<<<
  *                         self.spacing[1]*(self.counts[1]-1),
  *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
  */
-  __pyx_t_10 = PyTuple_New(3); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = PyTuple_New(3); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
   PyTuple_SET_ITEM(__pyx_t_10, 0, __pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3206,43 +3206,43 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
   __pyx_t_3 = 0;
   __pyx_t_1 = 0;
   __pyx_t_2 = 0;
-  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_10);
   __Pyx_GIVEREF(__pyx_t_10);
   __pyx_t_10 = 0;
-  __pyx_t_10 = PyDict_New(); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = PyDict_New(); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "MMTK_CatmullRom_grid.pyx":227
+  /* "MMTK_CatmullRom_grid.pyx":229
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
  *                         self.spacing[1]*(self.counts[1]-1),
  *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)             # <<<<<<<<<<<<<<
  *         # To keep atoms within the grid
  *         self.k = 10000. # kJ/mol nm**2
  */
-  if (PyDict_SetItem(__pyx_t_10, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_10, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "MMTK_CatmullRom_grid.pyx":225
+  /* "MMTK_CatmullRom_grid.pyx":227
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
  *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),             # <<<<<<<<<<<<<<
  *                         self.spacing[1]*(self.counts[1]-1),
  *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
  */
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_2, __pyx_t_10); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_2, __pyx_t_10); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 227; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GIVEREF(__pyx_t_1);
   __Pyx_GOTREF(__pyx_v_self->hCorner);
   __Pyx_DECREF(((PyObject *)__pyx_v_self->hCorner));
   __pyx_v_self->hCorner = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":229
+  /* "MMTK_CatmullRom_grid.pyx":231
  *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
  *         # To keep atoms within the grid
  *         self.k = 10000. # kJ/mol nm**2             # <<<<<<<<<<<<<<
@@ -3251,7 +3251,7 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
  */
   __pyx_v_self->k = 10000.;
 
-  /* "MMTK_CatmullRom_grid.pyx":209
+  /* "MMTK_CatmullRom_grid.pyx":211
  * 
  * 
  *     def __init__(self, universe, spacing, counts, vals, strength,             # <<<<<<<<<<<<<<
@@ -3276,7 +3276,7 @@ static int __pyx_pf_20MMTK_CatmullRom_grid_18CatmullRomGridTerm___init__(struct 
   return __pyx_r;
 }
 
-/* "MMTK_CatmullRom_grid.pyx":235
+/* "MMTK_CatmullRom_grid.pyx":237
  *     # do_force_constants are flags that indicate if gradients and/or
  *     # force constants are requested.
  *     cdef void evaluate(self, PyFFEvaluatorObject *eval,             # <<<<<<<<<<<<<<
@@ -3359,7 +3359,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   __pyx_pybuffernd_force_constants.data = NULL;
   __pyx_pybuffernd_force_constants.rcbuffer = &__pyx_pybuffer_force_constants;
 
-  /* "MMTK_CatmullRom_grid.pyx":262
+  /* "MMTK_CatmullRom_grid.pyx":264
  *         cdef float_t dvdxdx, dvdxdy, dvdxdz,dvdydy,dvdydz,dvdzdz
  * 
  *         gridEnergy = 0             # <<<<<<<<<<<<<<
@@ -3368,7 +3368,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
   __pyx_v_gridEnergy = 0.0;
 
-  /* "MMTK_CatmullRom_grid.pyx":263
+  /* "MMTK_CatmullRom_grid.pyx":265
  * 
  *         gridEnergy = 0
  *         coordinates = <vector3 *>input.coordinates.data             # <<<<<<<<<<<<<<
@@ -3377,7 +3377,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
   __pyx_v_coordinates = ((vector3 *)__pyx_v_input->coordinates->data);
 
-  /* "MMTK_CatmullRom_grid.pyx":266
+  /* "MMTK_CatmullRom_grid.pyx":268
  * 
  *         # Pointers to numpy arrays for faster indexing
  *         scaling_factor = <float_t *>self.scaling_factor.data             # <<<<<<<<<<<<<<
@@ -3386,7 +3386,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
   __pyx_v_scaling_factor = ((__pyx_t_20MMTK_CatmullRom_grid_float_t *)__pyx_v_self->scaling_factor->data);
 
-  /* "MMTK_CatmullRom_grid.pyx":267
+  /* "MMTK_CatmullRom_grid.pyx":269
  *         # Pointers to numpy arrays for faster indexing
  *         scaling_factor = <float_t *>self.scaling_factor.data
  *         vals = <float_t *>self.vals.data             # <<<<<<<<<<<<<<
@@ -3395,7 +3395,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
   __pyx_v_vals = ((__pyx_t_20MMTK_CatmullRom_grid_float_t *)__pyx_v_self->vals->data);
 
-  /* "MMTK_CatmullRom_grid.pyx":268
+  /* "MMTK_CatmullRom_grid.pyx":270
  *         scaling_factor = <float_t *>self.scaling_factor.data
  *         vals = <float_t *>self.vals.data
  *         counts = <int_t *>self.counts.data             # <<<<<<<<<<<<<<
@@ -3404,7 +3404,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
   __pyx_v_counts = ((__pyx_t_20MMTK_CatmullRom_grid_int_t *)__pyx_v_self->counts->data);
 
-  /* "MMTK_CatmullRom_grid.pyx":269
+  /* "MMTK_CatmullRom_grid.pyx":271
  *         vals = <float_t *>self.vals.data
  *         counts = <int_t *>self.counts.data
  *         spacing = <float_t *>self.spacing.data             # <<<<<<<<<<<<<<
@@ -3413,7 +3413,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
   __pyx_v_spacing = ((__pyx_t_20MMTK_CatmullRom_grid_float_t *)__pyx_v_self->spacing->data);
 
-  /* "MMTK_CatmullRom_grid.pyx":270
+  /* "MMTK_CatmullRom_grid.pyx":272
  *         counts = <int_t *>self.counts.data
  *         spacing = <float_t *>self.spacing.data
  *         hCorner = <float_t *>self.hCorner.data             # <<<<<<<<<<<<<<
@@ -3422,7 +3422,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
   __pyx_v_hCorner = ((__pyx_t_20MMTK_CatmullRom_grid_float_t *)__pyx_v_self->hCorner->data);
 
-  /* "MMTK_CatmullRom_grid.pyx":273
+  /* "MMTK_CatmullRom_grid.pyx":275
  * 
  *         # Initialize variables
  *         if energy.gradients != NULL:             # <<<<<<<<<<<<<<
@@ -3432,7 +3432,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
   if (__pyx_t_1) {
 
-    /* "MMTK_CatmullRom_grid.pyx":274
+    /* "MMTK_CatmullRom_grid.pyx":276
  *         # Initialize variables
  *         if energy.gradients != NULL:
  *           gradients = <vector3 *>(<PyArrayObject *> energy.gradients).data             # <<<<<<<<<<<<<<
@@ -3444,7 +3444,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   }
   __pyx_L3:;
 
-  /* "MMTK_CatmullRom_grid.pyx":277
+  /* "MMTK_CatmullRom_grid.pyx":279
  * 
  *         # Initialize variables
  *         if energy.force_constants != NULL:             # <<<<<<<<<<<<<<
@@ -3454,7 +3454,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   __pyx_t_1 = ((__pyx_v_energy->force_constants != NULL) != 0);
   if (__pyx_t_1) {
 
-    /* "MMTK_CatmullRom_grid.pyx":278
+    /* "MMTK_CatmullRom_grid.pyx":280
  *         # Initialize variables
  *         if energy.force_constants != NULL:
  *             force_constants = <np.ndarray[float_t, ndim=4] >(<PyArrayObject *> energy.force_constants)             # <<<<<<<<<<<<<<
@@ -3477,7 +3477,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         }
       }
       __pyx_pybuffernd_force_constants.diminfo[0].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_force_constants.diminfo[0].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_force_constants.diminfo[1].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_force_constants.diminfo[1].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[1]; __pyx_pybuffernd_force_constants.diminfo[2].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[2]; __pyx_pybuffernd_force_constants.diminfo[2].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[2]; __pyx_pybuffernd_force_constants.diminfo[3].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[3]; __pyx_pybuffernd_force_constants.diminfo[3].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[3];
-      if (unlikely(__pyx_t_3 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__pyx_t_3 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
     __pyx_v_force_constants = ((PyArrayObject *)__pyx_t_2);
     __pyx_t_2 = 0;
@@ -3485,28 +3485,28 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   }
   __pyx_L4:;
 
-  /* "MMTK_CatmullRom_grid.pyx":280
+  /* "MMTK_CatmullRom_grid.pyx":282
  *             force_constants = <np.ndarray[float_t, ndim=4] >(<PyArrayObject *> energy.force_constants)
  * 
  *         indicies = [ai for ai in range(self.natoms) if self.scaling_factor[ai]!=0]             # <<<<<<<<<<<<<<
  *         for atom_index in indicies:
  *           # Check to make sure coordinate is in grid
  */
-  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 282; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = __pyx_v_self->natoms;
   for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_3; __pyx_t_7+=1) {
     __pyx_v_ai = __pyx_t_7;
-    __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->scaling_factor), __pyx_v_ai, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->scaling_factor), __pyx_v_ai, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 282; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_8);
-    __pyx_t_9 = PyObject_RichCompare(__pyx_t_8, __pyx_int_0, Py_NE); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PyObject_RichCompare(__pyx_t_8, __pyx_int_0, Py_NE); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 282; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_1 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_1 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 282; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     if (__pyx_t_1) {
-      __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_ai); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_ai); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 282; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_9);
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_9))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_9))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 282; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       goto __pyx_L7;
     }
@@ -3515,7 +3515,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   __pyx_v_indicies = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":281
+  /* "MMTK_CatmullRom_grid.pyx":283
  * 
  *         indicies = [ai for ai in range(self.natoms) if self.scaling_factor[ai]!=0]
  *         for atom_index in indicies:             # <<<<<<<<<<<<<<
@@ -3526,15 +3526,15 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   for (;;) {
     if (__pyx_t_10 >= PyList_GET_SIZE(__pyx_t_2)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_9 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_10); __Pyx_INCREF(__pyx_t_9); __pyx_t_10++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_10); __Pyx_INCREF(__pyx_t_9); __pyx_t_10++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 283; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     #else
-    __pyx_t_9 = PySequence_ITEM(__pyx_t_2, __pyx_t_10); __pyx_t_10++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PySequence_ITEM(__pyx_t_2, __pyx_t_10); __pyx_t_10++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 283; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     #endif
-    __pyx_t_3 = __Pyx_PyInt_As_int(__pyx_t_9); if (unlikely((__pyx_t_3 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyInt_As_int(__pyx_t_9); if (unlikely((__pyx_t_3 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 283; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_v_atom_index = __pyx_t_3;
 
-    /* "MMTK_CatmullRom_grid.pyx":283
+    /* "MMTK_CatmullRom_grid.pyx":285
  *         for atom_index in indicies:
  *           # Check to make sure coordinate is in grid
  *           if (coordinates[atom_index][0]>0 and             # <<<<<<<<<<<<<<
@@ -3548,7 +3548,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       goto __pyx_L11_bool_binop_done;
     }
 
-    /* "MMTK_CatmullRom_grid.pyx":284
+    /* "MMTK_CatmullRom_grid.pyx":286
  *           # Check to make sure coordinate is in grid
  *           if (coordinates[atom_index][0]>0 and
  *               coordinates[atom_index][1]>0 and             # <<<<<<<<<<<<<<
@@ -3562,7 +3562,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       goto __pyx_L11_bool_binop_done;
     }
 
-    /* "MMTK_CatmullRom_grid.pyx":285
+    /* "MMTK_CatmullRom_grid.pyx":287
  *           if (coordinates[atom_index][0]>0 and
  *               coordinates[atom_index][1]>0 and
  *               coordinates[atom_index][2]>0 and             # <<<<<<<<<<<<<<
@@ -3576,7 +3576,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       goto __pyx_L11_bool_binop_done;
     }
 
-    /* "MMTK_CatmullRom_grid.pyx":286
+    /* "MMTK_CatmullRom_grid.pyx":288
  *               coordinates[atom_index][1]>0 and
  *               coordinates[atom_index][2]>0 and
  *               coordinates[atom_index][0]<hCorner[0] and             # <<<<<<<<<<<<<<
@@ -3590,7 +3590,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       goto __pyx_L11_bool_binop_done;
     }
 
-    /* "MMTK_CatmullRom_grid.pyx":287
+    /* "MMTK_CatmullRom_grid.pyx":289
  *               coordinates[atom_index][2]>0 and
  *               coordinates[atom_index][0]<hCorner[0] and
  *               coordinates[atom_index][1]<hCorner[1] and             # <<<<<<<<<<<<<<
@@ -3604,7 +3604,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       goto __pyx_L11_bool_binop_done;
     }
 
-    /* "MMTK_CatmullRom_grid.pyx":288
+    /* "MMTK_CatmullRom_grid.pyx":290
  *               coordinates[atom_index][0]<hCorner[0] and
  *               coordinates[atom_index][1]<hCorner[1] and
  *               coordinates[atom_index][2]<hCorner[2]):             # <<<<<<<<<<<<<<
@@ -3616,7 +3616,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
     __pyx_L11_bool_binop_done:;
     if (__pyx_t_1) {
 
-      /* "MMTK_CatmullRom_grid.pyx":291
+      /* "MMTK_CatmullRom_grid.pyx":293
  * 
  *             # Index within the grid
  *             ix = int(coordinates[atom_index][0]/spacing[0]-1)             # <<<<<<<<<<<<<<
@@ -3631,11 +3631,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 291; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 293; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __pyx_v_ix = ((int)((((__pyx_v_coordinates[__pyx_v_atom_index])[0]) / (__pyx_v_spacing[0])) - 1.0));
 
-      /* "MMTK_CatmullRom_grid.pyx":292
+      /* "MMTK_CatmullRom_grid.pyx":294
  *             # Index within the grid
  *             ix = int(coordinates[atom_index][0]/spacing[0]-1)
  *             iy = int(coordinates[atom_index][1]/spacing[1]-1)             # <<<<<<<<<<<<<<
@@ -3650,11 +3650,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 292; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __pyx_v_iy = ((int)((((__pyx_v_coordinates[__pyx_v_atom_index])[1]) / (__pyx_v_spacing[1])) - 1.0));
 
-      /* "MMTK_CatmullRom_grid.pyx":293
+      /* "MMTK_CatmullRom_grid.pyx":295
  *             ix = int(coordinates[atom_index][0]/spacing[0]-1)
  *             iy = int(coordinates[atom_index][1]/spacing[1]-1)
  *             iz = int(coordinates[atom_index][2]/spacing[2]-1)             # <<<<<<<<<<<<<<
@@ -3669,11 +3669,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 293; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 295; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __pyx_v_iz = ((int)((((__pyx_v_coordinates[__pyx_v_atom_index])[2]) / (__pyx_v_spacing[2])) - 1.0));
 
-      /* "MMTK_CatmullRom_grid.pyx":295
+      /* "MMTK_CatmullRom_grid.pyx":297
  *             iz = int(coordinates[atom_index][2]/spacing[2]-1)
  * 
  *             i = ix*self.nyz + iy*counts[2] + iz             # <<<<<<<<<<<<<<
@@ -3682,22 +3682,22 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
       __pyx_v_i = (((__pyx_v_ix * __pyx_v_self->nyz) + (__pyx_v_iy * (__pyx_v_counts[2]))) + __pyx_v_iz);
 
-      /* "MMTK_CatmullRom_grid.pyx":298
+      /* "MMTK_CatmullRom_grid.pyx":300
  * 
  * 
  *             for x in range(0,4):             # <<<<<<<<<<<<<<
  *                 for y in range(0,4):
  *                     for z in range(0,4):
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_9);
       if (likely(PyList_CheckExact(__pyx_t_9)) || PyTuple_CheckExact(__pyx_t_9)) {
         __pyx_t_8 = __pyx_t_9; __Pyx_INCREF(__pyx_t_8); __pyx_t_12 = 0;
         __pyx_t_13 = NULL;
       } else {
-        __pyx_t_12 = -1; __pyx_t_8 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_12 = -1; __pyx_t_8 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_13 = Py_TYPE(__pyx_t_8)->tp_iternext; if (unlikely(!__pyx_t_13)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_13 = Py_TYPE(__pyx_t_8)->tp_iternext; if (unlikely(!__pyx_t_13)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       for (;;) {
@@ -3705,16 +3705,16 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           if (likely(PyList_CheckExact(__pyx_t_8))) {
             if (__pyx_t_12 >= PyList_GET_SIZE(__pyx_t_8)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_9 = PyList_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyList_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #else
-            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #endif
           } else {
             if (__pyx_t_12 >= PyTuple_GET_SIZE(__pyx_t_8)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #else
-            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #endif
           }
         } else {
@@ -3723,7 +3723,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
             PyObject* exc_type = PyErr_Occurred();
             if (exc_type) {
               if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-              else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             }
             break;
           }
@@ -3732,22 +3732,22 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __Pyx_XDECREF_SET(__pyx_v_x, __pyx_t_9);
         __pyx_t_9 = 0;
 
-        /* "MMTK_CatmullRom_grid.pyx":299
+        /* "MMTK_CatmullRom_grid.pyx":301
  * 
  *             for x in range(0,4):
  *                 for y in range(0,4):             # <<<<<<<<<<<<<<
  *                     for z in range(0,4):
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  */
-        __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_9);
         if (likely(PyList_CheckExact(__pyx_t_9)) || PyTuple_CheckExact(__pyx_t_9)) {
           __pyx_t_14 = __pyx_t_9; __Pyx_INCREF(__pyx_t_14); __pyx_t_15 = 0;
           __pyx_t_16 = NULL;
         } else {
-          __pyx_t_15 = -1; __pyx_t_14 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          __pyx_t_15 = -1; __pyx_t_14 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
           __Pyx_GOTREF(__pyx_t_14);
-          __pyx_t_16 = Py_TYPE(__pyx_t_14)->tp_iternext; if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          __pyx_t_16 = Py_TYPE(__pyx_t_14)->tp_iternext; if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         for (;;) {
@@ -3755,16 +3755,16 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
             if (likely(PyList_CheckExact(__pyx_t_14))) {
               if (__pyx_t_15 >= PyList_GET_SIZE(__pyx_t_14)) break;
               #if CYTHON_COMPILING_IN_CPYTHON
-              __pyx_t_9 = PyList_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PyList_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #else
-              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #endif
             } else {
               if (__pyx_t_15 >= PyTuple_GET_SIZE(__pyx_t_14)) break;
               #if CYTHON_COMPILING_IN_CPYTHON
-              __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #else
-              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #endif
             }
           } else {
@@ -3773,7 +3773,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
               PyObject* exc_type = PyErr_Occurred();
               if (exc_type) {
                 if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-                else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               }
               break;
             }
@@ -3782,22 +3782,22 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           __Pyx_XDECREF_SET(__pyx_v_y, __pyx_t_9);
           __pyx_t_9 = 0;
 
-          /* "MMTK_CatmullRom_grid.pyx":300
+          /* "MMTK_CatmullRom_grid.pyx":302
  *             for x in range(0,4):
  *                 for y in range(0,4):
  *                     for z in range(0,4):             # <<<<<<<<<<<<<<
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  * 
  */
-          __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
           __Pyx_GOTREF(__pyx_t_9);
           if (likely(PyList_CheckExact(__pyx_t_9)) || PyTuple_CheckExact(__pyx_t_9)) {
             __pyx_t_17 = __pyx_t_9; __Pyx_INCREF(__pyx_t_17); __pyx_t_18 = 0;
             __pyx_t_19 = NULL;
           } else {
-            __pyx_t_18 = -1; __pyx_t_17 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_18 = -1; __pyx_t_17 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_17);
-            __pyx_t_19 = Py_TYPE(__pyx_t_17)->tp_iternext; if (unlikely(!__pyx_t_19)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_19 = Py_TYPE(__pyx_t_17)->tp_iternext; if (unlikely(!__pyx_t_19)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
           }
           __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
           for (;;) {
@@ -3805,16 +3805,16 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
               if (likely(PyList_CheckExact(__pyx_t_17))) {
                 if (__pyx_t_18 >= PyList_GET_SIZE(__pyx_t_17)) break;
                 #if CYTHON_COMPILING_IN_CPYTHON
-                __pyx_t_9 = PyList_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PyList_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #else
-                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #endif
               } else {
                 if (__pyx_t_18 >= PyTuple_GET_SIZE(__pyx_t_17)) break;
                 #if CYTHON_COMPILING_IN_CPYTHON
-                __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #else
-                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #endif
               }
             } else {
@@ -3823,7 +3823,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
                 PyObject* exc_type = PyErr_Occurred();
                 if (exc_type) {
                   if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-                  else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                  else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 }
                 break;
               }
@@ -3832,44 +3832,44 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
             __Pyx_XDECREF_SET(__pyx_v_z, __pyx_t_9);
             __pyx_t_9 = 0;
 
-            /* "MMTK_CatmullRom_grid.pyx":301
+            /* "MMTK_CatmullRom_grid.pyx":303
  *                 for y in range(0,4):
  *                     for z in range(0,4):
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]             # <<<<<<<<<<<<<<
  * 
  *            # Fraction within the box
  */
-            __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_9);
-            __pyx_t_20 = __Pyx_PyInt_From_int(__pyx_v_self->nyz); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_20 = __Pyx_PyInt_From_int(__pyx_v_self->nyz); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_20);
-            __pyx_t_21 = PyNumber_Multiply(__pyx_v_x, __pyx_t_20); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_21 = PyNumber_Multiply(__pyx_v_x, __pyx_t_20); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_21);
             __Pyx_DECREF(__pyx_t_20); __pyx_t_20 = 0;
-            __pyx_t_20 = PyNumber_Add(__pyx_t_9, __pyx_t_21); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_20 = PyNumber_Add(__pyx_t_9, __pyx_t_21); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_20);
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
             __Pyx_DECREF(__pyx_t_21); __pyx_t_21 = 0;
-            __pyx_t_21 = __Pyx_PyInt_From_npy_long((__pyx_v_counts[2])); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_21 = __Pyx_PyInt_From_npy_long((__pyx_v_counts[2])); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_21);
-            __pyx_t_9 = PyNumber_Multiply(__pyx_v_y, __pyx_t_21); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyNumber_Multiply(__pyx_v_y, __pyx_t_21); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_9);
             __Pyx_DECREF(__pyx_t_21); __pyx_t_21 = 0;
-            __pyx_t_21 = PyNumber_Add(__pyx_t_20, __pyx_t_9); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_21 = PyNumber_Add(__pyx_t_20, __pyx_t_9); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_21);
             __Pyx_DECREF(__pyx_t_20); __pyx_t_20 = 0;
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-            __pyx_t_9 = PyNumber_Add(__pyx_t_21, __pyx_v_z); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyNumber_Add(__pyx_t_21, __pyx_v_z); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_9);
             __Pyx_DECREF(__pyx_t_21); __pyx_t_21 = 0;
-            __pyx_t_22 = __Pyx_PyIndex_AsSsize_t(__pyx_t_9); if (unlikely((__pyx_t_22 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_22 = __Pyx_PyIndex_AsSsize_t(__pyx_t_9); if (unlikely((__pyx_t_22 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-            __pyx_t_23 = __Pyx_PyIndex_AsSsize_t(__pyx_v_x); if (unlikely((__pyx_t_23 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-            __pyx_t_24 = __Pyx_PyIndex_AsSsize_t(__pyx_v_y); if (unlikely((__pyx_t_24 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-            __pyx_t_25 = __Pyx_PyIndex_AsSsize_t(__pyx_v_z); if (unlikely((__pyx_t_25 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_23 = __Pyx_PyIndex_AsSsize_t(__pyx_v_x); if (unlikely((__pyx_t_23 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_24 = __Pyx_PyIndex_AsSsize_t(__pyx_v_y); if (unlikely((__pyx_t_24 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_25 = __Pyx_PyIndex_AsSsize_t(__pyx_v_z); if (unlikely((__pyx_t_25 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             (((__pyx_v_vertex[__pyx_t_23])[__pyx_t_24])[__pyx_t_25]) = (__pyx_v_vals[__pyx_t_22]);
 
-            /* "MMTK_CatmullRom_grid.pyx":300
+            /* "MMTK_CatmullRom_grid.pyx":302
  *             for x in range(0,4):
  *                 for y in range(0,4):
  *                     for z in range(0,4):             # <<<<<<<<<<<<<<
@@ -3879,7 +3879,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           }
           __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
 
-          /* "MMTK_CatmullRom_grid.pyx":299
+          /* "MMTK_CatmullRom_grid.pyx":301
  * 
  *             for x in range(0,4):
  *                 for y in range(0,4):             # <<<<<<<<<<<<<<
@@ -3889,7 +3889,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         }
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
 
-        /* "MMTK_CatmullRom_grid.pyx":298
+        /* "MMTK_CatmullRom_grid.pyx":300
  * 
  * 
  *             for x in range(0,4):             # <<<<<<<<<<<<<<
@@ -3899,7 +3899,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       }
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-      /* "MMTK_CatmullRom_grid.pyx":304
+      /* "MMTK_CatmullRom_grid.pyx":306
  * 
  *            # Fraction within the box
  *             fx = (coordinates[atom_index][0] - (ix*spacing[0]))/spacing[0]             # <<<<<<<<<<<<<<
@@ -3915,14 +3915,14 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 306; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 306; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_XDECREF_SET(__pyx_v_fx, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "MMTK_CatmullRom_grid.pyx":305
+      /* "MMTK_CatmullRom_grid.pyx":307
  *            # Fraction within the box
  *             fx = (coordinates[atom_index][0] - (ix*spacing[0]))/spacing[0]
  *             fy = (coordinates[atom_index][1] - (iy*spacing[1]))/spacing[1]             # <<<<<<<<<<<<<<
@@ -3938,14 +3938,14 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 305; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 305; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_XDECREF_SET(__pyx_v_fy, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "MMTK_CatmullRom_grid.pyx":306
+      /* "MMTK_CatmullRom_grid.pyx":308
  *             fx = (coordinates[atom_index][0] - (ix*spacing[0]))/spacing[0]
  *             fy = (coordinates[atom_index][1] - (iy*spacing[1]))/spacing[1]
  *             fz = (coordinates[atom_index][2] - (iz*spacing[2]))/spacing[2]             # <<<<<<<<<<<<<<
@@ -3961,26 +3961,26 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 306; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 306; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_XDECREF_SET(__pyx_v_fz, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "MMTK_CatmullRom_grid.pyx":308
+      /* "MMTK_CatmullRom_grid.pyx":310
  *             fz = (coordinates[atom_index][2] - (iz*spacing[2]))/spacing[2]
  * 
  *             gridEnergy += scaling_factor[atom_index]*self.trisplineInterpolate(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *                 # hessian funciton          ************************
  *             if energy.force_constants !=NULL:
  */
-      __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_v_gridEnergy = (__pyx_v_gridEnergy + ((__pyx_v_scaling_factor[__pyx_v_atom_index]) * ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->trisplineInterpolate(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28)));
 
-      /* "MMTK_CatmullRom_grid.pyx":310
+      /* "MMTK_CatmullRom_grid.pyx":312
  *             gridEnergy += scaling_factor[atom_index]*self.trisplineInterpolate(vertex,fx,fy,fz)
  *                 # hessian funciton          ************************
  *             if energy.force_constants !=NULL:             # <<<<<<<<<<<<<<
@@ -3990,95 +3990,95 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       __pyx_t_1 = ((__pyx_v_energy->force_constants != NULL) != 0);
       if (__pyx_t_1) {
 
-        /* "MMTK_CatmullRom_grid.pyx":312
+        /* "MMTK_CatmullRom_grid.pyx":314
  *             if energy.force_constants !=NULL:
  *                # x direction
  *               dvdxdx = self.derivateOfIntp_XX(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               dvdxdy = self.derivateOfIntp_XY(vertex,fx,fy,fz)
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdxdx = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XX(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_CatmullRom_grid.pyx":313
+        /* "MMTK_CatmullRom_grid.pyx":315
  *                # x direction
  *               dvdxdx = self.derivateOfIntp_XX(vertex,fx,fy,fz)
  *               dvdxdy = self.derivateOfIntp_XY(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)
  *               # y direction
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdxdy = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XY(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_CatmullRom_grid.pyx":314
+        /* "MMTK_CatmullRom_grid.pyx":316
  *               dvdxdx = self.derivateOfIntp_XX(vertex,fx,fy,fz)
  *               dvdxdy = self.derivateOfIntp_XY(vertex,fx,fy,fz)
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # y direction
  *               dvdydy = self.derivateOfIntp_YY(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdxdz = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XZ(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_CatmullRom_grid.pyx":316
+        /* "MMTK_CatmullRom_grid.pyx":318
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)
  *               # y direction
  *               dvdydy = self.derivateOfIntp_YY(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               dvdydz = self.derivateOfIntp_YZ(vertex,fx,fy,fz)
  *               # z direction
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdydy = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YY(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_CatmullRom_grid.pyx":317
+        /* "MMTK_CatmullRom_grid.pyx":319
  *               # y direction
  *               dvdydy = self.derivateOfIntp_YY(vertex,fx,fy,fz)
  *               dvdydz = self.derivateOfIntp_YZ(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # z direction
  *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 317; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 317; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 317; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdydz = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YZ(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_CatmullRom_grid.pyx":319
+        /* "MMTK_CatmullRom_grid.pyx":321
  *               dvdydz = self.derivateOfIntp_YZ(vertex,fx,fy,fz)
  *               # z direction
  *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
  *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdzdz = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_ZZ(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_CatmullRom_grid.pyx":320
+        /* "MMTK_CatmullRom_grid.pyx":322
  *               # z direction
  *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)
  *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
  *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __pyx_t_12 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdx);
         if (unlikely((__pyx_v_spacing[0]) == 0)) {
@@ -4089,7 +4089,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[0]));
         if (unlikely((__pyx_v_spacing[0]) == 0)) {
@@ -4100,109 +4100,9 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_9);
-        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-
-        /* "MMTK_CatmullRom_grid.pyx":321
- *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)
- *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
- *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]             # <<<<<<<<<<<<<<
- *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
- *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
- */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_9);
-        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_8);
-        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-        __pyx_t_12 = 1;
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_9);
-        __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdydy);
-        if (unlikely((__pyx_v_spacing[1]) == 0)) {
-          #ifdef WITH_THREAD
-          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
-          #endif
-          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-          #ifdef WITH_THREAD
-          PyGILState_Release(__pyx_gilstate_save);
-          #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        }
-        __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[1]));
-        if (unlikely((__pyx_v_spacing[1]) == 0)) {
-          #ifdef WITH_THREAD
-          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
-          #endif
-          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-          #ifdef WITH_THREAD
-          PyGILState_Release(__pyx_gilstate_save);
-          #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_14);
-        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-        __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-
-        /* "MMTK_CatmullRom_grid.pyx":322
- *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
- *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
- *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]             # <<<<<<<<<<<<<<
- *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
- *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
- */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_14);
-        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_8);
-        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_12 = 2;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_14);
-        __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdzdz);
-        if (unlikely((__pyx_v_spacing[2]) == 0)) {
-          #ifdef WITH_THREAD
-          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
-          #endif
-          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-          #ifdef WITH_THREAD
-          PyGILState_Release(__pyx_gilstate_save);
-          #endif
           {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[2]));
-        if (unlikely((__pyx_v_spacing[2]) == 0)) {
-          #ifdef WITH_THREAD
-          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
-          #endif
-          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-          #ifdef WITH_THREAD
-          PyGILState_Release(__pyx_gilstate_save);
-          #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
         __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_9);
@@ -4213,11 +4113,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
         /* "MMTK_CatmullRom_grid.pyx":323
- *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
+ *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)
+ *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
+ *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
- *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]             # <<<<<<<<<<<<<<
- *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
- *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
+ *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
  */
         __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
@@ -4227,11 +4127,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-        __pyx_t_12 = 0;
+        __pyx_t_12 = 1;
         __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
-        __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdy);
-        if (unlikely((__pyx_v_spacing[0]) == 0)) {
+        __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdydy);
+        if (unlikely((__pyx_v_spacing[1]) == 0)) {
           #ifdef WITH_THREAD
           PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
           #endif
@@ -4241,7 +4141,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #endif
           {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[0]));
+        __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[1]));
         if (unlikely((__pyx_v_spacing[1]) == 0)) {
           #ifdef WITH_THREAD
           PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
@@ -4263,11 +4163,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
         /* "MMTK_CatmullRom_grid.pyx":324
- *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
+ *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
+ *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
+ *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
- *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]             # <<<<<<<<<<<<<<
- *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
- *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
+ *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
  */
         __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
@@ -4277,11 +4177,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_12 = 0;
+        __pyx_t_12 = 2;
         __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
-        __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdz);
-        if (unlikely((__pyx_v_spacing[0]) == 0)) {
+        __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdzdz);
+        if (unlikely((__pyx_v_spacing[2]) == 0)) {
           #ifdef WITH_THREAD
           PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
           #endif
@@ -4291,7 +4191,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #endif
           {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[0]));
+        __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[2]));
         if (unlikely((__pyx_v_spacing[2]) == 0)) {
           #ifdef WITH_THREAD
           PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
@@ -4313,24 +4213,35 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
         /* "MMTK_CatmullRom_grid.pyx":325
- *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
+ *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
+ *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
+ *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
- *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]             # <<<<<<<<<<<<<<
- *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
- *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]
+ *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
  */
         __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-        __pyx_t_12 = 1;
+        __pyx_t_12 = 0;
         __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
-        __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdydz);
+        __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdy);
+        if (unlikely((__pyx_v_spacing[0]) == 0)) {
+          #ifdef WITH_THREAD
+          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
+          #endif
+          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+          #ifdef WITH_THREAD
+          PyGILState_Release(__pyx_gilstate_save);
+          #endif
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[0]));
         if (unlikely((__pyx_v_spacing[1]) == 0)) {
           #ifdef WITH_THREAD
           PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
@@ -4341,18 +4252,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #endif
           {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[1]));
-        if (unlikely((__pyx_v_spacing[2]) == 0)) {
-          #ifdef WITH_THREAD
-          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
-          #endif
-          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-          #ifdef WITH_THREAD
-          PyGILState_Release(__pyx_gilstate_save);
-          #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
         __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_14);
@@ -4363,99 +4263,199 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
         /* "MMTK_CatmullRom_grid.pyx":326
+ *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
+ *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
+ *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]             # <<<<<<<<<<<<<<
+ *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
+ *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
+ */
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_8);
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_14);
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_8);
+        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
+        __pyx_t_12 = 0;
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_14);
+        __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdz);
+        if (unlikely((__pyx_v_spacing[0]) == 0)) {
+          #ifdef WITH_THREAD
+          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
+          #endif
+          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+          #ifdef WITH_THREAD
+          PyGILState_Release(__pyx_gilstate_save);
+          #endif
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[0]));
+        if (unlikely((__pyx_v_spacing[2]) == 0)) {
+          #ifdef WITH_THREAD
+          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
+          #endif
+          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+          #ifdef WITH_THREAD
+          PyGILState_Release(__pyx_gilstate_save);
+          #endif
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_17);
+        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_9);
+        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
+        __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+        /* "MMTK_CatmullRom_grid.pyx":327
+ *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
+ *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
+ *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]             # <<<<<<<<<<<<<<
+ *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
+ *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]
+ */
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_8);
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_9);
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_8);
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __pyx_t_12 = 1;
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_9);
+        __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdydz);
+        if (unlikely((__pyx_v_spacing[1]) == 0)) {
+          #ifdef WITH_THREAD
+          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
+          #endif
+          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+          #ifdef WITH_THREAD
+          PyGILState_Release(__pyx_gilstate_save);
+          #endif
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[1]));
+        if (unlikely((__pyx_v_spacing[2]) == 0)) {
+          #ifdef WITH_THREAD
+          PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
+          #endif
+          PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+          #ifdef WITH_THREAD
+          PyGILState_Release(__pyx_gilstate_save);
+          #endif
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_17);
+        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_14);
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+        /* "MMTK_CatmullRom_grid.pyx":328
  *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
  *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]
  *               force_constants[atom_index][1][atom_index][2] = force_constants[atom_index][2][atom_index][1]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_17);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 1, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 1, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
 
-        /* "MMTK_CatmullRom_grid.pyx":327
+        /* "MMTK_CatmullRom_grid.pyx":329
  *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
  *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][1][atom_index][2] = force_constants[atom_index][2][atom_index][1]
  * 
  */
-        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
-        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_17);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_14, 2, __pyx_t_8, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_14, 2, __pyx_t_8, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 329; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_CatmullRom_grid.pyx":328
+        /* "MMTK_CatmullRom_grid.pyx":330
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
  *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]
  *               force_constants[atom_index][1][atom_index][2] = force_constants[atom_index][2][atom_index][1]             # <<<<<<<<<<<<<<
  * 
  *               #*****************************************
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_17);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 2, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 2, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         goto __pyx_L23;
       }
       __pyx_L23:;
 
-      /* "MMTK_CatmullRom_grid.pyx":331
+      /* "MMTK_CatmullRom_grid.pyx":333
  * 
  *               #*****************************************
  *             if energy.gradients != NULL:             # <<<<<<<<<<<<<<
@@ -4465,43 +4465,43 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
       if (__pyx_t_1) {
 
-        /* "MMTK_CatmullRom_grid.pyx":333
+        /* "MMTK_CatmullRom_grid.pyx":335
  *             if energy.gradients != NULL:
  *               # x coordinate
  *               dvdx = self.derivateOfIntp_X(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # y self.coordinate
  *               dvdy = self.derivateOfIntp_Y(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 333; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 333; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 333; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdx = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_X(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_CatmullRom_grid.pyx":335
+        /* "MMTK_CatmullRom_grid.pyx":337
  *               dvdx = self.derivateOfIntp_X(vertex,fx,fy,fz)
  *               # y self.coordinate
  *               dvdy = self.derivateOfIntp_Y(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # z coordinate
  *               dvdz = self.derivateOfIntp_Z(vertex,fx,fy,fz)
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 337; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 337; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 337; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdy = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Y(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_CatmullRom_grid.pyx":337
+        /* "MMTK_CatmullRom_grid.pyx":339
  *               dvdy = self.derivateOfIntp_Y(vertex,fx,fy,fz)
  *               # z coordinate
  *               dvdz = self.derivateOfIntp_Z(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  * 
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 337; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 337; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 337; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 339; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 339; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 339; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdz = ((struct __pyx_vtabstruct_20MMTK_CatmullRom_grid_CatmullRomGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Z(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_CatmullRom_grid.pyx":339
+        /* "MMTK_CatmullRom_grid.pyx":341
  *               dvdz = self.derivateOfIntp_Z(vertex,fx,fy,fz)
  * 
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]             # <<<<<<<<<<<<<<
@@ -4519,11 +4519,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 339; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 341; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         ((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) = (((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) + (__pyx_t_26 / (__pyx_v_spacing[0])));
 
-        /* "MMTK_CatmullRom_grid.pyx":340
+        /* "MMTK_CatmullRom_grid.pyx":342
  * 
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
  *               gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dvdy/spacing[1]             # <<<<<<<<<<<<<<
@@ -4541,11 +4541,11 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 340; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 342; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         ((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) = (((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) + (__pyx_t_26 / (__pyx_v_spacing[1])));
 
-        /* "MMTK_CatmullRom_grid.pyx":341
+        /* "MMTK_CatmullRom_grid.pyx":343
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
  *               gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dvdy/spacing[1]
  *               gradients[atom_index][2] += self.strength*scaling_factor[atom_index]*dvdz/spacing[2]             # <<<<<<<<<<<<<<
@@ -4563,7 +4563,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 341; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 343; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         ((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) = (((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) + (__pyx_t_26 / (__pyx_v_spacing[2])));
         goto __pyx_L24;
@@ -4573,7 +4573,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
     }
     /*else*/ {
 
-      /* "MMTK_CatmullRom_grid.pyx":343
+      /* "MMTK_CatmullRom_grid.pyx":345
  *               gradients[atom_index][2] += self.strength*scaling_factor[atom_index]*dvdz/spacing[2]
  *           else:
  *             for i in range(3):             # <<<<<<<<<<<<<<
@@ -4583,7 +4583,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
       for (__pyx_t_3 = 0; __pyx_t_3 < 3; __pyx_t_3+=1) {
         __pyx_v_i = __pyx_t_3;
 
-        /* "MMTK_CatmullRom_grid.pyx":344
+        /* "MMTK_CatmullRom_grid.pyx":346
  *           else:
  *             for i in range(3):
  *               if (coordinates[atom_index][i]<0):             # <<<<<<<<<<<<<<
@@ -4593,7 +4593,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __pyx_t_1 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) < 0.0) != 0);
         if (__pyx_t_1) {
 
-          /* "MMTK_CatmullRom_grid.pyx":345
+          /* "MMTK_CatmullRom_grid.pyx":347
  *             for i in range(3):
  *               if (coordinates[atom_index][i]<0):
  *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.             # <<<<<<<<<<<<<<
@@ -4602,7 +4602,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
           __pyx_v_gridEnergy = (__pyx_v_gridEnergy + ((__pyx_v_self->k * pow(((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]), 2.0)) / 2.));
 
-          /* "MMTK_CatmullRom_grid.pyx":346
+          /* "MMTK_CatmullRom_grid.pyx":348
  *               if (coordinates[atom_index][i]<0):
  *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.
  *                 if energy.gradients != NULL:             # <<<<<<<<<<<<<<
@@ -4612,7 +4612,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
           if (__pyx_t_1) {
 
-            /* "MMTK_CatmullRom_grid.pyx":347
+            /* "MMTK_CatmullRom_grid.pyx":349
  *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.
  *                 if energy.gradients != NULL:
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]             # <<<<<<<<<<<<<<
@@ -4628,7 +4628,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           goto __pyx_L27;
         }
 
-        /* "MMTK_CatmullRom_grid.pyx":348
+        /* "MMTK_CatmullRom_grid.pyx":350
  *                 if energy.gradients != NULL:
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]
  *               elif (coordinates[atom_index][i]>hCorner[i]):             # <<<<<<<<<<<<<<
@@ -4638,7 +4638,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
         __pyx_t_1 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) > (__pyx_v_hCorner[__pyx_v_i])) != 0);
         if (__pyx_t_1) {
 
-          /* "MMTK_CatmullRom_grid.pyx":349
+          /* "MMTK_CatmullRom_grid.pyx":351
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]
  *               elif (coordinates[atom_index][i]>hCorner[i]):
  *                 gridEnergy += self.k*(coordinates[atom_index][i]-hCorner[i])**2/2.             # <<<<<<<<<<<<<<
@@ -4647,7 +4647,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
  */
           __pyx_v_gridEnergy = (__pyx_v_gridEnergy + ((__pyx_v_self->k * pow((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) - (__pyx_v_hCorner[__pyx_v_i])), 2.0)) / 2.));
 
-          /* "MMTK_CatmullRom_grid.pyx":350
+          /* "MMTK_CatmullRom_grid.pyx":352
  *               elif (coordinates[atom_index][i]>hCorner[i]):
  *                 gridEnergy += self.k*(coordinates[atom_index][i]-hCorner[i])**2/2.
  *                 if energy.gradients != NULL:             # <<<<<<<<<<<<<<
@@ -4657,7 +4657,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
           __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
           if (__pyx_t_1) {
 
-            /* "MMTK_CatmullRom_grid.pyx":351
+            /* "MMTK_CatmullRom_grid.pyx":353
  *                 gridEnergy += self.k*(coordinates[atom_index][i]-hCorner[i])**2/2.
  *                 if energy.gradients != NULL:
  *                   gradients[atom_index][i] += self.k*(coordinates[atom_index][i]-hCorner[i])             # <<<<<<<<<<<<<<
@@ -4677,7 +4677,7 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
     }
     __pyx_L10:;
 
-    /* "MMTK_CatmullRom_grid.pyx":281
+    /* "MMTK_CatmullRom_grid.pyx":283
  * 
  *         indicies = [ai for ai in range(self.natoms) if self.scaling_factor[ai]!=0]
  *         for atom_index in indicies:             # <<<<<<<<<<<<<<
@@ -4687,14 +4687,14 @@ static void __pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate(struct 
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":353
+  /* "MMTK_CatmullRom_grid.pyx":355
  *                   gradients[atom_index][i] += self.k*(coordinates[atom_index][i]-hCorner[i])
  * 
  *         energy.energy_terms[self.index] = gridEnergy*self.strength             # <<<<<<<<<<<<<<
  */
   (__pyx_v_energy->energy_terms[__pyx_v_self->__pyx_base.index]) = (__pyx_v_gridEnergy * __pyx_v_self->strength);
 
-  /* "MMTK_CatmullRom_grid.pyx":235
+  /* "MMTK_CatmullRom_grid.pyx":237
  *     # do_force_constants are flags that indicate if gradients and/or
  *     # force constants are requested.
  *     cdef void evaluate(self, PyFFEvaluatorObject *eval,             # <<<<<<<<<<<<<<
@@ -6939,7 +6939,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {0, 0, 0, 0, 0, 0, 0}
 };
 static int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 282; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 799; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   return 0;
@@ -6951,36 +6951,36 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "MMTK_CatmullRom_grid.pyx":298
+  /* "MMTK_CatmullRom_grid.pyx":300
  * 
  * 
  *             for x in range(0,4):             # <<<<<<<<<<<<<<
  *                 for y in range(0,4):
  *                     for z in range(0,4):
  */
-  __pyx_tuple_ = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple_)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple_ = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple_)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple_);
   __Pyx_GIVEREF(__pyx_tuple_);
 
-  /* "MMTK_CatmullRom_grid.pyx":299
+  /* "MMTK_CatmullRom_grid.pyx":301
  * 
  *             for x in range(0,4):
  *                 for y in range(0,4):             # <<<<<<<<<<<<<<
  *                     for z in range(0,4):
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  */
-  __pyx_tuple__2 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__2 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "MMTK_CatmullRom_grid.pyx":300
+  /* "MMTK_CatmullRom_grid.pyx":302
  *             for x in range(0,4):
  *                 for y in range(0,4):
  *                     for z in range(0,4):             # <<<<<<<<<<<<<<
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  * 
  */
-  __pyx_tuple__3 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__3 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__3);
   __Pyx_GIVEREF(__pyx_tuple__3);
 
@@ -7174,10 +7174,10 @@ PyMODINIT_FUNC PyInit_MMTK_CatmullRom_grid(void)
   __pyx_vtable_20MMTK_CatmullRom_grid_CatmullRomGridTerm.derivateOfIntp_ZZ = (__pyx_t_20MMTK_CatmullRom_grid_float_t (*)(struct __pyx_obj_20MMTK_CatmullRom_grid_CatmullRomGridTerm *, __pyx_t_20MMTK_CatmullRom_grid_float_t (*)[4][4], __pyx_t_20MMTK_CatmullRom_grid_float_t, __pyx_t_20MMTK_CatmullRom_grid_float_t, __pyx_t_20MMTK_CatmullRom_grid_float_t))__pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_derivateOfIntp_ZZ;
   __pyx_vtable_20MMTK_CatmullRom_grid_CatmullRomGridTerm.evaluate = (void (*)(struct __pyx_obj_20MMTK_CatmullRom_grid_CatmullRomGridTerm *, PyFFEvaluatorObject *, energy_spec *, energy_data *))__pyx_f_20MMTK_CatmullRom_grid_18CatmullRomGridTerm_evaluate;
   __pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm.tp_base = __pyx_ptype_20MMTK_CatmullRom_grid_EnergyTerm;
-  if (PyType_Ready(&__pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 38; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyType_Ready(&__pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm.tp_print = 0;
-  if (__Pyx_SetVtable(__pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm.tp_dict, __pyx_vtabptr_20MMTK_CatmullRom_grid_CatmullRomGridTerm) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 38; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyObject_SetAttrString(__pyx_m, "CatmullRomGridTerm", (PyObject *)&__pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 38; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_SetVtable(__pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm.tp_dict, __pyx_vtabptr_20MMTK_CatmullRom_grid_CatmullRomGridTerm) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyObject_SetAttrString(__pyx_m, "CatmullRomGridTerm", (PyObject *)&__pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_ptype_20MMTK_CatmullRom_grid_CatmullRomGridTerm = &__pyx_type_20MMTK_CatmullRom_grid_CatmullRomGridTerm;
   /*--- Type import code ---*/
   __pyx_ptype_7cpython_4type_type = __Pyx_ImportType(__Pyx_BUILTIN_MODULE_NAME, "type", 
@@ -7218,14 +7218,14 @@ PyMODINIT_FUNC PyInit_MMTK_CatmullRom_grid(void)
  */
   import_MMTK_forcefield();
 
-  /* "MMTK_CatmullRom_grid.pyx":11
+  /* "MMTK_CatmullRom_grid.pyx":13
  * include "MMTK/universe.pxi"
  * include 'MMTK/forcefield.pxi'
  * from Scientific.Geometry import Vector, ex, ey, ez             # <<<<<<<<<<<<<<
  * 
  * import gzip
  */
-  __pyx_t_1 = PyList_New(4); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyList_New(4); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_s_Vector);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_Vector);
@@ -7239,55 +7239,55 @@ PyMODINIT_FUNC PyInit_MMTK_CatmullRom_grid(void)
   __Pyx_INCREF(__pyx_n_s_ez);
   PyList_SET_ITEM(__pyx_t_1, 3, __pyx_n_s_ez);
   __Pyx_GIVEREF(__pyx_n_s_ez);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_Scientific_Geometry, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_Scientific_Geometry, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_Vector); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_Vector); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Vector, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Vector, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_ex); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_ex); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ex, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ex, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_ey); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_ey); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ey, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ey, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_ez); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_ez); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ez, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ez, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":13
+  /* "MMTK_CatmullRom_grid.pyx":15
  * from Scientific.Geometry import Vector, ex, ey, ez
  * 
  * import gzip             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_gzip, 0, -1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_gzip, 0, -1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_gzip, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_gzip, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "MMTK_CatmullRom_grid.pyx":16
+  /* "MMTK_CatmullRom_grid.pyx":18
  * 
  * 
  * import numpy as np             # <<<<<<<<<<<<<<
  * cimport numpy as np
  * 
  */
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_numpy, 0, -1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_numpy, 0, -1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "MMTK_CatmullRom_grid.pyx":1
  * # Cython force field implementation for Catmull-Rom grid             # <<<<<<<<<<<<<<
  * 
- * #
+ * # TODO: The energy as a function of position is not smooth; it has a bug.
  */
   __pyx_t_2 = PyDict_New(); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
