@@ -1,5 +1,7 @@
 # TODO: Procedure for dimers and other multimers, e.g. HIV protease
 
+To go through this pipeline, it is helpful to define the environment variable ALGDOCKHOME.
+
 ##########################
 # Dock 6 Anchor and Grow #
 ##########################
@@ -32,10 +34,15 @@ LKKDPKQRLGGGSEDAKEIMQHRFFAGIVWQHVYEKKLSPPFKPQVTSETDTRYFDEEFT
 AQMITITPPDQDDSMECVDSERRPHFPQFSYSASGTA*
 
 From [TARGET]/receptor/1-search/, you should run,
-mod9.15 $ALGDOCKHOME/Pipeline/profile.modeller.py
+mod9.15 $ALGDOCKHOME/Pipeline/profile.modeller.py [PDBALL.BIN]
 which will give you 
 [TARGET]/receptor/1-search/profile.prf
 [TARGET]/receptor/1-search/profile.ali
+
+[PDBALL.BIN] refers to the path of pdball.bin.
+pdball.pir is a database that can be downloaded from the modeller web site.
+It can be converted to pdball.bin going to the directory with pdball.pir and running,
+mod9.15 $ALGDOCKHOME/Pipeline/pdball_pir2bin.modeller.py
 
 From [TARGET]/receptor/1-search/, you should run,
 python $ALGDOCKHOME/Pipeline/analyze_profile.py

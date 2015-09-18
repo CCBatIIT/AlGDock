@@ -3009,6 +3009,8 @@ last modified {2}
         programs.extend(['apbs','ambpdb','molsurf'])
     for program in programs:
       self._FNs[program] = a.findPaths([program])[program]
+    # TODO: This does not seem to keep the environment variables
+    # for sander in subprocess.
     a.loadModules(programs)
 
   def _postprocess(self,

@@ -94,7 +94,7 @@ dirs['script'] = os.path.dirname(os.path.abspath(\
 execfile(os.path.join(dirs['script'],'_masses.py'))
 execfile(os.path.join(dirs['script'],'_external_paths.py'))
 command_paths = findPaths(['dock6'])
-dirs['dock6'] = os.path.abspath(os.path.dirname(command_paths['dock6'])[:-4])
+dirs['dock6'] = os.path.abspath(os.path.dirname(command_paths['dock6']))
 
 for key in ligands.keys():
   ligands[key]['crd'] = np.array([\
@@ -301,6 +301,6 @@ U
 ligand_trans/com_box.pdb
 '''.format(half_edge_length, (com_max-com_min)))
 showboxF.close()
-command = '{0}/bin/showbox < showbox.in'.format(dirs['dock6'])
+command = '{0}/showbox < showbox.in'.format(dirs['dock6'])
 os.system(command)
 os.remove('showbox.in')

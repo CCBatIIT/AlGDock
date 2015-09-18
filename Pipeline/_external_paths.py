@@ -46,22 +46,24 @@ def findPaths(keys):
 
 # Define search paths for external programs and files
 # Defined for
-# David's IIT MacBook Pro, the DSCR cluster, and the CCB cluster
+# David's IIT MacBook Pro, WH210, and the CCB cluster
 search_paths = {
 # These files/programs are used in the pipeline
      'balloon':['/Users/dminh/Installers/Balloon-1.5.0.1143/balloon',
+                '/Applications/Darwin_64bit-Balloon/balloon',
                 '/share/apps/balloon/1.5.0.1143/balloon'],
                # For adding hydrogens and charges to receptors
      'pdb2pqr':['/Users/dminh/Applications/pdb2pqr-osx-bin-1.9.0/pdb2pqr',
                 '/share/apps/pdb2pqr/1.9.0/pdb2pqr'],
                # For adding hydrogens and charges to ligands
-     'chimera':['/Applications/Chimera.app/Contents/MacOS/chimera',
+     'chimera':['/Applications/Chimera.app/Contents/MacOS/chimera', # same in WH210
                 '/share/apps/chimera/1.9/bin/chimera'],
                # For initial ligand pose
        'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
+                '/Applications/dock6/dock6',
                 '/share/apps/dock/6/bin/dock6'],
                # For homology modelling
-    'modeller':['/Library/modeller-9.13/bin/mod9.14',
+    'modeller':['/Library/modeller-9.15/bin/mod9.15', # same in WH210
                 '/share/apps/modeller/9.13/bin/mod9.14'],
                # Submits a command to the queue
 'qsub_command':['/Users/dminh/scripts/qsub_command.py',
@@ -70,9 +72,11 @@ search_paths = {
                 '/home/daveminh/scripts/qsub_command.py'],
                # Spheres for UCSF DOCK 6
   'sphgen_cpp':['/Users/dminh/Applications/sphgen_cpp.1.2/sphgen_cpp',
+                '/Applications/dock6/sphgen',
                 '/share/apps/sphgen_cpp/1.2/sphgen_cpp'],
                # Preparing the system for AMBER
       'sander':['/Users/dminh/Installers/amber14/bin/sander',
+                '/Applications/amber14/bin/sander',
                 '/share/apps/amber/14/bin/sander'],
                # Calculating a Poisson-Boltzmann Grid
         'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',

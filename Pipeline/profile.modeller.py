@@ -1,4 +1,5 @@
-# To be run with mod9.14
+# To be run with modeller.
+# The location of pdball.bin should be passed as an argument.
 
 import modeller
 import os
@@ -9,7 +10,11 @@ env = modeller.environ()
 #-- Read in the binary database
 pdball_FN = '/Users/dminh/Documents/modeller/pdball.bin'
 if not os.path.isfile(pdball_FN):
-  raise Exception('PDB sequences not found!')
+  import sys
+  pdball_FN = sys.argv[-1]
+  if not os.path.isfile(pdball_FN):
+    raise Exception('PDB sequences not found in %s!'%pdball_FN)
+print 'Reading PDB sequences from '+pdball_FN
 
 sdb = modeller.sequence_db(env)
 sdb.read(seq_database_file=pdball_FN, seq_database_format='BINARY',
