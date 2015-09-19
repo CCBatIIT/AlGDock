@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-# TODO: Save tarballs in/load tarballs from progress pickle file
 # TODO: Integrate Smart Darting
-# TODO: OpenMM GBSA
 
 import os # Miscellaneous operating system interfaces
 from os.path import join
@@ -56,7 +54,9 @@ term_map = {
   'ELE':'ELE',
   'electrostatic':'misc'}
 
-allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA','APBS']
+allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA',\
+  'OpenMM_Gas','OpenMM_GBn','OpenMM_GBn2','OpenMM_OBC1','OpenMM_OBC2','OpenMM_HCT',\
+  'APBS']
 
 #############
 # Arguments #
@@ -682,6 +682,7 @@ last modified {2}
     self.universe = MMTK.Universe.InfiniteUniverse()
     self.universe.addObject(self.molecule)
     self._evaluators = {} # Store evaluators
+    self._OpenMM_sims = {} # Store OpenMM simulations
     self._ligand_natoms = self.universe.numberOfAtoms()
 
     # Force fields
@@ -3003,7 +3004,7 @@ last modified {2}
     for phase in phases:
       if phase in ['Gas','GBSA','PBSA'] and not 'sander' in programs:
         programs.append('sander')
-      elif phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
+      elif phase.startswith('NAMD') and not 'namd' in programs:
         programs.append('namd')
       elif phase in ['APBS'] and not 'apbs' in programs:
         programs.extend(['apbs','ambpdb','molsurf'])
@@ -3126,15 +3127,17 @@ last modified {2}
       
       if phase in ['Gas','GBSA','PBSA']:
         traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
-      elif phase in ['NAMD_Gas','NAMD_GBSA']:
+      elif phase.startswith('NAMD'):
         traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
+      elif phase.startswith('OpenMM'):
+        traj_FN = None
       elif phase in ['APBS']:
         traj_FN = join(p_dir,'%s.%s.pqr'%(prefix,moiety))
       outputname = join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
 
       # Writes trajectory
       self._write_traj(traj_FN, confs, moiety)
-      if not traj_FN in toClean:
+      if (traj_FN is not None) and (not traj_FN in toClean):
         toClean.append(traj_FN)
 
       # Queues the calculations
@@ -3246,8 +3249,10 @@ last modified {2}
       start_time = time.time()
       if phase in ['Gas','GBSA','PBSA']:
         E = self._sander_Energy(*args)
-      elif phase in ['NAMD_Gas','NAMD_GBSA']:
+      elif phase.startswith('NAMD'):
         E = self._NAMD_Energy(*args)
+      elif phase.startswith('OpenMM'):
+        E = self._OpenMM_Energy(*args)
       elif phase in ['APBS']:
         E = self._APBS_Energy(*args)
       wall_time = time.time() - start_time
@@ -3335,17 +3340,24 @@ last modified {2}
         E['R'+phase] = self.params['dock']['receptor_'+phase]
         for moiety in ['L','RL']:
           outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
-          if phase in ['NAMD_Gas','NAMD_GBSA']:
-            traj_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
-            self._write_traj(traj_FN, confs, moiety)
-            E[moiety+phase] = self._NAMD_Energy(confs, moiety, phase, traj_FN, outputname, debug=debug)
-          elif phase in ['Gas','GBSA','PBSA']:
+          if phase in ['Gas','GBSA','PBSA']:
             traj_FN = join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety))
             self._write_traj(traj_FN, confs, moiety)
-            E[moiety+phase] = self._sander_Energy(confs, moiety, phase, traj_FN, outputname, debug=debug)
+            E[moiety+phase] = self._sander_Energy(confs, moiety, phase, \
+              traj_FN, outputname, debug=debug)
+          elif phase.startswith('NAMD'):
+            traj_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
+            self._write_traj(traj_FN, confs, moiety)
+            E[moiety+phase] = self._NAMD_Energy(confs, moiety, phase, \
+              traj_FN, outputname, debug=debug)
+          elif phase.startswith('OpenMM'):
+            traj_FN = None
+            E[moiety+phase] = self._OpenMM_Energy(confs, moiety, phase, \
+              traj_FN, outputname, debug=debug)
           elif phase in ['APBS']:
             traj_FN = join(self.dir['dock'],'%s.%s.pqr'%(prefix,moiety))
-            E[moiety+phase] = self._APBS_Energy(confs, moiety, phase, traj_FN, outputname, debug=debug)
+            E[moiety+phase] = self._APBS_Energy(confs, moiety, phase, \
+              traj_FN, outputname, debug=debug)
           else:
             raise Exception('Unknown phase!')
           if not traj_FN in toClear:
@@ -3355,7 +3367,7 @@ last modified {2}
           os.remove(FN)
     return E
 
-  def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN,
+  def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN, \
       outputname=None, debug=False, reference=None):
     self.dir['out'] = os.path.dirname(os.path.abspath(AMBER_mdcrd_FN))
     script_FN = '%s%s.in'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
@@ -3482,12 +3494,59 @@ last modified {2}
 
     return np.array(E, dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
 
+  def _OpenMM_Energy(self, confs, moiety, phase, traj_FN=None, \
+      outputname=None, debug=False, reference=None):
+    import simtk.openmm
+    import simtk.openmm.app as OpenMM_app
+    # Set up the simulation
+    key = moiety+phase
+    if not key in self._OpenMM_sims.keys():
+      prmtop = OpenMM_app.AmberPrmtopFile(self._FNs['prmtop'][moiety])
+      inpcrd = OpenMM_app.AmberInpcrdFile(self._FNs['inpcrd'][moiety])
+      OMM_system = prmtop.createSystem(nonbondedMethod=OpenMM_app.NoCutoff, \
+        constraints=None, implicitSolvent={
+          'OpenMM_Gas':None,
+          'OpenMM_GBn':OpenMM_app.GBn,
+          'OpenMM_GBn2':OpenMM_app.GBn2,
+          'OpenMM_HCT':OpenMM_app.HCT,
+          'OpenMM_OBC1':OpenMM_app.OBC1,
+          'OpenMM_OBC2':OpenMM_app.OBC2}[phase])
+      dummy_integrator = simtk.openmm.LangevinIntegrator(300*simtk.unit.kelvin, \
+        1/simtk.unit.picosecond, 0.002*simtk.unit.picoseconds)
+      self._OpenMM_sims[key] = OpenMM_app.Simulation(prmtop.topology, \
+        OMM_system, dummy_integrator)
+
+    # Prepare the conformations by combining with the receptor if necessary
+    if (moiety.find('R')>-1):
+      receptor_0 = self.confs['receptor'][:self._ligand_first_atom,:]
+      receptor_1 = self.confs['receptor'][self._ligand_first_atom:,:]
+    if not isinstance(confs,list):
+      confs = [confs]
+    if (moiety.find('R')>-1):
+      if (moiety.find('L')>-1):
+        confs = [np.vstack((receptor_0, \
+          conf[self.molecule.prmtop_atom_order,:], \
+          receptor_1)) for conf in confs]
+      else:
+        confs = [self.confs['receptor']]
+    else:
+      confs = [conf[self.molecule.prmtop_atom_order,:] for conf in confs]
+    
+    # Calculate the energies
+    E = []
+    for conf in confs:
+      self._OpenMM_sims[key].context.setPositions(conf)
+      s = self._OpenMM_sims[key].context.getState(getEnergy=True)
+      E.append([0., s.getPotentialEnergy()/simtk.unit.kilojoule*simtk.unit.mole])
+    return np.array(E, dtype=float)*MMTK.Units.kJ/MMTK.Units.mol
+
   def _APBS_Energy(self, confs, moiety, phase, pqr_FN, outputname,
       debug=False, reference=None, factor=1.0/MMTK.Units.Ang):
     """
     Uses NAMD to calculate the energy of a set of configurations
     Units are the MMTK standard, kJ/mol
     """
+    # TODO: Include internal energy
     # Prepare configurations for writing to crd file
     if (moiety.find('R')>-1):
       receptor_0 = factor*self.confs['receptor'][:self._ligand_first_atom,:]
