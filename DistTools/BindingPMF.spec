@@ -4,7 +4,7 @@
 # pyinstaller AlGDocker.spec
 
 import os, sys, glob
-import Scientific, MMTK, AlGDock
+import Scientific, MMTK, AlGDock, simtk
 
 extension_library_files = glob.glob(os.path.join(os.path.dirname(Scientific.__file__), sys.platform, '*'))
 extension_library_files += glob.glob(os.path.join(os.path.dirname(MMTK.__file__), sys.platform, '*'))
@@ -32,8 +32,8 @@ init_script_files = glob.glob(os.path.join(os.path.dirname(AlGDock.__file__), '_
 init_scripts = [(os.path.join('AlGDock',os.path.basename(F)),F,'DATA') for F in init_script_files]
 
 data_files = []
-code_extensions = ['pyc','so'] # ['py','pyc','so']
-for pkg in ['Scientific','MMTK','AlGDock']:
+code_extensions = ['pyc','so']
+for pkg in ['Scientific','MMTK','AlGDock','simtk']:
   pkgdir = os.path.dirname(locals()[pkg].__file__)
   for cdir, subdirs, files in os.walk(pkgdir):
     rp = os.path.relpath(cdir,os.path.join(pkgdir,'..'))

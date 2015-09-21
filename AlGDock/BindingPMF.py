@@ -3513,6 +3513,7 @@ last modified {2}
           'OpenMM_OBC2':OpenMM_app.OBC2}[phase])
       dummy_integrator = simtk.openmm.LangevinIntegrator(300*simtk.unit.kelvin, \
         1/simtk.unit.picosecond, 0.002*simtk.unit.picoseconds)
+      # platform = simtk.openmm.Platform.getPlatformByName('CPU')
       self._OpenMM_sims[key] = OpenMM_app.Simulation(prmtop.topology, \
         OMM_system, dummy_integrator)
 

@@ -10,6 +10,9 @@ parser.add_argument('--include_ligand', nargs='+', default=None, \
   help='Only runs AlGDock for these ligands')
 parser.add_argument('--exclude_ligand', nargs='+', default=None, \
   help='Does not run AlGDock for these ligands')
+parser.add_argument('--new_instance_per_ligand', action='store_true', \
+  default=False, \
+  help='Runs run_AlGDock.py for each ligand')
 parser.add_argument('--include_receptor', nargs='+', default=None, \
   help='Only runs AlGDock for these receptors')
 parser.add_argument('--exclude_receptor', nargs='+', default=None, \
@@ -259,7 +262,7 @@ else:
 
 # Look for ligand files
 if os.path.isfile(args_in.ligand):
-  ligand_FNs = [args_in.ligand]
+  ligand_FNs = [os.path.abspath(args_in.ligand)]
 elif os.path.isdir(args_in.ligand):
   ligand_FNs = glob.glob(os.path.join(args_in.ligand,'*/*.tar.gz'))
   ligand_FNs = sorted([os.path.abspath(FN) for FN in ligand_FNs])
@@ -267,15 +270,24 @@ else:
   raise Exception('Ligand input %s is not a file or directory!'%args_in.ligand)
 # Check that ligand tarball has nonzero size
 ligand_FNs = [FN for FN in ligand_FNs if os.path.getsize(FN)>0]
-# Filter ligands
-if args_in.include_ligand is not None:
-  ligand_FNs = [FN for FN in ligand_FNs \
-    if np.array([FN.find(ligN)!=-1 \
-    for ligN in args_in.include_ligand]).any()]
-if args_in.exclude_ligand is not None:
-  ligand_FNs = [FN for FN in ligand_FNs \
-    if not np.array([FN.find(ligN)!=-1 \
-    for ligN in args_in.exclude_ligand]).any()]
+if len(ligand_FNs)>1:
+  # Filter ligands
+  if args_in.include_ligand is not None:
+    ligand_FNs = [FN for FN in ligand_FNs \
+      if np.array([FN.find(ligN)!=-1 \
+      for ligN in args_in.include_ligand]).any()]
+  if args_in.exclude_ligand is not None:
+    ligand_FNs = [FN for FN in ligand_FNs \
+      if not np.array([FN.find(ligN)!=-1 \
+      for ligN in args_in.exclude_ligand]).any()]
+
+  if args_in.new_instance_per_ligand:
+    import sys
+    for ligand_FN in ligand_FNs:
+      command = ' '.join(sys.argv + ['--ligand',ligand_FN]) + ' &'
+      print command
+      os.system(command)
+    sys.exit()
 
 # Look for receptor files
 if os.path.isfile(args_in.receptor):
@@ -319,7 +331,7 @@ print 'Found %d ligands, %d receptors, and %d complexes ready for AlGDock'%(\
 
 if (args_in.library_requirement is not None):
   ligand_FNs = [FN for FN in ligand_FNs \
-    if FN[len(args_in.ligand)+1:].find(args_in.library_requirement)>-1]
+    if FN.find(args_in.library_requirement)>-1]
   print '%d ligand(s) meet the library requirement'%(len(ligand_FNs))
 
 if args_in.reps is None:
@@ -343,9 +355,12 @@ checked = []
 for rep in range(args_in.reps[0],args_in.reps[1]):
   for ligand_FN in ligand_FNs[args_in.first_ligand:args_in.first_ligand+args_in.max_ligands]:
     labels = {}
-    labels['relpath_ligand'] = ligand_FN[len(args_in.ligand)+1:]
-    labels['key'] = os.path.basename(ligand_FN[:-7])
-    labels['library'] = '.'.join(os.path.dirname(labels['relpath_ligand']).split('.')[:-1])
+    if os.path.isfile(args_in.ligand):
+      lib_and_key_prefix = ligand_FN.split('/')[-2]
+    else:
+      lib_and_key_prefix = os.path.dirname(ligand_FN[len(args_in.ligand)+1:])
+    labels['library'] = '.'.join(lib_and_key_prefix.split('.')[:-1])
+    labels['key'] = os.path.basename(ligand_FN[:-7])    
     labels['lib_subdir'] = labels['library']+'.'+labels['key'][:-2]+'__'
     labels['ligand'] = labels['library']+'.'+labels['key']
     paths = {'dir_cool':os.path.join(args_in.tree_cool, \
@@ -390,31 +405,30 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
           '%s.%s'%(labels['receptor'],key[1]))
 
       # Identify complex tarball
-      complex_FN = os.path.join(args_in.complex, \
+      complex_tar_FN = os.path.join(args_in.complex, \
         labels['lib_subdir'], labels['key'], labels['receptor']+'.tar.gz')
-      paths['complex_tarball'] = complex_FN
-
-      if not (os.path.isfile(paths['complex_tarball'])):
-        print 'No complex tarfile ' + paths['complex_tarball']
+      if not (os.path.isfile(complex_tar_FN)):
+        print 'No complex tarfile ' + complex_tar_FN
         job_status['no_complex'] += 1
         continue # Complex files are missing
+      paths['complex_tarball'] = complex_tar_FN
 
       # Define and check files within the complex tarball
       for key in ['prmtop','inpcrd']:
         paths_in_tar['complex_'+key] = labels['complex']+'.'+key
       if 'receptor_fixed_atoms' in paths.keys():
         paths_in_tar['complex_fixed_atoms'] = labels['complex']+'.pdb'
-      if args_in.check_tarballs and (complex_FN not in checked):
-        tarF = tarfile.open(complex_FN)
+      if args_in.check_tarballs and (complex_tar_FN not in checked):
+        tarF = tarfile.open(complex_tar_FN)
         names = [m.name for m in tarF.getmembers()]
         not_found = [paths_in_tar[key] for key in paths_in_tar.keys() \
           if key.startswith('complex') and not paths_in_tar[key] in names]
         if len(not_found)>0:
-          print 'The following files were missing in '+complex_FN+':'
+          print 'The following files were missing in '+complex_tar_FN+':'
           print ' '.join(not_found)
           continue
         else:
-          checked.append(complex_FN)
+          checked.append(complex_tar_FN)
 
       input_FNs = paths.values()
       input_FNs_missing = np.array([not nonzero(FN) for FN in input_FNs])
@@ -453,7 +467,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
             dat = pickle.load(F)
             F.close()
             try:
-              completed_cycles = len(dat[2]['grid_BAR'])
+              completed_cycles = np.min([len(dat[-1][p+'_MBAR']) for p in args_in.phases])
               complete = (completed_cycles >= int(args_in.dock_repX_cycles))
             except:
               print 'Error in '+f_RL_FN
