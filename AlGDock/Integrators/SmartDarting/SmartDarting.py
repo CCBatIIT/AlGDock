@@ -1,7 +1,5 @@
 # This module implements a Smart Darting "integrator"
 
-# TODO: Does not work without extended coordinates
-
 from MMTK import Configuration, Dynamics, Environment, Features, Trajectory, Units
 import MMTK_dynamics
 import numpy as np
@@ -15,7 +13,7 @@ R = 8.3144621*Units.J/Units.mol/Units.K
 # Smart Darting integrator
 #
 class SmartDartingIntegrator(Dynamics.Integrator):
-  def __init__(self, universe, molecule, confs, extended, **options):
+  def __init__(self, universe, molecule, extended, confs=None, **options):
     """
     confs - configurations to dart to
     extended - whether or not to use external coordinates
@@ -30,33 +28,87 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Converter between Cartesiand BAT coordinates
     self._BAT_util = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
     # BAT coordinates to perturb: external coordinates and primary torsions
-    dof = confs[0].shape[0]*3 if extended else confs[0].shape[0]*3 - 6
+    dof = self.universe.configuration().array.shape[0]*3 if extended \
+      else self.universe.configuration().array.shape[0]*3 - 6
     self._BAT_to_perturb = range(6) if extended else []
     self._BAT_to_perturb += list(dof - self._BAT_util.ntorsions + \
       np.array(sorted(list(set(self._BAT_util._firstTorsionInd)))))
 
-    self.set_confs(confs)
+    if confs is None:
+      self.confs = None
+    else:
+      self.set_confs(confs)
 
-  def set_confs(self, confs):
-    self.confs = confs
-    self.confs_ha = [self.confs[c][self.molecule.heavy_atoms,:] \
-      for c in range(len(self.confs))]
+  def set_confs(self, confs, rmsd_threshold=0.1, period_threshold=0.25, \
+      append=False):
+
+    nconfs_attempted = len(confs)
+    if append and (self.confs is not None):
+      nconfs_o = len(self.confs)
+      confs = confs + self.confs
+    else:
+      nconfs_o = 0
+    
+    # Calculate energies of all configurations
     conf_energies = []
     for conf in confs:
       self.universe.setConfiguration(Configuration(self.universe,conf))
       conf_energies.append(self.universe.energy())
+    self.universe.setConfiguration(Configuration(self.universe,confs[0]))
+
+    # Sort by increasing energy
+    conf_energies, confs = (list(l) \
+      for l in zip(*sorted(zip(conf_energies, confs), key=lambda p:p[0])))
+    
+    if self.extended:
+      # Keep only unique configurations, using rmsd as a threshold
+      inds_to_keep = [0]
+      for j in range(len(confs)):
+        min_rmsd = np.min([((confs[j][self.molecule.heavy_atoms,:] - \
+          confs[k][self.molecule.heavy_atoms,:])**2).sum()/self.molecule.nhatoms \
+          for k in inds_to_keep])
+        if min_rmsd>rmsd_threshold:
+          inds_to_keep.append(j)
+      confs = [confs[i] for i in inds_to_keep]
+      conf_energies = [conf_energies[i] for i in inds_to_keep]
+
+    confs_BAT = [np.array(self._BAT_util.BAT(Cartesian=confs[n], \
+      extended=self.extended)) for n in range(len(confs))]
+    confs_BAT_tp = [confs_BAT[c][self._BAT_to_perturb] \
+      for c in range(len(confs_BAT))]
+
+    if not self.extended:
+      # Keep only unique configurations, using period as a threshold
+      inds_to_keep = [0]
+      for j in range(len(confs)):
+        diffs = np.array([(confs_BAT_tp[j] - confs_BAT_tp[k]) \
+          for k in inds_to_keep])/(2*np.pi)
+        diffs = np.min([diffs,1-diffs],0)
+        if (np.max(np.abs(diffs),1)>period_threshold).all():
+          inds_to_keep.append(j)
+      confs = [confs[i] for i in inds_to_keep]
+      confs_BAT = [confs_BAT[i] for i in inds_to_keep]
+      confs_BAT_tp = [confs_BAT_tp[i] for i in inds_to_keep]
+      conf_energies = [conf_energies[i] for i in inds_to_keep]
+
+    self.confs = confs
+    self.confs_ha = [self.confs[c][self.molecule.heavy_atoms,:] \
+      for c in range(len(self.confs))]
+
     # Probabilty of jumping to a conformation k is proportional to exp(-E/R*1000).
     weights = np.exp(-np.array(conf_energies)/(R*1000.))
     self.weights = weights/sum(weights)
-    
-    self.confs_BAT = [np.array(self._BAT_util.BAT(Cartesian=confs[n], \
-      extended=self.extended)) for n in range(len(confs))]
-    self.confs_BAT_tp = [self.confs_BAT[c][self._BAT_to_perturb] \
-      for c in range(len(self.confs_BAT))]
+
+    self.confs_BAT = confs_BAT
+    self.confs_BAT_tp = confs_BAT_tp
     # self.darts[j][k] will jump from conformation j to conformation k
     self.darts = [[self.confs_BAT[j][self._BAT_to_perturb] - \
       self.confs_BAT[k][self._BAT_to_perturb] \
       for j in range(len(confs))] for k in range(len(confs))]
+    
+    return '  Set smart darting configurations. ' + \
+      'Started with %d, attempted %d, ended with %d configurations.'%(\
+      nconfs_o,nconfs_attempted,len(self.confs))
 
   def _closest_pose_Cartesian(self, conf_ha):
     # Closest pose has smallest sum of square distances between heavy atom coordinates
@@ -76,7 +128,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     return self.weights[dart_to]/(1.-self.weights[dart_from])
 
   def __call__(self, **options):
-    if len(self.confs)<3:
+    if (self.confs is None) or len(self.confs)<3:
       return ([self.universe.copyConfiguration()], [self.universe.energy()], 0.0, 0.0)
     
     # Process the keyword arguments
