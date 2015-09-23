@@ -1,3 +1,5 @@
+# The example is 1of6
+
 import AlGDock.BindingPMF_plots
 import os, shutil, glob
 
@@ -23,15 +25,12 @@ for run_type in ['cool','dock','postprocess','free_energies']:
     sampler='NUTS', \
     MCMC_moves=1, \
     seeds_per_state=10, steps_per_seed=200,
-    sweeps_per_cycle=10, attempts_per_sweep=100, steps_per_sweep=50,
-    cool_repX_cycles=2, dock_repX_cycles=3, \
-    site='Sphere', site_center=[1.91650, 1.91650, 1.91650], site_max_R=0.01, \
+    sweeps_per_cycle=25, attempts_per_sweep=100, steps_per_sweep=50,
+    cool_repX_cycles=3, dock_repX_cycles=4, \
+    site='Sphere', site_center=[1.74395, 1.74395, 1.74395], site_max_R=0.6, \
     site_density=10., \
     phases=['NAMD_Gas','NAMD_GBSA'], \
     cores=-1, \
     rmsd=True)
   self._run(run_type)
   del self
-
-# site='Sphere', site_center=[1.91650, 1.91650, 1.91650], site_max_R=0.01, \
-# score = 'prmtopcrd/anchor_and_grow_scored.mol2', \

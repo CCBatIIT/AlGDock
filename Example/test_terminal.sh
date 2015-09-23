@@ -4,6 +4,8 @@
 # kernprof -l -v
 # python -m memory_profiler
 
+# The example is 1of6
+
 $ALGDOCK --dir_dock dock --dir_cool cool \
   --ligand_tarball prmtopcrd/ligand.tar.gz \
   --ligand_database ligand.db \
@@ -18,45 +20,20 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --complex_prmtop complex.prmtop \
   --complex_inpcrd complex.trans.inpcrd \
   --complex_fixed_atoms complex.pdb \
+  --score prmtopcrd/anchor_and_grow_scored.mol2 \
   --rmsd \
   --dir_grid grids \
   --protocol Adaptive --cool_therm_speed 0.5 --dock_therm_speed 0.5 \
   --sampler NUTS \
   --MCMC_moves 1 \
-  --seeds_per_state 10 \
-  --steps_per_seed 200 \
-  --sweeps_per_cycle 10 --attempts_per_sweep 100 --steps_per_sweep 50 \
-  --cool_repX_cycles 2 --dock_repX_cycles 3 \
-  --site Sphere --site_center 1.91650 1.91650 1.91650 \
-  --site_max_R 0.01 \
+  --seeds_per_state 10 --steps_per_seed 200 \
+  --sweeps_per_cycle 25 --attempts_per_sweep 100 --steps_per_sweep 50 \
+  --cool_repX_cycles 3 --dock_repX_cycles 4 \
+  --site Sphere --site_center 1.74395 1.74395 1.74395 \
+  --site_max_R 0.6 \
   --site_density 10. \
   --phases NAMD_Gas NAMD_GBSA \
   --cores -1 \
-  --score prmtopcrd/anchor_and_grow_scored.mol2 \
   --rmsd \
   --run_type timed \
   --max_time 10 \
-  --T_HIGH 800.
-
-
-#  --score_multiple \
-#  --phases NAMD_Gas NAMD_GBSA Gas GBSA APBS PBSA \
-#  --site Sphere --site_center 1.91650 1.91650 1.91650 \
-#  --site_max_R 0.01 \
-
-# For cooling, there are ~9 states with a thermodynamic speed of 0.7
-# For undocking, there are ~27 states with a thermodynamic speed of 0.7
-
-# Here are example cooling free energies:
-#  calculated NAMD_Gas solvation free energy of 0.669438 RT using cycles 0 to 0
-#  calculated NAMD_Gas solvation free energy of 0.694241 RT using cycles 1 to 1
-#  calculated NAMD_GBSA solvation free energy of -13.435825 RT using cycles 0 to 0
-#  calculated NAMD_GBSA solvation free energy of -13.662444 RT using cycles 1 to 1
-#  calculated cooling free energy of 60.797888 RT using MBAR for cycles 0 to 0
-#  calculated cooling free energy of 60.563113 RT using MBAR for cycles 1 to 1
-
-# For warming, there are ~10 states with a thermodynamic speed of 0.7
-# Free energies are about the same.
-
-# For undocking with a temperature protocol that follows the normal grid strength,
-# there are ~22 states with a thermodynamic speed of 0.7

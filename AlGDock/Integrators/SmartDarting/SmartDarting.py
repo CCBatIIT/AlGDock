@@ -39,7 +39,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     else:
       self.set_confs(confs)
 
-  def set_confs(self, confs, rmsd_threshold=0.1, period_threshold=0.25, \
+  def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.25, \
       append=False):
 
     nconfs_attempted = len(confs)
@@ -54,17 +54,23 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     for conf in confs:
       self.universe.setConfiguration(Configuration(self.universe,conf))
       conf_energies.append(self.universe.energy())
-    self.universe.setConfiguration(Configuration(self.universe,confs[0]))
 
     # Sort by increasing energy
     conf_energies, confs = (list(l) \
       for l in zip(*sorted(zip(conf_energies, confs), key=lambda p:p[0])))
-    
+    self.universe.setConfiguration(Configuration(self.universe,confs[0]))
+
+    # Only keep configurations with energy with 50 kJ/mol of the lowest energy
+    confs = [confs[i] for i in range(len(confs)) \
+      if (conf_energies[i]-conf_energies[0])<50.]
+    conf_energies = [conf_energies[i] for i in range(len(confs)) \
+      if (conf_energies[i]-conf_energies[0])<50.]
+
     if self.extended:
       # Keep only unique configurations, using rmsd as a threshold
       inds_to_keep = [0]
       for j in range(len(confs)):
-        min_rmsd = np.min([((confs[j][self.molecule.heavy_atoms,:] - \
+        min_rmsd = np.min([np.sqrt((confs[j][self.molecule.heavy_atoms,:] - \
           confs[k][self.molecule.heavy_atoms,:])**2).sum()/self.molecule.nhatoms \
           for k in inds_to_keep])
         if min_rmsd>rmsd_threshold:
@@ -95,19 +101,22 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     self.confs_ha = [self.confs[c][self.molecule.heavy_atoms,:] \
       for c in range(len(self.confs))]
 
-    # Probabilty of jumping to a conformation k is proportional to exp(-E/R*1000).
-    weights = np.exp(-np.array(conf_energies)/(R*1000.))
-    self.weights = weights/sum(weights)
+    if len(self.confs)>1:
+      # Probabilty of jumping to a conformation k
+      # is proportional to exp(-E/(R*1000.)).
+      logweight = np.array(conf_energies)/(R*1000.)
+      weights = np.exp(-logweight+min(logweight))
+      self.weights = weights/sum(weights)
 
-    self.confs_BAT = confs_BAT
-    self.confs_BAT_tp = confs_BAT_tp
-    # self.darts[j][k] will jump from conformation j to conformation k
-    self.darts = [[self.confs_BAT[j][self._BAT_to_perturb] - \
-      self.confs_BAT[k][self._BAT_to_perturb] \
-      for j in range(len(confs))] for k in range(len(confs))]
+      self.confs_BAT = confs_BAT
+      self.confs_BAT_tp = confs_BAT_tp
+      # self.darts[j][k] will jump from conformation j to conformation k
+      self.darts = [[self.confs_BAT[j][self._BAT_to_perturb] - \
+        self.confs_BAT[k][self._BAT_to_perturb] \
+        for j in range(len(confs))] for k in range(len(confs))]
     
-    return '  Set smart darting configurations. ' + \
-      'Started with %d, attempted %d, ended with %d configurations.'%(\
+    return '  set smart darting configurations: ' + \
+      'started with %d, attempted %d, ended with %d configurations.'%(\
       nconfs_o,nconfs_attempted,len(self.confs))
 
   def _closest_pose_Cartesian(self, conf_ha):
@@ -180,7 +189,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
           print '_p_attempt, forward %f, backwards %f'%(\
             self._p_attempt(closest_pose_o,dart_towards), \
             self._p_attempt(closest_pose_n,closest_pose_o))
-          raise Exception('High energy pose!')
+          # raise Exception('High energy pose!')
         
         xo_Cartesian = xn_Cartesian
         xo_BAT = xn_BAT

@@ -23,13 +23,13 @@ except:
 import AlGDock as a
 # Define allowed_phases list and arguments dictionary
 from AlGDock.BindingPMF_arguments import *
+# Define functions: merge_dictionaries, convert_dictionary_relpath, and dict_view
+from AlGDock.DictionaryTools import *
 
 import pymbar.timeseries
 
 import multiprocessing
 from multiprocessing import Process
-
-import psutil
 
 # For profiling. Unnecessary for normal execution.
 # from memory_profiler import profile
@@ -83,71 +83,6 @@ def random_rotate():
                      q[0]*q[0] - q[1]*q[1] - q[2]*q[2] + q[3]*q[3]]])
   return rotMat
 
-def merge_dictionaries(dicts, required_consistency=[]):
-  """
-  Merges a list of dictionaries, giving priority to items in descending order.
-  Items in the required_consistency list must be consistent with one another.
-  """
-  merged = {}
-  for a in range(len(dicts)): # Loop over all dictionaries,
-                              # giving priority to the first
-    if not isinstance(dicts[a],dict):
-      continue
-    for key in dicts[a].keys():
-      if isinstance(dicts[a][key],dict): # item is a dictionary
-        merged[key] = merge_dictionaries(
-          [dicts[n][key] for n in range(len(dicts)) if key in dicts[n].keys()],
-          required_consistency=required_consistency)
-      elif (key not in merged.keys()):
-        # Merged dictionary will contain value from
-        # first dictionary where key appears
-        merged[key] = dicts[a][key]
-        # Check for consistency with other dictionaries
-        for b in (range(a) + range(a+1,len(dicts))):
-          if isinstance(dicts[b],dict) and (key in dicts[b].keys()) \
-              and (dicts[a][key] is not None) and (dicts[b][key] is not None):
-            if (isinstance(dicts[b][key],np.ndarray)):
-              inconsistent_items = (dicts[b][key]!=dicts[a][key]).any()
-            else:
-              inconsistent_items = (dicts[b][key]!=dicts[a][key])
-            if inconsistent_items:
-              if key in required_consistency:
-                print 'Dictionary items for %s are inconsistent:'%key
-                print dicts[a][key]
-                print dicts[b][key]
-                raise Exception('Items must be consistent!')
-      elif (merged[key] is None): # Replace None
-        merged[key] = dicts[a][key]
-  return merged
-
-def convert_dictionary_relpath(d, relpath_o=None, relpath_n=None):
-  """
-  Converts all file names in a dictionary from one relative path to another.
-  If relpath_o is None, nothing is joined to the original path.
-  If relpath_n is None, an absolute path is used.
-  """
-  converted = {}
-  for key in d.keys():
-    if d[key] is None:
-      pass
-    elif isinstance(d[key],dict):
-      converted[key] = convert_dictionary_relpath(d[key],
-        relpath_o = relpath_o, relpath_n = relpath_n)
-    elif isinstance(d[key],str):
-      if d[key]=='default':
-        converted[key] = 'default'
-      else:
-        if relpath_o is not None:
-          p = os.path.abspath(join(relpath_o,d[key]))
-        else:
-          p = os.path.abspath(d[key])
-        # if os.path.exists(p): # Only save file names for existent paths
-        if relpath_n is not None:
-          converted[key] = os.path.relpath(p,relpath_n)
-        else:
-          converted[key] = p
-  return converted
-
 def HMStime(s):
   """
   Given the time in seconds, an appropriately formatted string.
@@ -158,28 +93,6 @@ def HMStime(s):
     return '%d:%.3f'%(int(s/60%60),s%60)
   else:
     return '%d:%d:%.3f'%(int(s/3600),int(s/60%60),s%60)
-
-def dict_view(dict_c, indent=2, relpath=None, show_None=False):
-  view_string = ''
-  for key in dict_c.keys():
-    if dict_c[key] is None:
-      if show_None:
-        view_string += ' '*indent + key + ': None\n'
-    elif isinstance(dict_c[key],dict):
-      subdict_string = dict_view(dict_c[key], indent+2, relpath=relpath)
-      if subdict_string!='':
-        view_string += ' '*indent + key + ':\n' + subdict_string
-    elif isinstance(dict_c[key],str):
-      view_string += ' '*indent + key + ': '
-      if relpath is not None:
-        view_string += os.path.relpath(dict_c[key],relpath) + '\n'
-        if not os.path.exists(dict_c[key]):
-          view_string += ' '*(indent+len(key)) + 'DOES NOT EXIST\n'
-      else:
-        view_string += dict_c[key] + '\n'
-    else:
-      view_string += ' '*indent + key + ': ' + repr(dict_c[key]) + '\n'
-  return view_string
 
 class NullDevice():
   """
@@ -569,41 +482,6 @@ last modified {2}
     self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self._FNs['forcefield'],mod_files=self._FNs['frcmodList'])
 
-    # Samplers may accept the following options:
-    # steps - number of MD steps
-    # T - temperature in K
-    # delta_t - MD time step
-    # normalize - normalizes configurations
-    # adapt - uses an adaptive time step
-
-    self.sampler = {}
-    from NUTS import NUTSIntegrator # @UnresolvedImport
-    self.sampler['init'] = NUTSIntegrator(self.universe)
-    from AlGDock.Integrators.SmartDarting.SmartDarting \
-      import SmartDartingIntegrator # @UnresolvedImport
-    self.sampler['cool_SmartDarting'] = SmartDartingIntegrator(self.universe, \
-      self.molecule, extended=False)
-    self.sampler['dock_SmartDarting'] = SmartDartingIntegrator(self.universe, \
-      self.molecule, extended=True)
-
-    for p in ['cool', 'dock']:
-      if self.params[p]['sampler'] == 'NUTS':
-        self.sampler[p] = NUTSIntegrator(self.universe)
-      elif self.params[p]['sampler'] == 'HMC':
-        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-          import HamiltonianMonteCarloIntegrator
-        self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
-      elif self.params[p]['sampler'] == 'TDHMC':
-        from Integrators.TDHamiltonianMonteCarlo.TDHamiltonianMonteCarlo \
-          import TDHamiltonianMonteCarloIntegrator
-        self.sampler[p] = TDHamiltonianMonteCarloIntegrator(self.universe)
-      elif self.params[p]['sampler'] == 'VV':
-        from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
-          import VelocityVerletIntegrator
-        self.sampler[p] = VelocityVerletIntegrator(self.universe)
-      else:
-        raise Exception('Unrecognized sampler!')
-
     # Determine ligand atomic index
     if (self._FNs['prmtop']['R'] is not None) and \
        (self._FNs['prmtop']['RL'] is not None):
@@ -650,7 +528,9 @@ last modified {2}
 
     if lig_crd is not None:
       self.confs['ligand'] = lig_crd[self.molecule.inv_prmtop_atom_order,:]
-    
+      self.universe.setConfiguration(\
+        Configuration(self.universe,self.confs['ligand']))
+
     if self.params['dock']['rmsd'] is not False:
       if self.params['dock']['rmsd'] is True:
         if lig_crd is not None:
@@ -701,6 +581,41 @@ last modified {2}
     (confs,Es) = self._get_confs_to_rescore(site=False, minimize=False)
     if len(confs)>0:
       self.universe.setConfiguration(Configuration(self.universe,confs[-1]))
+
+    # Samplers may accept the following options:
+    # steps - number of MD steps
+    # T - temperature in K
+    # delta_t - MD time step
+    # normalize - normalizes configurations
+    # adapt - uses an adaptive time step
+
+    self.sampler = {}
+    from NUTS import NUTSIntegrator # @UnresolvedImport
+    self.sampler['init'] = NUTSIntegrator(self.universe)
+    from AlGDock.Integrators.SmartDarting.SmartDarting \
+      import SmartDartingIntegrator # @UnresolvedImport
+    self.sampler['cool_SmartDarting'] = SmartDartingIntegrator(\
+      self.universe, self.molecule, False)
+    self.sampler['dock_SmartDarting'] = SmartDartingIntegrator(\
+      self.universe, self.molecule, True)
+
+    for p in ['cool', 'dock']:
+      if self.params[p]['sampler'] == 'NUTS':
+        self.sampler[p] = NUTSIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'HMC':
+        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+          import HamiltonianMonteCarloIntegrator
+        self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'TDHMC':
+        from Integrators.TDHamiltonianMonteCarlo.TDHamiltonianMonteCarlo \
+          import TDHamiltonianMonteCarloIntegrator
+        self.sampler[p] = TDHamiltonianMonteCarloIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'VV':
+        from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
+          import VelocityVerletIntegrator
+        self.sampler[p] = VelocityVerletIntegrator(self.universe)
+      else:
+        raise Exception('Unrecognized sampler!')
 
     # Load progress
     self._postprocess(readOnly=True)
@@ -810,11 +725,9 @@ last modified {2}
       
       # Get starting configurations
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
-      seeds = [s for s in reversed(seeds)]
+      self.tee(self.sampler['cool_SmartDarting'].set_confs(seeds))
       self.confs['cool']['starting_poses'] = seeds
-      self.sampler['cool_SmartDarting'].set_confs(seeds)
-      self.universe.setConfiguration(Configuration(self.universe,seeds[0]))
-
+      
       # Ramp the temperature from 0 to the desired starting temperature
       T_LOW = 20.
       T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
@@ -873,8 +786,6 @@ last modified {2}
       self.cool_protocol.append(\
         {'T':T, 'a':(self.T_HIGH-T)/(self.T_HIGH-self.T_TARGET), 'MM':True, 'crossed':crossed})
 
-      # TODO: Add seeds to SmartDarting integrator
-
       # Randomly select seeds for new trajectory
       logweight = Es_MM/R*(1/T-1/To)
       weights = np.exp(-logweight+min(logweight))
@@ -886,7 +797,7 @@ last modified {2}
       Es_MM_o = Es_MM
       
       self._set_universe_evaluator(self.cool_protocol[-1])
-      self.sampler['cool_SmartDarting'].set_confs(confs, append=True)
+      self.tee(self.sampler['cool_SmartDarting'].set_confs(confs, append=True))
       
       state_start_time = time.time()
       (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
@@ -1255,14 +1166,14 @@ last modified {2}
         lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
         self.dock_protocol = [lambda_o]
         self._set_universe_evaluator(lambda_o)
-        seeds = [s for s in reversed(self._get_confs_to_rescore(site=True, minimize=True)[0])]
+        seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
 
         if seeds==[]:
           undock = False
         else:
           self.confs['dock']['starting_poses'] = seeds
-          self.sampler['dock_SmartDarting'].set_confs(seeds)
-          self.universe.setConfiguration(Configuration(self.universe,seeds[0]))
+          self.tee(self.sampler['dock_SmartDarting'].set_confs(seeds))
+          self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
           
           # Ramp up the temperature
           T_LOW = 20.
@@ -1328,8 +1239,6 @@ last modified {2}
         self._store_infinite_f_RL()
         raise Exception('Too many consecutive rejected stages!')
 
-      # TODO: Add seeds to SmartDarting integrator
-
       # Randomly select seeds for new trajectory
       u_o = self._u_kln([E],[lambda_o])
       u_n = self._u_kln([E],[lambda_n])
@@ -1366,6 +1275,7 @@ last modified {2}
       # Simulate
       sim_start_time = time.time()
       self._set_universe_evaluator(lambda_n)
+      self.tee(self.sampler['dock_SmartDarting'].set_confs(confs, append=True))
       (confs, Es_tot, lambda_n['delta_t'], Ht) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
 
@@ -2396,7 +2306,9 @@ last modified {2}
       else:
         self.confs[process]['samples'][state].append([])
 
-    # TODO: Change seeds to SmartDarting integrator
+    self._set_universe_evaluator(getattr(self,process+'_protocol')[-1])
+    self.tee(self.sampler[process+'_SmartDarting'].set_confs(\
+      self.confs[process]['samples'][state][-1], append=True))
 
     setattr(self,'_%s_cycle'%process,cycle + 1)
     self._save(process)
@@ -2429,11 +2341,11 @@ last modified {2}
     if (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
         and (lambda_k['a'] > 0.0) and (lambda_k['a'] < 0.01):
       MC_start_time = time.time()
-      results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=20)/20.
+      results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=10)/10.
       results['MC_time'] = (time.time() - MC_start_time)
     
     # Performs Smart Darting
-    self.sampler[process+'_SmartDarting'](ntrials=10, T=lambda_k['T'])
+    self.sampler[process+'_SmartDarting'](ntrials=5, T=lambda_k['T'])
     
     # Execute sampler
     if initialize:
@@ -2494,9 +2406,6 @@ last modified {2}
       self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
         process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())), \
         process=process)
-      mem_start = psutil.virtual_memory()
-      self.tee('  %f MiB available / %f MiB total'%(\
-        mem_start.available/1E6, mem_start.total/1E6))
       self.timing[process+'_repX_start'] = time.time()
       start_cycle = getattr(self,'_%s_cycle'%process)
       cycle_times = []
@@ -2621,48 +2530,55 @@ last modified {2}
       Es = {}
       from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
       minimizer = SteepestDescentMinimizer(self.universe)
-      for rep in range(5):
-        x_o = np.copy(self.universe.configuration().array)
-        e_o = self.universe.energy()
-        minimizer(steps = 50)
-        e_n = self.universe.energy()
-        if np.isnan(e_n) or (e_o-e_n)<1000:
-          self.universe.configuration().array = x_o
-          break
 
       minimized_confs = []
+      minimized_energies = []
       min_start_time = time.time()
       for conf in confs:
         self.universe.setConfiguration(Configuration(self.universe, conf))
-        minimizer(steps = 1000)
-        minimized_confs.append(np.copy(self.universe.configuration().array))
+        x_o = np.copy(self.universe.configuration().array)
+        e_o = self.universe.energy()
+        for rep in range(20):
+          minimizer(steps = 50)
+          x_n = np.copy(self.universe.configuration().array)
+          e_n = self.universe.energy()
+          if np.isnan(e_n) or (e_o-e_n)<1000:
+            self.universe.setConfiguration(Configuration(self.universe, x_o))
+            break
+          else:
+            x_o = x_n
+            e_o = e_n
+        if not np.isnan(e_o):
+          minimized_confs.append(x_o)
+          minimized_energies.append(e_o)
       confs = minimized_confs
+      energies = minimized_energies
       self.tee("\n  minimized %d configurations in "%len(confs) + \
         HMStime(time.time()-min_start_time))
-
-    # Evaluate energies
-    Etot = []
-    for conf in confs:
-      self.universe.setConfiguration(Configuration(self.universe, conf))
-      Etot.append(self.universe.energy())
+    else:
+      # Evaluate energies
+      energies = []
+      for conf in confs:
+        self.universe.setConfiguration(Configuration(self.universe, conf))
+        energies.append(self.universe.energy())
 
     # Sort configurations by DECREASING energy
-    Etot, confs = (list(l) for l in zip(*sorted(zip(Etot, confs), \
+    energies, confs = (list(l) for l in zip(*sorted(zip(energies, confs), \
       key=lambda p:p[0], reverse=True)))
 
     # Shrink or extend configuration and energy array
     if nconfs is not None:
       confs = confs[-nconfs:]
-      Etot = Etot[-nconfs:]
+      energies = energies[-nconfs:]
       while len(confs)<nconfs:
         confs.append(confs[-1])
-        Etot.append(Etot[-1])
+        energies.append(energies[-1])
         count['duplicated'] += 1
       count['nconfs'] = nconfs
     else:
       count['nconfs'] = len(confs)
     count['minimized'] = {True:' minimized', False:''}[minimize]
-    Es['total'] = Etot
+    Es['total'] = energies
 
     self.tee("  keeping {nconfs}{minimized} configurations out of {xtal} from xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
     return (confs, Es)

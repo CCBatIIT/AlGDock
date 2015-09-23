@@ -1,3 +1,5 @@
+# The example is 1of6
+
 import AlGDock.BindingPMF
 import os, shutil, glob
 import time
