@@ -125,7 +125,8 @@ class BPMF_plots(BPMF):
 
   def show_samples(self, process='dock', state=-1, show_replicas=False, \
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
-        save_image=False, image_labels=None, execute=True, quit=False, \
+        save_image=False, image_labels=None, execute=True, \
+        principal_axes_alignment=False, quit=False, \
         view_args={}):
     # Gather ligand coordinates
     if show_replicas:
@@ -241,7 +242,7 @@ class BPMF_plots(BPMF):
     script += 'display resetview\n'
 
     script += self.parse_view_args(view_args,\
-      principal_axes_alignment=(show_receptor and show_ref_ligand), \
+      principal_axes_alignment=principal_axes_alignment, \
       nmolecules=len(molids), molid_receptor=molid_receptor)
 
     if save_image:

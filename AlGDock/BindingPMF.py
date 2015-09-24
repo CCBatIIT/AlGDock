@@ -372,7 +372,7 @@ last modified {2}
       'MCMC_moves':1,
       'rmsd':False}.items() + \
       [('receptor_'+phase,None) for phase in allowed_phases])
-    args['default_dock']['snaps_per_independent'] = 25.0
+    args['default_dock']['snaps_per_independent'] = 20.0
 
     # Store passed arguments in dictionary
     for p in ['cool','dock']:
@@ -578,7 +578,7 @@ last modified {2}
       self.universe, self.molecule, True)
     from AlGDock.Integrators.ExternalMC.ExternalMC import ExternalMCIntegrator
     self.sampler['ExternalMC'] = ExternalMCIntegrator(\
-      self.universe, self.molecule, step_size=1.0*MMTK.Units.Ang)
+      self.universe, self.molecule, step_size=0.25*MMTK.Units.Ang)
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'NUTS':
@@ -1310,7 +1310,7 @@ last modified {2}
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
           lambda_o = lambda_n
-          self.tee("  the estimated replica exchange acceptance rate is %f"%mean_acc)
+          self.tee("  the estimated replica exchange acceptance rate is %f\n"%mean_acc)
 
           if (not self.params['dock']['keep_intermediate']):
             if len(self.dock_protocol)>(2+(not undock)):
@@ -1348,10 +1348,10 @@ last modified {2}
          ((time.time()-self.timing['last_dock_save'])>5*60):
         self._save('dock')
         self.timing['last_dock_save'] = time.time()
+        self.tee("")
         saved = True
       else:
         saved = False
-      self.tee("")
 
       if self.run_type=='timed':
         remaining_time = self.timing['max']*60 - \
@@ -2217,7 +2217,8 @@ last modified {2}
                  max(int(np.ceil(self.params[process]['sweeps_per_cycle']/per_independent)),1))
 
     store_indicies = np.array(\
-      range(min(stride-1,self.params[process]['sweeps_per_cycle']-1), self.params[process]['sweeps_per_cycle'], stride), dtype=int)
+      range(min(stride-1,self.params[process]['sweeps_per_cycle']-1), \
+      self.params[process]['sweeps_per_cycle'], stride), dtype=int)
     nsaved = len(store_indicies)
 
     self.tee("  storing %d configurations for %d replicas"%(nsaved, len(confs)) + \
@@ -2300,9 +2301,9 @@ last modified {2}
     
     # Perform MCMC moves
     if (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
-        and (lambda_k['a'] < 0.01):
+        and (lambda_k['a'] < 0.1):
       time_start_ExternalMC = time.time()
-      dat = self.sampler['ExternalMC'](ntrials=20, T=lambda_k['T'])
+      dat = self.sampler['ExternalMC'](ntrials=10, T=lambda_k['T'])
       results['acc_ExternalMC'] = dat[2]
       results['time_ExternalMC'] = (time.time() - time_start_ExternalMC)
     else:
@@ -2310,9 +2311,6 @@ last modified {2}
 
     # Execute sampler
     if initialize:
-      if self.params[process]['darts_per_seed']>0:
-        self.sampler[process+'_SmartDarting'](\
-          ntrials=self.params[process]['darts_per_seed'], T=lambda_k['T'])
       sampler = self.sampler['init']
       steps = self.params[process]['steps_per_seed']
       steps_per_trial = self.params[process]['steps_per_seed']/10
@@ -2323,14 +2321,6 @@ last modified {2}
       steps_per_trial = steps
       ndarts = self.params[process]['darts_per_sweep']
 
-    if ndarts>0:
-      time_start_SmartDarting = time.time()
-      dat = self.sampler[process+'_SmartDarting'](ntrials=ndarts, T=lambda_k['T'])
-      results['acc_SmartDarting'] = dat[2]
-      results['time_SmartDarting'] = (time.time() - time_start_SmartDarting)
-    else:
-      results['acc_SmartDarting'] = 0.
-
     (confs, potEs, Ht, delta_t) = sampler(\
       steps=steps, \
       steps_per_trial=steps_per_trial, \
@@ -2339,9 +2329,17 @@ last modified {2}
       adapt=initialize, \
       seed=int(time.time()+reference))
 
+    if ndarts>0:
+      time_start_SmartDarting = time.time()
+      dat = self.sampler[process+'_SmartDarting'](ntrials=ndarts, T=lambda_k['T'])
+      results['acc_SmartDarting'] = dat[2]
+      results['time_SmartDarting'] = (time.time() - time_start_SmartDarting)
+    else:
+      results['acc_SmartDarting'] = 0.
+
     # Store and return results
-    results['confs'] = np.copy(confs[-1])
-    results['E_MM'] = potEs[-1]
+    results['confs'] = np.copy(self.universe.copyConfiguration().array)
+    results['E_MM'] = self.universe.energy()
     results['Ht'] = Ht
     results['delta_t'] = delta_t
     results['reference'] = reference
@@ -2711,13 +2709,19 @@ last modified {2}
         if undock:
           a = lambda_o['a'] - dL
           if a < 0.0:
-            a = 0.0
-            crossed = True
+            if pow>0:
+              a = lambda_o['a']*(1-0.8**pow)
+            else:
+              a = 0.0
+              crossed = True
         else:
           a = lambda_o['a'] + dL
           if a > 1.0:
-            a = 1.0
-            crossed = True
+            if pow>0:
+              a = lambda_o['a'] + (1-lambda_o['a'])*0.8**pow
+            else:
+              a = 1.0
+              crossed = True
         return self._lambda(a, crossed=crossed)
       else:
         # Repeats the previous stage

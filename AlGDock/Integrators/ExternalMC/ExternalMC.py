@@ -64,7 +64,12 @@ class ExternalMCIntegrator(Dynamics.Integrator):
     
     for c in range(ntrials):
       step = np.random.randn(3)*self.step_size
-      xn = np.dot((xo.array - com), random_rotate()) + com + step
+      if c%2==0:
+        # Random translation and full rotation
+        xn = np.dot((xo.array - com), random_rotate()) + com + step
+      else:
+        # Random translation
+        xn = xo.array + step
       self.universe.setConfiguration(Configuration(self.universe,xn))
       en = self.universe.energy()
       if ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
