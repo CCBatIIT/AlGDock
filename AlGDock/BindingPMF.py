@@ -59,30 +59,6 @@ term_map = {
 # Auxilliary functions #
 ########################
 
-def random_rotate():
-  """
-  Return a random rotation matrix
-  """
-  u = np.random.uniform(size=3)
-
-  # Random quaternion
-  q = np.array([np.sqrt(1-u[0])*np.sin(2*np.pi*u[1]),
-               np.sqrt(1-u[0])*np.cos(2*np.pi*u[1]),
-               np.sqrt(u[0])*np.sin(2*np.pi*u[2]),
-               np.sqrt(u[0])*np.cos(2*np.pi*u[2])])
-  
-  # Convert the quaternion into a rotation matrix 
-  rotMat = np.array([[q[0]*q[0] + q[1]*q[1] - q[2]*q[2] - q[3]*q[3],
-                     2*q[1]*q[2] - 2*q[0]*q[3],
-                     2*q[1]*q[3] + 2*q[0]*q[2]],
-                    [2*q[1]*q[2] + 2*q[0]*q[3],
-                     q[0]*q[0] - q[1]*q[1] + q[2]*q[2] - q[3]*q[3],
-                     2*q[2]*q[3] - 2*q[0]*q[1]],
-                    [2*q[1]*q[3] - 2*q[0]*q[2],
-                     2*q[2]*q[3] + 2*q[0]*q[1],
-                     q[0]*q[0] - q[1]*q[1] - q[2]*q[2] + q[3]*q[3]]])
-  return rotMat
-
 def HMStime(s):
   """
   Given the time in seconds, an appropriately formatted string.
@@ -374,13 +350,15 @@ last modified {2}
         'T_HIGH':600.,
         'T_TARGET':300.,
         'sampler':'NUTS',
-        'seeds_per_state':100,
-        'steps_per_seed':2500,
+        'steps_per_seed':1000,
+        'seeds_per_state':50,
+        'darts_per_seed':0,
         'repX_cycles':20,
         'min_repX_acc':0.3,
-        'sweeps_per_cycle':200,
-        'attempts_per_sweep':100,
-        'steps_per_sweep':1000,
+        'sweeps_per_cycle':1000,
+        'attempts_per_sweep':25,
+        'steps_per_sweep':50,
+        'darts_per_sweep':0,
         'snaps_per_independent':3.0,
         'phases':['NAMD_Gas','NAMD_GBSA'],
         'keep_intermediate':False,
@@ -598,6 +576,9 @@ last modified {2}
       self.universe, self.molecule, False)
     self.sampler['dock_SmartDarting'] = SmartDartingIntegrator(\
       self.universe, self.molecule, True)
+    from AlGDock.Integrators.ExternalMC.ExternalMC import ExternalMCIntegrator
+    self.sampler['ExternalMC'] = ExternalMCIntegrator(\
+      self.universe, self.molecule, step_size=1.0*MMTK.Units.Ang)
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'NUTS':
@@ -740,7 +721,7 @@ last modified {2}
       # Run at starting temperature
       state_start_time = time.time()
       conf = self.universe.configuration().array
-      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
+      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], acc_metrics) = \
         self._initial_sim_state(\
         [conf for n in range(self.params['cool']['seeds_per_state'])], \
         'cool', self.cool_protocol[-1])
@@ -752,8 +733,9 @@ last modified {2}
       self.tee("  generated %d configurations "%len(confs) + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + HMStime(time.time()-state_start_time))
-      self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
-        self.cool_protocol[-1]['delta_t'], Ht, tL_tensor))
+      self.tee("  dt=%f ps, Ht=%f, acc_ExternalMC=%f, acc_SmartDarting=%f, tL_tensor=%e"%(\
+        self.cool_protocol[-1]['delta_t'], acc_metrics['Ht'],
+        acc_metrics['ExternalMC'], acc_metrics['SmartDarting'], tL_tensor))
     else:
       self.tee("\n>>> Initial %s of the ligand "%direction_name + \
         "from %d K to %d K, "%(T_START,T_END) + "continuing at " + \
@@ -800,14 +782,15 @@ last modified {2}
       self.tee(self.sampler['cool_SmartDarting'].set_confs(confs, append=True))
       
       state_start_time = time.time()
-      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], Ht) = \
+      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], acc_metrics) = \
         self._initial_sim_state(\
         [confs[ind] for ind in seedIndicies], 'cool', self.cool_protocol[-1])
       self.tee("  generated %d configurations "%len(confs) + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + (HMStime(time.time()-state_start_time)))
-      self.tee("  dt=%f ps, Ht=%f, sigma=%f"%(\
-        self.cool_protocol[-1]['delta_t'], Ht, Es_MM.std()))
+      self.tee("  dt=%f ps, Ht=%f, acc_ExternalMC=%f, acc_SmartDarting=%f, tL_tensor=%e"%(\
+        self.cool_protocol[-1]['delta_t'], acc_metrics['Ht'],
+        acc_metrics['ExternalMC'], acc_metrics['SmartDarting'], tL_tensor))
 
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
@@ -1067,6 +1050,7 @@ last modified {2}
       self._max_n_rot = 100
       self._n_rot = 100
       self._random_rotT = np.ndarray((self._max_n_rot,3,3))
+      from AlGDock.Integrators.ExternalMC.ExternalMC import random_rotate
       for ind in range(self._max_n_rot):
         self._random_rotT[ind,:,:] = np.transpose(random_rotate())
     else:
@@ -1186,7 +1170,7 @@ last modified {2}
 
           # Simulate
           sim_start_time = time.time()
-          (confs, Es_tot, lambda_o['delta_t'], Ht) = \
+          (confs, Es_tot, lambda_o['delta_t'], acc_metrics) = \
             self._initial_sim_state(\
               seeds*self.params['dock']['seeds_per_state'], 'dock', lambda_o)
 
@@ -1199,8 +1183,10 @@ last modified {2}
           self.tee("  generated %d configurations "%len(confs) + \
                    "with progress %e "%lambda_o['a'] + \
                    "in " + HMStime(time.time()-sim_start_time))
-          self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
-            lambda_o['delta_t'],Ht,self._tL_tensor(E,lambda_o)))
+          self.tee("  dt=%f ps, Ht=%f, acc_ExternalMC=%f, acc_SmartDarting=%f, tL_tensor=%e"%(\
+            lambda_o['delta_t'], acc_metrics['Ht'],
+            acc_metrics['ExternalMC'], acc_metrics['SmartDarting'],
+            self._tL_tensor(E,lambda_o)))
     
       if not undock:
         (cool0_confs, E) = self.random_dock()
@@ -1276,7 +1262,7 @@ last modified {2}
       sim_start_time = time.time()
       self._set_universe_evaluator(lambda_n)
       self.tee(self.sampler['dock_SmartDarting'].set_confs(confs, append=True))
-      (confs, Es_tot, lambda_n['delta_t'], Ht) = \
+      (confs, Es_tot, lambda_n['delta_t'], acc_metrics) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
 
       # Get state energies
@@ -1285,8 +1271,10 @@ last modified {2}
       self.tee("  generated %d configurations "%len(confs) + \
                "with progress %f "%lambda_n['a'] + \
                "in " + HMStime(time.time()-sim_start_time))
-      self.tee("  dt=%f ps, Ht=%f, tL_tensor=%e"%(\
-        lambda_n['delta_t'],Ht,self._tL_tensor(E,lambda_n)))
+      self.tee("  dt=%f ps, Ht=%f, acc_ExternalMC=%f, acc_SmartDarting=%f, tL_tensor=%e"%(\
+        lambda_n['delta_t'], acc_metrics['Ht'],
+        acc_metrics['ExternalMC'], acc_metrics['SmartDarting'],
+        self._tL_tensor(E,lambda_n)))
 
       # Decide whether to keep the state
       if len(self.dock_protocol)>(1+(not undock)):
@@ -1359,12 +1347,12 @@ last modified {2}
       if ('last_dock_save' not in self.timing) or \
          ((time.time()-self.timing['last_dock_save'])>5*60):
         self._save('dock')
-        self.tee("")
         self.timing['last_dock_save'] = time.time()
         saved = True
       else:
         saved = False
-      
+      self.tee("")
+
       if self.run_type=='timed':
         remaining_time = self.timing['max']*60 - \
           (time.time()-self.timing['start'])
@@ -1908,42 +1896,6 @@ last modified {2}
     self.universe._evaluator[(None,None,None)] = eval
     self._evaluators[evaluator_key] = eval
 
-  def _MC_translate_rotate(self, lambda_k, trials=20):
-    """
-    Conducts Monte Carlo translation and rotation moves.
-    """
-    # It does not seem worth creating a special evaluator
-    # for a small number of trials
-    if trials>100:
-      lambda_noMM = copy.deepcopy(lambda_k)
-      lambda_noMM['MM'] = False
-      lambda_noMM['site'] = False
-      self._set_universe_evaluator(lambda_noMM)
-
-    step_size = min(\
-      1.0*MMTK.Units.Ang, \
-      self._forceFields['site'].max_R*MMTK.Units.nm/10.)
-
-    acc = 0
-    xo = self.universe.copyConfiguration()
-    eo = self.universe.energy()
-    com = self.universe.centerOfMass().array
-    
-    for c in range(trials):
-      step = np.random.randn(3)*step_size
-      xn = np.dot((xo.array - com), random_rotate()) + com + step
-      self.universe.setConfiguration(Configuration(self.universe,xn))
-      en = self.universe.energy()
-      if ((en<eo) or (np.random.random()<np.exp(-(en-eo)/self.RT))):
-        acc += 1
-        xo = self.universe.copyConfiguration()
-        eo = en
-        com += step
-      else:
-        self.universe.setConfiguration(xo)
-
-    return acc
-
   def _initial_sim_state(self, seeds, process, lambda_k):
     """
     Initializes a state, returning the configurations and potential energy.
@@ -1975,11 +1927,14 @@ last modified {2}
 
     confs = [result['confs'] for result in results]
     potEs = [result['E_MM'] for result in results]
-    Ht = np.mean(np.array([result['Ht'] for result in results]))
-    delta_t = np.median(np.array([results['delta_t'] for results in results]))
+    delta_t = np.median([result['delta_t'] for result in results])
     delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
+    acc_metrics = {\
+      'Ht':np.mean([result['Ht'] for result in results]), \
+      'ExternalMC':np.mean([result['acc_ExternalMC'] for result in results]), \
+      'SmartDarting':np.mean([result['acc_SmartDarting'] for result in results])}
 
-    return (confs, np.array(potEs), delta_t, Ht)
+    return (confs, np.array(potEs), delta_t, acc_metrics)
   
   def _replica_exchange(self, process):
     """
@@ -2149,20 +2104,21 @@ last modified {2}
       torsion_threshold = self.params[process]['GMC_tors_threshold']
       gMC_attempt_count = 0
       gMC_acc_count     = 0
-      gMC_time = 0.0
+      time_gMC = 0.0
       BAT_converter, state_indices_to_swap = gMC_initial_setup()
 
     # Do replica exchange
-    MC_time = 0.0
-    repX_time = 0.0
+    time_ExternalMC = 0.0
+    time_SmartDarting = 0.0
+    time_repX = 0.0
     state_inds = range(K)
     inv_state_inds = range(K)
     for sweep in range(self.params[process]['sweeps_per_cycle']):
       E = {}
       for term in terms:
         E[term] = np.zeros(K, dtype=float)
-      if process=='dock':
-        E['acc_MC'] = np.zeros(K, dtype=float)
+      E['acc_ExternalMC'] = np.zeros(K, dtype=float)
+      E['acc_SmartDarting'] = np.zeros(K, dtype=float)
       Ht = np.zeros(K, dtype=float)
       # Sample within each state
       if self._cores>1:
@@ -2186,16 +2142,19 @@ last modified {2}
             lambdas[state_inds[k]], False, k) for k in range(K)]
       # GMC
       if whether_do_gMC:
-        gMC_start_time = time.time()
+        time_start_gMC = time.time()
         att_count, acc_count = do_gMC( nr_gMC_attempts, BAT_converter, state_indices_to_swap, torsion_threshold )
         gMC_attempt_count += att_count
         gMC_acc_count     += acc_count
-        gMC_time =+ ( time.time() - gMC_start_time )
+        time_gMC =+ ( time.time() - time_start_gMC )
       # Store results
       for k in range(K):
-        if 'acc_MC' in results[k].keys():
-          E['acc_MC'][k] = results[k]['acc_MC']
-          MC_time += results[k]['MC_time']
+        E['acc_ExternalMC'][k] = results[k]['acc_ExternalMC']
+        E['acc_SmartDarting'][k] = results[k]['acc_SmartDarting']
+        if 'time_ExternalMC' in results[k].keys():
+          time_ExternalMC += results[k]['time_ExternalMC']
+        if 'time_SmartDarting' in results[k].keys():
+          time_SmartDarting += results[k]['time_SmartDarting']
         confs[k] = results[k]['confs'] # [-1]
         if process == 'cool':
             E['MM'][k] = results[k]['E_MM'] # [-1]
@@ -2221,7 +2180,7 @@ last modified {2}
             state_inds[a],state_inds[b] = state_inds[b],state_inds[a]
             inv_state_inds[state_inds[a]],inv_state_inds[state_inds[b]] = \
               inv_state_inds[state_inds[b]],inv_state_inds[state_inds[a]]
-      repX_time += (time.time()-repX_start_time)
+      time_repX += (time.time()-repX_start_time)
       # Store data in local variables
       storage['confs'].append(list(confs))
       storage['state_inds'].append(list(state_inds))
@@ -2233,7 +2192,7 @@ last modified {2}
         gMC_acc_count, gMC_attempt_count, \
         float(gMC_acc_count)/float(gMC_attempt_count) \
           if gMC_attempt_count > 0 else 0, \
-        HMStime(gMC_time)))
+        HMStime(time_gMC)))
 
     # Estimate relaxation time from empirical state transition matrix
     state_inds = np.array(storage['state_inds'])
@@ -2264,8 +2223,9 @@ last modified {2}
     self.tee("  storing %d configurations for %d replicas"%(nsaved, len(confs)) + \
       " in cycle %d"%cycle + \
       " (tau2=%f, tau_ac=%f)"%(tau2,tau_ac))
-    self.tee("  with %s for MC"%(HMStime(MC_time)) + \
-      " and %s for replica exchange"%(HMStime(repX_time)) + \
+    self.tee("  with %s for external MC"%(HMStime(time_ExternalMC)) + \
+      " and %s for smart darting"%(HMStime(time_SmartDarting)) + \
+      " and %s for replica exchange"%(HMStime(time_repX)) + \
       " in " + HMStime(time.time()-cycle_start_time))
 
     # Get indicies for storing global variables
@@ -2277,9 +2237,10 @@ last modified {2}
 
     # Reorder energies and replicas for storage
     if process=='dock':
-      terms.append('acc_MC') # Make sure to save the acceptance probability
+      terms.append('acc_ExternalMC') # Make sure to save the acceptance probability
       if self.params['dock']['rmsd'] is not False:
         terms.append('rmsd') # Make sure to save the rmsd
+    terms.append('acc_SmartDarting')
     Es = []
     for state in range(K):
       E_state = {}
@@ -2339,30 +2300,43 @@ last modified {2}
     
     # Perform MCMC moves
     if (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
-        and (lambda_k['a'] > 0.0) and (lambda_k['a'] < 0.01):
-      MC_start_time = time.time()
-      results['acc_MC'] = self._MC_translate_rotate(lambda_k, trials=10)/10.
-      results['MC_time'] = (time.time() - MC_start_time)
-    
-    # Performs Smart Darting
-    self.sampler[process+'_SmartDarting'](ntrials=5, T=lambda_k['T'])
-    
+        and (lambda_k['a'] < 0.01):
+      time_start_ExternalMC = time.time()
+      dat = self.sampler['ExternalMC'](ntrials=20, T=lambda_k['T'])
+      results['acc_ExternalMC'] = dat[2]
+      results['time_ExternalMC'] = (time.time() - time_start_ExternalMC)
+    else:
+      results['acc_ExternalMC'] = 0.
+
     # Execute sampler
     if initialize:
+      if self.params[process]['darts_per_seed']>0:
+        self.sampler[process+'_SmartDarting'](\
+          ntrials=self.params[process]['darts_per_seed'], T=lambda_k['T'])
       sampler = self.sampler['init']
       steps = self.params[process]['steps_per_seed']
       steps_per_trial = self.params[process]['steps_per_seed']/10
+      ndarts = self.params[process]['darts_per_seed']
     else:
       sampler = self.sampler[process]
       steps = self.params[process]['steps_per_sweep']
       steps_per_trial = steps
+      ndarts = self.params[process]['darts_per_sweep']
+
+    if ndarts>0:
+      time_start_SmartDarting = time.time()
+      dat = self.sampler[process+'_SmartDarting'](ntrials=ndarts, T=lambda_k['T'])
+      results['acc_SmartDarting'] = dat[2]
+      results['time_SmartDarting'] = (time.time() - time_start_SmartDarting)
+    else:
+      results['acc_SmartDarting'] = 0.
 
     (confs, potEs, Ht, delta_t) = sampler(\
       steps=steps, \
       steps_per_trial=steps_per_trial, \
       T=lambda_k['T'], delta_t=delta_t, \
-      normalize=(process=='cool'),
-      adapt=initialize,
+      normalize=(process=='cool'), \
+      adapt=initialize, \
       seed=int(time.time()+reference))
 
     # Store and return results
@@ -2509,7 +2483,9 @@ last modified {2}
       # Filters out configurations not in the binding site
       confs_in_site = []
       Es_in_site = dict([(label,[]) for label in Es.keys()])
-      old_eval = self.universe._evaluator[(None,None,None)]
+      old_eval = None
+      if (None,None,None) in self.universe._evaluator.keys():
+        old_eval = self.universe._evaluator[(None,None,None)]
       self._set_universe_evaluator({'site':True,'T':self.T_TARGET})
       for n in range(len(confs)):
         self.universe.setConfiguration(Configuration(self.universe, confs[n]))
@@ -2517,10 +2493,11 @@ last modified {2}
           confs_in_site.append(confs[n])
           for label in Es.keys():
             Es_in_site[label].append(Es[label][n])
-      self.universe._evaluator[(None,None,None)] = old_eval
+      if old_eval is not None:
+        self.universe._evaluator[(None,None,None)] = old_eval
       confs = confs_in_site
       Es = Es_in_site
-
+      
     try:
       self.universe.energy()
     except ValueError:

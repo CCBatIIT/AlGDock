@@ -169,7 +169,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Generate a trial move
       xn_BAT = np.copy(xo_BAT)
       xn_BAT[self._BAT_to_perturb] = xo_BAT[self._BAT_to_perturb] + self.darts[closest_pose_o][dart_towards]
-      xn_Cartesian = Configuration(self.universe,self._BAT_util.Cartesian(xn_BAT)) # Sets the universe
+      xn_Cartesian = Configuration(self.universe,\
+        self._BAT_util.Cartesian(xn_BAT)) # Sets the universe
       en = self.universe.energy()
       if self.extended:
         closest_pose_n = self._closest_pose_Cartesian(\
@@ -178,9 +179,10 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         closest_pose_n = self._closest_pose_BAT(xn_BAT[self._BAT_to_perturb])
         
       # Accept or reject the trial move
-      if (en<eo) or (np.random.random()<np.exp(-(en-eo)/RT)*\
+      if (closest_pose_n!=closest_pose_o) and \
+        ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT)*\
           self._p_attempt(closest_pose_n,closest_pose_o)/\
-          self._p_attempt(closest_pose_o,dart_towards)):
+          self._p_attempt(closest_pose_o,dart_towards))):
         
         if en>(1000):
           print 'eo: %f, en: %f'%(eo,en)
@@ -199,4 +201,4 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       else:
         self.universe.setConfiguration(xo_Cartesian)
 
-    return ([np.copy(xo_Cartesian)], [en], float(acc)/float(ntrials), 0.0)
+    return ([np.copy(xo_Cartesian.array)], [en], float(acc)/float(ntrials), 0.0)

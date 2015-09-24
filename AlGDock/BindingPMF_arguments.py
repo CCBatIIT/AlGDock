@@ -68,6 +68,8 @@ arguments = {
     'help':'Number of starting configurations in each state during initialization'},
   'steps_per_seed':{'type':int,
     'help':'Number of MD steps per state during initialization'},
+  'darts_per_seed':{'type':int,
+    'help':'Number of smart darting attempts for each seed during initialization'},
   # For replica exchange
   'repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking and cooling'},
@@ -77,6 +79,8 @@ arguments = {
     'help':'Number of replica exchange attempts per sweep'},
   'steps_per_sweep':{'type':int,
     'help':'Number of MD steps per replica exchange sweep'},
+  'darts_per_sweep':{'type':int,
+    'help':'Number of smart darting attempts per replica exchange sweep'},
   'snaps_per_independent':{'type':int,
     'help':'Number of snapshots per independent sample'},
   'keep_intermediate':{'action':'store_true',
@@ -110,8 +114,9 @@ arguments = {
 import copy
 for process in ['cool','dock']:
   for key in ['protocol', 'therm_speed', 'sampler',
-      'seeds_per_state', 'steps_per_seed',
-      'sweeps_per_cycle', 'attempts_per_sweep', 'steps_per_sweep',
+      'seeds_per_state', 'steps_per_seed', 'darts_per_seed',
+      'sweeps_per_cycle', 'attempts_per_sweep',
+      'steps_per_sweep', 'darts_per_sweep',
       'snaps_per_independent', 'keep_intermediate']:
     arguments[process+'_'+key] = copy.deepcopy(arguments[key])
 

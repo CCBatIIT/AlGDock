@@ -334,8 +334,8 @@ rigid receptor.
                    'AlGDock.Integrators.VelocityVerlet',
                    'AlGDock.Integrators.HamiltonianMonteCarlo',
                    'AlGDock.Integrators.NUTS',
-                   'AlGDock.Integrators.SmartDarting',
-                   # 'AlGDock.Integrators.ExternalMC',
+                   'AlGDock.Integrators.ExternalMC',
+                   'AlGDock.Integrators.SmartDarting'
                    ],
        ext_package = 'AlGDock.'+sys.platform,
 
