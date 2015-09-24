@@ -70,7 +70,7 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
 
           # Store previous configuration and initial energy
-          xo = self.universe.copyConfiguration()
+          xo = self.universe.configuration()
           pe_o = self.universe.energy()
           eo = pe_o + self.universe.kineticEnergy()
 
@@ -90,7 +90,7 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           else:
             self.universe.setConfiguration(xo)
             pe_n = pe_o
-          xs.append(self.universe.copyConfiguration().array)
+          xs.append(self.universe.configuration().array)
           energies.append(pe_n)
   
         return (xs, energies, float(acc)/float(ntrials), delta_t)

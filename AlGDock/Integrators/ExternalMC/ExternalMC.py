@@ -58,7 +58,7 @@ class ExternalMCIntegrator(Dynamics.Integrator):
     ntrials = self.getOption('ntrials')
 
     acc = 0
-    xo = self.universe.copyConfiguration()
+    xo = np.copy(self.universe.configuration().array)
     eo = self.universe.energy()
     com = self.universe.centerOfMass().array
     
@@ -66,18 +66,18 @@ class ExternalMCIntegrator(Dynamics.Integrator):
       step = np.random.randn(3)*self.step_size
       if c%2==0:
         # Random translation and full rotation
-        xn = np.dot((xo.array - com), random_rotate()) + com + step
+        xn = np.dot((xo - com), random_rotate()) + com + step
       else:
         # Random translation
-        xn = xo.array + step
+        xn = xo + step
       self.universe.setConfiguration(Configuration(self.universe,xn))
       en = self.universe.energy()
       if ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
         acc += 1
-        xo = self.universe.copyConfiguration()
+        xo = xn
         eo = en
         com += step
       else:
-        self.universe.setConfiguration(xo)
+        self.universe.setConfiguration(Configuration(self.universe,xo))
 
-    return ([np.copy(xo.array)], [en], float(acc)/float(ntrials), 0.0)
+    return ([np.copy(xo)], [en], float(acc)/float(ntrials), 0.0)

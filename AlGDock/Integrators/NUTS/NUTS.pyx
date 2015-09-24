@@ -64,7 +64,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
   """
 
   cdef double RT
-  cdef np.ndarray x, v, g, m
+  cdef np.ndarray x, v, g, m, heavy_atom_inds
   cdef energy_data energy
 
   def __init__(self, universe, **options):
@@ -89,6 +89,8 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         self, universe, options, "NUTS integrator")
     # Supported features: none for the moment, to keep it simple
     self.features = []
+
+    self.heavy_atom_inds = self.universe.masses().array>1.008
 
   default_options = {'first_step': 0, 'steps': 100, 'delta_t': 1.*Units.fs,
                      'background': False, 'threads': None,
@@ -117,8 +119,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         free(self.tvars)
         self.tvars = NULL
     configuration = self.universe.configuration()
-    self.conf_array = configuration.array
-    self.declareTrajectoryVariable_array(self.conf_array,
+    self.declareTrajectoryVariable_array(configuration.array,
                                          "configuration",
                                          "Configuration:\n",
                                          length_unit_name,
@@ -399,7 +400,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       # Is the simulation wildly inaccurate
       sprime = (np.abs(joint_o - joint) < 50.) and (np.abs((e_o - eprime)/self.RT) < 50.)
       # Compute the acceptance probability
-      alphaprime = min(1, np.exp(joint - joint_o))
+      alphaprime = min(1, np.exp(joint - joint_o)) if sprime else 0.
       # Set the return values---minus=plus for all things here, since the
       # "tree" is of depth 0.
       return (np.copy(self.x), np.copy(self.v),
@@ -444,6 +445,6 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
 
   def stop_criterion(NUTSIntegrator self, xminus, xplus, vminus, vplus):
     cdef np.ndarray[double] thetavec
-    thetavec = np.ravel(xplus-xminus)
-    return (np.dot(thetavec,np.ravel(vminus))>0) and \
-           (np.dot(thetavec,np.ravel(vplus))>0)
+    thetavec = np.ravel(xplus[self.heavy_atom_inds]-xminus[self.heavy_atom_inds])
+    return (np.dot(thetavec,np.ravel(vminus[self.heavy_atom_inds]))>0) and \
+           (np.dot(thetavec,np.ravel(vplus[self.heavy_atom_inds]))>0)

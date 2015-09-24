@@ -2338,7 +2338,7 @@ last modified {2}
       results['acc_SmartDarting'] = 0.
 
     # Store and return results
-    results['confs'] = np.copy(self.universe.copyConfiguration().array)
+    results['confs'] = np.copy(self.universe.configuration().array)
     results['E_MM'] = self.universe.energy()
     results['Ht'] = Ht
     results['delta_t'] = delta_t

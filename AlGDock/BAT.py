@@ -211,6 +211,7 @@ proc label_atoms { molid seltext } {
 label_atoms 0 all
 """
     if dcdFN is not None:
+      script += 'animate delete all $ligand\n'
       script += 'mol addfile '+dcdFN+' type dcd waitfor all\n'
     scriptF = open('showMolecule.vmd','w')
     scriptF.write(script)

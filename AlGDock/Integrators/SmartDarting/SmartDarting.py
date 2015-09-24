@@ -138,7 +138,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
 
   def __call__(self, **options):
     if (self.confs is None) or len(self.confs)<3:
-      return ([self.universe.copyConfiguration()], [self.universe.energy()], 0.0, 0.0)
+      return ([self.universe.configuration()], [self.universe.energy()], 0.0, 0.0)
     
     # Process the keyword arguments
     self.setCallOptions(options)
@@ -152,12 +152,12 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     energies = []
     closest_poses = []
 
-    xo_Cartesian = self.universe.copyConfiguration()
+    xo_Cartesian = np.copy(self.universe.configuration().array)
     xo_BAT = np.array(self._BAT_util.BAT(extended=self.extended))
     eo = self.universe.energy()
     if self.extended:
       closest_pose_o = self._closest_pose_Cartesian(\
-        xo_Cartesian.array[self.molecule.heavy_atoms,:])
+        xo_Cartesian[self.molecule.heavy_atoms,:])
     else:
       closest_pose_o = self._closest_pose_BAT(xo_BAT[self._BAT_to_perturb])
       
@@ -169,12 +169,11 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Generate a trial move
       xn_BAT = np.copy(xo_BAT)
       xn_BAT[self._BAT_to_perturb] = xo_BAT[self._BAT_to_perturb] + self.darts[closest_pose_o][dart_towards]
-      xn_Cartesian = Configuration(self.universe,\
-        self._BAT_util.Cartesian(xn_BAT)) # Sets the universe
+      xn_Cartesian = self._BAT_util.Cartesian(xn_BAT) # Also sets the universe
       en = self.universe.energy()
       if self.extended:
         closest_pose_n = self._closest_pose_Cartesian(\
-          xn_Cartesian.array[self.molecule.heavy_atoms,:])
+          xn_Cartesian[self.molecule.heavy_atoms,:])
       else:
         closest_pose_n = self._closest_pose_BAT(xn_BAT[self._BAT_to_perturb])
         
@@ -193,12 +192,12 @@ class SmartDartingIntegrator(Dynamics.Integrator):
             self._p_attempt(closest_pose_n,closest_pose_o))
           # raise Exception('High energy pose!')
         
-        xo_Cartesian = xn_Cartesian
+        xo_Cartesian = np.copy(xn_Cartesian)
         xo_BAT = xn_BAT
-        eo = en
+        eo = 1.*en
         closest_pose_o = closest_pose_n
         acc += 1
       else:
-        self.universe.setConfiguration(xo_Cartesian)
+        self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
 
-    return ([np.copy(xo_Cartesian.array)], [en], float(acc)/float(ntrials), 0.0)
+    return ([np.copy(xo_Cartesian)], [en], float(acc)/float(ntrials), 0.0)

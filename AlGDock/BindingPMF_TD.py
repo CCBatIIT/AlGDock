@@ -1898,7 +1898,7 @@ last modified {2}
       self._forceFields['site'].max_R*MMTK.Units.nm/10.)
 
     acc = 0
-    xo = self.universe.copyConfiguration()
+    xo = self.universe.configuration()
     eo = self.universe.energy()
     com = self.universe.centerOfMass().array
     
@@ -1913,7 +1913,7 @@ last modified {2}
 #        write_flag = 1
         print "   rot acc en ", en, " eo ", eo, " exp ", expression
         acc += 1
-        xo = self.universe.copyConfiguration()
+        xo = self.universe.configuration()
         eo = en
         com += step
       else:

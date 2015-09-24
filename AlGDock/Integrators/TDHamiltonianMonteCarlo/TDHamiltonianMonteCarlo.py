@@ -112,7 +112,7 @@ class TDHamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           #print
 
           # Store previous configuration and initial energy
-          xo = self.universe.copyConfiguration()
+          xo = self.universe.configuration()
           pe_o = self.universe.energy()
           eo = pe_o + self.universe.kineticEnergy()
           ke_o = self.universe.kineticEnergy()
@@ -155,7 +155,7 @@ class TDHamiltonianMonteCarloIntegrator(Dynamics.Integrator):
             self.universe.setConfiguration(xo)
             pe_n = pe_o
             descorder[-7] = '0'
-          xs.append(self.universe.copyConfiguration().array)
+          xs.append(self.universe.configuration().array)
           energies.append(pe_n)
 
         # Kill the server

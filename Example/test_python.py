@@ -1,10 +1,13 @@
 # The example is 1of6
 
+# run_types = ['cool','dock','postprocess','free_energies']
+run_types = ['all']
+
 import AlGDock.BindingPMF_plots
 import os, shutil, glob
 
 self = None
-for run_type in ['cool','dock','postprocess','free_energies']:
+for run_type in run_types:
   del self
   self = AlGDock.BindingPMF_plots.BPMF_plots(\
     dir_dock='dock', dir_cool='cool',\

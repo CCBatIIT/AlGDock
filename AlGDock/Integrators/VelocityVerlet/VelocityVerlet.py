@@ -69,7 +69,7 @@ class VelocityVerletIntegrator(Dynamics.Integrator):
           self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
 
           # Store previous configuration and initial energy
-          xo = self.universe.copyConfiguration()
+          xo = self.universe.configuration()
           pe_o = self.universe.energy()
           eo = pe_o + self.universe.kineticEnergy()
 
