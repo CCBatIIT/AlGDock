@@ -568,8 +568,6 @@ last modified {2}
     # adapt - uses an adaptive time step
 
     self.sampler = {}
-    from NUTS import NUTSIntegrator # @UnresolvedImport
-    self.sampler['init'] = NUTSIntegrator(self.universe)
     from AlGDock.Integrators.SmartDarting.SmartDarting \
       import SmartDartingIntegrator # @UnresolvedImport
     self.sampler['cool_SmartDarting'] = SmartDartingIntegrator(\
@@ -582,6 +580,7 @@ last modified {2}
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'NUTS':
+        from NUTS import NUTSIntegrator # @UnresolvedImport
         self.sampler[p] = NUTSIntegrator(self.universe)
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
@@ -715,7 +714,7 @@ last modified {2}
       T_LOW = 20.
       T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
       for T in T_SERIES:
-        self.sampler['init'](steps = 500, T=T,\
+        self.sampler['cool'](steps = 500, T=T,\
                              delta_t=self.delta_t, steps_per_trial = 100, \
                              seed=int(time.time()+T))
       self.universe.normalizePosition()
@@ -1164,7 +1163,7 @@ last modified {2}
           T_LOW = 20.
           T_SERIES = T_LOW*(self.T_TARGET/T_LOW)**(np.arange(30)/29.)
           for T in T_SERIES:
-            self.sampler['init'](steps = 500, T=T,\
+            self.sampler['dock'](steps = 500, T=T,\
               delta_t=self.delta_t, steps_per_trial = 100, \
               seed=int(time.time()+T))
           seeds = [self.universe.configuration().array]
@@ -1928,7 +1927,7 @@ last modified {2}
     potEs = [result['E_MM'] for result in results]
     delta_t = np.median([result['delta_t'] for result in results])
     delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
-    acc_metrics_report = 'Ht=%f'%np.mean([result['Ht'] for result in results])
+    acc_metrics_report = 'acc_Sampler=%f'%np.mean([result['acc_Sampler'] for result in results])
     if (np.array([result['att_ExternalMC'] for result in results])>0).any():
       acc_metrics_report += ', acc_ExternalMC=%f'%(\
         np.mean([result['acc_ExternalMC'] for result in results]))
@@ -2121,7 +2120,7 @@ last modified {2}
         E[term] = np.zeros(K, dtype=float)
       E['acc_ExternalMC'] = np.zeros(K, dtype=float)
       E['acc_SmartDarting'] = np.zeros(K, dtype=float)
-      Ht = np.zeros(K, dtype=float)
+      acc_Sampler = np.zeros(K, dtype=float)
       # Sample within each state
       if self._cores>1:
         for k in range(K):
@@ -2160,7 +2159,7 @@ last modified {2}
         confs[k] = results[k]['confs'] # [-1]
         if process == 'cool':
             E['MM'][k] = results[k]['E_MM'] # [-1]
-        Ht[k] += results[k]['Ht']
+        acc_Sampler[k] += results[k]['acc_Sampler']
       if process=='dock':
         E = self._calc_E(confs, E) # Get energies
         # Get rmsd values
@@ -2249,7 +2248,7 @@ last modified {2}
       E_state = {}
       if state==0:
         E_state['repXpath'] = storage['state_inds']
-        E_state['Ht'] = Ht
+        E_state['acc_Sampler'] = acc_Sampler
       for term in terms:
         E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][state]] for snap in range(nsaved)])
       Es.append([E_state])
@@ -2316,7 +2315,7 @@ last modified {2}
     
     # Execute sampler
     if initialize:
-      sampler = self.sampler['init']
+      sampler = self.sampler[process]
       steps = self.params[process]['steps_per_seed']
       steps_per_trial = self.params[process]['steps_per_seed']/10
       ndarts = self.params[process]['darts_per_seed']
@@ -2326,7 +2325,7 @@ last modified {2}
       steps_per_trial = steps
       ndarts = self.params[process]['darts_per_sweep']
 
-    (confs, potEs, Ht, delta_t) = sampler(\
+    (confs, potEs, acc_Sampler, delta_t) = sampler(\
       steps=steps, \
       steps_per_trial=steps_per_trial, \
       T=lambda_k['T'], delta_t=delta_t, \
@@ -2347,7 +2346,7 @@ last modified {2}
     # Store and return results
     results['confs'] = np.copy(self.universe.configuration().array)
     results['E_MM'] = self.universe.energy()
-    results['Ht'] = Ht
+    results['acc_Sampler'] = acc_Sampler
     results['delta_t'] = delta_t
     results['reference'] = reference
     return results

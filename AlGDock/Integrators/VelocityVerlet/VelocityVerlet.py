@@ -1,11 +1,14 @@
-# This module implements a velocity verlet integrator
-# that ensures that the final energies are not nan
+# This module wraps the velocity verlet integrator,
+# requiring that the final energy is a number.
+# It is NOT recommended for AlGDock because it can easily attain high energies.
 
 from MMTK import Dynamics, Environment, Features, Trajectory, Units
 import MMTK_dynamics
-from Scientific import N
+from MMTK.ParticleProperties import Configuration
 
-import math
+from Scientific import N
+import numpy as np
+
 import random
 
 R = 8.3144621*Units.J/Units.mol/Units.K
@@ -62,15 +65,16 @@ class VelocityVerletIntegrator(Dynamics.Integrator):
       
         xs = []
         energies = []
+
+        # Store initial configuration and potential energy
+        xo = np.copy(self.universe.configuration().array)
+        pe_o = self.universe.energy()
       
         acc = 0
         for t in range(ntrials):
           # Initialize the velocity
           self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
-
-          # Store previous configuration and initial energy
-          xo = self.universe.configuration()
-          pe_o = self.universe.energy()
+          # Store total energy
           eo = pe_o + self.universe.kineticEnergy()
 
           # Run the velocity verlet integrator
@@ -78,5 +82,20 @@ class VelocityVerletIntegrator(Dynamics.Integrator):
             (self.universe,
              self.universe.configuration().array,
              self.universe.velocities().array) + late_args)
+
+          # Decide whether to accept the move
+          pe_n = self.universe.energy()
+          en = pe_n + self.universe.kineticEnergy()
+          if not np.isnan(en):
+            xo = np.copy(self.universe.configuration().array)
+            pe_o = pe_n
+            acc += 1
+            if normalize:
+              self.universe.normalizePosition()
+          else:
+            self.universe.setConfiguration(Configuration(self.universe,xo))
+          
+          xs.append(np.copy(self.universe.configuration().array))
+          energies.append(pe_o)
   
         return (xs, energies, float(acc)/float(ntrials), delta_t)

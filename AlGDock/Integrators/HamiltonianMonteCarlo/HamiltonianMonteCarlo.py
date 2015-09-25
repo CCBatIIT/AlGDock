@@ -5,7 +5,10 @@
 
 from MMTK import Dynamics, Environment, Features, Trajectory, Units
 import MMTK_dynamics
+from MMTK.ParticleProperties import Configuration
+
 from Scientific import N
+import numpy as np
 
 import random
 
@@ -63,15 +66,16 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
       
         xs = []
         energies = []
+
+        # Store initial configuration and potential energy
+        xo = np.copy(self.universe.configuration().array)
+        pe_o = self.universe.energy()
       
         acc = 0
         for t in range(ntrials):
           # Initialize the velocity
           self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
-
-          # Store previous configuration and initial energy
-          xo = self.universe.configuration()
-          pe_o = self.universe.energy()
+          # Store total energy
           eo = pe_o + self.universe.kineticEnergy()
 
           # Run the velocity verlet integrator
@@ -84,13 +88,15 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           pe_n = self.universe.energy()
           en = pe_n + self.universe.kineticEnergy()
           if ((en<eo) or (random.random()<N.exp(-(en-eo)/RT))):
+            xo = np.copy(self.universe.configuration().array)
+            pe_o = pe_n
             acc += 1
             if normalize:
               self.universe.normalizePosition()
           else:
-            self.universe.setConfiguration(xo)
-            pe_n = pe_o
+            self.universe.setConfiguration(Configuration(self.universe,xo))
+          
           xs.append(np.copy(self.universe.configuration().array))
-          energies.append(pe_n)
+          energies.append(pe_o)
   
         return (xs, energies, float(acc)/float(ntrials), delta_t)
