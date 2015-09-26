@@ -39,4 +39,3 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --run_type timed \
   --max_time 10
 
-#  --sampler NUTS \

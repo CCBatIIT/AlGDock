@@ -1852,23 +1852,23 @@ last modified {2}
              'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
 
           # Determine the grid threshold
-          grid_thresh = -1
-          if scalable!='LJr':
-            if scalable=='sLJr':
-              grid_thresh = 10.0
-            elif scalable=='sELE':
-              # The maximum value is set so that the electrostatic energy
-              # less than or equal to the Lennard-Jones repulsive energy
-              # for every heavy atom at every grid point
-              scaling_factors_ELE = np.array([ \
-                self.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
-                  for a in self.molecule.atomList()],dtype=float)
-              scaling_factors_LJr = np.array([ \
-                self.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
-                  for a in self.molecule.atomList()],dtype=float)
-              scaling_factors_ELE = scaling_factors_ELE[scaling_factors_LJr>10]
-              scaling_factors_LJr = scaling_factors_LJr[scaling_factors_LJr>10]
-              grid_thresh = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
+          if scalable=='sLJr':
+            grid_thresh = 10.0
+          elif scalable=='sELE':
+            # The maximum value is set so that the electrostatic energy
+            # less than or equal to the Lennard-Jones repulsive energy
+            # for every heavy atom at every grid point
+            scaling_factors_ELE = np.array([ \
+              self.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
+                for a in self.molecule.atomList()],dtype=float)
+            scaling_factors_LJr = np.array([ \
+              self.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
+                for a in self.molecule.atomList()],dtype=float)
+            scaling_factors_ELE = scaling_factors_ELE[scaling_factors_LJr>10]
+            scaling_factors_LJr = scaling_factors_LJr[scaling_factors_LJr>10]
+            grid_thresh = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
+          else:
+            grid_thresh = -1 # There is no threshold for grid points
 
           from AlGDock.ForceFields.Grid.Interpolation \
             import InterpolationForceField
@@ -1881,7 +1881,7 @@ last modified {2}
             HMStime(time.time()-loading_start_time)))
 
         # Set the force field strength to the desired value
-        self._forceFields[scalable].strength = lambda_n[scalable]
+        self._forceFields[scalable].params['strength'] = lambda_n[scalable]
         fflist.append(self._forceFields[scalable])
 
     compoundFF = fflist[0]

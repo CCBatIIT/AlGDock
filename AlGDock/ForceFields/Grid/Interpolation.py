@@ -86,7 +86,9 @@ class InterpolationForceField(ForceField):
     if grid_thresh>0.0:
       self.grid_data['vals'] = grid_thresh*np.tanh(self.grid_data['vals']/grid_thresh)
 
-    if scaling_prefactor is None:
+    if scaling_prefactor is not None:
+      self.params['scaling_prefactor'] = scaling_prefactor
+    else:
       self.params['scaling_prefactor'] = -1. if neg_vals else 1.
 
   # The following method is called by the energy evaluation engine
