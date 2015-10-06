@@ -58,7 +58,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Sort by increasing energy
     conf_energies, confs = (list(l) \
       for l in zip(*sorted(zip(conf_energies, confs), key=lambda p:p[0])))
-    self.universe.setConfiguration(Configuration(self.universe,confs[0]))
+    self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
 
     # Only keep configurations with energy with 50 kJ/mol of the lowest energy
     confs = [confs[i] for i in range(len(confs)) \
@@ -138,7 +138,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
 
   def __call__(self, **options):
     if (self.confs is None) or len(self.confs)<3:
-      return ([self.universe.configuration()], [self.universe.energy()], 0.0, 0.0)
+      return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
     
     # Process the keyword arguments
     self.setCallOptions(options)

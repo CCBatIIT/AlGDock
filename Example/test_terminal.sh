@@ -24,7 +24,7 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --rmsd \
   --dir_grid grids \
   --protocol Adaptive --cool_therm_speed 0.5 --dock_therm_speed 0.5 \
-  --sampler HMC \
+  --sampler NUTS_no_stopping \
   --MCMC_moves 1 \
   --seeds_per_state 10 --steps_per_seed 200 --darts_per_seed 10 \
   --sweeps_per_cycle 25 --attempts_per_sweep 100 \

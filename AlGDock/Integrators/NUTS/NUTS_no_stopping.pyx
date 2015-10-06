@@ -325,7 +325,6 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         j += 1
         # Decide if it's time to stop
         s = sprime and \
-            self.stop_criterion(xminus, xplus, vminus, vplus) and \
             ((elapsed_steps + steps_m*2) < nsteps)
 
       # Keep track of acceptance statistics
@@ -347,7 +346,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       m += 1
       elapsed_steps += steps_m
     
-    self.universe.setConfiguration(Configuration(self.universe, x_m))
+    self.universe.setConfiguration(Configuration(self.universe, x_m), block=False)
     if normalize:
       self.universe.normalizePosition()
 
@@ -422,17 +421,10 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         # Update the number of valid points.
         nprime = nprime + nprime2
         # Update the stopping criterion.
-        sprime = sprime and sprime2 and \
-          self.stop_criterion(xminus, xplus, vminus, vplus)
+        sprime = sprime and sprime2
         # Update the acceptance probability statistics
         alphaprime = alphaprime + alphaprime2
         nalphaprime = nalphaprime + nalphaprime2
       return (xminus, vminus, xplus, vplus, xprime,
               eprime, nprime, sprime, steps,
               alphaprime, nalphaprime)
-
-  def stop_criterion(NUTSIntegrator self, xminus, xplus, vminus, vplus):
-    cdef np.ndarray[double] thetavec
-    thetavec = np.ravel(xplus-xminus)
-    return (np.dot(thetavec,np.ravel(vminus))>0) and \
-           (np.dot(thetavec,np.ravel(vplus))>0)

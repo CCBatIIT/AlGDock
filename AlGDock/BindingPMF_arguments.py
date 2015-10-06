@@ -55,7 +55,7 @@ arguments = {
   'therm_speed':{'type':float,
     'help':'Thermodynamic speed during adaptive simulation'},
   'sampler':{
-    'choices':['HMC','NUTS','VV','TDHMC'],
+    'choices':['HMC','NUTS','NUTS_no_stopping','VV','TDHMC'],
     'help':'Sampling method'},
   'MCMC_moves':{'type':int,
     'help':'Types of MCMC moves to use'},

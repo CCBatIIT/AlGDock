@@ -383,6 +383,10 @@ rigid receptor.
                                 ['AlGDock/Integrators/NUTS/NUTS.pyx'],
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
+                      Extension('NUTS_no_stopping',
+                                ['AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx'],
+                                extra_compile_args = compile_args,
+                                include_dirs=include_dirs),
                       ],
 
        data_files = data_files,

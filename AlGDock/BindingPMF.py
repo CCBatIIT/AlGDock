@@ -582,6 +582,9 @@ last modified {2}
       if self.params[p]['sampler'] == 'NUTS':
         from NUTS import NUTSIntegrator # @UnresolvedImport
         self.sampler[p] = NUTSIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'NUTS_no_stopping':
+        from NUTS_no_stopping import NUTSIntegrator # @UnresolvedImport
+        self.sampler[p] = NUTSIntegrator(self.universe)
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
@@ -707,7 +710,7 @@ last modified {2}
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
       # initializes smart darting for cooling and sets the universe
       # to the lowest energy configuration
-      # self.tee(self.sampler['cool_SmartDarting'].set_confs(seeds))
+      self.tee(self.sampler['cool_SmartDarting'].set_confs(seeds))
       self.confs['cool']['starting_poses'] = seeds
       
       # Ramp the temperature from 0 to the desired starting temperature
@@ -780,7 +783,7 @@ last modified {2}
       Es_MM_o = Es_MM
       
       self._set_universe_evaluator(self.cool_protocol[-1])
-      # self.tee(self.sampler['cool_SmartDarting'].set_confs(confs, append=True))
+      self.tee(self.sampler['cool_SmartDarting'].set_confs(confs, append=True))
       
       state_start_time = time.time()
       (confs, Es_MM, self.cool_protocol[-1]['delta_t'], acc_metrics_report) = \
@@ -1157,7 +1160,7 @@ last modified {2}
           self.confs['dock']['starting_poses'] = seeds
           # initializes smart darting for docking and sets the universe
           # to the lowest energy configuration
-          # self.tee(self.sampler['dock_SmartDarting'].set_confs(seeds))
+          self.tee(self.sampler['dock_SmartDarting'].set_confs(seeds))
           
           # Ramp up the temperature
           T_LOW = 20.
@@ -1260,7 +1263,7 @@ last modified {2}
       # Simulate
       sim_start_time = time.time()
       self._set_universe_evaluator(lambda_n)
-      # self.tee(self.sampler['dock_SmartDarting'].set_confs(confs, append=True))
+      self.tee(self.sampler['dock_SmartDarting'].set_confs(confs, append=True))
       (confs, Es_tot, lambda_n['delta_t'], acc_metrics_report) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
 
@@ -2156,18 +2159,23 @@ last modified {2}
           time_ExternalMC += results[k]['time_ExternalMC']
         if 'time_SmartDarting' in results[k].keys():
           time_SmartDarting += results[k]['time_SmartDarting']
-        confs[k] = results[k]['confs'] # [-1]
-        if process == 'cool':
-            E['MM'][k] = results[k]['E_MM'] # [-1]
+        confs[k] = results[k]['confs']
+        # TODO: Are results[k]['E_MM']
+        # consistent with molecular mechanics energies when using NUTS?
+        # This seems to be the case
+        if process=='cool':
+            E['MM'][k] = results[k]['E_MM']
         acc_Sampler[k] += results[k]['acc_Sampler']
       if process=='dock':
-        E = self._calc_E(confs, E) # Get energies
+        E = self._calc_E(confs, E) # Get energies for scalables
         # Get rmsd values
         if self.params['dock']['rmsd'] is not False:
           E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
             self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
       # Calculate u_ij (i is the replica, and j is the configuration),
       #    a list of arrays
+      # TODO: Is _u_kln consistent at T=600 K?
+      # Yes, it seems to be consistent.
       (u_ij,N_k) = self._u_kln(E, [lambdas[state_inds[c]] for c in range(K)])
       # Do the replica exchange
       repX_start_time = time.time()
@@ -2270,9 +2278,10 @@ last modified {2}
         self.confs[process]['samples'][state].append([])
 
     self._set_universe_evaluator(getattr(self,process+'_protocol')[-1])
-    # confs_SmartDarting = [np.copy(conf) \
-    #  for conf in self.confs[process]['samples'][state][-1]]
-    # self.tee(self.sampler[process+'_SmartDarting'].set_confs(confs_SmartDarting), append=True))
+    confs_SmartDarting = [np.copy(conf) \
+      for conf in self.confs[process]['samples'][state][-1]]
+    self.tee(self.sampler[process+'_SmartDarting'].set_confs(\
+      confs_SmartDarting, append=True))
 
     setattr(self,'_%s_cycle'%process,cycle + 1)
     self._save(process)
@@ -2313,7 +2322,7 @@ last modified {2}
       results['acc_ExternalMC'] = 0.
       results['att_ExternalMC'] = 0
     
-    # Execute sampler
+    # Execute dynamics sampler
     if initialize:
       sampler = self.sampler[process]
       steps = self.params[process]['steps_per_seed']
