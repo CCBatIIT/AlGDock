@@ -604,6 +604,9 @@ last modified {2}
     self._postprocess(readOnly=True)
     self.calc_f_L(readOnly=True)
     self.calc_f_RL(readOnly=True)
+    
+    # TODO: Set in debugging option
+    # np.random.seed(1000)
 
   def _run(self, run_type):
     self.run_type = run_type
@@ -1894,6 +1897,7 @@ last modified {2}
 
     eval = ForceField.EnergyEvaluator(\
       self.universe, self.universe._forcefield, None, None, None, None)
+    eval.key = evaluator_key
     self.universe._evaluator[(None,None,None)] = eval
     self._evaluators[evaluator_key] = eval
 
@@ -1927,7 +1931,7 @@ last modified {2}
         seeds[k], process, lambda_k, True, k) for k in range(len(seeds))]
 
     confs = [result['confs'] for result in results]
-    potEs = [result['E_MM'] for result in results]
+    potEs = [result['Etot'] for result in results]
     delta_t = np.median([result['delta_t'] for result in results])
     delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
     acc_metrics_report = 'acc_Sampler=%f'%np.mean([result['acc_Sampler'] for result in results])
@@ -2160,11 +2164,8 @@ last modified {2}
         if 'time_SmartDarting' in results[k].keys():
           time_SmartDarting += results[k]['time_SmartDarting']
         confs[k] = results[k]['confs']
-        # TODO: Are results[k]['E_MM']
-        # consistent with molecular mechanics energies when using NUTS?
-        # This seems to be the case
         if process=='cool':
-            E['MM'][k] = results[k]['E_MM']
+            E['MM'][k] = results[k]['Etot']
         acc_Sampler[k] += results[k]['acc_Sampler']
       if process=='dock':
         E = self._calc_E(confs, E) # Get energies for scalables
@@ -2174,8 +2175,6 @@ last modified {2}
             self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
       # Calculate u_ij (i is the replica, and j is the configuration),
       #    a list of arrays
-      # TODO: Is _u_kln consistent at T=600 K?
-      # Yes, it seems to be consistent.
       (u_ij,N_k) = self._u_kln(E, [lambdas[state_inds[c]] for c in range(K)])
       # Do the replica exchange
       repX_start_time = time.time()
@@ -2297,18 +2296,23 @@ last modified {2}
 
   def _sim_one_state(self, seed, process, lambda_k, \
       initialize=False, reference=None):
+    
+    # TODO: Test with multiprocessing
+#      debug_string = repr(reference) + ' '
+#      debug_string += repr(lambda_k) + '\n'
+#      debug_string += 'Before setting evaluator: '
+#      debug_string += self.universe._evaluator[(None,None,None)].key + '\n'
+    self._set_universe_evaluator(lambda_k)
+#      debug_string += 'After setting evaluator: '
+#      debug_string += self.universe._evaluator[(None,None,None)].key + '\n'
+
     self.universe.setConfiguration(Configuration(self.universe, seed))
-    
-    results = {}
-    
-    # For initialization, the evaluator is already set
-    if not initialize:
-      self._set_universe_evaluator(lambda_k)
-    
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
       delta_t = 1.5*MMTK.Units.fs
+    
+    results = {}
     
     # Perform MCMC moves
     if (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
@@ -2334,13 +2338,14 @@ last modified {2}
       steps_per_trial = steps
       ndarts = self.params[process]['darts_per_sweep']
 
+    # TODO: Use specific seed in debugging option
     (confs, potEs, acc_Sampler, delta_t) = sampler(\
       steps=steps, \
       steps_per_trial=steps_per_trial, \
       T=lambda_k['T'], delta_t=delta_t, \
       normalize=(process=='cool'), \
       adapt=initialize, \
-      seed=int(time.time()+reference))
+      seed=reference + int(time.time()) + int(abs(seed[0][0]*10000)))
 
     if ndarts>0:
       time_start_SmartDarting = time.time()
@@ -2354,10 +2359,16 @@ last modified {2}
 
     # Store and return results
     results['confs'] = np.copy(self.universe.configuration().array)
-    results['E_MM'] = self.universe.energy()
+    results['Etot'] = self.universe.energy()
     results['acc_Sampler'] = acc_Sampler
     results['delta_t'] = delta_t
     results['reference'] = reference
+
+#      debug_string += 'At end: '
+#      debug_string += self.universe._evaluator[(None,None,None)].key + '\n'
+#      debug_string += 'Energy difference: %f\n\n'%(results['Etot']-potEs[-1])
+#      print debug_string
+
     return results
 
   def _sim_process(self, process):
@@ -2737,7 +2748,7 @@ last modified {2}
             else:
               a = 1.0
               crossed = True
-        return self._lambda(a, crossed=crossed)
+        return self._lambda(a, process='dock', lambda_o=lambda_o, crossed=crossed)
       else:
         # Repeats the previous stage
         lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
@@ -3123,14 +3134,13 @@ last modified {2}
     """
     if E is None:
       E = {}
-
-    lambda_full = {'T':self.T_HIGH,'MM':True,'site':True}
-    for scalable in self._scalables:
-      lambda_full[scalable] = 1
     
     if type=='sampling' or type=='all':
-      # Molecular mechanics and grid interaction energies
+      lambda_full = {'T':self.T_HIGH,'MM':True,'site':True}
+      for scalable in self._scalables:
+        lambda_full[scalable] = 1
       self._set_universe_evaluator(lambda_full)
+      # Molecular mechanics and grid interaction energies
       for term in (['MM','site','misc'] + self._scalables):
         E[term] = np.zeros(len(confs), dtype=float)
       for c in range(len(confs)):

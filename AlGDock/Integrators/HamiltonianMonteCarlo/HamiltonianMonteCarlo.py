@@ -10,8 +10,6 @@ from MMTK.ParticleProperties import Configuration
 from Scientific import N
 import numpy as np
 
-import random
-
 R = 8.3144621*Units.J/Units.mol/Units.K
 
 #
@@ -44,7 +42,13 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           normalize = self.getOption('normalize')
         else:
           normalize = False          
-      
+
+        # Seed the random number generator
+        if 'seed' in self.call_options.keys():
+          np.random.seed(self.getOption('seed'))
+
+        self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
+        
         # Get the universe variables needed by the integrator
         masses = self.universe.masses()
         fixed = self.universe.getAtomBooleanArray('fixed')
@@ -63,20 +67,27 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
                 delta_t, self.getOption('first_step'),
                 steps_per_trial, self.getActions(),
                 'Hamiltonian Monte Carlo step')
-      
+
+        # Variables for velocity assignment
+        m3 = np.repeat(np.expand_dims(masses.array,1),3,axis=1)
+        sigma_MB = np.sqrt((self.getOption('T')*Units.k_B)/m3)
+        natoms = self.universe.numberOfAtoms()
+
         xs = []
         energies = []
 
         # Store initial configuration and potential energy
         xo = np.copy(self.universe.configuration().array)
         pe_o = self.universe.energy()
-      
+
         acc = 0
         for t in range(ntrials):
           # Initialize the velocity
-          self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
+          v = self.universe.velocities()
+          v.array = np.multiply(sigma_MB,np.random.randn(natoms,3))
+    
           # Store total energy
-          eo = pe_o + self.universe.kineticEnergy()
+          eo = pe_o + 0.5*np.sum(np.multiply(m3,np.multiply(v.array,v.array)))
 
           # Run the velocity verlet integrator
           self.run(MMTK_dynamics.integrateVV,
@@ -86,8 +97,8 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
 
           # Decide whether to accept the move
           pe_n = self.universe.energy()
-          en = pe_n + self.universe.kineticEnergy()
-          if ((en<eo) or (random.random()<N.exp(-(en-eo)/RT))):
+          en = pe_n + 0.5*np.sum(np.multiply(m3,np.multiply(v.array,v.array)))
+          if ((en<eo) or (np.random.random()<N.exp(-(en-eo)/RT))):
             xo = np.copy(self.universe.configuration().array)
             pe_o = pe_n
             acc += 1

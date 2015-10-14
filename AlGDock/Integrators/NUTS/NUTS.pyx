@@ -347,7 +347,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       m += 1
       elapsed_steps += steps_m
     
-    self.universe.setConfiguration(Configuration(self.universe, x_m))
+    self.universe.setConfiguration(Configuration(self.universe, x_m), block=False)
     if normalize:
       self.universe.normalizePosition()
 
@@ -370,7 +370,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     if (j==0):
       # Base case: Take a single leapfrog step
       # First half-step
-      e_o = 1.*self.energy.energy
+      e_o = 1.*self.energy.energy      
       self.v += -0.5*delta_t*np.divide(self.g,self.m)
       self.x += delta_t*self.v      
       # Mid-step energy calculation
