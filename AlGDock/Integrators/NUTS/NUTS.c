@@ -1400,6 +1400,7 @@ static char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
 static char __pyx_k_velocities[] = "velocities";
 static char __pyx_k_expand_dims[] = "expand_dims";
 static char __pyx_k_exponential[] = "exponential";
+static char __pyx_k_random_seed[] = "random_seed";
 static char __pyx_k_RuntimeError[] = "RuntimeError";
 static char __pyx_k_restart_data[] = "restart_data";
 static char __pyx_k_Configuration[] = "Configuration:\n";
@@ -1510,6 +1511,7 @@ static PyObject *__pyx_n_s_pyx_vtable;
 static PyObject *__pyx_n_s_rand;
 static PyObject *__pyx_n_s_randn;
 static PyObject *__pyx_n_s_random;
+static PyObject *__pyx_n_s_random_seed;
 static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_ravel;
 static PyObject *__pyx_n_s_repeat;
@@ -3144,8 +3146,8 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_start(struct __pyx_obj_4NUTS_NUT
   /* "NUTS.pyx":205
  * 
  *     # Seed the random number generator
- *     if 'seed' in self.call_options.keys():             # <<<<<<<<<<<<<<
- *       np.random.seed(self.getOption('seed'))
+ *     if 'random_seed' in self.call_options.keys():             # <<<<<<<<<<<<<<
+ *       np.random.seed(self.getOption('random_seed'))
  *     else:
  */
   __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.__pyx_base.call_options, __pyx_n_s_keys); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 205; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -3168,15 +3170,15 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_start(struct __pyx_obj_4NUTS_NUT
   }
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_9 = (__Pyx_PySequence_Contains(__pyx_n_s_seed, __pyx_t_4, Py_EQ)); if (unlikely(__pyx_t_9 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 205; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = (__Pyx_PySequence_Contains(__pyx_n_s_random_seed, __pyx_t_4, Py_EQ)); if (unlikely(__pyx_t_9 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 205; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_8 = (__pyx_t_9 != 0);
   if (__pyx_t_8) {
 
     /* "NUTS.pyx":206
  *     # Seed the random number generator
- *     if 'seed' in self.call_options.keys():
- *       np.random.seed(self.getOption('seed'))             # <<<<<<<<<<<<<<
+ *     if 'random_seed' in self.call_options.keys():
+ *       np.random.seed(self.getOption('random_seed'))             # <<<<<<<<<<<<<<
  *     else:
  *       np.random.seed()
  */
@@ -3225,7 +3227,7 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_start(struct __pyx_obj_4NUTS_NUT
   /*else*/ {
 
     /* "NUTS.pyx":208
- *       np.random.seed(self.getOption('seed'))
+ *       np.random.seed(self.getOption('random_seed'))
  *     else:
  *       np.random.seed()             # <<<<<<<<<<<<<<
  * 
@@ -10289,6 +10291,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_rand, __pyx_k_rand, sizeof(__pyx_k_rand), 0, 0, 1, 1},
   {&__pyx_n_s_randn, __pyx_k_randn, sizeof(__pyx_k_randn), 0, 0, 1, 1},
   {&__pyx_n_s_random, __pyx_k_random, sizeof(__pyx_k_random), 0, 0, 1, 1},
+  {&__pyx_n_s_random_seed, __pyx_k_random_seed, sizeof(__pyx_k_random_seed), 0, 0, 1, 1},
   {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
   {&__pyx_n_s_ravel, __pyx_k_ravel, sizeof(__pyx_k_ravel), 0, 0, 1, 1},
   {&__pyx_n_s_repeat, __pyx_k_repeat, sizeof(__pyx_k_repeat), 0, 0, 1, 1},
@@ -10439,12 +10442,12 @@ static int __Pyx_InitCachedConstants(void) {
 
   /* "NUTS.pyx":206
  *     # Seed the random number generator
- *     if 'seed' in self.call_options.keys():
- *       np.random.seed(self.getOption('seed'))             # <<<<<<<<<<<<<<
+ *     if 'random_seed' in self.call_options.keys():
+ *       np.random.seed(self.getOption('random_seed'))             # <<<<<<<<<<<<<<
  *     else:
  *       np.random.seed()
  */
-  __pyx_tuple__12 = PyTuple_Pack(1, __pyx_n_s_seed); if (unlikely(!__pyx_tuple__12)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 206; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__12 = PyTuple_Pack(1, __pyx_n_s_random_seed); if (unlikely(!__pyx_tuple__12)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 206; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__12);
   __Pyx_GIVEREF(__pyx_tuple__12);
 

@@ -25,7 +25,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     self.molecule = molecule
     self.extended = extended
     
-    # Converter between Cartesiand BAT coordinates
+    # Converter between Cartesian and BAT coordinates
     self._BAT_util = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
     # BAT coordinates to perturb: external coordinates and primary torsions
     dof = self.universe.configuration().array.shape[0]*3 if extended \
@@ -39,7 +39,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     else:
       self.set_confs(confs)
 
-  def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.25, \
+  def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.3, \
       append=False):
 
     nconfs_attempted = len(confs)
@@ -133,9 +133,6 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     diffs = np.min([diffs,1-diffs],0)
     return np.argmin(np.sum(diffs**2,1))
 
-  def _p_attempt(self, dart_from, dart_to):
-    return self.weights[dart_to]/(1.-self.weights[dart_from])
-
   def __call__(self, **options):
     if (self.confs is None) or len(self.confs)<3:
       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
@@ -178,20 +175,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         closest_pose_n = self._closest_pose_BAT(xn_BAT[self._BAT_to_perturb])
         
       # Accept or reject the trial move
-      if (closest_pose_n!=closest_pose_o) and \
-        ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT)*\
-          self._p_attempt(closest_pose_n,closest_pose_o)/\
-          self._p_attempt(closest_pose_o,dart_towards))):
-        
-        if en>(1000):
-          print 'eo: %f, en: %f'%(eo,en)
-          print 'closest_pose_o %d, closest_pose_n %d'%(\
-            closest_pose_o,closest_pose_n)
-          print '_p_attempt, forward %f, backwards %f'%(\
-            self._p_attempt(closest_pose_o,dart_towards), \
-            self._p_attempt(closest_pose_n,closest_pose_o))
-          # raise Exception('High energy pose!')
-        
+      if (closest_pose_n==dart_towards) and (abs(en-eo)<1000) and \
+          ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
         xo_Cartesian = np.copy(xn_Cartesian)
         xo_BAT = xn_BAT
         eo = 1.*en

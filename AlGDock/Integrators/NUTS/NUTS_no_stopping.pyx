@@ -202,8 +202,8 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       delta_t_bar = delta_t
 
     # Seed the random number generator
-    if 'seed' in self.call_options.keys():
-      np.random.seed(self.getOption('seed'))
+    if 'random_seed' in self.call_options.keys():
+      np.random.seed(self.getOption('random_seed'))
     else:
       np.random.seed()
 

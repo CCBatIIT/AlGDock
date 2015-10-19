@@ -44,8 +44,8 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           normalize = False          
 
         # Seed the random number generator
-        if 'seed' in self.call_options.keys():
-          np.random.seed(self.getOption('seed'))
+        if 'random_seed' in self.call_options.keys():
+          np.random.seed(self.getOption('random_seed'))
 
         self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
         

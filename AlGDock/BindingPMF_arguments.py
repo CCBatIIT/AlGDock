@@ -49,6 +49,7 @@ arguments = {
   'cores':{'type':int, \
     'help':'Number of CPU cores to use'},
   'rotate_matrix':{'help':'Rotation matrix for viewing'},
+  'random_seed':{'type':int, 'default':0, 'help':'Random number seed'},
   #   Defaults
   'protocol':{'choices':['Adaptive','Set'],
     'help':'Approach to determining series of thermodynamic states'},

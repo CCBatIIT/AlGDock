@@ -123,6 +123,8 @@ last modified {2}
     if kwargs['rotate_matrix'] is not None:
       self._view_args_rotate_matrix = kwargs['rotate_matrix']
 
+    self._random_seed = kwargs['random_seed']
+
     self.confs = {'cool':{}, 'dock':{}}
     
     self.dir = {}
@@ -604,9 +606,9 @@ last modified {2}
     self._postprocess(readOnly=True)
     self.calc_f_L(readOnly=True)
     self.calc_f_RL(readOnly=True)
-    
-    # TODO: Set in debugging option
-    # np.random.seed(1000)
+
+    if self._random_seed>0:
+      np.random.seed(self._random_seed)
 
   def _run(self, run_type):
     self.run_type = run_type
@@ -722,7 +724,7 @@ last modified {2}
       for T in T_SERIES:
         self.sampler['cool'](steps = 500, T=T,\
                              delta_t=self.delta_t, steps_per_trial = 100, \
-                             seed=int(time.time()+T))
+                             random_seed=int(time.time()+T))
       self.universe.normalizePosition()
 
       # Run at starting temperature
@@ -1171,7 +1173,7 @@ last modified {2}
           for T in T_SERIES:
             self.sampler['dock'](steps = 500, T=T,\
               delta_t=self.delta_t, steps_per_trial = 100, \
-              seed=int(time.time()+T))
+              random_seed=int(time.time()+T))
           seeds = [self.universe.configuration().array]
 
           # Simulate
@@ -2297,16 +2299,8 @@ last modified {2}
   def _sim_one_state(self, seed, process, lambda_k, \
       initialize=False, reference=None):
     
-    # TODO: Test with multiprocessing
-#      debug_string = repr(reference) + ' '
-#      debug_string += repr(lambda_k) + '\n'
-#      debug_string += 'Before setting evaluator: '
-#      debug_string += self.universe._evaluator[(None,None,None)].key + '\n'
-    self._set_universe_evaluator(lambda_k)
-#      debug_string += 'After setting evaluator: '
-#      debug_string += self.universe._evaluator[(None,None,None)].key + '\n'
-
     self.universe.setConfiguration(Configuration(self.universe, seed))
+    self._set_universe_evaluator(lambda_k)
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
@@ -2338,14 +2332,16 @@ last modified {2}
       steps_per_trial = steps
       ndarts = self.params[process]['darts_per_sweep']
 
-    # TODO: Use specific seed in debugging option
+    random_seed = reference + int(abs(seed[0][0]*10000))
+    if self._random_seed>0:
+      random_seed += self._random_seed
+    else:
+      random_seed += int(time.time())
+    
     (confs, potEs, acc_Sampler, delta_t) = sampler(\
-      steps=steps, \
-      steps_per_trial=steps_per_trial, \
+      steps=steps, steps_per_trial=steps_per_trial, \
       T=lambda_k['T'], delta_t=delta_t, \
-      normalize=(process=='cool'), \
-      adapt=initialize, \
-      seed=reference + int(time.time()) + int(abs(seed[0][0]*10000)))
+      normalize=(process=='cool'), adapt=initialize, random_seed=random_seed)
 
     if ndarts>0:
       time_start_SmartDarting = time.time()
@@ -2363,11 +2359,6 @@ last modified {2}
     results['acc_Sampler'] = acc_Sampler
     results['delta_t'] = delta_t
     results['reference'] = reference
-
-#      debug_string += 'At end: '
-#      debug_string += self.universe._evaluator[(None,None,None)].key + '\n'
-#      debug_string += 'Energy difference: %f\n\n'%(results['Etot']-potEs[-1])
-#      print debug_string
 
     return results
 

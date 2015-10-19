@@ -43,6 +43,10 @@ class VelocityVerletIntegrator(Dynamics.Integrator):
           normalize = self.getOption('normalize')
         else:
           normalize = False          
+
+        # Seed the random number generator
+        if 'random_seed' in self.call_options.keys():
+          np.random.seed(self.getOption('random_seed'))
       
         # Get the universe variables needed by the integrator
         masses = self.universe.masses()
