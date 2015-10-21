@@ -171,31 +171,7 @@ cdef class TricubicGridTerm(EnergyTerm):
 		arr[7] = 0.125*(p[index(xi+2,yi+2,zi+2)]-p[index(xi,yi+2,zi+2)]-p[index(xi+2,yi,zi+2)]+p[index(xi,yi,zi+2)]-p[index(xi+2,yi+2,zi)]+p[index(xi,yi+2,zi)]+p[index(xi+2,yi,zi)]-p[index(xi,yi,zi)])
 		return self.d3fddxdydz(arr)
 
- 	# Remember this voxel for next time.
-    	i1 = xi;
-	i2 = yi;
-	i3 = zi;
-	initialized = true;
-	
-	# Evaluate the interpolation within this grid voxel.
-  	dx -= xi;
-  	dy -= yi;
-  	dz -= zi;
-	  int ijkn(0);
-	  fptype dzpow(1);
-	  fptype result(0);
-	  for(int k = 0; k < 4; ++k) {
-	    fptype dypow(1);
-	    for(int j = 0; j < 4; ++j) {
-	      result += dypow*dzpow*(_coefs[ijkn] + dx*(_coefs[ijkn+1] + dx*(_coefs[ijkn+2] + dx*_coefs[ijkn+3])));
-	      ijkn += 4;
-	      dypow *= dy;
-	    }
-	    dzpow *= dz;
-	  }
-	  return result;
-
-def __init__(self, universe, spacing, counts, vals, strength,
+ 	def __init__(self, universe, spacing, counts, vals, strength,
                  scaling_factor, grid_name, max_val):
         print "------------test start---------------"
         EnergyTerm.__init__(self, universe,
@@ -313,7 +289,8 @@ def __init__(self, universe, spacing, counts, vals, strength,
               dvdydz = self.df2dydz(vertex)
               # z direction
               dvdzdz = self.dfdz(vertex)
-              force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
+              
+	      force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
@@ -326,16 +303,17 @@ def __init__(self, universe, spacing, counts, vals, strength,
               #*****************************************
             if energy.gradients != NULL:
               # x coordinate
-              dvdx = self.dfdx(vertex)
-              # y self.coordinate
-              dvdy = self.dfdy(vertex)
+              dvdx = self.dfdx(vertex) + self.df2dxdy(vertex) + self.df2dxdz(vertex)
+              # y coordinate
+              dvdy = self.dfdy(vertex) + self.df2dxdy(vertex) + self.df2dydz(vertex)
               # z coordinate
-              dvdz = self.dfdz(vertex)
+              dvdz = self.dfdz(vertex) + self.df2dxdz(vertex) + self.df2dydz(vertex)
             
               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
               gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dvdy/spacing[1]
               gradients[atom_index][2] += self.strength*scaling_factor[atom_index]*dvdz/spacing[2]
-          else:
+
+	    else:
             for i in range(3):
               if (coordinates[atom_index][i]<0):
                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.
