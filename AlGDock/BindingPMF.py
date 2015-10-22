@@ -123,7 +123,11 @@ last modified {2}
     if kwargs['rotate_matrix'] is not None:
       self._view_args_rotate_matrix = kwargs['rotate_matrix']
 
-    self._random_seed = kwargs['random_seed']
+    if kwargs['random_seed'] is None:
+      self._random_seed = 0
+    else:
+      self._random_seed = kwargs['random_seed']
+      print 'using random number seed of %d'%self._random_seed
 
     self.confs = {'cool':{}, 'dock':{}}
     
@@ -619,9 +623,11 @@ last modified {2}
       self._save('dock', keys=['progress'])
     elif run_type=='cool': # Sample the cooling process
       self.cool()
+      self._postprocess([('cool',-1,-1,'L')])
       self.calc_f_L()
     elif run_type=='dock': # Sample the docking process
       self.dock()
+      self._postprocess()
       self.calc_f_RL()
     elif run_type=='timed': # Timed replica exchange sampling
       cool_complete = self.cool()
@@ -713,8 +719,8 @@ last modified {2}
       
       # Get starting configurations
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
-      # initializes smart darting for cooling and sets the universe
-      # to the lowest energy configuration
+      # initializes smart darting for cooling
+      # and sets the universe to the lowest energy configuration
       self.tee(self.sampler['cool_SmartDarting'].set_confs(seeds))
       self.confs['cool']['starting_poses'] = seeds
       
@@ -722,9 +728,11 @@ last modified {2}
       T_LOW = 20.
       T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
       for T in T_SERIES:
-        self.sampler['cool'](steps = 500, T=T,\
-                             delta_t=self.delta_t, steps_per_trial = 100, \
-                             random_seed=int(time.time()+T))
+        random_seed = int(abs(seeds[0][0][0]*10000)) + int(T*10000)
+        if self._random_seed==0:
+          random_seed += int(time.time())
+        self.sampler['cool'](steps = 500, steps_per_trial = 100, T=T,\
+                             delta_t=self.delta_t, random_seed=random_seed)
       self.universe.normalizePosition()
 
       # Run at starting temperature
@@ -1171,9 +1179,11 @@ last modified {2}
           T_LOW = 20.
           T_SERIES = T_LOW*(self.T_TARGET/T_LOW)**(np.arange(30)/29.)
           for T in T_SERIES:
-            self.sampler['dock'](steps = 500, T=T,\
-              delta_t=self.delta_t, steps_per_trial = 100, \
-              random_seed=int(time.time()+T))
+            random_seed = int(abs(seeds[0][0][0]*10000)) + int(T*10000)
+            if self._random_seed==0:
+              random_seed += int(time.time())
+            self.sampler['dock'](steps = 500, steps_per_trial = 100, T=T,\
+                                 delta_t=self.delta_t, random_seed=random_seed)
           seeds = [self.universe.configuration().array]
 
           # Simulate
@@ -2345,7 +2355,8 @@ last modified {2}
 
     if ndarts>0:
       time_start_SmartDarting = time.time()
-      dat = self.sampler[process+'_SmartDarting'](ntrials=ndarts, T=lambda_k['T'])
+      dat = self.sampler[process+'_SmartDarting'](\
+        ntrials=ndarts, T=lambda_k['T'], random_seed=random_seed+5)
       results['acc_SmartDarting'] = dat[2]
       results['time_SmartDarting'] = (time.time() - time_start_SmartDarting)
       results['att_SmartDarting'] = ndarts

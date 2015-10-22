@@ -46,10 +46,9 @@ arguments = {
     'help':'Type of calculation to run'},
   'max_time':{'type':int, 'default':180, \
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
-  'cores':{'type':int, \
-    'help':'Number of CPU cores to use'},
+  'cores':{'type':int, 'help':'Number of CPU cores to use'},
   'rotate_matrix':{'help':'Rotation matrix for viewing'},
-  'random_seed':{'type':int, 'default':0, 'help':'Random number seed'},
+  'random_seed':{'type':int, 'help':'Random number seed'},
   #   Defaults
   'protocol':{'choices':['Adaptive','Set'],
     'help':'Approach to determining series of thermodynamic states'},

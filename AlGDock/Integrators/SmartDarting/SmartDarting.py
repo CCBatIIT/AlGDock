@@ -5,8 +5,6 @@ import MMTK_dynamics
 import numpy as np
 import AlGDock.RigidBodies
 
-import random
-
 R = 8.3144621*Units.J/Units.mol/Units.K
 
 #
@@ -58,7 +56,6 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Sort by increasing energy
     conf_energies, confs = (list(l) \
       for l in zip(*sorted(zip(conf_energies, confs), key=lambda p:p[0])))
-    self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
 
     # Only keep configurations with energy with 50 kJ/mol of the lowest energy
     confs = [confs[i] for i in range(len(confs)) \
@@ -78,8 +75,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       confs = [confs[i] for i in inds_to_keep]
       conf_energies = [conf_energies[i] for i in inds_to_keep]
 
-    confs_BAT = [np.array(self._BAT_util.BAT(Cartesian=confs[n], \
-      extended=self.extended)) for n in range(len(confs))]
+    confs_BAT = [np.array(self._BAT_util.BAT(extended=self.extended, \
+      XYZ=confs[n])) for n in range(len(confs))]
     confs_BAT_tp = [confs_BAT[c][self._BAT_to_perturb] \
       for c in range(len(confs_BAT))]
 
@@ -114,7 +111,10 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       self.darts = [[self.confs_BAT[j][self._BAT_to_perturb] - \
         self.confs_BAT[k][self._BAT_to_perturb] \
         for j in range(len(confs))] for k in range(len(confs))]
-    
+
+    # Set the universe to the lowest-energy configuration
+    self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
+
     return '  set smart darting configurations: ' + \
       'started with %d, attempted %d, ended with %d configurations.'%(\
       nconfs_o,nconfs_attempted,len(self.confs))
@@ -145,12 +145,16 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     RT = R*self.getOption('T')
     ntrials = self.getOption('ntrials')
 
+    # Seed the random number generator
+    if 'random_seed' in self.call_options.keys():
+      np.random.seed(self.getOption('random_seed'))
+
     acc = 0.
     energies = []
     closest_poses = []
 
     xo_Cartesian = np.copy(self.universe.configuration().array)
-    xo_BAT = np.array(self._BAT_util.BAT(extended=self.extended))
+    xo_BAT = np.array(self._BAT_util.BAT(extended=self.extended, XYZ=xo_Cartesian))
     eo = self.universe.energy()
     if self.extended:
       closest_pose_o = self._closest_pose_Cartesian(\
