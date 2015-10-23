@@ -3,7 +3,6 @@
 from MMTK import Configuration, Dynamics, Environment, Features, Trajectory, Units
 import MMTK_dynamics
 import numpy as np
-import AlGDock.RigidBodies
 
 R = 8.3144621*Units.J/Units.mol/Units.K
 
@@ -24,7 +23,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     self.extended = extended
     
     # Converter between Cartesian and BAT coordinates
-    self._BAT_util = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
+    from BAT import converter
+    self._BAT_util = converter(self.universe, self.molecule)
     # BAT coordinates to perturb: external coordinates and primary torsions
     dof = self.universe.configuration().array.shape[0]*3 if extended \
       else self.universe.configuration().array.shape[0]*3 - 6
@@ -75,8 +75,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       confs = [confs[i] for i in inds_to_keep]
       conf_energies = [conf_energies[i] for i in inds_to_keep]
 
-    confs_BAT = [np.array(self._BAT_util.BAT(extended=self.extended, \
-      XYZ=confs[n])) for n in range(len(confs))]
+    confs_BAT = [self._BAT_util.BAT(confs[n], extended=self.extended) \
+      for n in range(len(confs))]
     confs_BAT_tp = [confs_BAT[c][self._BAT_to_perturb] \
       for c in range(len(confs_BAT))]
 
@@ -154,7 +154,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     closest_poses = []
 
     xo_Cartesian = np.copy(self.universe.configuration().array)
-    xo_BAT = np.array(self._BAT_util.BAT(extended=self.extended, XYZ=xo_Cartesian))
+    xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
     eo = self.universe.energy()
     if self.extended:
       closest_pose_o = self._closest_pose_Cartesian(\
@@ -170,7 +170,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Generate a trial move
       xn_BAT = np.copy(xo_BAT)
       xn_BAT[self._BAT_to_perturb] = xo_BAT[self._BAT_to_perturb] + self.darts[closest_pose_o][dart_towards]
-      xn_Cartesian = self._BAT_util.Cartesian(xn_BAT) # Also sets the universe
+      xn_Cartesian = self._BAT_util.Cartesian(xn_BAT)
+      self.universe.setConfiguration(Configuration(self.universe, xn_Cartesian))
       en = self.universe.energy()
       if self.extended:
         closest_pose_n = self._closest_pose_Cartesian(\
@@ -181,7 +182,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Accept or reject the trial move
       if (closest_pose_n==dart_towards) and (abs(en-eo)<1000) and \
           ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
-        xo_Cartesian = np.copy(xn_Cartesian)
+        xo_Cartesian = xn_Cartesian
         xo_BAT = xn_BAT
         eo = 1.*en
         closest_pose_o = closest_pose_n

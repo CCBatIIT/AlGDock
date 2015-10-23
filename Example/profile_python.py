@@ -202,3 +202,53 @@ p.strip_dirs().sort_stats('tottime').print_stats(100)
 #        665    0.173    0.000    0.173    0.000 {built-in method compress}
 #  139200/104000    0.163    0.000    2.823    0.000 Objects3D.py:29(intersectWith)
 #     518400    0.156    0.000    0.496    0.000 TensorModule.py:229(isTensor)
+
+# >>> Cython BAT.pyx
+#    calculated NAMD_GBSA solvation free energy of -76.803688 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -76.932018 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -70.874913 RT using cycles 2 to 2
+#
+#           3498364 function calls (3459134 primitive calls) in 13.323 seconds
+#
+#     Ordered by: internal time
+#     List reduced from 1130 to 100 due to restriction <100>
+#
+#     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+#        240    4.412    0.018    6.704    0.028 SmartDarting.py:136(__call__)
+#     460147    1.533    0.000    1.533    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#        240    1.525    0.006    8.965    0.037 BindingPMF.py:2309(_sim_one_state)
+#          1    1.137    1.137    4.401    4.401 BindingPMF.py:685(initial_cool)
+#          6    0.741    0.123    0.741    0.123 {posix.waitpid}
+#     439150    0.443    0.000    2.288    0.000 fromnumeric.py:1621(sum)
+#          2    0.356    0.178    0.362    0.181 IO.py:204(read)
+#          6    0.354    0.059    0.565    0.094 SmartDarting.py:40(set_confs)
+#  2638/2637    0.302    0.000    0.507    0.000 {apply}
+#     441448    0.287    0.000    1.703    0.000 _methods.py:23(_sum)
+#     289404    0.285    0.000    0.285    0.000 {numpy.core.multiarray.array}
+#     477172    0.161    0.000    0.161    0.000 {isinstance}
+#        515    0.151    0.000    0.151    0.000 {built-in method compress}
+
+# >>> Extension type
+#    calculated NAMD_GBSA solvation free energy of -76.803688 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -76.932018 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -70.874913 RT using cycles 2 to 2
+#
+#           3481075 function calls (3441845 primitive calls) in 13.049 seconds
+#
+#     Ordered by: internal time
+#     List reduced from 1132 to 100 due to restriction <100>
+#
+#     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+#       1200    3.870    0.003    5.530    0.005 {method 'Cartesian' of 'BAT.converter' objects}
+#     460147    1.573    0.000    1.573    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#        240    1.484    0.006    8.749    0.036 BindingPMF.py:2309(_sim_one_state)
+#          1    1.129    1.129    4.367    4.367 BindingPMF.py:685(initial_cool)
+#          5    0.713    0.143    0.713    0.143 {posix.waitpid}
+#        496    0.672    0.001    1.052    0.002 {method 'BAT' of 'BAT.converter' objects}
+#     439150    0.430    0.000    2.315    0.000 fromnumeric.py:1621(sum)
+#          2    0.360    0.180    0.367    0.183 IO.py:204(read)
+#  2638/2637    0.304    0.000    0.501    0.000 {apply}
+#     441448    0.284    0.000    1.741    0.000 _methods.py:23(_sum)
+#     289404    0.281    0.000    0.281    0.000 {numpy.core.multiarray.array}
+#     477172    0.161    0.000    0.161    0.000 {isinstance}
+#        515    0.153    0.000    0.153    0.000 {built-in method compress}

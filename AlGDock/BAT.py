@@ -109,44 +109,36 @@ class converter():
     # to use a relative phase angle
     prior_atoms = [(a2,a3,a4) for (a1,a2,a3,a4) in torsionL]
 
-    self.root = root
-    self._torsionL = torsionL
-    # TODO: Replace self.root and self._torsionL with the following
     self.rootInd = [r.index for r in root]
     self._torsionIndL = [[a.index for a in tset] for tset in torsionL]
     self._firstTorsionInd = [prior_atoms.index(prior_atoms[n]) \
       for n in range(len(prior_atoms))]
     self.ntorsions = self.molecule.numberOfAtoms()-3
 
-  def BAT(self, extended=False, XYZ=None):
+  def BAT(self, XYZ, extended=False):
     """
     Conversion from Cartesian to Bond-Angle-Torsion coordinates
     :param extended: whether to include external coordinates or not
     :param Cartesian: Cartesian coordinates. If None, then the molecules' coordinates will be used
     """
-    if XYZ is None:
-      XYZ = self.universe.configuration().array
     root = [distance(XYZ[self.rootInd[0]],XYZ[self.rootInd[1]]),\
       distance(XYZ[self.rootInd[1]],XYZ[self.rootInd[2]]),\
       angle(XYZ[self.rootInd[0]],XYZ[self.rootInd[1]],XYZ[self.rootInd[2]])]
 
-#    bonds = [self.universe.distance(XYZ[a1],XYZ[a2]) for (a1,a2,a3,a4) in self._torsionIndL]
-#    angles = [self.universe.angle(XYZ[a1],XYZ[a2],XYZ[a3]) for (a1,a2,a3,a4) in self._torsionIndL]
-#    torsions = [self.universe.dihedral(XYZ[a1],XYZ[a2],XYZ[a3],XYZ[a4]) \
-#      for (a1,a2,a3,a4) in self._torsionIndL]
+    import itertools
+    internal = root + \
+      [val for val in itertools.chain.from_iterable([\
+        BAT4(XYZ[a1],XYZ[a2],XYZ[a3],XYZ[a4]) \
+          for (a1,a2,a3,a4) in self._torsionIndL])]
 
-    B4 = [BAT4(XYZ[a1],XYZ[a2],XYZ[a3],XYZ[a4]) \
-      for (a1,a2,a3,a4) in self._torsionIndL]
-    bonds = [b[0] for b in B4]
-    angles = [b[1] for b in B4]
-    torsions = [b[2] for b in B4]
-
+    torsions = internal[5::3]
     phase_torsions = [(torsions[n] - torsions[self._firstTorsionInd[n]]) \
       if self._firstTorsionInd[n]!=n else torsions[n] \
       for n in range(len(torsions))]
+    internal[5::3] = phase_torsions
 
     if not extended:
-      return root + bonds + angles + phase_torsions
+      return np.array(internal)
 
     # The rotation axis is a normalized vector pointing from atom 0 to 1
     # It is described in two degrees of freedom by the polar angle and azimuth
@@ -163,7 +155,7 @@ class converter():
     # Angle about the rotation axis
     omega = np.arctan2(pos2[1],pos2[0])
     external = list(XYZ[self.rootInd[0]]) + [phi, theta, omega]
-    return external + root + bonds + angles + phase_torsions
+    return np.array(external+internal)
 
   def Cartesian(self, BAT):
     """
@@ -172,62 +164,17 @@ class converter():
     """
     # Arrange BAT coordinates in convenient arrays
     offset = 6 if len(BAT)==(3*self.molecule.numberOfAtoms()) else 0
-    bonds = BAT[offset+3:self.ntorsions+offset+3]
-    angles = BAT[self.ntorsions+offset+3:2*self.ntorsions+offset+3]
-    phase_torsions = BAT[2*self.ntorsions+offset+3:]
+    bonds = BAT[offset+3::3]
+    angles = BAT[offset+4::3]
+    phase_torsions = BAT[offset+5::3]
     torsions = [(phase_torsions[n] + phase_torsions[self._firstTorsionInd[n]]) \
       if self._firstTorsionInd[n]!=n else phase_torsions[n] \
       for n in range(self.ntorsions)]
     
-    # Determine the positions of the first three atoms
-    p1 = Vector(0,0,0) # First atom at origin
-    p2 = Vector(0,0,BAT[offset]) # Second atom along z-axis
-    # Third atom in xz-plane
-    sphere = Sphere(p2, BAT[offset+1])
-    cone = Cone(p2, -p2, BAT[offset+2])
-    plane = Plane(p1, Vector(0,1,0))
-    p3 = sphere.intersectWith(cone).intersectWith(plane)[0]
-
-#  p1 = np.array([0.,0.,0.])
-#  p2 = np.array([0.,0.,BAT[offset]])
-#  # sphere.intersectWith(cone) is a circle
-#  from_center = BAT[offset+1]*np.cos(BAT[offset+2]) # This looks right
-#  radius = BAT[offset+1]*np.sin(BAT[offset+2]) # This looks right
-#  # cone.center+cone.axis*from_center
-#  cone_axis = normalize(-p2)
-#  center =  p2 + cone_axis*from_center
-#
-#  # plane1 is [0,1,0]
-#  # direction = plane1.normal.cross(plane2.normal)
-#  direction = cross(np.array([0,1,0]),cone_axis)
-#  # point_in_1 = plane1.distance_from_zero*plane1.normal
-#  point_in_1 = p1[0]*np.array([0,1,0])
-#  # point_in_both = point_in_1 - (point_in_1*plane2.normal - plane2.distance_from_zero)*plane2.normal
-#  #
-#
-#  # How does this circle intersect with the plane?
-#
-#  # circle = sphere.intersectWith(cone)
-#  # In [54]: circle.intersectWith(plane)
-#  # Out[54]: (Vector(0.149524,0.000000,0.193966), Vector(-0.149524,0.000000,0.193966))
-#
-#  # From _intersectionCirclePlane
-#  line = plane.intersectWith(Plane(circle.center, circle.normal))
-#  x = line.distanceFrom(circle.center)
-#  if x > circle.radius:
-#      return None
-#  else:
-#      angle = Numeric.arccos(x/circle.radius)
-#      along_line = Numeric.sin(angle)*circle.radius
-#      normal = circle.normal.cross(line.direction)
-#      if line.distanceFrom(circle.center+normal) > x:
-#          normal = -normal
-#      return (circle.center+x*normal-line.direction*along_line,
-#              circle.center+x*normal+line.direction*along_line)
-
-    p1 = p1.array
-    p2 = p2.array
-    p3 = p3.array
+    p1 = np.array([0.,0.,0.])
+    p2 = np.array([0.,0.,BAT[offset]])
+    p3 = np.array([BAT[offset+1]*np.sin(BAT[offset+2]), 0., \
+      BAT[offset]-BAT[offset+1]*np.cos(BAT[offset+2])])
 
     # If appropriate, rotate and translate the first three atoms
     if offset==6:
@@ -262,47 +209,47 @@ class converter():
       sphere = Sphere(Vector(XYZ[a2]), bond)
       cone = Cone(Vector(XYZ[a2]), Vector(XYZ[a3]-XYZ[a2]), angle)
       plane123 = Plane(Vector(XYZ[a4]), Vector(XYZ[a3]), Vector(XYZ[a2]))
-      circle = sphere.intersectWith(cone)
-      line = plane123.intersectWith(Plane(circle.center, circle.normal))
-      points = circle.intersectWith(plane123)
+      points = sphere.intersectWith(cone).intersectWith(plane123)
       p = points[0] if (Plane(Vector(XYZ[a3]), Vector(XYZ[a2]), points[0]).normal*plane123.normal)>0 else points[1]
       p = rotatePoint(Vector(p), Line(Vector(XYZ[a2]), Vector(XYZ[a2]-XYZ[a3])), torsion)
       XYZ[a1] = p.array
 
-#  # sphere.intersectWith(cone) is a circle
-#  from_center = bond*np.cos(angle)
-#  circle_radius = bond*np.sin(angle)
-#  circle_normal = normalize(XYZ[a3]-XYZ[a2]) # also circle normal
-#  circle_center =  XYZ[a2] + circle_normal*from_center
-#
-#  # plane.intersectWith(Plane(circle.center, circle.normal)) is a line
-#  plane123_normal = normalize(cross(XYZ[a3]-XYZ[a4],XYZ[a2]-XYZ[a3]))
-#  plane123_distance_from_zero = np.sum(plane123_normal*XYZ[a3])
-#  line_direction = cross(plane123_normal,circle_normal)
-#  point_in_plane123 = plane123_distance_from_zero*plane123_normal
-#  line_point = point_in_plane123 - \
-#    (np.sum(point_in_plane123*circle_normal) - \
-#     np.sum(circle_normal*circle_center))*circle_normal
-#
-#  d = line_point-circle_center
-#  d = d - np.sum(d*line_direction)*line_direction
-#  x = np.sqrt(np.sum(d*d))
-#  a = np.arccos(x/circle_radius)
-#  along_line = np.sin(a)*circle_radius
-#  normal = cross(circle_normal,line_direction)
-#  d = line_point-(circle_center+normal)
-#  d -= np.sum(d*line_direction)*line_direction
-#  d = np.sqrt(np.sum(d*d))
-#  if d>x:
-#    normal = -normal
-#  base = circle_center+x*normal
-#  points = (base-line_direction*along_line,base+line_direction*along_line)
-#
-#  p = points[0] if np.sum(normalize(cross(XYZ[a2]-XYZ[a3],points[0]-XYZ[a2]))*plane123_normal)>0 else points[1]
-#  p = rotatePoint(Vector(p), Line(Vector(XYZ[a2]), Vector(XYZ[a2]-XYZ[a3])), torsion)
-
-    self.universe.setConfiguration(MMTK.Configuration(self.universe,XYZ))
     return XYZ
+
+#    for ((a1,a2,a3,a4), bond, angle, torsion) in \
+#        zip(self._torsionIndL,bonds,angles,torsions):
+#      # sphere.intersectWith(cone) is a circle
+#      from_center = bond*np.cos(angle)
+#      circle_radius = bond*np.sin(angle)
+#      circle_normal = normalize(XYZ[a3]-XYZ[a2]) # also circle normal
+#      circle_center =  XYZ[a2] + circle_normal*from_center
+#
+#      # plane.intersectWith(Plane(circle.center, circle.normal)) is a line
+#      plane123_normal = normalize(cross(XYZ[a3]-XYZ[a4],XYZ[a2]-XYZ[a3]))
+#      plane123_distance_from_zero = np.sum(plane123_normal*XYZ[a3])
+#      line_direction = cross(plane123_normal,circle_normal)
+#      point_in_plane123 = plane123_distance_from_zero*plane123_normal
+#      line_point = point_in_plane123 - \
+#        (np.sum(point_in_plane123*circle_normal) - \
+#         np.sum(circle_normal*circle_center))*circle_normal
+#
+#      d = line_point-circle_center
+#      d = d - np.sum(d*line_direction)*line_direction
+#      x = np.sqrt(np.sum(d*d))
+#      a = np.arccos(x/circle_radius)
+#      along_line = np.sin(a)*circle_radius
+#      normal = cross(circle_normal,line_direction)
+#      d = line_point-(circle_center+normal)
+#      d -= np.sum(d*line_direction)*line_direction
+#      d = np.sqrt(np.sum(d*d))
+#      if d>x:
+#        normal = -normal
+#      base = circle_center+x*normal
+#      points = (base-line_direction*along_line,base+line_direction*along_line)
+#
+#      p = points[0] if np.sum(normalize(cross(XYZ[a2]-XYZ[a3],points[0]-XYZ[a2]))*plane123_normal)>0 else points[1]
+#      p = rotatePoint(Vector(p), Line(Vector(XYZ[a2]), Vector(XYZ[a2]-XYZ[a3])), torsion)
+#      XYZ[a1] = p.array
 
   def showMolecule(self, colorBy=None, label=False, dcdFN=None):
     """
@@ -333,7 +280,6 @@ proc label_atoms { molid seltext } {
   } 
   $sel delete 
 } 
-
 label_atoms 0 all
 """
     if dcdFN is not None:
@@ -393,22 +339,22 @@ if __name__ == '__main__':
     self = converter(universe, molecule)
 
     # This tests a conversion to BAT coordinates and back
-    BAT = self.BAT(extended=True)
-    self.Cartesian(BAT)
-    print sum(sum(self.universe.configuration().array - original_xyz))
+    BAT = self.BAT(original_xyz, extended=True)
+    new_xyz = self.Cartesian(BAT)
+    print sum(sum(new_xyz - original_xyz))
 
-    # This rotates the last primary torsion
-    torsion_ind = self._firstTorsionInd[-1]
-    BAT_ind = len(BAT)-self.ntorsions+torsion_ind
-    confs = []
-    for torsion_offset in np.linspace(0,2*np.pi):
-      BAT_n = [BAT[ind] if ind!=BAT_ind else BAT[ind] + torsion_offset \
-        for ind in range(len(BAT))]
-      self.Cartesian(BAT_n)
-      confs.append(np.copy(self.universe.configuration().array))
-
-    import AlGDock.IO
-    IO_dcd = AlGDock.IO.dcd(molecule)
-    IO_dcd.write('rotation.dcd', confs)
-    self.showMolecule(dcdFN='rotation.dcd')
-    os.remove('rotation.dcd')
+#      # This rotates the last primary torsion
+#      torsion_ind = self._firstTorsionInd[-1]
+#      BAT_ind = len(BAT)-self.ntorsions+torsion_ind
+#      confs = []
+#      for torsion_offset in np.linspace(0,2*np.pi):
+#        BAT_n = [BAT[ind] if ind!=BAT_ind else BAT[ind] + torsion_offset \
+#          for ind in range(len(BAT))]
+#        self.Cartesian(BAT_n)
+#        confs.append(np.copy(self.universe.configuration().array))
+#
+#      import AlGDock.IO
+#      IO_dcd = AlGDock.IO.dcd(molecule)
+#      IO_dcd.write('rotation.dcd', confs)
+#      self.showMolecule(dcdFN='rotation.dcd')
+#      os.remove('rotation.dcd')
