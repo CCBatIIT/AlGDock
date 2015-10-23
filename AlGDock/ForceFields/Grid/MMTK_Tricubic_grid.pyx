@@ -78,7 +78,7 @@ cdef class TricubicGridTerm(EnergyTerm):
   	cdef int yi = (int)floor(dy);
   	cdef int zi = (int)floor(dz);
 
-	# Calculate the derivatives estimatives
+	# Calculate the first derivatives estimatives
 	
 	# Values of df/dx in each corner in a array
 	cdef float_t dfdx(self, float_t p[4][4][4]):
@@ -287,7 +287,7 @@ cdef class TricubicGridTerm(EnergyTerm):
               dvdydy = self.dfdy(vertex)
               dvdydz = self.df2dydz(vertex)
               # z direction
-              dvdzdz = self.dfdz(vertex)
+              dvdzdz = self.dfdz(vertex) + self.d3fdxdydz(vertex)
               
 	      force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
@@ -306,7 +306,7 @@ cdef class TricubicGridTerm(EnergyTerm):
               # y coordinate
               dvdy = self.dfdy(vertex) + self.df2dxdy(vertex) + self.df2dydz(vertex)
               # z coordinate
-              dvdz = self.dfdz(vertex) + self.df2dxdz(vertex) + self.df2dydz(vertex)
+              dvdz = self.dfdz(vertex) + self.df2dxdz(vertex) + self.df2dydz(vertex) + self.d3fdxdydz(vertex)
             
               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
               gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dvdy/spacing[1]
