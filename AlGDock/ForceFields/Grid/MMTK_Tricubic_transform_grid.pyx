@@ -40,7 +40,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
-    cdef float_t max_val, strength, k
+    cdef float_t strength, inv_power, inv_power_m1, k
     # The __init__ method remembers parameters and loads the potential
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
@@ -171,18 +171,20 @@ cdef class TricubicGridTerm(EnergyTerm):
 		arr[7] = 0.125*(p[index(xi+2,yi+2,zi+2)]-p[index(xi,yi+2,zi+2)]-p[index(xi+2,yi,zi+2)]+p[index(xi,yi,zi+2)]-p[index(xi+2,yi+2,zi)]+p[index(xi,yi+2,zi)]+p[index(xi+2,yi,zi)]-p[index(xi,yi,zi)])
 		return self.d3fddxdydz(arr)
 
+
 	def __init__(self, universe, spacing, counts, vals, strength,
                  scaling_factor, grid_name, max_val):
         print "------------test start---------------"
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
-        self.eval_func = <void *>TricubicGridTerm.evaluate
+        self.eval_func = <void *>BSplineGridTerm.evaluate
 
         self.strength = strength
         self.scaling_factor = np.array(scaling_factor, dtype=float)
         self.natoms = len(self.scaling_factor)
         self.grid_name = grid_name
-        self.max_val = max_val
+        self.inv_power = float(inv_power)
+        self.inv_power_m1 = inv_power - 1.
 
         self.spacing = spacing
         self.counts = counts
