@@ -36,7 +36,7 @@ ctypedef np.int_t int_t
 # - The function "evaluate" must have exactly the parameter
 #   list given in this example.
 #
-cdef class TricubicGridTerm(EnergyTerm):
+cdef class TricubicTransformGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
@@ -303,12 +303,12 @@ cdef class TricubicGridTerm(EnergyTerm):
 
               #*****************************************
             if energy.gradients != NULL:
-              # x coordinate
-              dvdx = self.dfdx(vertex)
-              # y self.coordinate
-              dvdy = self.dfdy(vertex)
+             # x coordinate
+              dvdx = self.dfdx(vertex) + self.df2dxdy(vertex) + self.df2dxdz(vertex)
+              # y coordinate
+              dvdy = self.dfdy(vertex) + self.df2dxdy(vertex) + self.df2dydz(vertex)
               # z coordinate
-              dvdz = self.dfdz(vertex)
+              dvdz = self.dfdz(vertex) + self.df2dxdz(vertex) + self.df2dydz(vertex)
             
               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
               gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dvdy/spacing[1]

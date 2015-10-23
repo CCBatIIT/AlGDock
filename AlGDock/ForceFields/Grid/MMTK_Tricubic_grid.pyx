@@ -171,12 +171,7 @@ cdef class TricubicGridTerm(EnergyTerm):
 		arr[7] = 0.125*(p[index(xi+2,yi+2,zi+2)]-p[index(xi,yi+2,zi+2)]-p[index(xi+2,yi,zi+2)]+p[index(xi,yi,zi+2)]-p[index(xi+2,yi+2,zi)]+p[index(xi,yi+2,zi)]+p[index(xi+2,yi,zi)]-p[index(xi,yi,zi)])
 		return self.d3fddxdydz(arr)
 
-<<<<<<< HEAD
-	def __init__(self, universe, spacing, counts, vals, strength,
-=======
- 	def __init__(self, universe, spacing, counts, vals, strength,
->>>>>>> origin/master
-                 scaling_factor, grid_name, max_val):
+	def __init__(self, universe, spacing, counts, vals, strength, scaling_factor, grid_name, max_val):
         print "------------test start---------------"
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
@@ -204,7 +199,7 @@ cdef class TricubicGridTerm(EnergyTerm):
         else:
           self.vals = np.copy(vals)
 
-# This method is called for every single energy evaluation, so make
+    # This method is called for every single energy evaluation, so make
     # it as efficient as possible. The parameters do_gradients and
     # do_force_constants are flags that indicate if gradients and/or
     # force constants are requested.
