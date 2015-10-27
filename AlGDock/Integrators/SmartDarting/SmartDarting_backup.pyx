@@ -3,6 +3,11 @@
 from MMTK import Configuration, Dynamics, Environment, Features, Trajectory, Units
 import MMTK_dynamics
 import numpy as np
+cimport numpy as np
+import cython
+
+ctypedef np.float_t float_t
+ctypedef np.int_t int_t
 
 R = 8.3144621*Units.J/Units.mol/Units.K
 
@@ -126,6 +131,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
   def _closest_pose_BAT(self, conf_BAT_tp):
     # Closest pose has smallest sum of square distances between torsion angles
     # For only torsion angles, differences in units of periods (between 0 and 1)
+    cdef np.ndarray[np.float_t, ndim=2] diffs
     diffs = np.abs(np.array([self.confs_BAT_tp[c] - conf_BAT_tp \
       for c in range(len(self.confs_BAT_tp))]))/(2*np.pi)
     # Wraps around the period
@@ -141,16 +147,21 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Check if the universe has features not supported by the integrator
     Features.checkFeatures(self, self.universe)
   
-    RT = R*self.getOption('T')
-    ntrials = self.getOption('ntrials')
+    cdef float RT = R*self.getOption('T')
+    cdef int ntrials = self.getOption('ntrials')
 
     # Seed the random number generator
     if 'random_seed' in self.call_options.keys():
       np.random.seed(self.getOption('random_seed'))
 
-    acc = 0.
+    cdef float acc = 0.
     energies = []
     closest_poses = []
+
+    cdef np.ndarray[np.float_t, ndim=2] xo_Cartesian, xn_Cartesian
+    cdef np.ndarray[np.float_t] xo_BAT, xn_BAT
+    cdef float eo, en
+    cdef int closest_pose_o, closest_pose_n
 
     xo_Cartesian = np.copy(self.universe.configuration().array)
     xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
@@ -160,7 +171,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         xo_Cartesian[self.molecule.heavy_atoms,:])
     else:
       closest_pose_o = self._closest_pose_BAT(xo_BAT[self._BAT_to_perturb])
-      
+
+    cdef int t, dart_towards
     for t in range(ntrials):
       # Choose a pose to dart towards
       dart_towards = closest_pose_o
@@ -169,32 +181,24 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Generate a trial move
       xn_BAT = np.copy(xo_BAT)
       xn_BAT[self._BAT_to_perturb] = xo_BAT[self._BAT_to_perturb] + self.darts[closest_pose_o][dart_towards]
-      
-      # Check that the trial move is closest to dart_towards
-      if self.extended:
-        xn_Cartesian = self._BAT_util.Cartesian(xn_BAT)
-        closest_pose_n = self._closest_pose_Cartesian(\
-          xn_Cartesian[self.molecule.heavy_atoms,:])
-        if (closest_pose_n!=dart_towards):
-          continue
-      else:
-        closest_pose_n = self._closest_pose_BAT(xn_BAT[self._BAT_to_perturb])
-        if (closest_pose_n!=dart_towards):
-          continue
-        xn_Cartesian = self._BAT_util.Cartesian(xn_BAT)
-
-      # Determine energy of new state
+      xn_Cartesian = self._BAT_util.Cartesian(xn_BAT)
       self.universe.setConfiguration(Configuration(self.universe, xn_Cartesian))
       en = self.universe.energy()
-
+      if self.extended:
+        closest_pose_n = self._closest_pose_Cartesian(\
+          xn_Cartesian[self.molecule.heavy_atoms,:])
+      else:
+        closest_pose_n = self._closest_pose_BAT(xn_BAT[self._BAT_to_perturb])
+        
       # Accept or reject the trial move
-      if (abs(en-eo)<1000) and \
+      if (closest_pose_n==dart_towards) and (abs(en-eo)<1000) and \
           ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
         xo_Cartesian = xn_Cartesian
         xo_BAT = xn_BAT
         eo = 1.*en
         closest_pose_o = closest_pose_n
         acc += 1
+      else:
+        self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
 
-    self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
-    return ([np.copy(xo_Cartesian)], [eo], float(acc)/float(ntrials), 0.0)
+    return ([np.copy(xo_Cartesian)], [en], float(acc)/float(ntrials), 0.0)

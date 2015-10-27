@@ -45,7 +45,7 @@ BPMF.sampler['dock'](steps=50, T=300)
 # TODO: Make sure there are adequate copies in SmartDarting.py and ExternalMC.py
 
 xo_Cartesian = np.copy(self.universe.configuration().array)
-xo_BAT = np.array(self._BAT_util.BAT(extended=self.extended))
+xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
 eo = self.universe.energy()
 if self.extended:
   closest_pose_o = self._closest_pose_Cartesian(\
@@ -63,12 +63,12 @@ xn_BAT[self._BAT_to_perturb] = xo_BAT[self._BAT_to_perturb] + self.darts[closest
 xn_Cartesian = self._BAT_util.Cartesian(xn_BAT) # Also sets the universe
 en = self.universe.energy()
 
-import AlGDock.IO
-IO_dcd = AlGDock.IO.dcd(self.molecule)
-IO_dcd.write('smart_darting.dcd', \
-  self.confs + [xo_Cartesian, xn_Cartesian])
-self._BAT_util.showMolecule(dcdFN='smart_darting.dcd')
-os.remove('smart_darting.dcd')
+#  import AlGDock.IO
+#  IO_dcd = AlGDock.IO.dcd(self.molecule)
+#  IO_dcd.write('smart_darting.dcd', \
+#    self.confs + [xo_Cartesian, xn_Cartesian])
+#  self._BAT_util.showMolecule(dcdFN='smart_darting.dcd')
+#  os.remove('smart_darting.dcd')
 
 for conf in confs:
   self.universe.setConfiguration(Configuration(self.universe,conf))

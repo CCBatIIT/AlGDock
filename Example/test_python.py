@@ -1,6 +1,6 @@
 # The example is 1of6
 
-run_types = ['all']
+# run_types = ['cool']
 # run_types = ['cool','dock','postprocess','free_energies']
 
 import AlGDock.BindingPMF_plots

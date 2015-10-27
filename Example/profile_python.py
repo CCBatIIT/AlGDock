@@ -28,7 +28,7 @@ cProfile.run("self = AlGDock.BindingPMF_plots.BPMF_plots(\
   sampler='NUTS', \
   MCMC_moves=1, \
   seeds_per_state=10, steps_per_seed=200, darts_per_seed=5, \
-  sweeps_per_cycle=25, attempts_per_sweep=100, \
+  sweeps_per_cycle=100, attempts_per_sweep=100, \
   steps_per_sweep=50, darts_per_sweep=5, \
   cool_repX_cycles=3, dock_repX_cycles=4, \
   site='Sphere', site_center=[1.74395, 1.74395, 1.74395], site_max_R=0.6, \
@@ -38,6 +38,7 @@ cProfile.run("self = AlGDock.BindingPMF_plots.BPMF_plots(\
   rmsd=True, \
   run_type='cool', random_seed=50)","cool_stats")
 
+# Also used 25 sweeps per cycle, 5 darts during smart darting tests
 import pstats
 p = pstats.Stats("cool_stats")
 p.strip_dirs().sort_stats('tottime').print_stats(100)
@@ -203,52 +204,157 @@ p.strip_dirs().sort_stats('tottime').print_stats(100)
 #  139200/104000    0.163    0.000    2.823    0.000 Objects3D.py:29(intersectWith)
 #     518400    0.156    0.000    0.496    0.000 TensorModule.py:229(isTensor)
 
-# >>> Cython BAT.pyx
-#    calculated NAMD_GBSA solvation free energy of -76.803688 RT using cycles 0 to 0
-#    calculated NAMD_GBSA solvation free energy of -76.932018 RT using cycles 1 to 1
-#    calculated NAMD_GBSA solvation free energy of -70.874913 RT using cycles 2 to 2
+# >>> Cython extension type BAT.pyx
+#    calculated NAMD_GBSA solvation free energy of -75.103775 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -76.190223 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -77.145064 RT using cycles 1 to 2
 #
-#           3498364 function calls (3459134 primitive calls) in 13.323 seconds
+#           3526337 function calls (3487107 primitive calls) in 13.515 seconds
 #
 #     Ordered by: internal time
-#     List reduced from 1130 to 100 due to restriction <100>
+#     List reduced from 1133 to 100 due to restriction <100>
 #
 #     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-#        240    4.412    0.018    6.704    0.028 SmartDarting.py:136(__call__)
-#     460147    1.533    0.000    1.533    0.000 {method 'reduce' of 'numpy.ufunc' objects}
-#        240    1.525    0.006    8.965    0.037 BindingPMF.py:2309(_sim_one_state)
-#          1    1.137    1.137    4.401    4.401 BindingPMF.py:685(initial_cool)
-#          6    0.741    0.123    0.741    0.123 {posix.waitpid}
-#     439150    0.443    0.000    2.288    0.000 fromnumeric.py:1621(sum)
-#          2    0.356    0.178    0.362    0.181 IO.py:204(read)
-#          6    0.354    0.059    0.565    0.094 SmartDarting.py:40(set_confs)
-#  2638/2637    0.302    0.000    0.507    0.000 {apply}
-#     441448    0.287    0.000    1.703    0.000 _methods.py:23(_sum)
-#     289404    0.285    0.000    0.285    0.000 {numpy.core.multiarray.array}
-#     477172    0.161    0.000    0.161    0.000 {isinstance}
-#        515    0.151    0.000    0.151    0.000 {built-in method compress}
+#       1200    3.925    0.003    5.558    0.005 {method 'Cartesian' of 'BAT.converter' objects}
+#     474605    1.656    0.000    1.656    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#        240    1.457    0.006    8.825    0.037 BindingPMF.py:2309(_sim_one_state)
+#          1    1.128    1.128    4.588    4.588 BindingPMF.py:685(initial_cool)
+#        610    0.856    0.001    1.326    0.002 {method 'BAT' of 'BAT.converter' objects}
+#          5    0.701    0.140    0.701    0.140 {posix.waitpid}
+#     456334    0.445    0.000    2.364    0.000 fromnumeric.py:1621(sum)
+#          2    0.356    0.178    0.363    0.181 IO.py:204(read)
+#     458025    0.311    0.000    1.767    0.000 _methods.py:23(_sum)
+#     285778    0.307    0.000    0.307    0.000 {numpy.core.multiarray.array}
+#  2753/2752    0.304    0.000    0.505    0.000 {apply}
+#        628    0.186    0.000    0.186    0.000 {built-in method compress}
+#     494965    0.169    0.000    0.169    0.000 {isinstance}
 
-# >>> Extension type
-#    calculated NAMD_GBSA solvation free energy of -76.803688 RT using cycles 0 to 0
-#    calculated NAMD_GBSA solvation free energy of -76.932018 RT using cycles 1 to 1
-#    calculated NAMD_GBSA solvation free energy of -70.874913 RT using cycles 2 to 2
+# >>> No smart darting trials
+#    calculated NAMD_GBSA solvation free energy of -76.139101 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -77.054634 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -79.887159 RT using cycles 1 to 2
 #
-#           3481075 function calls (3441845 primitive calls) in 13.049 seconds
+#           3322450 function calls (3252783 primitive calls) in 12.207 seconds
 #
 #     Ordered by: internal time
-#     List reduced from 1132 to 100 due to restriction <100>
+#     List reduced from 1124 to 100 due to restriction <100>
 #
 #     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-#       1200    3.870    0.003    5.530    0.005 {method 'Cartesian' of 'BAT.converter' objects}
-#     460147    1.573    0.000    1.573    0.000 {method 'reduce' of 'numpy.ufunc' objects}
-#        240    1.484    0.006    8.749    0.036 BindingPMF.py:2309(_sim_one_state)
-#          1    1.129    1.129    4.367    4.367 BindingPMF.py:685(initial_cool)
-#          5    0.713    0.143    0.713    0.143 {posix.waitpid}
-#        496    0.672    0.001    1.052    0.002 {method 'BAT' of 'BAT.converter' objects}
-#     439150    0.430    0.000    2.315    0.000 fromnumeric.py:1621(sum)
-#          2    0.360    0.180    0.367    0.183 IO.py:204(read)
-#  2638/2637    0.304    0.000    0.501    0.000 {apply}
-#     441448    0.284    0.000    1.741    0.000 _methods.py:23(_sum)
-#     289404    0.281    0.000    0.281    0.000 {numpy.core.multiarray.array}
-#     477172    0.161    0.000    0.161    0.000 {isinstance}
-#        515    0.153    0.000    0.153    0.000 {built-in method compress}
+#       1080    5.484    0.005    7.436    0.007 BindingPMF.py:2321(_sim_one_state)
+#          1    1.136    1.136    3.611    3.611 BindingPMF.py:688(initial_cool)
+#          2    0.888    0.444    6.901    3.451 BindingPMF.py:1970(_replica_exchange)
+#          6    0.728    0.121    0.728    0.121 {posix.waitpid}
+#     679563    0.625    0.000    0.625    0.000 {numpy.core.multiarray.array}
+#      92979    0.448    0.000    0.448    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#          2    0.367    0.184    0.374    0.187 IO.py:204(read)
+#       1010    0.320    0.000    0.320    0.000 {built-in method compress}
+#  1752/1751    0.287    0.000    0.485    0.000 {apply}
+#     435096    0.176    0.000    0.670    0.000 function_base.py:786(copy)
+#     240082    0.148    0.000    0.474    0.000 fromnumeric.py:1281(ravel)
+
+# >>> repX swaps in a cython module
+#    calculated NAMD_GBSA solvation free energy of -76.139101 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -77.054634 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -79.887159 RT using cycles 1 to 2
+#           3137671 function calls (3069034 primitive calls) in 12.085 seconds
+#
+#     Ordered by: internal time
+#     List reduced from 808 to 100 due to restriction <100>
+#
+#     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+#       1080    5.607    0.005    7.616    0.007 BindingPMF.py:2316(_sim_one_state)
+#          1    1.133    1.133    3.624    3.624 BindingPMF.py:688(initial_cool)
+#          5    0.738    0.148    0.738    0.148 {posix.waitpid}
+#        200    0.646    0.003    0.646    0.003 {repX.attempt_swaps}
+#     679563    0.641    0.000    0.641    0.000 {numpy.core.multiarray.array}
+#      92979    0.456    0.000    0.456    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#          2    0.371    0.186    0.378    0.189 IO.py:204(read)
+#       1010    0.309    0.000    0.309    0.000 {built-in method compress}
+#  1752/1751    0.287    0.000    0.473    0.000 {apply}
+#     435096    0.180    0.000    0.688    0.000 function_base.py:786(copy)
+#     240082    0.150    0.000    0.486    0.000 fromnumeric.py:1281(ravel)
+#
+
+# >>> Including smart darting and longer sweeps
+#  >>> Ligand free energy calculations, starting at Mon, 26 Oct 2015 16:05:40 +0000
+#    calculated NAMD_GBSA solvation free energy of -76.451133 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -76.847860 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -78.706057 RT using cycles 1 to 2
+#
+#           11027841 function calls (10930371 primitive calls) in 44.002 seconds
+#
+#     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+#       5450   17.764    0.003   25.293    0.005 {method 'Cartesian' of 'BAT.converter' objects}
+#    1879673    6.781    0.000    6.781    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#       1090    5.754    0.005   38.269    0.035 BindingPMF.py:2306(_sim_one_state)
+#       1655    2.318    0.001    3.604    0.002 {method 'BAT' of 'BAT.converter' objects}
+#    1835025    1.755    0.000    9.602    0.000 fromnumeric.py:1621(sum)
+#    1841319    1.197    0.000    7.236    0.000 _methods.py:23(_sum)
+#          1    1.148    1.148    7.583    7.583 BindingPMF.py:688(initial_cool)
+#     746011    0.934    0.000    0.934    0.000 {numpy.core.multiarray.array}
+#    1908942    0.657    0.000    0.657    0.000 {isinstance}
+#          5    0.646    0.129    0.646    0.129 {posix.waitpid}
+#        200    0.616    0.003    0.616    0.003 {repX.attempt_swaps}
+#       6540    0.432    0.000    1.350    0.000 SmartDarting.py:126(_closest_pose_BAT)
+#  7815/7814    0.411    0.000    0.612    0.000 {apply}
+#          2    0.358    0.179    0.365    0.182 IO.py:204(read)
+#        964    0.251    0.000    0.251    0.000 {built-in method compress}
+#       1090    0.233    0.000   30.501    0.028 SmartDarting.py:135(__call__)
+#     453336    0.194    0.000    0.739    0.000 function_base.py:786(copy)
+#       5869    0.172    0.000    0.620    0.000 {method 'choice' of 'mtrand.RandomState' objects}
+#     245898    0.153    0.000    0.494    0.000 fromnumeric.py:1281(ravel)
+
+
+# >>> Checking closest_pose_n before running Cartesian
+#    calculated NAMD_GBSA solvation free energy of -76.451133 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -76.847860 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -78.706057 RT using cycles 1 to 2
+#
+#           9195133 function calls (9097663 primitive calls) in 37.952 seconds
+#
+#     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+#       3831   13.018    0.003   18.932    0.005 {method 'Cartesian' of 'BAT.converter' objects}
+#    1437686    6.014    0.000    6.014    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#       1090    5.789    0.005   32.115    0.029 BindingPMF.py:2306(_sim_one_state)
+#       1655    2.424    0.001    3.851    0.002 {method 'BAT' of 'BAT.converter' objects}
+#    1393038    1.382    0.000    8.150    0.000 fromnumeric.py:1621(sum)
+#          1    1.139    1.139    7.635    7.635 BindingPMF.py:688(initial_cool)
+#    1399332    0.983    0.000    6.240    0.000 _methods.py:23(_sum)
+#     746011    0.958    0.000    0.958    0.000 {numpy.core.multiarray.array}
+#          5    0.646    0.129    0.646    0.129 {posix.waitpid}
+#        200    0.621    0.003    0.621    0.003 {repX.attempt_swaps}
+#    1455622    0.573    0.000    0.573    0.000 {isinstance}
+#       6540    0.434    0.000    1.361    0.000 SmartDarting.py:126(_closest_pose_BAT)
+#  6196/6195    0.376    0.000    0.582    0.000 {apply}
+#          2    0.349    0.174    0.355    0.178 IO.py:204(read)
+#        964    0.247    0.000    0.247    0.000 {built-in method compress}
+#       1090    0.219    0.000   24.249    0.022 SmartDarting.py:135(__call__)
+#     453336    0.204    0.000    0.773    0.000 function_base.py:786(copy)
+#       5869    0.177    0.000    0.641    0.000 {method 'choice' of 'mtrand.RandomState' objects}
+#     245898    0.156    0.000    0.500    0.000 fromnumeric.py:1281(ravel)
+
+# >>> Optimized Cartesian in BAT.pyx
+#    calculated NAMD_GBSA solvation free energy of -76.839294 RT using cycles 0 to 0
+#    calculated NAMD_GBSA solvation free energy of -76.292154 RT using cycles 1 to 1
+#    calculated NAMD_GBSA solvation free energy of -75.757935 RT using cycles 1 to 2
+#
+#           4574022 function calls (4495617 primitive calls) in 19.705 seconds
+#
+#     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+#        840    4.201    0.005   14.309    0.017 BindingPMF.py:2306(_sim_one_state)
+#       2701    3.710    0.001    4.675    0.002 {method 'Cartesian' of 'BAT.converter' objects}
+#     464755    2.205    0.000    2.205    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+#       1240    1.762    0.001    2.725    0.002 {method 'BAT' of 'BAT.converter' objects}
+#          1    1.208    1.208    4.141    4.141 BindingPMF.py:688(initial_cool)
+#          5    0.749    0.150    0.749    0.150 {posix.waitpid}
+#     566295    0.737    0.000    0.737    0.000 {numpy.core.multiarray.array}
+#     431010    0.480    0.000    2.534    0.000 fromnumeric.py:1621(sum)
+#        200    0.408    0.002    0.408    0.002 {repX.attempt_swaps}
+#  4645/4644    0.365    0.000    0.568    0.000 {apply}
+#          2    0.362    0.181    0.368    0.184 IO.py:204(read)
+#       5040    0.348    0.000    1.111    0.000 SmartDarting.py:126(_closest_pose_BAT)
+#     435732    0.306    0.000    1.897    0.000 _methods.py:23(_sum)
+#        754    0.224    0.000    0.224    0.000 {built-in method compress}
+#     478225    0.189    0.000    0.189    0.000 {isinstance}
+#        840    0.160    0.000    8.634    0.010 SmartDarting.py:135(__call__)
+#     343838    0.151    0.000    0.574    0.000 function_base.py:786(copy)

@@ -1,21 +1,62 @@
 # This module implements a Smart Darting "integrator"
+# IT IS NOT SIGNIFICANTLY FASTER THAN SmartDarting.py
 
-from MMTK import Configuration, Dynamics, Environment, Features, Trajectory, Units
-import MMTK_dynamics
 import numpy as np
+cimport numpy as np
+import cython
+
+from cpython cimport bool
+
+cimport MMTK_trajectory_generator
+from MMTK import Units
+from MMTK import Features
+
+import MMTK_trajectory
+import MMTK_forcefield
+
+cdef extern from "stdlib.h":
+
+    ctypedef long size_t
+    cdef void *malloc(size_t size)
+    cdef void free(void *ptr)
+
+from MMTK.ParticleProperties import Configuration, ParticleVector
+
+include "MMTK/python.pxi"
+include "MMTK/numeric.pxi"
+include "MMTK/core.pxi"
+include "MMTK/universe.pxi"
+include "MMTK/trajectory.pxi"
+include "MMTK/forcefield.pxi"
 
 R = 8.3144621*Units.J/Units.mol/Units.K
 
 #
 # Smart Darting integrator
 #
-class SmartDartingIntegrator(Dynamics.Integrator):
+cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerator):
+
+  cdef object molecule, _BAT_util, _BAT_to_perturb, confs, confs_ha, \
+    confs_BAT, confs_BAT_tp, darts
+  cdef bool extended
+  cdef np.ndarray weights
+  cdef energy_data energy
+
+  default_options = {'first_step': 0, 'steps': 100, 'delta_t': 1.*Units.fs,
+                     'background': False, 'threads': None,
+                     'actions': []}
+
+  available_data = ['configuration', 'energy', 'time']
+
+  restart_data = ['configuration', 'velocities', 'energy']
+
   def __init__(self, universe, molecule, extended, confs=None, **options):
     """
     confs - configurations to dart to
     extended - whether or not to use external coordinates
     """
-    Dynamics.Integrator.__init__(self, universe, options)
+    MMTK_trajectory_generator.EnergyBasedTrajectoryGenerator.__init__(
+        self, universe, options, "SmartDarting integrator")
     # Supported features: none for the moment, to keep it simple
     self.features = []
 
@@ -36,6 +77,18 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     else:
       self.set_confs(confs)
 
+    # Do not request energy gradients and force constants.
+#    self.energy.gradients = NULL
+#    self.energy.gradient_fn = NULL
+#    self.energy.force_constants = NULL
+#    self.energy.fc_fn = NULL
+
+    # Declare the variables accessible to trajectory actions.
+#    self.declareTrajectoryVariable_double(
+#        &self.energy.energy,"potential_energy", "Potential energy: %lf\n",
+#        energy_unit_name, PyTrajectory_Energy)
+#    self.initializeTrajectoryActions()
+
   def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.3, \
       append=False):
 
@@ -51,6 +104,9 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     for conf in confs:
       self.universe.setConfiguration(Configuration(self.universe,conf))
       conf_energies.append(self.universe.energy())
+
+#      self.calculateEnergies(conf, &self.energy, 0)
+#      conf_energies.append(1.*self.energy.energy)
 
     # Sort by increasing energy
     conf_energies, confs = (list(l) \
@@ -118,14 +174,29 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       'started with %d, attempted %d, ended with %d configurations.'%(\
       nconfs_o,nconfs_attempted,len(self.confs))
 
-  def _closest_pose_Cartesian(self, conf_ha):
+  # TODO: Try Cython loops in the following functions:
+
+  # - No bound checks on index operations
+  # - No support for negative indices
+  # - Division uses C semantics
+  @cython.boundscheck(False)
+  @cython.wraparound(False)
+  @cython.cdivision(True)
+  cdef _closest_pose_Cartesian(self, conf_ha):
     # Closest pose has smallest sum of square distances between heavy atom coordinates
     return np.argmin(np.array([((self.confs_ha[c] - conf_ha)**2).sum() \
       for c in range(len(self.confs))]))
 
-  def _closest_pose_BAT(self, conf_BAT_tp):
+  # - No bound checks on index operations
+  # - No support for negative indices
+  # - Division uses C semantics
+  @cython.boundscheck(False)
+  @cython.wraparound(False)
+  @cython.cdivision(True)
+  cdef _closest_pose_BAT(self, conf_BAT_tp):
     # Closest pose has smallest sum of square distances between torsion angles
     # For only torsion angles, differences in units of periods (between 0 and 1)
+    cdef np.ndarray[np.float_t, ndim=2] diffs
     diffs = np.abs(np.array([self.confs_BAT_tp[c] - conf_BAT_tp \
       for c in range(len(self.confs_BAT_tp))]))/(2*np.pi)
     # Wraps around the period
@@ -141,16 +212,21 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Check if the universe has features not supported by the integrator
     Features.checkFeatures(self, self.universe)
   
-    RT = R*self.getOption('T')
-    ntrials = self.getOption('ntrials')
+    cdef float RT = R*self.getOption('T')
+    cdef int ntrials = self.getOption('ntrials')
 
     # Seed the random number generator
     if 'random_seed' in self.call_options.keys():
       np.random.seed(self.getOption('random_seed'))
 
-    acc = 0.
+    cdef float acc = 0.
     energies = []
     closest_poses = []
+
+    cdef np.ndarray[np.float_t, ndim=2] xo_Cartesian, xn_Cartesian
+    cdef np.ndarray[np.float_t] xo_BAT, xn_BAT
+    cdef float eo, en
+    cdef int closest_pose_o, closest_pose_n
 
     xo_Cartesian = np.copy(self.universe.configuration().array)
     xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
@@ -160,7 +236,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         xo_Cartesian[self.molecule.heavy_atoms,:])
     else:
       closest_pose_o = self._closest_pose_BAT(xo_BAT[self._BAT_to_perturb])
-      
+
+    cdef int t, dart_towards
     for t in range(ntrials):
       # Choose a pose to dart towards
       dart_towards = closest_pose_o
@@ -188,7 +265,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       en = self.universe.energy()
 
       # Accept or reject the trial move
-      if (abs(en-eo)<1000) and \
+      if (closest_pose_n==dart_towards) and (abs(en-eo)<1000) and \
           ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
         xo_Cartesian = xn_Cartesian
         xo_BAT = xn_BAT

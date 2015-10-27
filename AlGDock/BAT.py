@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# TODO: Find a module that calculates both the sine and cosine simultaneously
+
 import numpy as np
 from Scientific.Geometry.Objects3D import Sphere, Cone, Plane, Line, \
                                           rotatePoint
@@ -56,6 +58,7 @@ class converter():
   def __init__(self, universe, molecule, initial_atom=None):
     self.universe = universe
     self.molecule = molecule
+    self.natoms = universe.numberOfAtoms()
     self._converter_setup(initial_atom)
 
   def _converter_setup(self, initial_atom=None):
@@ -100,20 +103,26 @@ class converter():
     # Construct a list of torsion angles
     torsionL = []
     selected = [a for a in root]
-    while len(selected)<self.molecule.numberOfAtoms():
+    while len(selected)<self.natoms:
       (a1,a2,a3,a4) = _find_dihedral(selected)
       torsionL.append((a1,a2,a3,a4))
       selected.append(a1)
-    # If _firstTorsionInd is not equal to the list index,
+    # If _firstTorsionTInd is not equal to the list index,
     # then the dihedrals will likely be correlated and it is more appropriate
     # to use a relative phase angle
     prior_atoms = [(a2,a3,a4) for (a1,a2,a3,a4) in torsionL]
 
     self.rootInd = [r.index for r in root]
     self._torsionIndL = [[a.index for a in tset] for tset in torsionL]
-    self._firstTorsionInd = [prior_atoms.index(prior_atoms[n]) \
+    self._firstTorsionTInd = [prior_atoms.index(prior_atoms[n]) \
       for n in range(len(prior_atoms))]
-    self.ntorsions = self.molecule.numberOfAtoms()-3
+    self.ntorsions = self.natoms-3
+
+  def getFirstTorsionInds(self, extended):
+    offset = 6 if extended else 0
+    torsionInds = np.array(range(offset+5,self.natoms*3,3))
+    primaryTorsions = sorted(list(set(self._firstTorsionTInd)))
+    return list(torsionInds[primaryTorsions])
 
   def BAT(self, XYZ, extended=False):
     """
@@ -132,8 +141,8 @@ class converter():
           for (a1,a2,a3,a4) in self._torsionIndL])]
 
     torsions = internal[5::3]
-    phase_torsions = [(torsions[n] - torsions[self._firstTorsionInd[n]]) \
-      if self._firstTorsionInd[n]!=n else torsions[n] \
+    phase_torsions = [(torsions[n] - torsions[self._firstTorsionTInd[n]]) \
+      if self._firstTorsionTInd[n]!=n else torsions[n] \
       for n in range(len(torsions))]
     internal[5::3] = phase_torsions
 
@@ -163,12 +172,12 @@ class converter():
     to Cartesian coordinates
     """
     # Arrange BAT coordinates in convenient arrays
-    offset = 6 if len(BAT)==(3*self.molecule.numberOfAtoms()) else 0
+    offset = 6 if len(BAT)==(3*self.natoms) else 0
     bonds = BAT[offset+3::3]
     angles = BAT[offset+4::3]
     phase_torsions = BAT[offset+5::3]
-    torsions = [(phase_torsions[n] + phase_torsions[self._firstTorsionInd[n]]) \
-      if self._firstTorsionInd[n]!=n else phase_torsions[n] \
+    torsions = [(phase_torsions[n] + phase_torsions[self._firstTorsionTInd[n]]) \
+      if self._firstTorsionTInd[n]!=n else phase_torsions[n] \
       for n in range(self.ntorsions)]
     
     p1 = np.array([0.,0.,0.])
@@ -198,7 +207,7 @@ class converter():
       p2 += origin
       p3 += origin
 
-    XYZ = np.zeros((self.universe.numberOfAtoms(),3))
+    XYZ = np.zeros((self.natoms,3))
     
     XYZ[self.rootInd[0]] = p1
     XYZ[self.rootInd[1]] = p2
@@ -216,40 +225,25 @@ class converter():
 
     return XYZ
 
-#    for ((a1,a2,a3,a4), bond, angle, torsion) in \
-#        zip(self._torsionIndL,bonds,angles,torsions):
-#      # sphere.intersectWith(cone) is a circle
-#      from_center = bond*np.cos(angle)
-#      circle_radius = bond*np.sin(angle)
-#      circle_normal = normalize(XYZ[a3]-XYZ[a2]) # also circle normal
-#      circle_center =  XYZ[a2] + circle_normal*from_center
-#
-#      # plane.intersectWith(Plane(circle.center, circle.normal)) is a line
-#      plane123_normal = normalize(cross(XYZ[a3]-XYZ[a4],XYZ[a2]-XYZ[a3]))
-#      plane123_distance_from_zero = np.sum(plane123_normal*XYZ[a3])
-#      line_direction = cross(plane123_normal,circle_normal)
-#      point_in_plane123 = plane123_distance_from_zero*plane123_normal
-#      line_point = point_in_plane123 - \
-#        (np.sum(point_in_plane123*circle_normal) - \
-#         np.sum(circle_normal*circle_center))*circle_normal
-#
-#      d = line_point-circle_center
-#      d = d - np.sum(d*line_direction)*line_direction
-#      x = np.sqrt(np.sum(d*d))
-#      a = np.arccos(x/circle_radius)
-#      along_line = np.sin(a)*circle_radius
-#      normal = cross(circle_normal,line_direction)
-#      d = line_point-(circle_center+normal)
-#      d -= np.sum(d*line_direction)*line_direction
-#      d = np.sqrt(np.sum(d*d))
-#      if d>x:
-#        normal = -normal
-#      base = circle_center+x*normal
-#      points = (base-line_direction*along_line,base+line_direction*along_line)
-#
-#      p = points[0] if np.sum(normalize(cross(XYZ[a2]-XYZ[a3],points[0]-XYZ[a2]))*plane123_normal)>0 else points[1]
-#      p = rotatePoint(Vector(p), Line(Vector(XYZ[a2]), Vector(XYZ[a2]-XYZ[a3])), torsion)
-#      XYZ[a1] = p.array
+    for ((a1,a2,a3,a4), bond, angle, torsion) in \
+        zip(self._torsionIndL,bonds,angles,torsions):
+
+      p2 = XYZ[a2]
+      p3 = XYZ[a3]
+      p4 = XYZ[a4]
+
+      # circle = sphere.intersectWith(cone)
+      n23 = normalize(p3-p2)
+
+      # points = circle.intersectWith(plane123)
+      # plane.intersectWith(Plane(circle.center, circle.normal)) is a line
+      # line_direction = cross(normalize(cross(p4-p3,n23)),n23)
+
+      # Rotate the point about the p2-p3 axis by the torsion angle
+      v21 = (bond*np.cos(angle))*n23 - (bond*np.sin(angle))*cross(normalize(cross(p4-p3,n23)),n23)
+      s = np.sin(torsion)
+      c = np.cos(torsion)
+      XYZ[a1] = p2 - cross(n23,v21)*s + np.sum(n23*v21)*n23*(1.0-c) + v21*c
 
   def showMolecule(self, colorBy=None, label=False, dcdFN=None):
     """
@@ -344,7 +338,7 @@ if __name__ == '__main__':
     print sum(sum(new_xyz - original_xyz))
 
 #      # This rotates the last primary torsion
-#      torsion_ind = self._firstTorsionInd[-1]
+#      torsion_ind = self._firstTorsionTInd[-1]
 #      BAT_ind = len(BAT)-self.ntorsions+torsion_ind
 #      confs = []
 #      for torsion_offset in np.linspace(0,2*np.pi):

@@ -31,7 +31,6 @@ include "MMTK/forcefield.pxi"
 
 R = 8.3144621*Units.J/Units.mol/Units.K
 
-
 #
 # NUTS integrator
 #
@@ -55,9 +54,9 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
      are used
   """
 
-  cdef double RT
   cdef np.ndarray x, v, g, m
   cdef energy_data energy
+  cdef double RT
 
   def __init__(self, universe, **options):
     """
@@ -93,10 +92,10 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
 
   def __call__(self, **options):
     self.setCallOptions(options)
-    try:
-        self.actions = self.getOption('actions')
-    except ValueError:
-        self.actions = []
+#    try:
+#        self.actions = self.getOption('actions')
+#    except ValueError:
+    self.actions = []
     try:
         if self.getOption('background'):
             import MMTK_state_accessor
@@ -108,25 +107,25 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     if self.tvars != NULL:
         free(self.tvars)
         self.tvars = NULL
-    configuration = self.universe.configuration()
-    self.conf_array = configuration.array
-    self.declareTrajectoryVariable_array(self.conf_array,
-                                         "configuration",
-                                         "Configuration:\n",
-                                         length_unit_name,
-                                         PyTrajectory_Configuration)
+#    configuration = self.universe.configuration()
+#    self.conf_array = configuration.array
+#    self.declareTrajectoryVariable_array(self.conf_array,
+#                                         "configuration",
+#                                         "Configuration:\n",
+#                                         length_unit_name,
+#                                         PyTrajectory_Configuration)
     self.universe_spec = <PyUniverseSpecObject *>self.universe._spec
     if self.universe_spec.geometry_data_length > 0:
         self.declareTrajectoryVariable_box(
             self.universe_spec.geometry_data,
             self.universe_spec.geometry_data_length)
-    masses = self.universe.masses()
-    self.declareTrajectoryVariable_array(masses.array,
-                                         "masses",
-                                         "Masses:\n",
-                                         mass_unit_name,
-                                         PyTrajectory_Internal)
-    self.natoms = self.universe.numberOfAtoms()
+#    masses = self.universe.masses()
+#    self.declareTrajectoryVariable_array(masses.array,
+#                                         "masses",
+#                                         "Masses:\n",
+#                                         mass_unit_name,
+#                                         PyTrajectory_Internal)
+#    self.natoms = self.universe.numberOfAtoms()
     self.df = self.universe.degreesOfFreedom()
     self.declareTrajectoryVariable_int(&self.df,
                                        "degrees_of_freedom",
@@ -137,6 +136,8 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         return ThreadManager.TrajectoryGeneratorThread(
             self.universe, self.start_py, (), self.state_accessor)
     else:
+        # This is the main change from the original __call__ function
+        # in MMTK_trajectory_generator.pyx
         return self.start()
 
   # Cython compiler directives set for efficiency:
@@ -161,7 +162,8 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     cdef int nalpha, t0, m
 
     # Initialize the velocity
-    self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
+    if self.universe.velocities() is None:
+      self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
 
     # Gather state variables and parameters
     configuration = self.universe.configuration()
@@ -360,7 +362,14 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     return (xs, energies, Hbar, delta_t_bar)
 
   # The main recursion
-  def build_tree(NUTSIntegrator self, double logu, int j, double delta_t, int steps, double joint_o):
+  # Cython compiler directives set for efficiency:
+  # - No bound checks on index operations
+  # - No support for negative indices
+  # - Division uses C semantics
+  @cython.boundscheck(False)
+  @cython.wraparound(False)
+  @cython.cdivision(True)
+  cdef build_tree(NUTSIntegrator self, double logu, int j, double delta_t, int steps, double joint_o):
     cdef double ke, joint, e_o, eprime, eprime2
     cdef np.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, xprime, xprime2, NA0, NA1
     

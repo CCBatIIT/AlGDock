@@ -112,7 +112,8 @@ paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'ForceFields', 'Sphere'),
          os.path.join('AlGDock', 'ForceFields', 'Grid'),
          os.path.join('AlGDock', 'Integrators', 'VelocityVerlet'),
-         os.path.join('AlGDock', 'Integrators', 'NUTS')]
+         os.path.join('AlGDock', 'Integrators', 'NUTS'),
+         os.path.join('AlGDock', 'Integrators', 'SmartDarting')]
 data_files = []
 for dir in paths:
     files = []
@@ -387,8 +388,16 @@ rigid receptor.
                                 ['AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx'],
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
+                      Extension('SmartDarting',
+                                ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx'],
+                                extra_compile_args = compile_args,
+                                include_dirs=include_dirs),
                       Extension('BAT',
                                 ['AlGDock/BAT.pyx'],
+                                extra_compile_args = compile_args,
+                                include_dirs=include_dirs),
+                      Extension('repX',
+                                ['AlGDock/repX.pyx'],
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
                       ],
