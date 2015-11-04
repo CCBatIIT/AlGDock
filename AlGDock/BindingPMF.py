@@ -575,10 +575,10 @@ last modified {2}
 
     self.sampler = {}
     # Uses cython class
-    from SmartDarting import SmartDartingIntegrator # @UnresolvedImport
+    # from SmartDarting import SmartDartingIntegrator # @UnresolvedImport
     # Uses python class
-    # from AlGDock.Integrators.SmartDarting.SmartDarting \
-    #    import SmartDartingIntegrator # @UnresolvedImport
+    from AlGDock.Integrators.SmartDarting.SmartDarting \
+      import SmartDartingIntegrator # @UnresolvedImport
     self.sampler['cool_SmartDarting'] = SmartDartingIntegrator(\
       self.universe, self.molecule, False)
     self.sampler['dock_SmartDarting'] = SmartDartingIntegrator(\
@@ -624,6 +624,8 @@ last modified {2}
     elif run_type=='store_params':
       self._save('cool', keys=['progress'])
       self._save('dock', keys=['progress'])
+    elif run_type=='initial_cool':
+      self.initial_cool()
     elif run_type=='cool': # Sample the cooling process
       self.cool()
       self._postprocess([('cool',-1,-1,'L')])
@@ -768,6 +770,8 @@ last modified {2}
       T = self.cool_protocol[-1]['T']
       tL_tensor = Es_MM.std()/(R*T*T)
 
+    self.tee("")
+    
     # Main loop for initial cooling:
     # choose new temperature, randomly select seeds, simulate
     while (not self.cool_protocol[-1]['crossed']):
@@ -809,12 +813,8 @@ last modified {2}
       state_start_time = time.time()
       (confs, Es_MM, self.cool_protocol[-1]['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'cool', self.cool_protocol[-1])
-      self.tee("  generated %d configurations "%len(confs) + \
-               "at %d K "%self.cool_protocol[-1]['T'] + \
-               "in " + (HMStime(time.time()-state_start_time)))
-      self.tee(sampler_metrics)
-      self.tee("  dt=%.3f fs; tL_tensor=%.3e"%(\
-        self.cool_protocol[-1]['delta_t']*1000., tL_tensor))
+      tL_tensor_o = 1.*tL_tensor
+      tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
 
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
@@ -824,23 +824,29 @@ last modified {2}
       acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
       mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
 
+      self.tee("  generated %d configurations "%len(confs) + \
+               "at %d K "%self.cool_protocol[-1]['T'] + \
+               "in " + (HMStime(time.time()-state_start_time)))
+      self.tee(sampler_metrics)
+      self.tee("  dt=%.3f fs; tL_tensor=%.3e; estimated repX acceptance=%0.3f"%(\
+        self.cool_protocol[-1]['delta_t']*1000., tL_tensor, mean_acc))
+
       if mean_acc<self.params['cool']['min_repX_acc']:
         # If the acceptance probability is too low,
         # reject the state and restart
         self.cool_protocol.pop()
         confs = confs_o
         Es_MM = Es_MM_o
-        tL_tensor = tL_tensor*1.25 # Use a smaller step
-        self.tee("  rejected new state, as estimated replica exchange" + \
-          " acceptance rate of %f is too low"%mean_acc)
+        tL_tensor = tL_tensor_o*1.25 # Use a smaller step
+        self.tee("  rejected new state, as estimated repX" + \
+          " acceptance is too low!")
       elif (mean_acc>0.99) and (not crossed):
         # If the acceptance probability is too high,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.random.randint(len(confs))]
         self.cool_protocol.pop(-2)
-        tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
-        self.tee("  rejected previous state, as estimated replica exchange" + \
-          " acceptance rate of %f is too high"%mean_acc)
+        self.tee("  rejected previous state, as estimated repX" + \
+          " acceptance is too high!")
       else:
         self.confs['cool']['replicas'].append(confs[np.random.randint(len(confs))])
         self.confs['cool']['samples'].append([confs])
@@ -848,8 +854,7 @@ last modified {2}
             (not self.params['cool']['keep_intermediate']):
           self.confs['cool']['samples'][-2] = []
         self.cool_Es.append([{'MM':Es_MM}])
-        tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
-        self.tee("  estimated replica exchange acceptance rate is %f"%mean_acc)
+        self.tee("")
 
       # Special tasks after the last stage
       if self.cool_protocol[-1]['crossed']:
@@ -864,16 +869,30 @@ last modified {2}
           self.cool_protocol[0]['crossed'] = False
           self.cool_protocol[-1]['crossed'] = True
 
-      self._save('cool')
-      self.tee("")
+      # Save progress every 5 minutes
+      if ('last_cool_save' not in self.timing) or \
+         ((time.time()-self.timing['last_cool_save'])>5*60):
+        self._save('cool')
+        self.tee("")
+        self.timing['last_cool_save'] = time.time()
+        saved = True
+      else:
+        saved = False
 
       if self.run_type=='timed':
         remaining_time = self.timing['max']*60 - \
           (time.time()-self.timing['start'])
         if remaining_time<0:
-          self.tee("  no time remaining for initial %s"%direction_name)
+          if not saved:
+            self._save('cool')
+            self.tee("")
+          self.tee("  no time remaining for initial cool")
           self._clear_lock('cool')
           return False
+
+    if not saved:
+      self._save('cool')
+      self.tee("")
 
     # Save data
     self.tee("Elapsed time for initial %sing of "%direction_name + \
@@ -1739,7 +1758,8 @@ last modified {2}
     self._set_universe_evaluator(lambda_o)
 
     # Load the poses
-    (confs, Es) = self._get_confs_to_rescore(site=False, minimize=minimize)
+    (confs, Es) = self._get_confs_to_rescore(site=False, minimize=minimize, \
+      sort=False)
 
     # Calculate MM energies
     prefix = 'xtal' if self._FNs['score']=='default' else \
@@ -1756,8 +1776,8 @@ last modified {2}
 
     # Grid interpolation energies
     from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
-    for grid_type in ['LJa','LJr']:
-      for interpolation_type in ['Trilinear','BSpline']:
+    for grid_type in ['LJa','LJr','ELE']:
+      for interpolation_type in ['Trilinear','BSpline','Tricubic']:
         key = '%s_%sTransform'%(grid_type,interpolation_type)
         Es[key] = np.zeros((12,len(confs)),dtype=np.float)
         for p in range(12):
@@ -1959,12 +1979,15 @@ last modified {2}
 
     confs = [result['confs'] for result in results]
     potEs = [result['Etot'] for result in results]
+    
     delta_t = np.median([result['delta_t'] for result in results])
     delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
     sampler_metrics = '  '
     for s in ['ExternalMC', 'SmartDarting', 'Sampler']:
       if np.array(['acc_'+s in r.keys() for r in results]).any():
-        sampler_metrics += '%s acc=%.3f, t=%.3f s; '%(s,r['acc_'+s],r['time_'+s])
+        acc = np.mean([r['acc_'+s] for r in results])
+        time = np.sum([r['time_'+s] for r in results])
+        sampler_metrics += '%s acc=%.5f, t=%.3f s; '%(s,acc,time)
     return (confs, np.array(potEs), delta_t, sampler_metrics)
   
   def _replica_exchange(self, process):
@@ -2140,19 +2163,20 @@ last modified {2}
       time_gMC = 0.0
       BAT_converter, state_indices_to_swap = gMC_initial_setup()
 
+    # MC move statistics
+    acc = {}
+    for move_type in ['ExternalMC','SmartDarting','Sampler']:
+      acc[move_type] = np.zeros(K, dtype=float)
+      self.timing[move_type] = 0.
+    self.timing['repX'] = 0.
+
     # Do replica exchange
-    time_ExternalMC = 0.0
-    time_SmartDarting = 0.0
-    time_repX = 0.0
     state_inds = range(K)
     inv_state_inds = range(K)
     for sweep in range(self.params[process]['sweeps_per_cycle']):
       E = {}
       for term in terms:
         E[term] = np.zeros(K, dtype=float)
-      E['acc_ExternalMC'] = np.zeros(K, dtype=float)
-      E['acc_SmartDarting'] = np.zeros(K, dtype=float)
-      acc_Sampler = np.zeros(K, dtype=float)
       # Sample within each state
       if self._cores>1:
         for k in range(K):
@@ -2173,6 +2197,7 @@ last modified {2}
         # Single process code
         results = [self._sim_one_state(confs[k], process, \
             lambdas[state_inds[k]], False, k) for k in range(K)]
+
       # GMC
       if do_gMC:
         time_start_gMC = time.time()
@@ -2180,24 +2205,27 @@ last modified {2}
         gMC_attempt_count += att_count
         gMC_acc_count     += acc_count
         time_gMC =+ ( time.time() - time_start_gMC )
-      # Store results
+
+      # Store energies
       for k in range(K):
-        if 'acc_ExternalMC' in results[k].keys():
-          E['acc_ExternalMC'][k] = results[k]['acc_ExternalMC']
-          time_ExternalMC += results[k]['time_ExternalMC']
-        if 'acc_SmartDarting' in results[k].keys():
-          E['acc_SmartDarting'][k] = results[k]['acc_SmartDarting']
-          time_SmartDarting += results[k]['time_SmartDarting']
         confs[k] = results[k]['confs']
         if process=='cool':
             E['MM'][k] = results[k]['Etot']
-        acc_Sampler[k] += results[k]['acc_Sampler']
       if process=='dock':
         E = self._calc_E(confs, E) # Get energies for scalables
         # Get rmsd values
         if self.params['dock']['rmsd'] is not False:
           E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
             self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
+
+      # Store MC move statistics
+      for k in range(K):
+        for move_type in ['ExternalMC','SmartDarting','Sampler']:
+          key = 'acc_'+move_type
+          if key in results[k].keys():
+            acc[move_type][state_inds[k]] += results[k][key]
+            self.timing[move_type] += results[k]['time_'+move_type]
+
       # Calculate u_ij (i is the replica, and j is the configuration),
       #    a list of arrays
       (u_ij,N_k) = self._u_kln(E, [lambdas[state_inds[c]] for c in range(K)])
@@ -2206,7 +2234,8 @@ last modified {2}
       (state_inds, inv_state_inds) = \
         attempt_swaps(state_inds, inv_state_inds, u_ij, pairs_to_swap, \
           self.params[process]['attempts_per_sweep'])
-      time_repX += (time.time()-repX_start_time)
+      self.timing['repX'] += (time.time()-repX_start_time)
+
       # Store data in local variables
       storage['confs'].append(list(confs))
       storage['state_inds'].append(list(state_inds))
@@ -2219,6 +2248,9 @@ last modified {2}
         float(gMC_acc_count)/float(gMC_attempt_count) \
           if gMC_attempt_count > 0 else 0, \
         HMStime(time_gMC)))
+
+    for move_type in ['ExternalMC','SmartDarting','Sampler']:
+      acc[move_type] = acc[move_type]/self.params[process]['sweeps_per_cycle']
 
     # Estimate relaxation time from autocorrelation
     state_inds = np.array(storage['state_inds'])
@@ -2237,13 +2269,16 @@ last modified {2}
       self.params[process]['sweeps_per_cycle'], stride), dtype=int)
     nsaved = len(store_indicies)
 
-    self.tee("  storing %d configurations for %d replicas"%(nsaved, len(confs)) + \
-      " in cycle %d"%cycle + \
+    self.tee("  generated %d configurations for %d replicas"%(nsaved, len(confs)) + \
+      " in cycle %d in %s"%(cycle, HMStime(time.time()-cycle_start_time)) + \
       " (tau_ac=%f)"%(tau_ac))
-    self.tee("  with %s for external MC"%(HMStime(time_ExternalMC)) + \
-      " and %s for smart darting"%(HMStime(time_SmartDarting)) + \
-      " and %s for replica exchange"%(HMStime(time_repX)) + \
-      " in " + HMStime(time.time()-cycle_start_time))
+    MC_report = " "
+    for move_type in ['ExternalMC','SmartDarting','Sampler']:
+      if self.timing[move_type]>0.01:
+        MC_report += " %s acc=%.5f, t=%.3f;"%(move_type, \
+          np.mean(acc[move_type]), self.timing[move_type])
+    MC_report += " repX t=%.3f"%self.timing['repX']
+    self.tee(MC_report)
 
     # Get indicies for storing global variables
     inv_state_inds = np.zeros((nsaved,K),dtype=int)
@@ -2254,16 +2289,14 @@ last modified {2}
 
     # Reorder energies and replicas for storage
     if process=='dock':
-      terms.append('acc_ExternalMC') # Make sure to save the acceptance probability
       if self.params['dock']['rmsd'] is not False:
         terms.append('rmsd') # Make sure to save the rmsd
-    terms.append('acc_SmartDarting')
     Es = []
     for state in range(K):
       E_state = {}
       if state==0:
         E_state['repXpath'] = storage['state_inds']
-        E_state['acc_Sampler'] = acc_Sampler
+        E_state['acc'] = acc
       for term in terms:
         E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][state]] for snap in range(nsaved)])
       Es.append([E_state])
@@ -2293,6 +2326,7 @@ last modified {2}
 
     setattr(self,'_%s_cycle'%process,cycle + 1)
     self._save(process)
+    self.tee("")
     self._clear_lock(process)
 
   def _sim_one_state_worker(self, input, output):
@@ -2304,7 +2338,7 @@ last modified {2}
       output.put(result)
 
   def _sim_one_state(self, seed, process, lambda_k, \
-      initialize=False, reference=None):
+      initialize=False, reference=0):
     
     self.universe.setConfiguration(Configuration(self.universe, seed))
     self._set_universe_evaluator(lambda_k)
@@ -2324,11 +2358,11 @@ last modified {2}
       steps_per_trial = steps
       ndarts = self.params[process]['darts_per_sweep']
 
-    random_seed = reference + int(abs(seed[0][0]*10000))
+    random_seed = reference*reference + int(abs(seed[0][0]*10000))
     if self._random_seed>0:
       random_seed += self._random_seed
     else:
-      random_seed += int(time.time())
+      random_seed += int(time.time()*1000)
     
     results = {}
     
@@ -2340,6 +2374,15 @@ last modified {2}
       results['acc_ExternalMC'] = dat[2]
       results['time_ExternalMC'] = (time.time() - time_start_ExternalMC)
 
+    # Execute dynamics sampler
+    time_start_Sampler = time.time()
+    dat = sampler(\
+      steps=steps, steps_per_trial=steps_per_trial, \
+      T=lambda_k['T'], delta_t=delta_t, \
+      normalize=(process=='cool'), adapt=initialize, random_seed=random_seed)
+    results['acc_Sampler'] = dat[2]
+    results['time_Sampler'] = (time.time() - time_start_Sampler)
+
     # Execute smart darting
     if ndarts>0:
       time_start_SmartDarting = time.time()
@@ -2348,18 +2391,9 @@ last modified {2}
       results['acc_SmartDarting'] = dat[2]
       results['time_SmartDarting'] = (time.time() - time_start_SmartDarting)
 
-    # Execute dynamics sampler
-    time_start_Sampler = time.time()
-    (confs, potEs, acc_Sampler, delta_t) = sampler(\
-      steps=steps, steps_per_trial=steps_per_trial, \
-      T=lambda_k['T'], delta_t=delta_t, \
-      normalize=(process=='cool'), adapt=initialize, random_seed=random_seed)
-    results['acc_Sampler'] = acc_Sampler
-    results['time_Sampler'] = (time.time() - time_start_Sampler)
-
     # Store and return results
-    results['confs'] = np.copy(confs[-1])
-    results['Etot'] = potEs[-1]
+    results['confs'] = np.copy(dat[0][-1])
+    results['Etot'] = dat[1][-1]
     results['delta_t'] = delta_t
     results['reference'] = reference
 
@@ -2441,7 +2475,7 @@ last modified {2}
 
     return True # The process has completed
 
-  def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True):
+  def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True, sort=True):
     """
     Returns configurations to rescore and their corresponding energies 
     as a tuple of lists, ordered by DECREASING energy.
@@ -2557,9 +2591,10 @@ last modified {2}
         self.universe.setConfiguration(Configuration(self.universe, conf))
         energies.append(self.universe.energy())
 
-    # Sort configurations by DECREASING energy
-    energies, confs = (list(l) for l in zip(*sorted(zip(energies, confs), \
-      key=lambda p:p[0], reverse=True)))
+    if sort:
+      # Sort configurations by DECREASING energy
+      energies, confs = (list(l) for l in zip(*sorted(zip(energies, confs), \
+        key=lambda p:p[0], reverse=True)))
 
     # Shrink or extend configuration and energy array
     if nconfs is not None:

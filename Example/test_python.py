@@ -1,5 +1,6 @@
 # The example is 1of6
 
+run_types = ['all']
 # run_types = ['cool']
 # run_types = ['cool','dock','postprocess','free_energies']
 
@@ -29,9 +30,9 @@ for run_type in run_types:
     protocol='Adaptive', cool_therm_speed=1.5, dock_therm_speed=1.5,\
     sampler='NUTS', \
     MCMC_moves=1, \
-    seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
+    seeds_per_state=10, steps_per_seed=200, darts_per_seed=5, \
     sweeps_per_cycle=25, attempts_per_sweep=100, \
-    steps_per_sweep=50, darts_per_sweep=0, \
+    steps_per_sweep=50, darts_per_sweep=1, \
     cool_repX_cycles=3, dock_repX_cycles=4, \
     site='Sphere', site_center=[1.74395, 1.74395, 1.74395], site_max_R=0.6, \
     site_density=10., \

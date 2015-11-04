@@ -65,7 +65,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     @keyword steps: the number of integration steps (default is 100)
     @type steps: C{int}
     @keyword delta_t: the time step (default is 1 fs)
-    @type delta_t: C{float}
+    @type delta_t: C{double}
     @keyword actions: a list of actions to be executed periodically
                       (default is none)
     @type actions: C{list}
@@ -151,7 +151,6 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
 
     cdef double time, delta_t, ke
     cdef int natoms, nsteps, elapsed_steps
-    cdef Py_ssize_t i_atm, i_dim
 
     cdef double joint, logu, e_m
     cdef np.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, x_m
@@ -331,7 +330,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
             ((elapsed_steps + steps_m*2) < nsteps)
 
       # Keep track of acceptance statistics
-      eta = 1./float(m+t0)
+      eta = 1./(m+t0)
       Hbar = (1-eta)*Hbar + eta*(delta-alpha/nalpha)
 
       # Adapt the time step

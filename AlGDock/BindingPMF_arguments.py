@@ -38,7 +38,7 @@ arguments = {
   'dock_repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking'},
   'run_type':{'choices':['pose_energies','minimized_pose_energies',
-              'store_params', 'cool', \
+              'store_params', 'initial_cool', 'cool', \
               'dock','timed','postprocess',\
               'redo_postprocess','free_energies','redo_free_energies', 'all', \
               'render_docked', 'render_intermediates', \

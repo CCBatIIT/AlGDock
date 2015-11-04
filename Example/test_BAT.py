@@ -23,3 +23,18 @@ self = BAT.converter(universe, molecule)
 BAT = self.BAT(original_xyz, extended=True)
 new_xyz = self.Cartesian(BAT)
 print sum(sum(new_xyz - original_xyz))
+
+#  # This rotates the last primary torsion
+#  BAT_ind = self.getFirstTorsionInds(True)[-1]
+#  confs = []
+#  for torsion_offset in np.linspace(0,2*np.pi):
+#    BAT_n = np.array([BAT[ind] if ind!=BAT_ind else BAT[ind] + torsion_offset \
+#      for ind in range(len(BAT))])
+#    XYZ = self.Cartesian(BAT_n)
+#    confs.append(XYZ)
+#
+#  import AlGDock.IO
+#  IO_dcd = AlGDock.IO.dcd(molecule)
+#  IO_dcd.write('rotation.dcd', confs)
+#  self.showMolecule(dcdFN='rotation.dcd')
+#  os.remove('rotation.dcd')

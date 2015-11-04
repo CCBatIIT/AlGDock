@@ -56,11 +56,11 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     conf_energies, confs = (list(l) \
       for l in zip(*sorted(zip(conf_energies, confs), key=lambda p:p[0])))
 
-    # Only keep configurations with energy with 50 kJ/mol of the lowest energy
+    # Only keep configurations with energy with 15 kJ/mol of the lowest energy
     confs = [confs[i] for i in range(len(confs)) \
-      if (conf_energies[i]-conf_energies[0])<50.]
+      if (conf_energies[i]-conf_energies[0])<15.]
     conf_energies = [conf_energies[i] for i in range(len(confs)) \
-      if (conf_energies[i]-conf_energies[0])<50.]
+      if (conf_energies[i]-conf_energies[0])<15.]
 
     if self.extended:
       # Keep only unique configurations, using rmsd as a threshold
@@ -99,8 +99,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
 
     if len(self.confs)>1:
       # Probabilty of jumping to a conformation k
-      # is proportional to exp(-E/(R*1000.)).
-      logweight = np.array(conf_energies)/(R*1000.)
+      # is proportional to exp(-E/(R*600.)).
+      logweight = np.array(conf_energies)/(R*600.)
       weights = np.exp(-logweight+min(logweight))
       self.weights = weights/sum(weights)
 
@@ -114,9 +114,19 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Set the universe to the lowest-energy configuration
     self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
 
-    return '  set smart darting configurations: ' + \
-      'started with %d, attempted %d, ended with %d configurations.'%(\
+    return '  started with %d, attempted %d, ended with %d smart darting targets'%(\
       nconfs_o,nconfs_attempted,len(self.confs))
+
+  def show_confs():
+    if self.extended:
+      confs = self.confs
+    else:
+      confs = [self._BAT_util.Cartesian(bat) for bat in self.confs_BAT]
+    import AlGDock.IO
+    IO_dcd = AlGDock.IO.dcd(self.molecule)
+    IO_dcd.write('confs.dcd', confs)
+    self._BAT_util.showMolecule(dcdFN='confs.dcd')
+    os.remove('confs.dcd')
 
   def _closest_pose_Cartesian(self, conf_ha):
     # Closest pose has smallest sum of square distances between heavy atom coordinates
@@ -133,7 +143,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     return np.argmin(np.sum(diffs**2,1))
 
   def __call__(self, **options):
-    if (self.confs is None) or len(self.confs)<3:
+    if (self.confs is None) or len(self.confs)<2:
       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
     
     # Process the keyword arguments
@@ -160,7 +170,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         xo_Cartesian[self.molecule.heavy_atoms,:])
     else:
       closest_pose_o = self._closest_pose_BAT(xo_BAT[self._BAT_to_perturb])
-      
+  
     for t in range(ntrials):
       # Choose a pose to dart towards
       dart_towards = closest_pose_o

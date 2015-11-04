@@ -63,7 +63,8 @@ if not mmtk_ok:
 
 # Configure compile arguments and include directories 
 compile_args = []
-include_dirs = [os.path.join(findPath(search_paths['MMTK']),'Include'),
+include_dirs = ['Include',
+                os.path.join(findPath(search_paths['MMTK']),'Include'),
                 os.path.join(findPath(search_paths['MMTK']),'include',
                              'python%d.%d'%sys.version_info[:2],'MMTK')]
 
@@ -380,6 +381,14 @@ rigid receptor.
                                 ['AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx'],
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
+#                      Extension('MMTK_tricubic_grid',
+#                                ['AlGDock/ForceFields/Grid/MMTK_tricubic_grid.pyx'],
+#                                extra_compile_args = compile_args,
+#                                include_dirs=include_dirs),
+#                      Extension('MMTK_tricubic_transform_grid',
+#                                ['AlGDock/ForceFields/Grid/MMTK_tricubic_transform_grid.pyx'],
+#                                extra_compile_args = compile_args,
+#                                include_dirs=include_dirs),
                       Extension('NUTS',
                                 ['AlGDock/Integrators/NUTS/NUTS.pyx'],
                                 extra_compile_args = compile_args,
@@ -393,11 +402,11 @@ rigid receptor.
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
                       Extension('BAT',
-                                ['AlGDock/BAT.pyx'],
+                                ['Src/BAT.pyx'],
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
                       Extension('repX',
-                                ['AlGDock/repX.pyx'],
+                                ['Src/repX.pyx'],
                                 extra_compile_args = compile_args,
                                 include_dirs=include_dirs),
                       ],

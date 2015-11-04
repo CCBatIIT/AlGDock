@@ -1,11 +1,11 @@
 # This module implements a Smart Darting "integrator"
-# IT IS NOT SIGNIFICANTLY FASTER THAN SmartDarting.py
+# It is a little bit faster than SmartDarting.py,
+# but does not seem to work on the cluster.
+
+import cython
 
 import numpy as np
 cimport numpy as np
-import cython
-
-from cpython cimport bool
 
 cimport MMTK_trajectory_generator
 from MMTK import Units
@@ -29,6 +29,9 @@ include "MMTK/universe.pxi"
 include "MMTK/trajectory.pxi"
 include "MMTK/forcefield.pxi"
 
+from cpython cimport bool
+cimport BAT
+
 R = 8.3144621*Units.J/Units.mol/Units.K
 
 #
@@ -36,7 +39,9 @@ R = 8.3144621*Units.J/Units.mol/Units.K
 #
 cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerator):
 
-  cdef object molecule, _BAT_util, _BAT_to_perturb, confs, confs_ha, \
+  cdef BAT.converter _BAT_util
+  cdef readonly object _BAT_to_perturb
+  cdef object molecule, confs, confs_ha, \
     confs_BAT, confs_BAT_tp, darts
   cdef bool extended
   cdef np.ndarray weights
@@ -64,8 +69,7 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
     self.extended = extended
     
     # Converter between Cartesian and BAT coordinates
-    from BAT import converter
-    self._BAT_util = converter(self.universe, self.molecule)
+    self._BAT_util = BAT.converter(self.universe, self.molecule)
     # BAT coordinates to perturb: external coordinates and primary torsions
     dof = self.universe.configuration().array.shape[0]*3 if extended \
       else self.universe.configuration().array.shape[0]*3 - 6
@@ -77,19 +81,7 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
     else:
       self.set_confs(confs)
 
-    # Do not request energy gradients and force constants.
-#    self.energy.gradients = NULL
-#    self.energy.gradient_fn = NULL
-#    self.energy.force_constants = NULL
-#    self.energy.fc_fn = NULL
-
-    # Declare the variables accessible to trajectory actions.
-#    self.declareTrajectoryVariable_double(
-#        &self.energy.energy,"potential_energy", "Potential energy: %lf\n",
-#        energy_unit_name, PyTrajectory_Energy)
-#    self.initializeTrajectoryActions()
-
-  def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.3, \
+  def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.33, \
       append=False):
 
     nconfs_attempted = len(confs)
@@ -105,18 +97,15 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
       self.universe.setConfiguration(Configuration(self.universe,conf))
       conf_energies.append(self.universe.energy())
 
-#      self.calculateEnergies(conf, &self.energy, 0)
-#      conf_energies.append(1.*self.energy.energy)
-
     # Sort by increasing energy
     conf_energies, confs = (list(l) \
       for l in zip(*sorted(zip(conf_energies, confs), key=lambda p:p[0])))
 
-    # Only keep configurations with energy with 50 kJ/mol of the lowest energy
+    # Only keep configurations with energy with 15 kJ/mol of the lowest energy
     confs = [confs[i] for i in range(len(confs)) \
-      if (conf_energies[i]-conf_energies[0])<50.]
+      if (conf_energies[i]-conf_energies[0])<15.]
     conf_energies = [conf_energies[i] for i in range(len(confs)) \
-      if (conf_energies[i]-conf_energies[0])<50.]
+      if (conf_energies[i]-conf_energies[0])<15.]
 
     if self.extended:
       # Keep only unique configurations, using rmsd as a threshold
@@ -155,8 +144,8 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
 
     if len(self.confs)>1:
       # Probabilty of jumping to a conformation k
-      # is proportional to exp(-E/(R*1000.)).
-      logweight = np.array(conf_energies)/(R*1000.)
+      # is proportional to exp(-E/(R*600.)).
+      logweight = np.array(conf_energies)/(R*600.)
       weights = np.exp(-logweight+min(logweight))
       self.weights = weights/sum(weights)
 
@@ -170,8 +159,7 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
     # Set the universe to the lowest-energy configuration
     self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
 
-    return '  set smart darting configurations: ' + \
-      'started with %d, attempted %d, ended with %d configurations.'%(\
+    return '  started with %d, attempted %d, ended with %d smart darting targets'%(\
       nconfs_o,nconfs_attempted,len(self.confs))
 
   # TODO: Try Cython loops in the following functions:
@@ -204,7 +192,7 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
     return np.argmin(np.sum(diffs**2,1))
 
   def __call__(self, **options):
-    if (self.confs is None) or len(self.confs)<3:
+    if (self.confs is None) or len(self.confs)<2:
       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
     
     # Process the keyword arguments

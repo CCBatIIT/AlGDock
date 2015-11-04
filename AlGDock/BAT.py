@@ -337,18 +337,17 @@ if __name__ == '__main__':
     new_xyz = self.Cartesian(BAT)
     print sum(sum(new_xyz - original_xyz))
 
-#      # This rotates the last primary torsion
-#      torsion_ind = self._firstTorsionTInd[-1]
-#      BAT_ind = len(BAT)-self.ntorsions+torsion_ind
-#      confs = []
-#      for torsion_offset in np.linspace(0,2*np.pi):
-#        BAT_n = [BAT[ind] if ind!=BAT_ind else BAT[ind] + torsion_offset \
-#          for ind in range(len(BAT))]
-#        self.Cartesian(BAT_n)
-#        confs.append(np.copy(self.universe.configuration().array))
-#
-#      import AlGDock.IO
-#      IO_dcd = AlGDock.IO.dcd(molecule)
-#      IO_dcd.write('rotation.dcd', confs)
-#      self.showMolecule(dcdFN='rotation.dcd')
-#      os.remove('rotation.dcd')
+    # This rotates the last primary torsion
+    BAT_ind = self.getFirstTorsionInds(True)[-1]
+    confs = []
+    for torsion_offset in np.linspace(0,2*np.pi):
+      BAT_n = np.array([BAT[ind] if ind!=BAT_ind else BAT[ind] + torsion_offset \
+        for ind in range(len(BAT))])
+      XYZ = self.Cartesian(BAT_n)
+      confs.append(XYZ)
+
+    import AlGDock.IO
+    IO_dcd = AlGDock.IO.dcd(molecule)
+    IO_dcd.write('rotation.dcd', confs)
+    self.showMolecule(dcdFN='rotation.dcd')
+    os.remove('rotation.dcd')
