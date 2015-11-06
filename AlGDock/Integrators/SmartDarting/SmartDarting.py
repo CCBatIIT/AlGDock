@@ -23,13 +23,21 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     self.extended = extended
     
     # Converter between Cartesian and BAT coordinates
+    import AlGDock.RigidBodies
+    id = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
     from BAT import converter
-    self._BAT_util = converter(self.universe, self.molecule)
+    self._BAT_util = converter(self.universe, self.molecule, \
+      initial_atom = id.initial_atom)
     # BAT coordinates to perturb: external coordinates and primary torsions
     dof = self.universe.configuration().array.shape[0]*3 if extended \
       else self.universe.configuration().array.shape[0]*3 - 6
     self._BAT_to_perturb = range(6) if extended else []
     self._BAT_to_perturb += self._BAT_util.getFirstTorsionInds(extended)
+#    self._BAT_to_perturb += list(np.array(\
+#      self._BAT_util.getFirstTorsionInds(extended))-1)
+#    self._BAT_to_perturb += list(np.array(\
+#      self._BAT_util.getFirstTorsionInds(extended))-2)
+#    self._BAT_to_perturb.sort()
 
     if confs is None:
       self.confs = None
@@ -39,28 +47,51 @@ class SmartDartingIntegrator(Dynamics.Integrator):
   def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.3, \
       append=False):
 
+    import time
+    start_time = time.time()
+
     nconfs_attempted = len(confs)
     if append and (self.confs is not None):
       nconfs_o = len(self.confs)
       confs = confs + self.confs
     else:
       nconfs_o = 0
-    
-    # Calculate energies of all configurations
-    conf_energies = []
+
+    # Minimize configurations
+    from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
+    minimizer = SteepestDescentMinimizer(self.universe)
+
+    minimized_confs = []
+    minimized_energies = []
     for conf in confs:
-      self.universe.setConfiguration(Configuration(self.universe,conf))
-      conf_energies.append(self.universe.energy())
-
+      self.universe.setConfiguration(Configuration(self.universe, conf))
+      x_o = np.copy(self.universe.configuration().array)
+      e_o = self.universe.energy()
+      for rep in range(20):
+        minimizer(steps = 50)
+        x_n = np.copy(self.universe.configuration().array)
+        e_n = self.universe.energy()
+        diff = abs(e_o-e_n)
+        if np.isnan(e_n) or diff<1. or diff>1000.:
+          self.universe.setConfiguration(Configuration(self.universe, x_o))
+          break
+        else:
+          x_o = x_n
+          e_o = e_n
+      if not np.isnan(e_o):
+        minimized_confs.append(x_o)
+        minimized_energies.append(e_o)
+    confs = minimized_confs
+    energies = minimized_energies
+    
     # Sort by increasing energy
-    conf_energies, confs = (list(l) \
-      for l in zip(*sorted(zip(conf_energies, confs), key=lambda p:p[0])))
+    energies, confs = (list(l) \
+      for l in zip(*sorted(zip(energies, confs), key=lambda p:p[0])))
 
-    # Only keep configurations with energy with 15 kJ/mol of the lowest energy
+    # Only keep configurations with energy with 12 kJ/mol of the lowest energy
     confs = [confs[i] for i in range(len(confs)) \
-      if (conf_energies[i]-conf_energies[0])<15.]
-    conf_energies = [conf_energies[i] for i in range(len(confs)) \
-      if (conf_energies[i]-conf_energies[0])<15.]
+      if (energies[i]-energies[0])<12.]
+    energies = energies[:len(confs)]
 
     if self.extended:
       # Keep only unique configurations, using rmsd as a threshold
@@ -72,7 +103,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         if min_rmsd>rmsd_threshold:
           inds_to_keep.append(j)
       confs = [confs[i] for i in inds_to_keep]
-      conf_energies = [conf_energies[i] for i in inds_to_keep]
+      energies = [energies[i] for i in inds_to_keep]
 
     confs_BAT = [self._BAT_util.BAT(confs[n], extended=self.extended) \
       for n in range(len(confs))]
@@ -91,7 +122,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       confs = [confs[i] for i in inds_to_keep]
       confs_BAT = [confs_BAT[i] for i in inds_to_keep]
       confs_BAT_tp = [confs_BAT_tp[i] for i in inds_to_keep]
-      conf_energies = [conf_energies[i] for i in inds_to_keep]
+      energies = [energies[i] for i in inds_to_keep]
 
     self.confs = confs
     self.confs_ha = [self.confs[c][self.molecule.heavy_atoms,:] \
@@ -100,7 +131,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     if len(self.confs)>1:
       # Probabilty of jumping to a conformation k
       # is proportional to exp(-E/(R*600.)).
-      logweight = np.array(conf_energies)/(R*600.)
+      logweight = np.array(energies)/(R*600.)
       weights = np.exp(-logweight+min(logweight))
       self.weights = weights/sum(weights)
 
@@ -114,10 +145,15 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Set the universe to the lowest-energy configuration
     self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
 
-    return '  started with %d, attempted %d, ended with %d smart darting targets'%(\
-      nconfs_o,nconfs_attempted,len(self.confs))
+    from AlGDock.BindingPMF import HMStime
+    report = "  started with %d, attempted %d, and ended with" + \
+      " %d smart darting targets in " + HMStime(time.time()-start_time)
+    report = report%(nconfs_o, nconfs_attempted, len(self.confs))
+    report += "\n  the lowest %d energies are: "%min(len(confs),10) + \
+        ', '.join(['%.2f'%e for e in energies[:10]])
+    return report
 
-  def show_confs():
+  def show_confs(self):
     if self.extended:
       confs = self.confs
     else:
@@ -126,6 +162,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     IO_dcd = AlGDock.IO.dcd(self.molecule)
     IO_dcd.write('confs.dcd', confs)
     self._BAT_util.showMolecule(dcdFN='confs.dcd')
+    import os
     os.remove('confs.dcd')
 
   def _closest_pose_Cartesian(self, conf_ha):
@@ -142,6 +179,9 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     diffs = np.min([diffs,1-diffs],0)
     return np.argmin(np.sum(diffs**2,1))
 
+  def _p_attempt(self, dart_from, dart_to):
+    return self.weights[dart_to]/(1.-self.weights[dart_from])
+
   def __call__(self, **options):
     if (self.confs is None) or len(self.confs)<2:
       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
@@ -152,7 +192,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     Features.checkFeatures(self, self.universe)
   
     RT = R*self.getOption('T')
-    ntrials = self.getOption('ntrials')
+    ntrials = min(self.getOption('ntrials'), len(self.confs))
 
     # Seed the random number generator
     if 'random_seed' in self.call_options.keys():
@@ -171,6 +211,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     else:
       closest_pose_o = self._closest_pose_BAT(xo_BAT[self._BAT_to_perturb])
   
+#    report = ''
     for t in range(ntrials):
       # Choose a pose to dart towards
       dart_towards = closest_pose_o
@@ -196,15 +237,22 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Determine energy of new state
       self.universe.setConfiguration(Configuration(self.universe, xn_Cartesian))
       en = self.universe.energy()
+#      report += 'Attempting move from near pose %d with energy %f to pose %d with energy %f. '%(closest_pose_o,eo,closest_pose_n,en)
 
       # Accept or reject the trial move
       if (abs(en-eo)<1000) and \
-          ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
+          ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT)*\
+            self._p_attempt(closest_pose_n,closest_pose_o)/\
+            self._p_attempt(closest_pose_o,closest_pose_n))):
         xo_Cartesian = xn_Cartesian
         xo_BAT = xn_BAT
         eo = 1.*en
         closest_pose_o = closest_pose_n
         acc += 1
-
+#        report += 'Accepted.\n'
+#      else:
+#        report += 'Rejected.\n'
+#
+#    print report
     self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
     return ([np.copy(xo_Cartesian)], [eo], float(acc)/float(ntrials), 0.0)

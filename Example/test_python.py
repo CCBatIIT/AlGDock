@@ -37,7 +37,8 @@ for run_type in run_types:
     site='Sphere', site_center=[1.74395, 1.74395, 1.74395], site_max_R=0.6, \
     site_density=10., \
     phases=['NAMD_Gas','NAMD_GBSA'], \
-    cores=-1, \
-    rmsd=True)
+    cores=1, \
+    rmsd=True,
+    random_seed=75)
   self._run(run_type)
 

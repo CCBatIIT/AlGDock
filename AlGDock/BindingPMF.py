@@ -890,6 +890,10 @@ last modified {2}
           self._clear_lock('cool')
           return False
 
+    if self.params['cool']['darts_per_seed']>0:
+      self._set_universe_evaluator(self.cool_protocol[-1])
+      self.tee(self.sampler['cool_SmartDarting'].set_confs(confs, append=True))
+
     if not saved:
       self._save('cool')
       self.tee("")
@@ -1413,6 +1417,10 @@ last modified {2}
           self.tee("  no time remaining for initial dock")
           self._clear_lock('dock')
           return False
+
+    if self.params['dock']['darts_per_seed']>0:
+      self._set_universe_evaluator(self.dock_protocol[-1])
+      self.tee(self.sampler['dock_SmartDarting'].set_confs(confs, append=True))
 
     if not saved:
       self._save('dock')
@@ -2571,7 +2579,8 @@ last modified {2}
           minimizer(steps = 50)
           x_n = np.copy(self.universe.configuration().array)
           e_n = self.universe.energy()
-          if np.isnan(e_n) or (e_o-e_n)<1000:
+          diff = abs(e_o-e_n)
+          if np.isnan(e_n) or diff<1. or diff>1000.:
             self.universe.setConfiguration(Configuration(self.universe, x_o))
             break
           else:
@@ -2583,7 +2592,9 @@ last modified {2}
       confs = minimized_confs
       energies = minimized_energies
       self.tee("\n  minimized %d configurations in "%len(confs) + \
-        HMStime(time.time()-min_start_time))
+        HMStime(time.time()-min_start_time) + \
+        "\n  the first %d energies are: "%min(len(confs),10) + \
+        ', '.join(['%.2f'%e for e in energies[:10]]))
     else:
       # Evaluate energies
       energies = []

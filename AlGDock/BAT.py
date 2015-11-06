@@ -74,6 +74,8 @@ class converter():
         root = [initial_atom]
       else:
         raise Exception('Initial atom is not a terminal atom')
+    self.initial_atom = initial_atom
+    
     root.append(sorted(root[0].bondedTo(),key=atom_mass)[-1])
     root.append(sorted([a for a in root[-1].bondedTo() \
       if (a not in root) and (a not in terminal_atoms)],key=atom_mass)[-1])
@@ -103,7 +105,7 @@ class converter():
     # Construct a list of torsion angles
     torsionL = []
     selected = [a for a in root]
-    while len(selected)<self.natoms:
+    while len(selected)<self.universe.numberOfAtoms():
       (a1,a2,a3,a4) = _find_dihedral(selected)
       torsionL.append((a1,a2,a3,a4))
       selected.append(a1)
