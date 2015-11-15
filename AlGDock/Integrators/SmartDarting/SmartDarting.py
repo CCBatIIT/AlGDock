@@ -5,6 +5,7 @@ import MMTK_dynamics
 import numpy as np
 
 R = 8.3144621*Units.J/Units.mol/Units.K
+twoPi = 2*np.pi
 
 #
 # Smart Darting integrator
@@ -33,18 +34,13 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       else self.universe.configuration().array.shape[0]*3 - 6
     self._BAT_to_perturb = range(6) if extended else []
     self._BAT_to_perturb += self._BAT_util.getFirstTorsionInds(extended)
-#    self._BAT_to_perturb += list(np.array(\
-#      self._BAT_util.getFirstTorsionInds(extended))-1)
-#    self._BAT_to_perturb += list(np.array(\
-#      self._BAT_util.getFirstTorsionInds(extended))-2)
-#    self._BAT_to_perturb.sort()
 
     if confs is None:
       self.confs = None
     else:
       self.set_confs(confs)
 
-  def set_confs(self, confs, rmsd_threshold=0.05, period_threshold=0.3, \
+  def set_confs(self, confs, rmsd_threshold=0.05, period_frac_threshold=0.35, \
       append=False):
 
     import time
@@ -67,12 +63,12 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       self.universe.setConfiguration(Configuration(self.universe, conf))
       x_o = np.copy(self.universe.configuration().array)
       e_o = self.universe.energy()
-      for rep in range(20):
-        minimizer(steps = 50)
+      for rep in range(50):
+        minimizer(steps = 25)
         x_n = np.copy(self.universe.configuration().array)
         e_n = self.universe.energy()
         diff = abs(e_o-e_n)
-        if np.isnan(e_n) or diff<1. or diff>1000.:
+        if np.isnan(e_n) or diff<0.05 or diff>1000.:
           self.universe.setConfiguration(Configuration(self.universe, x_o))
           break
         else:
@@ -96,7 +92,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     if self.extended:
       # Keep only unique configurations, using rmsd as a threshold
       inds_to_keep = [0]
-      for j in range(len(confs)):
+      for j in range(1,len(confs)):
         min_rmsd = np.min([np.sqrt((confs[j][self.molecule.heavy_atoms,:] - \
           confs[k][self.molecule.heavy_atoms,:])**2).sum()/self.molecule.nhatoms \
           for k in inds_to_keep])
@@ -111,53 +107,79 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       for c in range(len(confs_BAT))]
 
     if not self.extended:
-      # Keep only unique configurations, using period as a threshold
+      # Keep only unique configurations based on period fraction threshold
       inds_to_keep = [0]
-      for j in range(len(confs)):
-        diffs = np.array([(confs_BAT_tp[j] - confs_BAT_tp[k]) \
-          for k in inds_to_keep])/(2*np.pi)
-        diffs = np.min([diffs,1-diffs],0)
-        if (np.max(np.abs(diffs),1)>period_threshold).all():
+      for j in range(1,len(confs)):
+        period_fracs = np.array([np.abs(confs_BAT_tp[j] - confs_BAT_tp[k]) \
+          for k in inds_to_keep])/twoPi
+        period_fracs = np.min([period_fracs,1-period_fracs],0)
+        if (np.max(period_fracs,1)>period_frac_threshold).all():
           inds_to_keep.append(j)
       confs = [confs[i] for i in inds_to_keep]
       confs_BAT = [confs_BAT[i] for i in inds_to_keep]
       confs_BAT_tp = [confs_BAT_tp[i] for i in inds_to_keep]
       energies = [energies[i] for i in inds_to_keep]
 
-    self.confs = confs
-    self.confs_ha = [self.confs[c][self.molecule.heavy_atoms,:] \
-      for c in range(len(self.confs))]
+    confs_ha = [confs[c][self.molecule.heavy_atoms,:] \
+      for c in range(len(confs))]
 
-    if len(self.confs)>1:
+    if len(confs)>1:
       # Probabilty of jumping to a conformation k
       # is proportional to exp(-E/(R*600.)).
       logweight = np.array(energies)/(R*600.)
       weights = np.exp(-logweight+min(logweight))
       self.weights = weights/sum(weights)
 
-      self.confs_BAT = confs_BAT
-      self.confs_BAT_tp = confs_BAT_tp
       # self.darts[j][k] will jump from conformation j to conformation k
-      self.darts = [[self.confs_BAT[j][self._BAT_to_perturb] - \
-        self.confs_BAT[k][self._BAT_to_perturb] \
+      self.darts = [[confs_BAT[j][self._BAT_to_perturb] - \
+        confs_BAT[k][self._BAT_to_perturb] \
         for j in range(len(confs))] for k in range(len(confs))]
+
+      # Finds the minimum distance between target conformations.
+      # This is the maximum allowed distance to permit a dart.
+      if self.extended:
+        ssd = np.concatenate([[((confs_ha[j] - confs_ha[k])**2).sum()
+                for j in range(k+1,len(confs))] \
+                  for k in range(len(confs))])
+        # Uses the minimum distance or rmsd of 0.25 A
+        self.epsilon = min(np.min(ssd)*3/4., confs_ha[0].shape[0]*0.025*0.025)
+      else:
+        period_fracs = [[np.abs(self.darts[j][k])/twoPi \
+          for j in range(len(confs))] for k in range(len(confs))]
+        period_fracs = [[np.min([period_fracs[j][k], 1-period_fracs[j][k]],0) \
+          for j in range(len(confs))] for k in range(len(confs))]
+        spf = np.concatenate([[\
+          np.sum(period_fracs[j][k]) \
+          for j in range(k+1,len(confs))] for k in range(len(confs))])
+        self.epsilon = np.min(spf)*3/4.
+    else:
+      self.epsilon = 0.
 
     # Set the universe to the lowest-energy configuration
     self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
 
+    self.confs = confs
+    self.confs_ha = confs_ha
+    self.confs_BAT = confs_BAT
+    self.confs_BAT_tp = confs_BAT_tp
+    self.period_frac_threshold = period_frac_threshold
+
     from AlGDock.BindingPMF import HMStime
-    report = "  started with %d, attempted %d, and ended with" + \
-      " %d smart darting targets in " + HMStime(time.time()-start_time)
-    report = report%(nconfs_o, nconfs_attempted, len(self.confs))
-    report += "\n  the lowest %d energies are: "%min(len(confs),10) + \
+    report = "  attempted %d and finished with" + \
+      " %d smart darting targets (eps=%.4f) in " + \
+      HMStime(time.time()-start_time)
+    report = report%(nconfs_attempted, len(self.confs), self.epsilon)
+    if len(self.confs)>1:
+      report += "\n  the lowest %d energies are: "%(min(len(confs),10)) + \
         ', '.join(['%.2f'%e for e in energies[:10]])
     return report
 
-  def show_confs(self):
-    if self.extended:
-      confs = self.confs
-    else:
-      confs = [self._BAT_util.Cartesian(bat) for bat in self.confs_BAT]
+  def show_confs(self, confs=None):
+    if confs==None:
+      if self.extended:
+        confs = self.confs
+      else:
+        confs = [self._BAT_util.Cartesian(bat) for bat in self.confs_BAT]
     import AlGDock.IO
     IO_dcd = AlGDock.IO.dcd(self.molecule)
     IO_dcd.write('confs.dcd', confs)
@@ -167,24 +189,29 @@ class SmartDartingIntegrator(Dynamics.Integrator):
 
   def _closest_pose_Cartesian(self, conf_ha):
     # Closest pose has smallest sum of square distances between heavy atom coordinates
-    return np.argmin(np.array([((self.confs_ha[c] - conf_ha)**2).sum() \
-      for c in range(len(self.confs))]))
+    ssd = np.array([(np.square(self.confs_ha[c] - conf_ha)).sum() \
+      for c in range(len(self.confs_ha))])
+    closest_pose_index = np.argmin(ssd)
+    return (closest_pose_index, ssd[closest_pose_index])
 
   def _closest_pose_BAT(self, conf_BAT_tp):
-    # Closest pose has smallest sum of square distances between torsion angles
+    # Closest pose has smallest sum of period fractions between torsion angles
     # For only torsion angles, differences in units of periods (between 0 and 1)
-    diffs = np.abs(np.array([self.confs_BAT_tp[c] - conf_BAT_tp \
-      for c in range(len(self.confs_BAT_tp))]))/(2*np.pi)
+    period_fracs = (np.abs(np.array([self.confs_BAT_tp[c] - conf_BAT_tp \
+      for c in range(len(self.confs_BAT_tp))]))%twoPi)/twoPi
     # Wraps around the period
-    diffs = np.min([diffs,1-diffs],0)
-    return np.argmin(np.sum(diffs**2,1))
+    period_fracs = np.min([period_fracs,1-period_fracs],0)
+    spf = np.sum(period_fracs,1)
+    closest_pose_index = np.argmin(spf)
+    return (closest_pose_index, spf[closest_pose_index])
 
   def _p_attempt(self, dart_from, dart_to):
     return self.weights[dart_to]/(1.-self.weights[dart_from])
 
   def __call__(self, **options):
     if (self.confs is None) or len(self.confs)<2:
-      return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
+      return ([self.universe.configuration().array], [self.universe.energy()], \
+        0, 0, 0.0)
     
     # Process the keyword arguments
     self.setCallOptions(options)
@@ -203,14 +230,23 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     closest_poses = []
 
     xo_Cartesian = np.copy(self.universe.configuration().array)
-    xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
-    eo = self.universe.energy()
     if self.extended:
-      closest_pose_o = self._closest_pose_Cartesian(\
+      (closest_pose_o, distance_o) = self._closest_pose_Cartesian(\
         xo_Cartesian[self.molecule.heavy_atoms,:])
     else:
-      closest_pose_o = self._closest_pose_BAT(xo_BAT[self._BAT_to_perturb])
-  
+      xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
+      (closest_pose_o, distance_o) = self._closest_pose_BAT(xo_BAT[self._BAT_to_perturb])
+
+    # Only attempt smart darting within
+    # a sphere of radius epsilon of the minimum
+    if distance_o > self.epsilon:
+      return ([self.universe.configuration().array], [self.universe.energy()], \
+        0, 0, 0.0)
+
+    if self.extended:
+      xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
+    eo = self.universe.energy()
+
 #    report = ''
     for t in range(ntrials):
       # Choose a pose to dart towards
@@ -220,17 +256,24 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Generate a trial move
       xn_BAT = np.copy(xo_BAT)
       xn_BAT[self._BAT_to_perturb] = xo_BAT[self._BAT_to_perturb] + self.darts[closest_pose_o][dart_towards]
-      
+
       # Check that the trial move is closest to dart_towards
       if self.extended:
         xn_Cartesian = self._BAT_util.Cartesian(xn_BAT)
-        closest_pose_n = self._closest_pose_Cartesian(\
+        (closest_pose_n, distance_n) = self._closest_pose_Cartesian(\
           xn_Cartesian[self.molecule.heavy_atoms,:])
         if (closest_pose_n!=dart_towards):
+          print '    attempted dart from pose %d (%f) to pose %d'%(\
+            closest_pose_o,distance_o,dart_towards) + \
+            ' landed near pose %d (%f)!'%(closest_pose_n, distance_n)
           continue
       else:
-        closest_pose_n = self._closest_pose_BAT(xn_BAT[self._BAT_to_perturb])
+        (closest_pose_n, distance_n) = self._closest_pose_BAT(\
+          xn_BAT[self._BAT_to_perturb])
         if (closest_pose_n!=dart_towards):
+          print '    attempted dart from pose %d (%f) to pose %d'%(\
+            closest_pose_o,distance_o,dart_towards) + \
+            ' landed near pose %d (%f)!'%(closest_pose_n, distance_n)
           continue
         xn_Cartesian = self._BAT_util.Cartesian(xn_BAT)
 
@@ -248,6 +291,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         xo_BAT = xn_BAT
         eo = 1.*en
         closest_pose_o = closest_pose_n
+        distance_o = distance_n
         acc += 1
 #        report += 'Accepted.\n'
 #      else:
@@ -255,4 +299,4 @@ class SmartDartingIntegrator(Dynamics.Integrator):
 #
 #    print report
     self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
-    return ([np.copy(xo_Cartesian)], [eo], float(acc)/float(ntrials), 0.0)
+    return ([np.copy(xo_Cartesian)], [eo], acc, ntrials, 0.0)

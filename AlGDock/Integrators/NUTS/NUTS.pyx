@@ -358,7 +358,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     # Finalize all trajectory actions (close files etc.)
     self.finalizeTrajectoryActions(nsteps)
     
-    return (xs, energies, Hbar, delta_t_bar)
+    return (xs, energies, Hbar*nsteps, nsteps, delta_t_bar)
 
   # The main recursion
   # Cython compiler directives set for efficiency:

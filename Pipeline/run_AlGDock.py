@@ -189,7 +189,7 @@ parser.add_argument('--receptor_PBSA', type=float, nargs='+',
   help='Receptor potential energies in AMBER PBSA implicit solvent (in units of kJ/mol)')
 parser.add_argument('--receptor_NAMD_Gas', type=float, nargs='+',
   help='Receptor potential energies in gas phase (in units of kJ/mol)')
-parser.add_argument('--receptor_NAMD_GBSA', type=float, nargs='+',
+parser.add_argument('--receptor_NAMD_OBC', type=float, nargs='+',
   help='Receptor potential energies in NAMD GBSA implicit solvent (in units of kJ/mol)')
 args_in = parser.parse_args()
 

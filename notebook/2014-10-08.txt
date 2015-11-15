@@ -1,3 +1,0 @@
-Incorporated soft eletrostatic grid that grows simultaneously with the soft Lennard-Jones repulsive grid.
-Changed merge_dictionaries to prioritize the pass arguments, then the loaded values, and then the default parameters and files.
-

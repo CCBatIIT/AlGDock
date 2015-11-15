@@ -356,7 +356,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     # Finalize all trajectory actions (close files etc.)
     self.finalizeTrajectoryActions(nsteps)
     
-    return (xs, energies, Hbar, delta_t_bar)
+    return (xs, energies, Hbar*nsteps, nsteps, delta_t_bar)
 
   # The main recursion
   def build_tree(NUTSIntegrator self, double logu, int j, double delta_t, int steps, double joint_o):

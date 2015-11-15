@@ -154,7 +154,7 @@ for dir in dirs:
 #    F = gzip.open('AlGDock/dock/%s-0/f_RL.pkl.gz'%path)
 #    dat = pickle.load(F)
 #    F.close()
-#    print dat[-1]['NAMD_GBSA_MBAR'][-1]
+#    print dat[-1]['NAMD_OBC_MBAR'][-1]
 #
 #  for path in AlGDock_not_nc:
 #    os.system('rm -rf AlGDock/dock/%s-0'%path)

@@ -1,4 +1,0 @@
-Implemented a soft core Lennard Jones grid that uses a hyperbolic tangent to cap the total energy, not just the grid energy.
-This seems to slightly reduce the number of necessary thermodynamic states.
-
-MCMC moves now occur whenever the progress variable is less than 0.1, and the time is now reported correctly. 

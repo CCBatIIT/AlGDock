@@ -110,4 +110,4 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           xs.append(np.copy(self.universe.configuration().array))
           energies.append(pe_o)
   
-        return (xs, energies, float(acc)/float(ntrials), delta_t)
+        return (xs, energies, acc, ntrials, delta_t)

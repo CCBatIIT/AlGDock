@@ -1,2 +1,0 @@
-Now when the protocol is refined after three stages, early replicas are set to configuration in the final replica - this may alleviate hidden barrier issues and 
-cases with indefinite protocol refinement.

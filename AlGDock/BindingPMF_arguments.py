@@ -1,13 +1,39 @@
-allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA',\
-  'OpenMM_Gas','OpenMM_GBn','OpenMM_GBn2','OpenMM_OBC1','OpenMM_OBC2','OpenMM_HCT',\
-  'APBS']
+# NAMD_OBC corresponds to igb=5 in AMBER. It is the fastest GBSA implicit solvent.
+#
+# For sander and OpenMM, GBSA implicit solvents
+# are labeled according to OpenMM nomenclature
+#    HCT  - Hawkins-Cramer-Truhlar GBSA model (igb=1 in AMBER)
+#    OBC1 - Onufriev-Bashford-Case GBSA model
+#           using the GBOBCI parameters (igb=2 in AMBER)
+#    OBC2 - Onufriev-Bashford-Case GBSA model
+#           using the GBOBCII parameters (igb=5 in AMBER).
+#    GBn  - GBn solvation model (igb=7 in AMBER).
+#    GBn2 - GBn2 solvation model (igb=8 in AMBER).
+# Several sander phases also the ALPB option,
+# which seems to be a relatively minor change.
+#
+# GBNSR6 has two implicit phases. ALPB is used for anything with a receptor.
+#    Still - The original equation.
+#    CHA   - Uses the charge hydration asymmetry correction.
+#
+# APBS implements the Poisson-Boltzmann implicit solvent
+
+allowed_phases = ['NAMD_Gas','NAMD_OBC'] + \
+  ['sander_'+p for p in ['Gas','HCT','OBC1','OBC2','GBn','GBn2','PBSA']] + \
+  ['sander_ALPB_'+p for p in ['HCT','OBC1','OBC2','GBn']] + \
+  ['gbnsr6_'+p for p in ['Still','CHA']] + \
+  ['APBS_PBSA']
+
+try:
+  import simtk.openmm
+  allowed_phases += ['OpenMM_'+p for p in ['Gas','HCT','OBC1','OBC2','GBn','GBn2']]
+except ImportError:
+  pass
 
 arguments = {
   'dir_dock':{'help':'Directory where docking results are stored'},
   'dir_cool':{'help':'Directory where cooling results are stored'},
-  'namd':{'help':'Location of Not Another Molecular Dynamics (NAMD)'},
   'vmd':{'help':'Location of Visual Molecular Dynamics (VMD)'},
-  'sander':{'help':'Location of sander (from AMBER)'},
   'convert':{'help':'Location of convert (from ImageMagick)'},
   'font':{'help':'Location of font file (readable by PIL)'},
   #   Stored in both dir_cool and dir_dock

@@ -193,7 +193,7 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
 
   def __call__(self, **options):
     if (self.confs is None) or len(self.confs)<2:
-      return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
+      return ([self.universe.configuration().array], [self.universe.energy()], 0, 0, 0.0)
     
     # Process the keyword arguments
     self.setCallOptions(options)
@@ -262,4 +262,4 @@ cdef class SmartDartingIntegrator(MMTK_trajectory_generator.EnergyBasedTrajector
         acc += 1
 
     self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
-    return ([np.copy(xo_Cartesian)], [eo], float(acc)/float(ntrials), 0.0)
+    return ([np.copy(xo_Cartesian)], [eo], acc, ntrials, 0.0)

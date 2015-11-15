@@ -80,4 +80,4 @@ class ExternalMCIntegrator(Dynamics.Integrator):
       else:
         self.universe.setConfiguration(Configuration(self.universe,xo))
 
-    return ([np.copy(xo)], [en], float(acc)/float(ntrials), 0.0)
+    return ([np.copy(xo)], [en], acc, ntrials, 0.0)

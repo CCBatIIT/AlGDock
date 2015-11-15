@@ -1,2 +1,0 @@
-Docking replica exchange simulations are now started by minimizing configurations from UCSF dock6 or from the last thermodynamic state in initialization.
-

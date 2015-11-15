@@ -58,7 +58,7 @@ term_map = {
   'ELE':'ELE',
   'electrostatic':'misc'}
 
-allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA','APBS']
+allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_OBC','APBS']
 
 #############
 # Arguments #
@@ -461,7 +461,7 @@ last modified {2}
         'sweeps_per_cycle':200,
         'attempts_per_sweep':100,
         'steps_per_sweep':1000,
-        'phases':['NAMD_Gas','NAMD_GBSA'],
+        'phases':['NAMD_Gas','NAMD_OBC'],
         'keep_intermediate':False}
 
     args['default_dock'] = dict(args['default_cool'].items() + {
@@ -2697,7 +2697,7 @@ last modified {2}
     for (p, state, c, moiety, phase) in incomplete:
       if phase in ['Gas','GBSA','PBSA'] and not 'sander' in programs:
         programs.append('sander')
-      elif phase in ['NAMD_Gas','NAMD_GBSA'] and not 'namd' in programs:
+      elif phase in ['NAMD_Gas','NAMD_OBC'] and not 'namd' in programs:
         programs.append('namd')
       elif phase in ['APBS'] and not 'apbs' in programs:
         programs.extend(['apbs','ambpdb','molsurf'])
@@ -2748,7 +2748,7 @@ last modified {2}
       
       if phase in ['Gas','GBSA','PBSA']:
         traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
-      elif phase in ['NAMD_Gas','NAMD_GBSA']:
+      elif phase in ['NAMD_Gas','NAMD_OBC']:
         traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
       elif phase in ['APBS']:
         traj_FN = join(p_dir,'%s.%s.pqr'%(prefix,moiety))
@@ -2868,7 +2868,7 @@ last modified {2}
       start_time = time.time()
       if phase in ['Gas','GBSA','PBSA']:
         E = self._sander_Energy(*args)
-      elif phase in ['NAMD_Gas','NAMD_GBSA']:
+      elif phase in ['NAMD_Gas','NAMD_OBC']:
         E = self._NAMD_Energy(*args)
       elif phase in ['APBS']:
         E = self._APBS_Energy(*args)
@@ -2956,7 +2956,7 @@ last modified {2}
         E['R'+phase] = self.params['dock']['receptor_'+phase]
         for moiety in ['L','RL']:
           outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
-          if phase in ['NAMD_Gas','NAMD_GBSA']:
+          if phase in ['NAMD_Gas','NAMD_OBC']:
             traj_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
             self._write_traj(traj_FN, confs, moiety)
             E[moiety+phase] = self._NAMD_Energy(confs, moiety, phase, traj_FN, outputname)
@@ -3094,8 +3094,8 @@ last modified {2}
       fixed={'R':self._FNs['fixed_atoms']['R'], \
              'L':None, \
              'RL':self._FNs['fixed_atoms']['RL']}[moiety], \
-      solvent={'NAMD_GBSA':'GBSA', 'NAMD_Gas':'Gas'}[phase], \
-      useCutoff=(phase=='NAMD_GBSA'), \
+      solvent={'NAMD_OBC':'GBSA', 'NAMD_Gas':'Gas'}[phase], \
+      useCutoff=(phase=='NAMD_OBC'), \
       namd_command=self._FNs['namd'])
     E = energyCalc.energies_PE(\
       outputname, dcd_FN, energyFields=[1, 2, 3, 4, 5, 6, 8, 12], \

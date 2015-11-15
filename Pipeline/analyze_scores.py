@@ -4,10 +4,10 @@
 from collections import OrderedDict
 show = {'FF':OrderedDict([('dock6','DOCK 6'),
               ('MBAR','MBAR (none)'),
-              ('NAMD_GBSA_min_Psi','Minimum $\Psi$ (GBSA)'),
-              ('NAMD_GBSA_mean_Psi','Mean $\Psi$ (GBSA)'),
-              ('NAMD_GBSA_inverse_FEP','Exp Mean $\Psi$ (GBSA)'),
-              ('NAMD_GBSA_MBAR','MBAR (GBSA)')]),
+              ('NAMD_OBC_min_Psi','Minimum $\Psi$ (GBSA)'),
+              ('NAMD_OBC_mean_Psi','Mean $\Psi$ (GBSA)'),
+              ('NAMD_OBC_inverse_FEP','Exp Mean $\Psi$ (GBSA)'),
+              ('NAMD_OBC_MBAR','MBAR (GBSA)')]),
         'lib':{'active':'Active', 'decoy':'Decoy'}}
 ax_pos = (0.1,0.25,0.85,0.7)
 legend_pos = (-0.1, -0.3, 1.1, .10)

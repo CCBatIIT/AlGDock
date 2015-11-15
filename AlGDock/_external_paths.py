@@ -17,8 +17,11 @@ def findPath(locations):
   return None
 
 def findPaths(keys):
+  """
+  Finds a path for each key in a list that appears in search_paths.
+  """
   paths = dict([(key,findPath(search_paths[key])) \
-    for key in keys])
+    for key in keys if key in search_paths.keys()])
   for key in paths.keys():
     if paths[key] is None:
       # Download file and install program if available
@@ -47,12 +50,12 @@ def findPaths(keys):
         raise Exception('Missing file for '+key)
   return paths
 
-def loadModules(programs):
-  import os
-  for program in programs:
-    if program in modules.keys() and \
-        os.path.isfile('/share/apps/modules/'+modules[program]):
-      os.system('module load '+modules[program])
+#  def loadModules(programs):
+#    import os
+#    for program in programs:
+#      if program in modules.keys() and \
+#          os.path.isfile('/share/apps/modules/'+modules[program]):
+#        os.system('module load '+modules[program])
 
 # Define search paths for external programs and files
 # Defined for
@@ -62,15 +65,22 @@ search_paths = {
              # Generalized AMBER force field
   'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/data/gaff.dat',
               '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat'],
-             # For postprocessing snapshots
+             # For postprocessing snapshots with NAMD
       'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
               'namd2'],
-             # For postprocessing snapshots
+             # For postprocessing snapshots with sander
     'sander':['/Users/dminh/Installers/amber14/bin/sander',
               '/share/apps/amber/14/bin/sander',
               'sander'],
-             # For postprocessing snapshots
+    'elsize':['/Users/dminh/Installers/amber14/bin/elsize',
+              '/share/apps/amber/14/bin/elsize',
+              'elsize'],
+             # For postprocessing snapshots with gbnsr6
+    'gbnsr6':['/Users/dminh/Installers/amber14/bin/gbnsr6',
+              '/share/apps/amber/14/bin/gbnsr6',
+              'gbnsr6'],
+             # For postprocessing snapshots with APBS
       'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
               '/share/apps/apbs/1.4/bin/apbs',
               'apbs'],
@@ -86,6 +96,9 @@ search_paths = {
              # For visualizing (not essential)
        'vmd':['/Applications/VMD.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',
               '/share/apps/vmd/1.9.1/bin/vmd'],
+             # For concatenating and stripping dcd trajectories
+    'catdcd':['/Users/dminh/Applications/catdcd',
+              '/share/apps/catdcd/4.0/catdcd'],
              # For making movies (not essential)
    'convert':['/Applications/ImageMagick-6.9.1/bin/convert',
               '/share/apps/imagemagick/6.9.1-6/bin/convert'],
@@ -93,16 +106,19 @@ search_paths = {
       'font':['/Library/Fonts/Microsoft/Arial.ttf',
               '/home/dminh/shared/TTF/Arial.ttf']}
 
+# TODO: Test downloads for elsize & gbnsr6
 download_paths = {
   'namd':('namd.tar.gz','','namd2'),
   'sander':('sander.tar.gz','','sander'),
+  'elsize':('elsize.tar.gz','','elsize'),
+  'gbnsr6':('gbnsr6.tar.gz','','gbnsr6'),
   'ambpdb':('ambpdb.tar.gz','','ambpdb'),
   'molsurf':('molsurf.tar.gz', \
     'export LD_LIBRARY_PATH=./molsurf:$LD_LIBRARY_PATH', \
     'molsurf/molsurf'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs')}
 
-modules = {'namd':'namd/2.9', \
-  'sander':'ambertools/14', \
-  'ambpdb':'ambertools/14', \
-  'openmm':'openmm/6.2'}
+#  modules = {'namd':'namd/2.9', \
+#    'sander':'ambertools/14', \
+#    'ambpdb':'ambertools/14', \
+#    'openmm':'openmm/6.2'}

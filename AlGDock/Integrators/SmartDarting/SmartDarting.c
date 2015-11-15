@@ -5758,7 +5758,7 @@ static PyObject *__pyx_f_12SmartDarting_22SmartDartingIntegrator__closest_pose_B
  * 
  *   def __call__(self, **options):             # <<<<<<<<<<<<<<
  *     if (self.confs is None) or len(self.confs)<2:
- *       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
+ *       return ([self.universe.configuration().array], [self.universe.energy()], 0, 0, 0.0)
  */
 
 /* Python wrapper */
@@ -5854,7 +5854,7 @@ static PyObject *__pyx_pf_12SmartDarting_22SmartDartingIntegrator_4__call__(stru
  * 
  *   def __call__(self, **options):
  *     if (self.confs is None) or len(self.confs)<2:             # <<<<<<<<<<<<<<
- *       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
+ *       return ([self.universe.configuration().array], [self.universe.energy()], 0, 0, 0.0)
  * 
  */
   __pyx_t_2 = (__pyx_v_self->confs == Py_None);
@@ -5876,7 +5876,7 @@ static PyObject *__pyx_pf_12SmartDarting_22SmartDartingIntegrator_4__call__(stru
     /* "SmartDarting.pyx":196
  *   def __call__(self, **options):
  *     if (self.confs is None) or len(self.confs)<2:
- *       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)             # <<<<<<<<<<<<<<
+ *       return ([self.universe.configuration().array], [self.universe.energy()], 0, 0, 0.0)             # <<<<<<<<<<<<<<
  * 
  *     # Process the keyword arguments
  */
@@ -5934,17 +5934,20 @@ static PyObject *__pyx_pf_12SmartDarting_22SmartDartingIntegrator_4__call__(stru
     PyList_SET_ITEM(__pyx_t_7, 0, __pyx_t_6);
     __Pyx_GIVEREF(__pyx_t_6);
     __pyx_t_6 = 0;
-    __pyx_t_6 = PyTuple_New(4); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 196; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = PyTuple_New(5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 196; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_6);
     PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_4);
     PyTuple_SET_ITEM(__pyx_t_6, 1, __pyx_t_7);
     __Pyx_GIVEREF(__pyx_t_7);
+    __Pyx_INCREF(__pyx_int_0);
+    PyTuple_SET_ITEM(__pyx_t_6, 2, __pyx_int_0);
+    __Pyx_GIVEREF(__pyx_int_0);
+    __Pyx_INCREF(__pyx_int_0);
+    PyTuple_SET_ITEM(__pyx_t_6, 3, __pyx_int_0);
+    __Pyx_GIVEREF(__pyx_int_0);
     __Pyx_INCREF(__pyx_float_0_0);
-    PyTuple_SET_ITEM(__pyx_t_6, 2, __pyx_float_0_0);
-    __Pyx_GIVEREF(__pyx_float_0_0);
-    __Pyx_INCREF(__pyx_float_0_0);
-    PyTuple_SET_ITEM(__pyx_t_6, 3, __pyx_float_0_0);
+    PyTuple_SET_ITEM(__pyx_t_6, 4, __pyx_float_0_0);
     __Pyx_GIVEREF(__pyx_float_0_0);
     __pyx_t_4 = 0;
     __pyx_t_7 = 0;
@@ -7022,7 +7025,7 @@ static PyObject *__pyx_pf_12SmartDarting_22SmartDartingIntegrator_4__call__(stru
  *         acc += 1
  * 
  *     self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))             # <<<<<<<<<<<<<<
- *     return ([np.copy(xo_Cartesian)], [eo], float(acc)/float(ntrials), 0.0)
+ *     return ([np.copy(xo_Cartesian)], [eo], acc, ntrials, 0.0)
  */
   __pyx_t_11 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.__pyx_base.universe, __pyx_n_s_setConfiguration); if (unlikely(!__pyx_t_11)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 264; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_11);
@@ -7086,7 +7089,7 @@ static PyObject *__pyx_pf_12SmartDarting_22SmartDartingIntegrator_4__call__(stru
   /* "SmartDarting.pyx":265
  * 
  *     self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
- *     return ([np.copy(xo_Cartesian)], [eo], float(acc)/float(ntrials), 0.0)             # <<<<<<<<<<<<<<
+ *     return ([np.copy(xo_Cartesian)], [eo], acc, ntrials, 0.0)             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_11 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_11)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -7131,34 +7134,29 @@ static PyObject *__pyx_pf_12SmartDarting_22SmartDartingIntegrator_4__call__(stru
   PyList_SET_ITEM(__pyx_t_6, 0, __pyx_t_7);
   __Pyx_GIVEREF(__pyx_t_7);
   __pyx_t_7 = 0;
-  if (unlikely(((double)__pyx_v_ntrials) == 0)) {
-    #ifdef WITH_THREAD
-    PyGILState_STATE __pyx_gilstate_save = PyGILState_Ensure();
-    #endif
-    PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-    #ifdef WITH_THREAD
-    PyGILState_Release(__pyx_gilstate_save);
-    #endif
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  }
-  __pyx_t_7 = PyFloat_FromDouble((((double)__pyx_v_acc) / ((double)__pyx_v_ntrials))); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_acc); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_11 = PyTuple_New(4); if (unlikely(!__pyx_t_11)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_11 = __Pyx_PyInt_From_int(__pyx_v_ntrials); if (unlikely(!__pyx_t_11)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_11);
-  PyTuple_SET_ITEM(__pyx_t_11, 0, __pyx_t_4);
+  __pyx_t_8 = PyTuple_New(5); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_4);
   __Pyx_GIVEREF(__pyx_t_4);
-  PyTuple_SET_ITEM(__pyx_t_11, 1, __pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_t_6);
   __Pyx_GIVEREF(__pyx_t_6);
-  PyTuple_SET_ITEM(__pyx_t_11, 2, __pyx_t_7);
+  PyTuple_SET_ITEM(__pyx_t_8, 2, __pyx_t_7);
   __Pyx_GIVEREF(__pyx_t_7);
+  PyTuple_SET_ITEM(__pyx_t_8, 3, __pyx_t_11);
+  __Pyx_GIVEREF(__pyx_t_11);
   __Pyx_INCREF(__pyx_float_0_0);
-  PyTuple_SET_ITEM(__pyx_t_11, 3, __pyx_float_0_0);
+  PyTuple_SET_ITEM(__pyx_t_8, 4, __pyx_float_0_0);
   __Pyx_GIVEREF(__pyx_float_0_0);
   __pyx_t_4 = 0;
   __pyx_t_6 = 0;
   __pyx_t_7 = 0;
-  __pyx_r = __pyx_t_11;
   __pyx_t_11 = 0;
+  __pyx_r = __pyx_t_8;
+  __pyx_t_8 = 0;
   goto __pyx_L0;
 
   /* "SmartDarting.pyx":194
@@ -7166,7 +7164,7 @@ static PyObject *__pyx_pf_12SmartDarting_22SmartDartingIntegrator_4__call__(stru
  * 
  *   def __call__(self, **options):             # <<<<<<<<<<<<<<
  *     if (self.confs is None) or len(self.confs)<2:
- *       return ([self.universe.configuration().array], [self.universe.energy()], 0.0, 0.0)
+ *       return ([self.universe.configuration().array], [self.universe.energy()], 0, 0, 0.0)
  */
 
   /* function exit code */
