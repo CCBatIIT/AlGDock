@@ -87,7 +87,7 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           v.array = np.multiply(sigma_MB,np.random.randn(natoms,3))
     
           # Store total energy
-          eo = pe_o + 0.5*np.sum(np.multiply(m3,np.multiply(v.array,v.array)))
+          eo = pe_o + 0.5*np.sum(np.multiply(m3,np.square(v.array)))
 
           # Run the velocity verlet integrator
           self.run(MMTK_dynamics.integrateVV,
@@ -97,7 +97,7 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
 
           # Decide whether to accept the move
           pe_n = self.universe.energy()
-          en = pe_n + 0.5*np.sum(np.multiply(m3,np.multiply(v.array,v.array)))
+          en = pe_n + 0.5*np.sum(np.multiply(m3,np.square(v.array)))
           if ((en<eo) or (np.random.random()<N.exp(-(en-eo)/RT))):
             xo = np.copy(self.universe.configuration().array)
             pe_o = pe_n

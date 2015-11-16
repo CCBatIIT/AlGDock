@@ -9,12 +9,13 @@
 #           using the GBOBCII parameters (igb=5 in AMBER).
 #    GBn  - GBn solvation model (igb=7 in AMBER).
 #    GBn2 - GBn2 solvation model (igb=8 in AMBER).
-# Several sander phases also the ALPB option,
-# which seems to be a relatively minor change.
+# Several sander phases also have an ALPB option, which is applied for a receptor.
+# ALPB is based on a spherical solute, which doesn't make sense for a ligand.
 #
-# GBNSR6 has two implicit phases. ALPB is used for anything with a receptor.
+# GBNSR6 has two implicit phases.
 #    Still - The original equation.
 #    CHA   - Uses the charge hydration asymmetry correction.
+# ALPB is used for anything with a receptor, as in sander.
 #
 # APBS implements the Poisson-Boltzmann implicit solvent
 

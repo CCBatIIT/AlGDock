@@ -3277,12 +3277,11 @@ last modified {2}
 /
 ''')
     else:
-      if phase.find('ALPB')>-1:
+      if phase.find('ALPB')>-1 and moiety.find('R')>-1:
+        if not hasattr(self, 'elsize'):
+          self.elsize = self._get_elsize()
         script_F.write("\n  alpb=1,")
-        if moiety.find('R')>-1:
-          if not hasattr(self, 'elsize'):
-            self.elsize = self._get_elsize()
-          script_F.write("\n  arad=%.2f,"%self.elsize)
+        script_F.write("\n  arad=%.2f,"%self.elsize)
       key = phase.split('_')[-1]
       igb = {'HCT':1, 'OBC1':2, 'OBC2':5, 'GBn':7, 'GBn2':8}[key]
       script_F.write('''
@@ -3352,7 +3351,8 @@ last modified {2}
     import AlGDock.IO
     IO_crd = AlGDock.IO.crd()
     factor = 1.0/MMTK.Units.Ang
-    IO_crd.write(inpcrd_FN, factor*self.confs['receptor'], 'title', trajectory=False)
+    IO_crd.write(inpcrd_FN, factor*self.confs['receptor'], \
+      'title', trajectory=False)
     
     # Converts the coordinates to a pqr file
     inpcrd_F = open(inpcrd_FN,'r')

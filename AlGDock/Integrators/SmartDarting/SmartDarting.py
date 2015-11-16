@@ -93,8 +93,9 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Keep only unique configurations, using rmsd as a threshold
       inds_to_keep = [0]
       for j in range(1,len(confs)):
-        min_rmsd = np.min([np.sqrt((confs[j][self.molecule.heavy_atoms,:] - \
-          confs[k][self.molecule.heavy_atoms,:])**2).sum()/self.molecule.nhatoms \
+        min_rmsd = np.min([np.sqrt(np.sum(np.square(\
+          confs[j][self.molecule.heavy_atoms,:] - \
+          confs[k][self.molecule.heavy_atoms,:]))/self.molecule.nhatoms) \
           for k in inds_to_keep])
         if min_rmsd>rmsd_threshold:
           inds_to_keep.append(j)
@@ -138,7 +139,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       # Finds the minimum distance between target conformations.
       # This is the maximum allowed distance to permit a dart.
       if self.extended:
-        ssd = np.concatenate([[((confs_ha[j] - confs_ha[k])**2).sum()
+        ssd = np.concatenate([[np.sum(np.square(confs_ha[j] - confs_ha[k]))
                 for j in range(k+1,len(confs))] \
                   for k in range(len(confs))])
         # Uses the minimum distance or rmsd of 0.25 A

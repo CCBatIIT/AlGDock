@@ -270,7 +270,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     while elapsed_steps < nsteps:
       # Resample velocities
       self.v = np.multiply(sigma_MB,np.random.randn(natoms,3))
-      ke = 0.5*np.sum(np.multiply(self.m,np.multiply(self.v,self.v)))
+      ke = 0.5*np.sum(np.multiply(self.m,np.square(self.v)))
 
       # Joint log-probabiity of positions and velocities
       joint = -(e_m + ke)/self.RT
@@ -377,7 +377,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       self.calculateEnergies(self.x, &self.energy, 1)
       # Second half-step
       self.v += -0.5*delta_t*np.divide(self.g,self.m)
-      ke = 0.5*np.sum(np.multiply(self.m,np.multiply(self.v,self.v)))
+      ke = 0.5*np.sum(np.multiply(self.m,np.square(self.v)))
       steps += 1
 
       eprime = 1.*self.energy.energy
