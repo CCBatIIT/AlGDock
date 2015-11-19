@@ -45,7 +45,9 @@ cdef class TricubicGridTerm(EnergyTerm):
     # file. Note that EnergyTerm.__init__ takes care of storing the
     # name and the universe object.
 
-    cdef float_t tricubicInterpolate(self,list nkpoints):
+    cdef float_t tricubicInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
+	
+	return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+y*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+z*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
         
 	cdef int n1 = extract<int>(nkpoints[0])
   	cdef int n2 = extract<int>(nkpoints[1])
@@ -72,6 +74,8 @@ cdef class TricubicGridTerm(EnergyTerm):
 
 	# Calculate the first derivatives estimatives
 	
+	# Suggestion to make the derivatives: Use the four points in the BSPline, but make an addition, for example, add the 0 with the 1. And for the interpolator, it can be used to get the difference, get the module, in this case
+
 	# Values of df/dx in each corner in a array
 	cdef float_t dfdx(self, float_t p[4][4][4]):
 		cdef float_t arr[8]
