@@ -91,7 +91,7 @@ cdef class TricubicGridTerm(EnergyTerm):
 		return self.derivativeIntp(arr, x, y, 0)
 
 	# Values of d2f/dxdz
-	cdef float_t d2fdxdz(self, float_t p[4][4][4]):
+	cdef float_t d2fdxdz(self, float_t p[4][4][4], float_t x, float_t z):
 		cdef float_t arr[4]
 		arr[0] = self.tricubicInterpolate(p[0], 0, p[0]) 
 		arr[1] = self.tricubicInterpolate(p[1], 0, p[1]) 
@@ -100,26 +100,22 @@ cdef class TricubicGridTerm(EnergyTerm):
 		return self.derivativeIntp(arr, x, 0, z)
 
 	# Values of d2f/dydz
-	cdef float_t d2fdydz(self, float_t p[4][4][4]):
+	cdef float_t d2fdydz(self, float_t p[4][4][4], float_t y, float_t z):
 		cdef float_t arr[4]
 		arr[0] = self.tricubicInterpolate(0, p[0], p[0]) 
-		arr[1] = self.tricubicInterpolate(0, p[0], p[0])
-		arr[2] = self.tricubicInterpolate(0, p[0], p[0])
-		arr[3] = self.tricubicInterpolate(0, p[0], p[0])
+		arr[1] = self.tricubicInterpolate(0, p[1], p[1])
+		arr[2] = self.tricubicInterpolate(0, p[2], p[2])
+		arr[3] = self.tricubicInterpolate(0, p[3], p[3])
 		return derivativeIntp(arr, 0, y, z)
 
 	# Values of d3f/dxdydz in each corner
-	cdef float_t d3fdxdydz(self, float_t p[4][4][4]):
-		cdef float_t arr[8]
-		arr[0] = 0.125*(p[index(xi+1,yi+1,zi+1)]-p[index(xi-1,yi+1,zi+1)]-p[index(xi+1,yi-1,zi+1)]+p[index(xi-1,yi-1,zi+1)]-p[index(xi+1,yi+1,zi-1)]+p[index(xi-1,yi+1,zi-1)]+p[index(xi+1,yi-1,zi-1)]-p[index(xi-1,yi-1,zi-1)])
-		arr[1] = 0.125*(p[index(xi+2,yi+1,zi+1)]-p[index(xi,yi+1,zi+1)]-p[index(xi+2,yi-1,zi+1)]+p[index(xi,yi-1,zi+1)]-p[index(xi+2,yi+1,zi-1)]+p[index(xi,yi+1,zi-1)]+p[index(xi+2,yi-1,zi-1)]-p[index(xi,yi-1,zi-1)])
-		arr[2] = 0.125*(p[index(xi+1,yi+2,zi+1)]-p[index(xi-1,yi+2,zi+1)]-p[index(xi+1,yi,zi+1)]+p[index(xi-1,yi,zi+1)]-p[index(xi+1,yi+2,zi-1)]+p[index(xi-1,yi+2,zi-1)]+p[index(xi+1,yi,zi-1)]-p[index(xi-1,yi,zi-1)])
-		arr[3] = 0.125*(p[index(xi+2,yi+2,zi+1)]-p[index(xi,yi+2,zi+1)]-p[index(xi+2,yi,zi+1)]+p[index(xi,yi,zi+1)]-p[index(xi+2,yi+2,zi-1)]+p[index(xi,yi+2,zi-1)]+p[index(xi+2,yi,zi-1)]-p[index(xi,yi,zi-1)])
-		arr[4] = 0.125*(p[index(xi+1,yi+1,zi+2)]-p[index(xi-1,yi+1,zi+2)]-p[index(xi+1,yi-1,zi+2)]+p[index(xi-1,yi-1,zi+2)]-p[index(xi+1,yi+1,zi)]+p[index(xi-1,yi+1,zi)]+p[index(xi+1,yi-1,zi)]-p[index(xi-1,yi-1,zi)])
-		arr[5] = 0.125*(p[index(xi+2,yi+1,zi+2)]-p[index(xi,yi+1,zi+2)]-p[index(xi+2,yi-1,zi+2)]+p[index(xi,yi-1,zi+2)]-p[index(xi+2,yi+1,zi)]+p[index(xi,yi+1,zi)]+p[index(xi+2,yi-1,zi)]-p[index(xi,yi-1,zi)])
-		arr[6] = 0.125*(p[index(xi+1,yi+2,zi+2)]-p[index(xi-1,yi+2,zi+2)]-p[index(xi+1,yi,zi+2)]+p[index(xi-1,yi,zi+2)]-p[index(xi+1,yi+2,zi)]+p[index(xi-1,yi+2,zi)]+p[index(xi+1,yi,zi)]-p[index(xi-1,yi,zi)])
-		arr[7] = 0.125*(p[index(xi+2,yi+2,zi+2)]-p[index(xi,yi+2,zi+2)]-p[index(xi+2,yi,zi+2)]+p[index(xi,yi,zi+2)]-p[index(xi+2,yi+2,zi)]+p[index(xi,yi+2,zi)]+p[index(xi+2,yi,zi)]-p[index(xi,yi,zi)])
-		return self.d3fddxdydz(arr)
+	cdef float_t d3fdxdydz(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
+		cdef float_t arr[4]
+		arr[0] = self.tricubicInterpolate(p[0], p[0], p[0]) 
+		arr[1] = self.tricubicInterpolate(p[1], p[1], p[1]) 
+		arr[2] = self.tricubicInterpolate(p[2], p[2], p[2]) 
+		arr[3] = self.tricubicInterpolate(p[3], p[3], p[3])
+		return derivativeIntp(arr, x, y, z)
 
 	def __init__(self, universe, spacing, counts, vals, strength, scaling_factor, grid_name, max_val):
         print "------------test start---------------"

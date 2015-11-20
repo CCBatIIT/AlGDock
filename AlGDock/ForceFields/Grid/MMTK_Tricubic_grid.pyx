@@ -226,14 +226,14 @@ cdef class TricubicGridTerm(EnergyTerm):
                 # hessian funciton          ************************
             if energy.force_constants !=NULL:
                # x direction
-              dvdxdx = self.dfdx(vertex)
-              dvdxdy = self.df2dxdy(vertex)
-              dvdxdz = self.df2dxdz(vertex)
+              dvdxdx = self.dfdx(vertex, fx, fy, fz)
+              dvdxdy = self.df2dxdy(vertex, fx, fy, fz)
+              dvdxdz = self.df2dxdz(vertex, fx, fy, fz)
               # y direction
-              dvdydy = self.dfdy(vertex)
-              dvdydz = self.df2dydz(vertex)
+              dvdydy = self.dfdy(vertex, fx, fy, fz)
+              dvdydz = self.df2dydz(vertex, fx, fy, fz)
               # z direction
-              dvdzdz = self.dfdz(vertex) + self.d3fdxdydz(vertex)
+              dvdzdz = self.dfdz(vertex, fx, fy, fz) + self.d3fdxdydz(vertex, fx, fy, fz)
               
 	      force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
