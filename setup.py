@@ -313,6 +313,34 @@ high_opt.append('-g')
 
 #################################################################
 
+ext_module_name_and_path = [\
+  ('MMTK_sphere', 'AlGDock/ForceFields/Sphere/MMTK_sphere.pyx'), \
+  ('MMTK_trilinear_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_grid.pyx'), \
+  ('MMTK_trilinear_isqrt_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_isqrt_grid.pyx'), \
+  ('NUTS', 'AlGDock/Integrators/NUTS/NUTS.pyx'), \
+  ('NUTS_no_stopping', 'AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx'), \
+  ('SmartDarting', 'AlGDock/Integrators/SmartDarting/SmartDarting.pyx'), \
+  ('BAT', 'Src/BAT.pyx'),
+  ('repX', 'Src/repX.pyx')]
+
+if False:
+  # These extension modules are not used in the current code,
+  # but may be used in the future.
+  ext_module_name_and_path.extend(\
+    [('MMTK_cylinder','AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx'), \
+     ('MMTK_trilinear_thresh_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx'), \
+     ('MMTK_trilinear_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx'), \
+     ('MMTK_BSpline_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'), \
+     ('MMTK_BSpline_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx'), \
+     ('MMTK_CatmullRom_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx'), \
+     ('MMTK_CatmullRom_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx')])
+
+if False:
+  # These extension modules need to be debugged.
+  ext_module_name_and_path.extend(\
+    [('MMTK_tricubic_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_grid.pyx'), \
+     ('MMTK_tricubic_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_transformgrid.pyx')])
+
 setup (name = package_name,
        version = pkginfo.__version__,
        description = "Molecular docking with an adaptively alchemical interaction grid",
@@ -340,77 +368,9 @@ rigid receptor.
                    'AlGDock.Integrators.SmartDarting'
                    ],
        ext_package = 'AlGDock.'+sys.platform,
-
-       ext_modules = [Extension('MMTK_cylinder',
-                                ['AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_sphere',
-                                ['AlGDock/ForceFields/Sphere/MMTK_sphere.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_thresh_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_isqrt_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_isqrt_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_transform_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_BSpline_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_BSpline_transform_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_CatmullRom_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_CatmullRom_transform_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-#                      Extension('MMTK_tricubic_grid',
-#                                ['AlGDock/ForceFields/Grid/MMTK_tricubic_grid.pyx'],
-#                                extra_compile_args = compile_args,
-#                                include_dirs=include_dirs),
-#                      Extension('MMTK_tricubic_transform_grid',
-#                                ['AlGDock/ForceFields/Grid/MMTK_tricubic_transform_grid.pyx'],
-#                                extra_compile_args = compile_args,
-#                                include_dirs=include_dirs),
-                      Extension('NUTS',
-                                ['AlGDock/Integrators/NUTS/NUTS.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('NUTS_no_stopping',
-                                ['AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('SmartDarting',
-                                ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('BAT',
-                                ['Src/BAT.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('repX',
-                                ['Src/repX.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      ],
-
+       ext_modules = [Extension(name, [path], extra_compile_args = compile_args, \
+        include_dirs = include_dirs) for (name,path) in ext_module_name_and_path]
+,
        data_files = data_files,
        scripts = [],
 
