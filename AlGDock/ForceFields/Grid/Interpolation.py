@@ -190,4 +190,5 @@ class InterpolationForceField(ForceField):
           self.grid_data['spacing'], self.grid_data['counts'], \
           self.grid_data['vals'], self.params['strength'], scaling_factor, \
           self.params['name'])]
+    print self.params['interpolation_type'] + ' interpolation is unknown'
     raise NotImplementedError

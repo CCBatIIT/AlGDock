@@ -1810,7 +1810,7 @@ last modified {2}
     self._load_programs(self.params['dock']['phases'])
     toClear = []
     for phase in self.params['dock']['phases']:
-      E['R'+phase] = self.params['dock']['receptor_'+phase]
+      Es['R'+phase] = self.params['dock']['receptor_'+phase]
       for moiety in ['L','RL']:
         outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
         if phase.startswith('NAMD'):
@@ -1832,7 +1832,7 @@ last modified {2}
           toClear.append(traj_FN)
         for program in ['NAMD','sander','gbnsr6','OpenMM','APBS']:
           if phase.startswith(program):
-            E[moiety+phase] = getattr(self,'_%s_Energy'%program)(confs, \
+            Es[moiety+phase] = getattr(self,'_%s_Energy'%program)(confs, \
               moiety, phase, traj_FN, outputname, debug=debug)
             break
     for FN in toClear:
