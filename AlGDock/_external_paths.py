@@ -18,11 +18,12 @@ def findPath(locations):
 
 def findPaths(keys):
   """
-  Finds a path for each key in a list that appears in search_paths.
+  Finds a path for each key.
   """
-  paths = dict([(key,findPath(search_paths[key])) \
-    for key in keys if key in search_paths.keys()])
-  for key in paths.keys():
+  paths = {}
+  for key in keys:
+    paths[key] = findPath(search_paths[key]) \
+      if key in search_paths.keys() else None
     if paths[key] is None:
       # Download file and install program if available
       if key in download_paths.keys():
@@ -50,12 +51,15 @@ def findPaths(keys):
         raise Exception('Missing file for '+key)
   return paths
 
-#  def loadModules(programs):
-#    import os
-#    for program in programs:
-#      if program in modules.keys() and \
-#          os.path.isfile('/share/apps/modules/'+modules[program]):
-#        os.system('module load '+modules[program])
+def loadModules(programs):
+  import os
+  import numpy as np
+  if os.path.isdir('/share/apps/amber/14') and np.array([p in programs \
+      for p in ['sander','elsize','gbnsr6','ambpdb','molsurf']]).any():
+    os.environ['PATH'] = '/share/apps/amber/14/bin:' + os.environ['PATH']
+    os.environ['LD_LIBRARY_PATH'] = '/share/apps/netcdf/4.3.0/lib:/share/apps/amber/14/lib:' + os.environ['LD_LIBRARY_PATH']
+    os.environ['PYTHONPATH'] = '/share/apps/amber/14/lib/python2.6/site-packages' + os.environ['PYTHONPATH']
+    os.environ['AMBERHOME'] = '/share/apps/amber/14'
 
 # Define search paths for external programs and files
 # Defined for
@@ -106,7 +110,6 @@ search_paths = {
       'font':['/Library/Fonts/Microsoft/Arial.ttf',
               '/home/dminh/shared/TTF/Arial.ttf']}
 
-# TODO: Test downloads for elsize & gbnsr6
 download_paths = {
   'namd':('namd.tar.gz','','namd2'),
   'sander':('sander.tar.gz','','sander'),
@@ -117,8 +120,3 @@ download_paths = {
     'export LD_LIBRARY_PATH=./molsurf:$LD_LIBRARY_PATH', \
     'molsurf/molsurf'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs')}
-
-#  modules = {'namd':'namd/2.9', \
-#    'sander':'ambertools/14', \
-#    'ambpdb':'ambertools/14', \
-#    'openmm':'openmm/6.2'}

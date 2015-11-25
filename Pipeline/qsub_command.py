@@ -187,17 +187,7 @@ tar xzf algdock.tar.gz
 
 # Modify paths
 echo "
-search_paths = {
-  'gaff.dat':[None],
-  'namd':[None],
-  'sander':[None],
-  'apbs':[None],
-  'ambpdb':[None],
-  'molsurf':[None],
-  'MMTK':['$WORK_DIR/AlGDock/MMTK'],
-  'vmd':[None],
-  'convert':[None],
-  'font':[None]}
+search_paths = {'MMTK':['$WORK_DIR/AlGDock/MMTK']}
 " | cat AlGDock/AlGDock/_external_paths.py - > AlGDock/AlGDock/paths.py
 mv AlGDock/AlGDock/paths.py AlGDock/AlGDock/_external_paths.py
 export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF

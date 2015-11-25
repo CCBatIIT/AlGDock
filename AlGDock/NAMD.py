@@ -13,6 +13,9 @@ import os, sys, gzip
 try:
   from AlGDock import findPath
   from AlGDock import search_paths
+
+  if not 'namd' in search_paths.keys():
+    search_paths['namd'] = [None]
 except:
   def findPath(locations):
     """

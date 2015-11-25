@@ -259,10 +259,11 @@ last modified {2}
       kwargs['frcmodList'] = [cdir_or_dir_dock(FN) \
         for FN in kwargs['frcmodList']]
   
+    FFpath = a.search_paths['gaff.dat'] \
+      if 'gaff.dat' in a.search_paths.keys() else []
     FNs['new'] = {
       'ligand_database':cdir_or_dir_dock(kwargs['ligand_database']),
-      'forcefield':a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + \
-                               a.search_paths['gaff.dat']),
+      'forcefield':a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + FFpath),
       'frcmodList':kwargs['frcmodList'],
       'tarball':{'L':a.findPath([kwargs['ligand_tarball']]),
                 'R':a.findPath([kwargs['receptor_tarball']]),
@@ -292,10 +293,7 @@ last modified {2}
                         join(kwargs['dir_grid'],'pbsa.dx.gz')])},
       'score':'default' if kwargs['score']=='default' \
                         else a.findPath([kwargs['score']]),
-      'dir_cool':self.dir['cool'],
-      'vmd':a.findPath([kwargs['vmd']] + a.search_paths['vmd']),
-      'convert':a.findPath([kwargs['convert']] + a.search_paths['convert']),
-      'font':a.findPath([kwargs['font']] + a.search_paths['font'])}
+      'dir_cool':self.dir['cool']}
 
     if not (FNs['cool']=={} and FNs['dock']=={}):
       print dict_view(FNs['new'], relpath=self.dir['start'])
@@ -548,10 +546,18 @@ last modified {2}
         rmsd_crd = rmsd_crd[self.molecule.inv_prmtop_atom_order,:]
       self.confs['rmsd'] = rmsd_crd[self.molecule.heavy_atoms,:]
 
+    # Locate programs for postprocessing
+    all_phases = self.params['dock']['phases'] + self.params['cool']['phases']
+    self._load_programs(all_phases)
+
     # Determine APBS grid spacing
     if 'APBS_PBSA' in self.params['dock']['phases'] or \
        'APBS_PBSA' in self.params['cool']['phases']:
       self._get_APBS_grid_spacing()
+
+    # Determines receptor electrostatic size
+    if np.array([p.find('ALPB')>-1 for p in all_phases]).any():
+      self.elsize = self._get_elsize()
 
     # If poses are being rescored, start with a docked structure
     (confs,Es) = self._get_confs_to_rescore(site=False, minimize=False)
@@ -2933,6 +2939,7 @@ last modified {2}
           programs.append(program)
     for program in programs:
       self._FNs[program] = a.findPaths([program])[program]
+    a.loadModules(programs)
 
   def _postprocess(self,
       conditions=[('original',0, 0,'R'), ('cool',-1,-1,'L'), \
@@ -3278,8 +3285,6 @@ last modified {2}
 ''')
     else:
       if phase.find('ALPB')>-1 and moiety.find('R')>-1:
-        if not hasattr(self, 'elsize'):
-          self.elsize = self._get_elsize()
         script_F.write("\n  alpb=1,")
         script_F.write("\n  arad=%.2f,"%self.elsize)
       key = phase.split('_')[-1]
@@ -3358,13 +3363,21 @@ last modified {2}
     inpcrd_F = open(inpcrd_FN,'r')
     cdir = os.getcwd()
     import subprocess
-    p = subprocess.Popen(\
-      [os.path.relpath(self._FNs['ambpdb'], cdir), \
-       '-p', os.path.relpath(self._FNs['prmtop']['R'], cdir), \
-       '-pqr'], \
-      stdin=inpcrd_F, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (stdoutdata_ambpdb, stderrdata_ambpdb) = p.communicate()
-    p.wait()
+    try:
+      p = subprocess.Popen(\
+        [self._FNs['ambpdb'], \
+         '-p', os.path.relpath(self._FNs['prmtop']['R'], cdir), \
+         '-pqr'], \
+        stdin=inpcrd_F, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      (stdoutdata_ambpdb, stderrdata_ambpdb) = p.communicate()
+      p.wait()
+    except OSError:
+      os.system('ls -ltr')
+      print 'Command: ' + ' '.join([os.path.relpath(self._FNs['ambpdb'], cdir), \
+         '-p', os.path.relpath(self._FNs['prmtop']['R'], cdir), \
+         '-pqr'])
+      print 'stdout:\n' + stdoutdata_ambpdb
+      print 'stderr:\n' + stderrdata_ambpdb
     inpcrd_F.close()
     
     pqr_F = open(pqr_FN,'w')
@@ -3373,8 +3386,7 @@ last modified {2}
 
     # Runs the pqr file through elsize
     p = subprocess.Popen(\
-      [os.path.relpath(self._FNs['elsize'], cdir), \
-       os.path.relpath(pqr_FN, cdir)], \
+      [self._FNs['elsize'], os.path.relpath(pqr_FN, cdir)], \
       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdoutdata_elsize, stderrdata_elsize) = p.communicate()
     p.wait()
@@ -3382,7 +3394,14 @@ last modified {2}
     for FN in [inpcrd_FN, pqr_FN]:
       if os.path.isfile(FN):
         os.remove(FN)
-    return float(stdoutdata_elsize.strip())
+    try:
+      elsize = float(stdoutdata_elsize.strip())
+    except ValueError:
+      print 'Command: ' + ' '.join([os.path.relpath(self._FNs['elsize'], cdir), \
+       os.path.relpath(pqr_FN, cdir)])
+      print stdoutdata_elsize
+      print 'Error with elsize'
+    return elsize
 
   def _gbnsr6_Energy(self, confs, moiety, phase, inpcrd_FN, outputname,
       debug=DEBUG, reference=None):
@@ -3899,9 +3918,7 @@ END
           relpath_o=None, relpath_n=self.dir['cool'])
     elif p=='dock':
       fn_dict = convert_dictionary_relpath(
-          dict([tp for tp in self._FNs.items() \
-            if not tp[0] in ['vmd','convert','font']]),
-          relpath_o=None, relpath_n=self.dir['dock'])
+          dict(self._FNs.items()), relpath_o=None, relpath_n=self.dir['dock'])
     params = (fn_dict,arg_dict)
     
     saved = {
@@ -3961,7 +3978,7 @@ END
       self._clear_lock(process)
 
   def __del__(self):
-    if len(self._toClear)>0:
+    if (not DEBUG) and len(self._toClear)>0:
       print '\n>>> Clearing files'
       for FN in self._toClear:
         if os.path.isfile(FN):
