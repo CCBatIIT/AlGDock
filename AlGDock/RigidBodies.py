@@ -61,6 +61,7 @@ class identifier(converter):
   def __init__(self, universe, molecule):
     self.universe = universe
     self.molecule = molecule
+    self.natoms = universe.numberOfAtoms()
 
     # Identify all unique rings
     unique_paths = []
@@ -90,10 +91,10 @@ class identifier(converter):
       
     # Select soft torsions, primary torsions that are not in the same rigid body
     softTorsionInd = []
-    for torsion_ind in set(self._firstTorsionInd):
+    for torsion_ind in set(self._firstTorsionTInd):
       body_id = [-1, -1, -1]
       for atom_ind in [1,2]:
-        in_bodies = [self._torsionL[torsion_ind][atom_ind] in rigid_body \
+        in_bodies = [self._torsionIndL[torsion_ind][atom_ind] in rigid_body \
           for rigid_body in rigid_bodies]
         if True in in_bodies:
           body_id[atom_ind] = in_bodies.index(True)
@@ -112,7 +113,7 @@ class identifier(converter):
           atom.occupancy = index+1
     elif property=='soft_torsions':
       for index in self._softTorsionInd:
-        for atom in self._torsionL[index]:
+        for atom in self._torsionIndL[index]:
           atom.occupancy = index+1
 
 ########

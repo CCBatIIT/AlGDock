@@ -14,9 +14,13 @@ def findPath(locations):
   return None
 
 def findPaths(keys):
-  paths = dict([(key,findPath(search_paths[key])) \
-    for key in keys])
-  for key in paths.keys():
+  """
+  Finds a path for each key.
+  """
+  paths = {}
+  for key in keys:
+    paths[key] = findPath(search_paths[key]) \
+      if key in search_paths.keys() else None
     if paths[key] is None:
       # Download file and install program if available
       if key in download_paths.keys():

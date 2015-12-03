@@ -1,6 +1,0 @@
-The change in 2014-06-16 was removed, because it didn't seem to help. Now protocol refinement is not allowed in the last cycle. This should prevent extremely long simulations.
-
-Also Psi.pkl.gz was eliminated. 
-f_RL.pkl.gz now will contain the cooling and solvation free energies, as well as self.Psi.
-
-

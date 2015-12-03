@@ -1,13 +1,40 @@
-allowed_phases = ['Gas','GBSA','PBSA','NAMD_Gas','NAMD_GBSA',\
-  'OpenMM_Gas','OpenMM_GBn','OpenMM_GBn2','OpenMM_OBC1','OpenMM_OBC2','OpenMM_HCT',\
-  'APBS']
+# NAMD_OBC corresponds to igb=5 in AMBER. It is the fastest GBSA implicit solvent.
+#
+# For sander and OpenMM, GBSA implicit solvents
+# are labeled according to OpenMM nomenclature
+#    HCT  - Hawkins-Cramer-Truhlar GBSA model (igb=1 in AMBER)
+#    OBC1 - Onufriev-Bashford-Case GBSA model
+#           using the GBOBCI parameters (igb=2 in AMBER)
+#    OBC2 - Onufriev-Bashford-Case GBSA model
+#           using the GBOBCII parameters (igb=5 in AMBER).
+#    GBn  - GBn solvation model (igb=7 in AMBER).
+#    GBn2 - GBn2 solvation model (igb=8 in AMBER).
+# Several sander phases also have an ALPB option, which is applied for a receptor.
+# ALPB is based on a spherical solute, which doesn't make sense for a ligand.
+#
+# GBNSR6 has two implicit phases.
+#    Still - The original equation.
+#    CHA   - Uses the charge hydration asymmetry correction.
+# ALPB is used for anything with a receptor, as in sander.
+#
+# APBS implements the Poisson-Boltzmann implicit solvent
+
+allowed_phases = ['NAMD_Gas','NAMD_OBC'] + \
+  ['sander_'+p for p in ['Gas','HCT','OBC1','OBC2','GBn','GBn2','PBSA']] + \
+  ['sander_ALPB_'+p for p in ['HCT','OBC1','OBC2','GBn']] + \
+  ['gbnsr6_'+p for p in ['Still','CHA']] + \
+  ['APBS_PBSA']
+
+try:
+  import simtk.openmm
+  allowed_phases += ['OpenMM_'+p for p in ['Gas','HCT','OBC1','OBC2','GBn','GBn2']]
+except ImportError:
+  pass
 
 arguments = {
   'dir_dock':{'help':'Directory where docking results are stored'},
   'dir_cool':{'help':'Directory where cooling results are stored'},
-  'namd':{'help':'Location of Not Another Molecular Dynamics (NAMD)'},
   'vmd':{'help':'Location of Visual Molecular Dynamics (VMD)'},
-  'sander':{'help':'Location of sander (from AMBER)'},
   'convert':{'help':'Location of convert (from ImageMagick)'},
   'font':{'help':'Location of font file (readable by PIL)'},
   #   Stored in both dir_cool and dir_dock
@@ -38,7 +65,7 @@ arguments = {
   'dock_repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking'},
   'run_type':{'choices':['pose_energies','minimized_pose_energies',
-              'store_params', 'cool', \
+              'store_params', 'initial_cool', 'cool', \
               'dock','timed','postprocess',\
               'redo_postprocess','free_energies','redo_free_energies', 'all', \
               'render_docked', 'render_intermediates', \
@@ -46,16 +73,16 @@ arguments = {
     'help':'Type of calculation to run'},
   'max_time':{'type':int, 'default':180, \
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
-  'cores':{'type':int, \
-    'help':'Number of CPU cores to use'},
+  'cores':{'type':int, 'help':'Number of CPU cores to use'},
   'rotate_matrix':{'help':'Rotation matrix for viewing'},
+  'random_seed':{'type':int, 'help':'Random number seed'},
   #   Defaults
   'protocol':{'choices':['Adaptive','Set'],
     'help':'Approach to determining series of thermodynamic states'},
   'therm_speed':{'type':float,
     'help':'Thermodynamic speed during adaptive simulation'},
   'sampler':{
-    'choices':['HMC','NUTS','VV','TDHMC'],
+    'choices':['HMC','NUTS','NUTS_no_stopping','VV','TDHMC'],
     'help':'Sampling method'},
   'MCMC_moves':{'type':int,
     'help':'Types of MCMC moves to use'},

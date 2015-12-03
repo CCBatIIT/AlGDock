@@ -19,7 +19,9 @@ param_sets = [\
   {'interpolation_type':'BSpline', 'inv_power':None, 'energy_thresh':-1.0},
   {'interpolation_type':'BSpline', 'inv_power':-3, 'energy_thresh':-1.0},
   {'interpolation_type':'CatmullRom', 'inv_power':None, 'energy_thresh':-1.0},
-  {'interpolation_type':'CatmullRom', 'inv_power':-3, 'energy_thresh':-1.0}]
+  {'interpolation_type':'CatmullRom', 'inv_power':-3, 'energy_thresh':-1.0},
+  {'interpolation_type':'Tricubic', 'inv_power':None, 'energy_thresh':-1.0},
+  {'interpolation_type':'Tricubic', 'inv_power':-3, 'energy_thresh':-1.0}]
 
 steps = 50000
 import numpy as np

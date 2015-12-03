@@ -26,6 +26,8 @@ parser.add_argument('--nodes', type=int, default=1, help='Number of nodes to run
 parser.add_argument('--ppn', type=int, default=1, help='Number of processors per node to run the job on')
 parser.add_argument('--ambertools', action='store_true', default=False, \
   help='Load the ambertools/14 module')
+parser.add_argument('--email', default='', help='Adds email to job')
+parser.add_argument('--email_options', default='abe', help='Options for email notifications. When job begins (b), job ends (e), and/or aborted (a)')
 args = parser.parse_args()
 
 # Find unique name for the submission script
@@ -71,7 +73,11 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 
   if args.ambertools:
     modules += 'module load ambertools/14\n'
-
+  
+  email_specified = ''
+  if args.email == '':
+    email_specified = '#'
+  
   # Write script
   submit_script = '''#!/bin/bash
 #
@@ -81,6 +87,8 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 #PBS -d {4}
 #PBS -o {5}
 #PBS -e {6}
+{10}#PBS -M {11}
+{10}#PBS -m {12}
 
 {7}
 {8}
@@ -88,7 +96,7 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 # {9}
 '''.format(args.name, args.mem, args.nodes, args.ppn, \
            curdir, out_FN, err_FN, \
-           modules, command, args.comment)
+           modules, command, args.comment, email_specified, args.email, args.email_options)
 elif os.path.exists('/stash'):   # Open Science Grid
   cluster = 'OSG'
   
@@ -179,17 +187,7 @@ tar xzf algdock.tar.gz
 
 # Modify paths
 echo "
-search_paths = {
-  'gaff.dat':[None],
-  'namd':[None],
-  'sander':[None],
-  'apbs':[None],
-  'ambpdb':[None],
-  'molsurf':[None],
-  'MMTK':['$WORK_DIR/AlGDock/MMTK'],
-  'vmd':[None],
-  'convert':[None],
-  'font':[None]}
+search_paths = {'MMTK':['$WORK_DIR/AlGDock/MMTK']}
 " | cat AlGDock/AlGDock/_external_paths.py - > AlGDock/AlGDock/paths.py
 mv AlGDock/AlGDock/paths.py AlGDock/AlGDock/_external_paths.py
 export ALGDOCK=$WORK_DIR/AlGDock/BindingPMF

@@ -31,6 +31,7 @@ include "MMTK/forcefield.pxi"
 
 R = 8.3144621*Units.J/Units.mol/Units.K
 
+
 #
 # NUTS integrator
 #
@@ -54,9 +55,9 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
      are used
   """
 
+  cdef double RT
   cdef np.ndarray x, v, g, m
   cdef energy_data energy
-  cdef double RT
 
   def __init__(self, universe, **options):
     """
@@ -65,7 +66,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     @keyword steps: the number of integration steps (default is 100)
     @type steps: C{int}
     @keyword delta_t: the time step (default is 1 fs)
-    @type delta_t: C{double}
+    @type delta_t: C{float}
     @keyword actions: a list of actions to be executed periodically
                       (default is none)
     @type actions: C{list}
@@ -92,10 +93,10 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
 
   def __call__(self, **options):
     self.setCallOptions(options)
-#    try:
-#        self.actions = self.getOption('actions')
-#    except ValueError:
-    self.actions = []
+    try:
+        self.actions = self.getOption('actions')
+    except ValueError:
+        self.actions = []
     try:
         if self.getOption('background'):
             import MMTK_state_accessor
@@ -107,25 +108,25 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     if self.tvars != NULL:
         free(self.tvars)
         self.tvars = NULL
-#    configuration = self.universe.configuration()
-#    self.conf_array = configuration.array
-#    self.declareTrajectoryVariable_array(self.conf_array,
-#                                         "configuration",
-#                                         "Configuration:\n",
-#                                         length_unit_name,
-#                                         PyTrajectory_Configuration)
+    configuration = self.universe.configuration()
+    self.conf_array = configuration.array
+    self.declareTrajectoryVariable_array(self.conf_array,
+                                         "configuration",
+                                         "Configuration:\n",
+                                         length_unit_name,
+                                         PyTrajectory_Configuration)
     self.universe_spec = <PyUniverseSpecObject *>self.universe._spec
     if self.universe_spec.geometry_data_length > 0:
         self.declareTrajectoryVariable_box(
             self.universe_spec.geometry_data,
             self.universe_spec.geometry_data_length)
-#    masses = self.universe.masses()
-#    self.declareTrajectoryVariable_array(masses.array,
-#                                         "masses",
-#                                         "Masses:\n",
-#                                         mass_unit_name,
-#                                         PyTrajectory_Internal)
-#    self.natoms = self.universe.numberOfAtoms()
+    masses = self.universe.masses()
+    self.declareTrajectoryVariable_array(masses.array,
+                                         "masses",
+                                         "Masses:\n",
+                                         mass_unit_name,
+                                         PyTrajectory_Internal)
+    self.natoms = self.universe.numberOfAtoms()
     self.df = self.universe.degreesOfFreedom()
     self.declareTrajectoryVariable_int(&self.df,
                                        "degrees_of_freedom",
@@ -136,8 +137,6 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         return ThreadManager.TrajectoryGeneratorThread(
             self.universe, self.start_py, (), self.state_accessor)
     else:
-        # This is the main change from the original __call__ function
-        # in MMTK_trajectory_generator.pyx
         return self.start()
 
   # Cython compiler directives set for efficiency:
@@ -151,6 +150,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
 
     cdef double time, delta_t, ke
     cdef int natoms, nsteps, elapsed_steps
+    cdef Py_ssize_t i_atm, i_dim
 
     cdef double joint, logu, e_m
     cdef np.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, x_m
@@ -161,8 +161,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     cdef int nalpha, t0, m
 
     # Initialize the velocity
-    if self.universe.velocities() is None:
-      self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
+    self.universe.initializeVelocitiesToTemperature(self.getOption('T'))
 
     # Gather state variables and parameters
     configuration = self.universe.configuration()
@@ -326,11 +325,10 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         j += 1
         # Decide if it's time to stop
         s = sprime and \
-            self.stop_criterion(xminus, xplus, vminus, vplus) and \
             ((elapsed_steps + steps_m*2) < nsteps)
 
       # Keep track of acceptance statistics
-      eta = 1./(m+t0)
+      eta = 1./float(m+t0)
       Hbar = (1-eta)*Hbar + eta*(delta-alpha/nalpha)
 
       # Adapt the time step
@@ -361,14 +359,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     return (xs, energies, Hbar*nsteps, nsteps, delta_t_bar)
 
   # The main recursion
-  # Cython compiler directives set for efficiency:
-  # - No bound checks on index operations
-  # - No support for negative indices
-  # - Division uses C semantics
-  @cython.boundscheck(False)
-  @cython.wraparound(False)
-  @cython.cdivision(True)
-  cdef build_tree(NUTSIntegrator self, double logu, int j, double delta_t, int steps, double joint_o):
+  def build_tree(NUTSIntegrator self, double logu, int j, double delta_t, int steps, double joint_o):
     cdef double ke, joint, e_o, eprime, eprime2
     cdef np.ndarray[double, ndim=2] xminus, xplus, vminus, vplus, xprime, xprime2, NA0, NA1
     
@@ -378,7 +369,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
     if (j==0):
       # Base case: Take a single leapfrog step
       # First half-step
-      e_o = 1.*self.energy.energy      
+      e_o = 1.*self.energy.energy
       self.v += -0.5*delta_t*np.divide(self.g,self.m)
       self.x += delta_t*self.v      
       # Mid-step energy calculation
@@ -430,17 +421,10 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
         # Update the number of valid points.
         nprime = nprime + nprime2
         # Update the stopping criterion.
-        sprime = sprime and sprime2 and \
-          self.stop_criterion(xminus, xplus, vminus, vplus)
+        sprime = sprime and sprime2
         # Update the acceptance probability statistics
         alphaprime = alphaprime + alphaprime2
         nalphaprime = nalphaprime + nalphaprime2
       return (xminus, vminus, xplus, vplus, xprime,
               eprime, nprime, sprime, steps,
               alphaprime, nalphaprime)
-
-  def stop_criterion(NUTSIntegrator self, xminus, xplus, vminus, vplus):
-    cdef np.ndarray[double] thetavec
-    thetavec = np.ravel(xplus-xminus)
-    return (np.dot(thetavec,np.ravel(vminus))>0) and \
-           (np.dot(thetavec,np.ravel(vplus))>0)

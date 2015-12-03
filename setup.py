@@ -63,7 +63,8 @@ if not mmtk_ok:
 
 # Configure compile arguments and include directories 
 compile_args = []
-include_dirs = [os.path.join(findPath(search_paths['MMTK']),'Include'),
+include_dirs = ['Include',
+                os.path.join(findPath(search_paths['MMTK']),'Include'),
                 os.path.join(findPath(search_paths['MMTK']),'include',
                              'python%d.%d'%sys.version_info[:2],'MMTK')]
 
@@ -112,7 +113,8 @@ paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'ForceFields', 'Sphere'),
          os.path.join('AlGDock', 'ForceFields', 'Grid'),
          os.path.join('AlGDock', 'Integrators', 'VelocityVerlet'),
-         os.path.join('AlGDock', 'Integrators', 'NUTS')]
+         os.path.join('AlGDock', 'Integrators', 'NUTS'),
+         os.path.join('AlGDock', 'Integrators', 'SmartDarting')]
 data_files = []
 for dir in paths:
     files = []
@@ -311,6 +313,34 @@ high_opt.append('-g')
 
 #################################################################
 
+ext_module_name_and_path = [\
+  ('MMTK_sphere', 'AlGDock/ForceFields/Sphere/MMTK_sphere.pyx'), \
+  ('MMTK_trilinear_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_grid.pyx'), \
+  ('MMTK_trilinear_isqrt_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_isqrt_grid.pyx'), \
+  ('NUTS', 'AlGDock/Integrators/NUTS/NUTS.pyx'), \
+  ('NUTS_no_stopping', 'AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx'), \
+  ('SmartDarting', 'AlGDock/Integrators/SmartDarting/SmartDarting.pyx'), \
+  ('BAT', 'Src/BAT.pyx'),
+  ('repX', 'Src/repX.pyx')]
+
+if False:
+  # These extension modules are not used in the current code,
+  # but may be used in the future.
+  ext_module_name_and_path.extend(\
+    [('MMTK_cylinder','AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx'), \
+     ('MMTK_trilinear_thresh_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx'), \
+     ('MMTK_trilinear_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx'), \
+     ('MMTK_BSpline_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'), \
+     ('MMTK_BSpline_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx'), \
+     ('MMTK_CatmullRom_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx'), \
+     ('MMTK_CatmullRom_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx')])
+
+if False:
+  # These extension modules need to be debugged.
+  ext_module_name_and_path.extend(\
+    [('MMTK_tricubic_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_grid.pyx'), \
+     ('MMTK_tricubic_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_transformgrid.pyx')])
+
 setup (name = package_name,
        version = pkginfo.__version__,
        description = "Molecular docking with an adaptively alchemical interaction grid",
@@ -324,7 +354,7 @@ rigid receptor.
        author = "David Minh",
        author_email = "dminh@iit.edu",
        url = "TBA",
-       license = "CeCILL-C",
+       license = "MIT",
 
        packages = ['AlGDock', 'AlGDock.ForceFields', 
                    'AlGDock.ForceFields.Cylinder',
@@ -338,53 +368,9 @@ rigid receptor.
                    'AlGDock.Integrators.SmartDarting'
                    ],
        ext_package = 'AlGDock.'+sys.platform,
-
-       ext_modules = [Extension('MMTK_cylinder',
-                                ['AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_sphere',
-                                ['AlGDock/ForceFields/Sphere/MMTK_sphere.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_thresh_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_isqrt_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_isqrt_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_trilinear_transform_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_BSpline_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_BSpline_transform_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_CatmullRom_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('MMTK_CatmullRom_transform_grid',
-                                ['AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      Extension('NUTS',
-                                ['AlGDock/Integrators/NUTS/NUTS.pyx'],
-                                extra_compile_args = compile_args,
-                                include_dirs=include_dirs),
-                      ],
-
+       ext_modules = [Extension(name, [path], extra_compile_args = compile_args, \
+        include_dirs = include_dirs) for (name,path) in ext_module_name_and_path]
+,
        data_files = data_files,
        scripts = [],
 

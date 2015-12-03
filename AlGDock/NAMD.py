@@ -13,6 +13,9 @@ import os, sys, gzip
 try:
   from AlGDock import findPath
   from AlGDock import search_paths
+
+  if not 'namd' in search_paths.keys():
+    search_paths['namd'] = [None]
 except:
   def findPath(locations):
     """
@@ -308,26 +311,27 @@ class NAMD:
     if self.namd_command==None:
       raise Exception("NAMD not found!")
 
-  def _readEnergyDatGZ(self, file):
-    """
-    Reads energies from a gzip file
-    """
-    energyF = gzip.open(file,'r')
-    lines = energyF.read().strip().split('\n')
-    energyF.close()
-    energies = []
-    for line in lines:
-      energies.append([float(item) for item in line.split('\t')])
-    return energies
+  def _load_pkl_gz(self, FN):
+    import os, gzip, pickle
+    if os.path.isfile(FN) and os.path.getsize(FN)>0:
+      F = gzip.open(FN,'r')
+      try:
+        data = pickle.load(F)
+      except:
+        print '  error loading '+FN
+        F.close()
+        return None
+      F.close()
+      return data
+    else:
+      return None
 
-  def _writeEnergyDatGZ(self, file, energies):
-    """
-    Writes energies to a gzip file
-    """
-    energyF = gzip.open(file,'w')
-    for line in energies:
-      energyF.write('\t'.join('%.4f'%item for item in line)+'\n')
-    energyF.close()
+  def _write_pkl_gz(self, FN, data):
+    import os, gzip, pickle
+    F = gzip.open(FN,'w')
+    pickle.dump(data,F)
+    F.close()
+    print "  wrote to "+FN
 
   def _removeFile(self,filename):
     """
@@ -433,7 +437,7 @@ binaryoutput         yes
   def _execute(self,
       outputname, temperature,
       integrator_script, output_script, execution_script, grid_script='',
-      energyFields=[12], writeEnergyDatGZ=False,
+      energyFields=[12], write_energy_pkl_gz=False,
       keepScript=False, keepOutput=False, keepCoor=False,
       prmtop=None, inpcrd=None, bincoordinates=None, binvelocities=None,
       xsc=None, solvent=None, grid=None, colvars=None, alchemical=None,
@@ -452,7 +456,7 @@ binaryoutput         yes
     Optional Arguments:
     grid_script - part of the NAMD configuration file that defines the interaction grids.  [Default: '']
     energyFields - a list of fields to keep from the ENERGY output lines [Default: [12], which is the total potential energy]
-    writeEnergyDatGZ - writes the energies into outputname.dat.gz
+    write_energy_pkl_gz - writes the energies into outputname.pkl.gz
     
     finishBy - the time, in seconds, by which the MD simulation should be complete.  If it is defined and totalSteps is defined, NAMD will abort if the projected simulation length (for totalSteps) is longer than the allotted time.  [Default is none, meaning that there is no time limit.]
     totalSteps - the total number of simulation steps.  Only relevant if finishBy is defined.
@@ -647,8 +651,8 @@ binaryoutput         yes
     if execution_dir != '':
       os.chdir(original_dir)
     if noRunError:
-      if writeEnergyDatGZ:
-        self._writeEnergyDatGZ(outputname+'.dat.gz',energies)
+      if write_energy_pkl_gz:
+        self._write_pkl_gz(outputname+'.pkl.gz',energies)
       return energies
     else:
       return None
@@ -686,7 +690,7 @@ for { set curTemp 10 } { $curTemp <= $temperature } { incr curTemp 10 } {
 
   def simulate(self, outputname, temperature=300.0, steps=10000000, \
     energyFields=[12], \
-    keepScript=False, keepCoor=False, writeEnergyDatGZ=False):
+    keepScript=False, keepCoor=False, write_energy_pkl_gz=False):
     """
     Runs an MD simulation.
     """
@@ -714,7 +718,7 @@ run %d
         integrator_script, output_script, execution_script,
         energyFields=energyFields,
         keepScript=keepScript, keepCoor=keepCoor,
-        writeEnergyDatGZ=writeEnergyDatGZ)
+        write_energy_pkl_gz=write_energy_pkl_gz)
     return energies
 
   def _energy_scripts(self,dcdname,stride=1,test=False):
@@ -752,7 +756,7 @@ coorfile close
     return (integrator_script,output_script,execution_script)
 
   def energies_PE(self, outputname, dcdname=None, energyFields=[12], \
-      stride=1, keepScript=False, writeEnergyDatGZ=True, test=False):
+      stride=1, keepScript=False, write_energy_pkl_gz=True, test=False):
     """
     Calculates potential energies in a dcd file.
     
@@ -766,13 +770,13 @@ coorfile close
     
     (integrator_script,output_script,execution_script) = self._energy_scripts(dcdname,stride=stride,test=test)
 
-    if (os.path.exists('%s.dat.gz'%outputname)):
-      energies = self._readEnergyDatGZ('%s.dat.gz'%outputname)
+    if (os.path.exists('%s.pkl.gz'%outputname)):
+      energies = self._load_pkl_gz('%s.pkl.gz'%outputname)
     else:
       energies = self._execute(outputname, 0.0,
         integrator_script, output_script, execution_script,  
         energyFields=energyFields,
-        writeEnergyDatGZ=writeEnergyDatGZ,
+        write_energy_pkl_gz=write_energy_pkl_gz,
         keepScript=keepScript, retry=False)
     return energies
 
@@ -792,23 +796,23 @@ coorfile close
     grid_script_LJ = self.grid.script_LJ()
     grid_script_ELE = self.grid.script_ELE()
 
-    if (os.path.exists('%s.LJ.dat.gz'%outputname)):
-      energies = self._readEnergyDatGZ('%s.LJ.dat.gz'%outputname)
+    if (os.path.exists('%s.LJ.pkl.gz'%outputname)):
+      energies = self._load_pkl_gz('%s.LJ.pkl.gz'%outputname)
     else:
       energies = self._execute(outputname+'.LJ', 0.0,
         integrator_script, output_script, execution_script, grid_script_LJ,
         energyFields=[8,12], # MISC and POTENTIAL energy fields
-        writeEnergyDatGZ=True, keepScript=keepScript, retry=False)
+        write_energy_pkl_gz=True, keepScript=keepScript, retry=False)
     E_LJ = [energy[0] for energy in energies]
     E_INT = [energy[1]-energy[0] for energy in energies]
 
-    if (os.path.exists('%s.ELE.dat.gz'%outputname)):
-      energies = self._readEnergyDatGZ('%s.ELE.dat.gz'%outputname)
+    if (os.path.exists('%s.ELE.pkl.gz'%outputname)):
+      energies = self._load_pkl_gz('%s.ELE.pkl.gz'%outputname)
     else:
       energies = self._execute(outputname+'.ELE', 0.0,
         integrator_script, output_script, execution_script, grid_script_ELE,
         energyFields=[8], # MISC field has grid energy
-        writeEnergyDatGZ=True, keepScript=keepScript, retry=False)
+        write_energy_pkl_gz=True, keepScript=keepScript, retry=False)
     E_ELE = [energy[0] for energy in energies]
     
     return [E_LJ,E_ELE,E_INT]

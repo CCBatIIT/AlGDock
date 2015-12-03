@@ -1,7 +1,0 @@
-Comparison of Lennard-Jones repulsive soft core grids:
-1. LJr grid with a 10.0 cutoff - 30-35 stages
-2. LJa grid with a -1 scaling at a 10.0 cutoff - ~65 stages. That is much worse!
-3. LJr grid with a 1.0 cutoff - 27 stages, but the protocol is refined to have more states. Probably the small cutoff is not beneficial.
-
-Head-Gordon et al (2010) suggested that it is unnecessary to use a maximum temperature of 500-600 K because barriers are entropic rather than enthalpic, and that a high temperature means a large number of replicas. The highest temperature was reduced from 800 K to 600 K, which does not affect the number of replicas very much. This does not seem to affect the number of replicas, so the temperature was increased back to 800 K.
-

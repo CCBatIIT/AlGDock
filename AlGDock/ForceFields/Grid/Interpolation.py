@@ -178,16 +178,17 @@ class InterpolationForceField(ForceField):
           self.grid_data['vals'], self.params['strength'], scaling_factor, \
           self.params['name'])]
     elif self.params['interpolation_type']=='Tricubic':
-	if self.params['inv_power'] is not None:
-        from MMTK_CatmullRom_transform_grid import TricubicTransformGridTerm
-        return [CatmullRomTransformGridTerm(universe, \
+      if self.params['inv_power'] is not None:
+        from MMTK_Tricubic_transform_grid import TricubicTransformGridTerm
+        return [TricubicTransformGridTerm(universe, \
           self.grid_data['spacing'], self.grid_data['counts'], \
           self.grid_data['vals'], self.params['strength'], scaling_factor, \
           self.params['name'], self.params['inv_power'])]
       else:
-        from MMTK_CatmullRom_grid import TricubicGridTerm
-        return [CatmullRomGridTerm(universe, \
+        from MMTK_Tricubic_grid import TricubicGridTerm
+        return [TricubicGridTerm(universe, \
           self.grid_data['spacing'], self.grid_data['counts'], \
           self.grid_data['vals'], self.params['strength'], scaling_factor, \
           self.params['name'])]
-      raise NotImplementedError
+    print self.params['interpolation_type'] + ' interpolation is unknown'
+    raise NotImplementedError
