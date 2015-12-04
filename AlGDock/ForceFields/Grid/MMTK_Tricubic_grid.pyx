@@ -62,27 +62,27 @@ cdef class TricubicGridTerm(EnergyTerm):
   # Values of df/dx
   cdef float_t dfdx(self, float_t p[4], float_t x):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0], 0, 0) 
-    arr[1] = self.tricubicInterpolate(p[1], 0, 0) 
-    arr[2] = self.tricubicInterpolate(p[2], 0, 0) 
+    arr[0] = self.tricubicInterpolate(p[0] + p[1], 0, 0) # Would this be an option or we should add the 0 with the 1 when calling the "derivativeIntp"? 
+    arr[1] = self.tricubicInterpolate(p[1] + p[2], 0, 0) 
+    arr[2] = self.tricubicInterpolate(p[2] + p[3], 0, 0) 
     arr[3] = self.tricubicInterpolate(p[3], 0, 0)
     return self.derivativeIntp(arr, x, 0, 0)
   
   # Values of df/dy
   cdef float_t dfdy(self, float_t p[4], float_t y):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(0, p[0], 0) 
-    arr[1] = self.tricubicInterpolate(0, p[1], 0) 
-    arr[2] = self.tricubicInterpolate(0, p[2], 0) 
+    arr[0] = self.tricubicInterpolate(0, p[0] + p[1], 0) 
+    arr[1] = self.tricubicInterpolate(0, p[1] + p[2], 0) 
+    arr[2] = self.tricubicInterpolate(0, p[2] + p[3], 0) 
     arr[3] = self.tricubicInterpolate(0, p[3], 0)
     return self.derivativeIntp(arr, 0, y, 0)    
 
   # Values of df/dz
   cdef float_t dfdz(self, float_t p[4], float_t z):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(0, 0, p[0]) 
-    arr[1] = self.tricubicInterpolate(0, 0, p[1]) 
-    arr[2] = self.tricubicInterpolate(0, 0, p[2]) 
+    arr[0] = self.tricubicInterpolate(0, 0, p[0] + p[1]) 
+    arr[1] = self.tricubicInterpolate(0, 0, p[1] + p[2]) 
+    arr[2] = self.tricubicInterpolate(0, 0, p[2] + p[3]) 
     arr[3] = self.tricubicInterpolate(0, 0, p[3])   
     return self.derivativeIntp(arr, 0, 0, z)
 
