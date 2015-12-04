@@ -45,14 +45,14 @@ cdef class TricubicGridTerm(EnergyTerm):
   # file. Note that EnergyTerm.__init__ takes care of storing the
   # name and the universe object.
 
-  cdef float_t tricubicInterpolate(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
+  cdef float_t tricubicInterpolate(self, float_t p[4], float_t x, float_t y, float_t z):
     return (0.5*p[0]-0.25*p[1]+0.125*p[2]-p[3] + \
       x*(-0.5*p[0]+0.25*p[1]-0.125*p[2]+0.625*p[3] + \
       y*(0.5*p[0]-0.25*p[1]+0.125*p[2]-0.625*p[3] + \
       z*(-0.5*p[0]+0.25*p[1]-0.125*p[2]+0.625*p[3]))))/6
  
   # Calculate the first derivatives estimatives interpolation
-  cdef float_t derivativeIntp(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
+  cdef float_t derivativeIntp(self, float_t p[4], float_t x, float_t y, float_t z):
     return (-0.1*p[0]+0.5*p[1]-0.25*p[2]+0.125*p[3] + \
       x*(0.1*p[0]-0.5*p[1]+0.25*p[2]-0.125*p[3] + \
       x*(-0.1*p[0]+0.5*p[1]-0.25*p[2]+0.125*p[3])))/6
@@ -60,7 +60,7 @@ cdef class TricubicGridTerm(EnergyTerm):
   # Suggestion to make the derivatives: Use the four points in the BSPline, but make an addition, for example, add the 0 with the 1. And for the interpolator, it can be used to get the difference, get the module, in this case
 
   # Values of df/dx
-  cdef float_t dfdx(self, float_t p[4][4][4], float_t x):
+  cdef float_t dfdx(self, float_t p[4], float_t x):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(p[0], 0, 0) 
     arr[1] = self.tricubicInterpolate(p[1], 0, 0) 
@@ -69,7 +69,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     return self.derivativeIntp(arr, x, 0, 0)
   
   # Values of df/dy
-  cdef float_t dfdy(self, float_t p[4][4][4], float_t y):
+  cdef float_t dfdy(self, float_t p[4], float_t y):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(0, p[0], 0) 
     arr[1] = self.tricubicInterpolate(0, p[1], 0) 
@@ -78,7 +78,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     return self.derivativeIntp(arr, 0, y, 0)    
 
   # Values of df/dz
-  cdef float_t dfdz(self, float_t p[4][4][4], float_t z):
+  cdef float_t dfdz(self, float_t p[4], float_t z):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(0, 0, p[0]) 
     arr[1] = self.tricubicInterpolate(0, 0, p[1]) 
@@ -87,7 +87,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     return self.derivativeIntp(arr, 0, 0, z)
 
   # Values of d2f/dxdy
-  cdef float_t d2fdxdy(self, float_t p[4][4][4], float_t x, float_t y):
+  cdef float_t d2fdxdy(self, float_t p[4], float_t x, float_t y):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(p[0], p[0], 0) 
     arr[1] = self.tricubicInterpolate(p[1], p[1], 0) 
@@ -96,7 +96,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     return self.derivativeIntp(arr, x, y, 0)
 
   # Values of d2f/dxdz
-  cdef float_t d2fdxdz(self, float_t p[4][4][4], float_t x, float_t z):
+  cdef float_t d2fdxdz(self, float_t p[4], float_t x, float_t z):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(p[0], 0, p[0]) 
     arr[1] = self.tricubicInterpolate(p[1], 0, p[1]) 
@@ -105,7 +105,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     return self.derivativeIntp(arr, x, 0, z)
 
   # Values of d2f/dydz
-  cdef float_t d2fdydz(self, float_t p[4][4][4], float_t y, float_t z):
+  cdef float_t d2fdydz(self, float_t p[4], float_t y, float_t z):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(0, p[0], p[0]) 
     arr[1] = self.tricubicInterpolate(0, p[1], p[1])
@@ -114,7 +114,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     return derivativeIntp(arr, 0, y, z)
 
   # Values of d3f/dxdydz in each corner
-  cdef float_t d3fdxdydz(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
+  cdef float_t d3fdxdydz(self, float_t p[4], float_t x, float_t y, float_t z):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(p[0], p[0], p[0]) 
     arr[1] = self.tricubicInterpolate(p[1], p[1], p[1]) 
