@@ -35,6 +35,8 @@ if os.path.isfile(args.ligand):
 elif os.path.isdir(args.ligand):
   args.ligand = os.path.abspath(args.ligand)
   ligand_FNs = glob.glob(os.path.join(args.ligand,'*/*.mol2'))
+  if len(ligand_FNs)==0:
+    ligand_FNs = glob.glob(os.path.join(args.ligand,'*.mol2'))
 else:
   raise Exception('Ligand input %s is not a file or directory!'%args.ligand)
 ligand_FNs = sorted([os.path.abspath(FN) for FN in ligand_FNs if os.path.getsize(FN)>0])
