@@ -100,6 +100,10 @@ parser.add_argument('--T_HIGH', type=float,
   help='High temperature')
 parser.add_argument('--T_TARGET', type=float,
   help='Target temperature')
+parser.add_argument('--H_mass', type=float,
+  help='The repartitioned mass of hydrogen. Set negative to turn off HMR')
+parser.add_argument('--delta_t', type=float,
+  help='The default time step, in fs')  
 # For initialization
 parser.add_argument('--seeds_per_state', type=int,
   help='Number of starting configurations in each state during initialization')

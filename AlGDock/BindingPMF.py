@@ -357,6 +357,8 @@ last modified {2}
         'therm_speed':0.2,
         'T_HIGH':600.,
         'T_TARGET':300.,
+        'H_mass':4.0,
+        'delta_t':3.0,
         'sampler':'NUTS',
         'steps_per_seed':1000,
         'seeds_per_state':50,
@@ -460,6 +462,13 @@ last modified {2}
     self.molecule = MMTK.Molecule(\
       os.path.basename(self._FNs['ligand_database']))
     sys.stderr = original_stderr
+    
+    # Hydrogen Mass Repartitioning
+    # (sets hydrogen mass to H_mass and scales other masses down)
+    if self.params['cool']['H_mass']>0.:
+      from AlGDock.HMR import hydrogen_mass_repartitioning
+      self.molecule = hydrogen_mass_repartitioning(self.molecule, \
+        self.params['cool']['H_mass'])
 
     # Helpful variables for referencing and indexing atoms in the molecule
     self.molecule.heavy_atoms = [ind for (atm,ind) in zip(self.molecule.atoms,range(self.molecule.numberOfAtoms())) if atm.type.name!='hydrogen']
@@ -716,7 +725,7 @@ last modified {2}
       # Set up the force field
       T = T_START
       self.cool_protocol = [{'MM':True, 'T':T, \
-                            'delta_t':1.5*MMTK.Units.fs,
+                            'delta_t':self.params['cool']['delta_t']*MMTK.Units.fs,
                             'a':0.0, 'crossed':False}]
       self._set_universe_evaluator(self.cool_protocol[-1])
       
@@ -1243,7 +1252,7 @@ last modified {2}
                    "with progress %e "%lambda_o['a'] + \
                    "in " + HMStime(time.time()-sim_start_time))
           self.tee(sampler_metrics)
-          self.tee("  dt=%.3f ps, tL_tensor=%.3e"%(\
+          self.tee("  dt=%.3f fs, tL_tensor=%.3e"%(\
             lambda_o['delta_t']*1000., \
             self._tL_tensor(E,lambda_o)))
     
@@ -1340,7 +1349,7 @@ last modified {2}
                "with progress %f "%lambda_n['a'] + \
                "in " + HMStime(time.time()-sim_start_time))
       self.tee(sampler_metrics)
-      self.tee("  dt=%.3f ps, tL_tensor=%.3e"%(\
+      self.tee("  dt=%.3f fs, tL_tensor=%.3e"%(\
         lambda_n['delta_t']*1000.,
         self._tL_tensor(E,lambda_n)))
 
@@ -1875,7 +1884,7 @@ last modified {2}
     if 'delta_t' in lambda_n.keys():
       self.delta_t = lambda_n['delta_t']
     else:
-      self.delta_t = 1.5*MMTK.Units.fs
+      self.delta_t = self.params['cool']['delta_t']*MMTK.Units.fs
 
     # Reuse evaluators that have been stored
     evaluator_key = '-'.join(repr(v) for v in lambda_n.values())
@@ -2034,7 +2043,8 @@ last modified {2}
     potEs = [result['Etot'] for result in results]
     
     delta_t = np.median([result['delta_t'] for result in results])
-    delta_t = min(max(delta_t, 0.25*MMTK.Units.fs), 2.5*MMTK.Units.fs)
+    delta_t = min(max(delta_t, self.params[process]['delta_t']/5.*MMTK.Units.fs), \
+      self.params[process]['delta_t']*2.*MMTK.Units.fs)
     sampler_metrics = '  '
     for s in ['ExternalMC', 'SmartDarting', 'Sampler']:
       if np.array(['acc_'+s in r.keys() for r in results]).any():
@@ -2415,7 +2425,7 @@ last modified {2}
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
-      delta_t = 1.5*MMTK.Units.fs
+      delta_t = self.params[process]['delta_t']*MMTK.Units.fs
     
     if initialize:
       sampler = self.sampler[process]

@@ -90,6 +90,10 @@ arguments = {
     'help':'High temperature'},
   'T_TARGET':{'type':float, 'default':300.0,
     'help':'Target temperature'},
+  'H_mass':{'type':float, 'default':4.0, \
+    'help':'The repartitioned mass of hydrogen. Set negative to turn off HMR'},
+  'delta_t':{'type':float, 'default':3.0, \
+    'help':'The default time step, in fs'},
   # For initialization
   'seeds_per_state':{'type':int,
     'help':'Number of starting configurations in each state during initialization'},
