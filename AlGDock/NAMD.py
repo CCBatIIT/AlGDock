@@ -672,20 +672,20 @@ stepspercycle        20
 '''
 
     output_script = '''
-outputEnergies       500 ;# 1 ps'''
+outputEnergies       1000 ;# 1 ps'''
 
     execution_script = '''
 minimize 1000
 for { set curTemp 10 } { $curTemp <= $temperature } { incr curTemp 10 } {
   reinitvels           $curTemp
   langevinTemp         $curTemp
-  run                  100
+  run                  1000
 }
 '''
 
-    energies = self._execute(outputname,300.0,
+    energies = self._execute(outputname, 300.0,
         integrator_script, output_script,execution_script,
-        keepScript=keepScript)
+        keepScript=keepScript, keepCoor=True)
     return energies
 
   def simulate(self, outputname, temperature=300.0, steps=10000000, \

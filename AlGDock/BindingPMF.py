@@ -9,6 +9,8 @@ import copy
 import time
 import numpy as np
 
+from collections import OrderedDict
+
 import MMTK
 import MMTK.Units
 from MMTK.ParticleProperties import Configuration
@@ -99,17 +101,14 @@ class BPMF:
       kwargs['dir_grid'] = ''
 
     mod_path = join(os.path.dirname(a.__file__),'BindingPMF.py')
-    print """
-###########
+    print """###########
 # AlGDock #
 ###########
 Molecular docking with adaptively scaled alchemical interaction grids
 
-version {0}
-in {1}
-last modified {2}
-    """.format(a.__version__, mod_path, \
-      time.ctime(os.path.getmtime(mod_path)))
+in {0}
+last modified {1}
+    """.format(mod_path, time.ctime(os.path.getmtime(mod_path)))
     
     # Multiprocessing options.
     # Default is to use 1 core.
@@ -152,8 +151,8 @@ last modified {2}
                                           # overwritten by stored directory
     
     # Load previously stored file names and arguments
-    FNs = {}
-    args = {}
+    FNs = OrderedDict()
+    args = OrderedDict()
     for p in ['dock','cool']:
       params = self._load(p)
       if params is not None:
@@ -166,8 +165,8 @@ last modified {2}
            (FNs[p]['dir_cool'] is not None):
           self.dir['cool'] = FNs[p]['dir_cool']
       else:
-        FNs[p] = {}
-        args[p] = {}
+        FNs[p] = OrderedDict()
+        args[p] = OrderedDict()
   
     print '\n*** Directories ***'
     print dict_view(self.dir)
@@ -234,9 +233,10 @@ last modified {2}
               kwargs['frcmodList'] = [FN]
               self._toClear.append(FN)
               print '  extracted '+FN
+      print
 
     # Set up file name dictionary
-    print '\n*** Files ***'
+    print '*** Files ***'
 
     for p in ['cool','dock']:
       if p in FNs.keys():
@@ -261,39 +261,44 @@ last modified {2}
   
     FFpath = a.search_paths['gaff.dat'] \
       if 'gaff.dat' in a.search_paths.keys() else []
-    FNs['new'] = {
-      'ligand_database':cdir_or_dir_dock(kwargs['ligand_database']),
-      'forcefield':a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + FFpath),
-      'frcmodList':kwargs['frcmodList'],
-      'tarball':{'L':a.findPath([kwargs['ligand_tarball']]),
-                'R':a.findPath([kwargs['receptor_tarball']]),
-                'RL':a.findPath([kwargs['complex_tarball']])},
-      'prmtop':{'L':cdir_or_dir_dock(kwargs['ligand_prmtop']),
-                'R':cdir_or_dir_dock(kwargs['receptor_prmtop']),
-                'RL':cdir_or_dir_dock(kwargs['complex_prmtop'])},
-      'inpcrd':{'L':cdir_or_dir_dock(kwargs['ligand_inpcrd']),
-                'R':cdir_or_dir_dock(kwargs['receptor_inpcrd']),
-                'RL':cdir_or_dir_dock(kwargs['complex_inpcrd'])},
-      'fixed_atoms':{'R':cdir_or_dir_dock(kwargs['receptor_fixed_atoms']),
-                     'RL':cdir_or_dir_dock(kwargs['complex_fixed_atoms'])},
-      'grids':{'LJr':a.findPath([kwargs['grid_LJr'],
-                        join(kwargs['dir_grid'],'LJr.nc'),
-                        join(kwargs['dir_grid'],'LJr.dx'),
-                        join(kwargs['dir_grid'],'LJr.dx.gz')]),
-               'LJa':a.findPath([kwargs['grid_LJa'],
-                        join(kwargs['dir_grid'],'LJa.nc'),
-                        join(kwargs['dir_grid'],'LJa.dx'),
-                        join(kwargs['dir_grid'],'LJa.dx.gz')]),
-               'ELE':a.findPath([kwargs['grid_ELE'],
-                        join(kwargs['dir_grid'],'electrostatic.nc'),
-                        join(kwargs['dir_grid'],'electrostatic.dx'),
-                        join(kwargs['dir_grid'],'electrostatic.dx.gz'),
-                        join(kwargs['dir_grid'],'pbsa.nc'),
-                        join(kwargs['dir_grid'],'pbsa.dx'),
-                        join(kwargs['dir_grid'],'pbsa.dx.gz')])},
-      'score':'default' if kwargs['score']=='default' \
-                        else a.findPath([kwargs['score']]),
-      'dir_cool':self.dir['cool']}
+    FNs['new'] = OrderedDict([
+      ('ligand_database',cdir_or_dir_dock(kwargs['ligand_database'])),
+      ('forcefield',a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + FFpath)),
+      ('frcmodList',kwargs['frcmodList']),
+      ('tarball',OrderedDict([
+        ('L',a.findPath([kwargs['ligand_tarball']])),
+        ('R',a.findPath([kwargs['receptor_tarball']])),
+        ('RL',a.findPath([kwargs['complex_tarball']]))])),
+      ('prmtop',OrderedDict([
+        ('L',cdir_or_dir_dock(kwargs['ligand_prmtop'])),
+        ('R',cdir_or_dir_dock(kwargs['receptor_prmtop'])),
+        ('RL',cdir_or_dir_dock(kwargs['complex_prmtop']))])),
+      ('inpcrd',OrderedDict([
+        ('L',cdir_or_dir_dock(kwargs['ligand_inpcrd'])),
+        ('R',cdir_or_dir_dock(kwargs['receptor_inpcrd'])),
+        ('RL',cdir_or_dir_dock(kwargs['complex_inpcrd']))])),
+      ('fixed_atoms',OrderedDict([
+        ('R',cdir_or_dir_dock(kwargs['receptor_fixed_atoms'])),
+        ('RL',cdir_or_dir_dock(kwargs['complex_fixed_atoms']))])),
+      ('grids',OrderedDict([
+        ('LJr',a.findPath([kwargs['grid_LJr'],
+          join(kwargs['dir_grid'],'LJr.nc'),
+          join(kwargs['dir_grid'],'LJr.dx'),
+          join(kwargs['dir_grid'],'LJr.dx.gz')])),
+        ('LJa',a.findPath([kwargs['grid_LJa'],
+          join(kwargs['dir_grid'],'LJa.nc'),
+          join(kwargs['dir_grid'],'LJa.dx'),
+          join(kwargs['dir_grid'],'LJa.dx.gz')])),
+        ('ELE',a.findPath([kwargs['grid_ELE'],
+          join(kwargs['dir_grid'],'electrostatic.nc'),
+          join(kwargs['dir_grid'],'electrostatic.dx'),
+          join(kwargs['dir_grid'],'electrostatic.dx.gz'),
+          join(kwargs['dir_grid'],'pbsa.nc'),
+          join(kwargs['dir_grid'],'pbsa.dx'),
+          join(kwargs['dir_grid'],'pbsa.dx.gz')]))])),
+      ('score','default' if kwargs['score']=='default' \
+                            else a.findPath([kwargs['score']])),
+      ('dir_cool',self.dir['cool'])])
 
     if not (FNs['cool']=={} and FNs['dock']=={}):
       print dict_view(FNs['new'], relpath=self.dir['start'])
@@ -352,41 +357,45 @@ last modified {2}
 
     print dict_view(self._FNs, relpath=self.dir['start'], show_None=True)
     
-    args['default_cool'] = {
-        'protocol':'Adaptive',
-        'therm_speed':0.2,
-        'T_HIGH':600.,
-        'T_TARGET':300.,
-        'H_mass':4.0,
-        'delta_t':3.0,
-        'sampler':'NUTS',
-        'steps_per_seed':1000,
-        'seeds_per_state':50,
-        'darts_per_seed':0,
-        'repX_cycles':20,
-        'min_repX_acc':0.3,
-        'sweeps_per_cycle':1000,
-        'attempts_per_sweep':25,
-        'steps_per_sweep':50,
-        'darts_per_sweep':0,
-        'snaps_per_independent':3.0,
-        'phases':['NAMD_Gas','NAMD_OBC'],
-        'keep_intermediate':False,
-        'GMC_attempts': 0,
-        'GMC_tors_threshold': 0.0 }
+    args['default_cool'] = OrderedDict([
+        ('protocol','Adaptive'),
+        ('therm_speed',0.2),
+        ('T_HIGH',600.),
+        ('T_TARGET',300.),
+        ('H_mass',4.0),
+        ('delta_t',3.0),
+        ('sampler','NUTS'),
+        ('steps_per_seed',1000),
+        ('seeds_per_state',50),
+        ('darts_per_seed',0),
+        ('repX_cycles',20),
+        ('min_repX_acc',0.3),
+        ('sweeps_per_cycle',1000),
+        ('attempts_per_sweep',25),
+        ('steps_per_sweep',50),
+        ('darts_per_sweep',0),
+        ('snaps_per_independent',3.0),
+        ('phases',['NAMD_Gas','NAMD_OBC']),
+        ('keep_intermediate',False),
+        ('GMC_attempts', 0),
+        ('GMC_tors_threshold', 0.0)])
 
-    args['default_dock'] = dict(args['default_cool'].items() + {
-      'site':None, 'site_center':None, 'site_direction':None,
-      'site_max_X':None, 'site_max_R':None,
-      'site_density':50., 'site_measured':None,
-      'MCMC_moves':1,
-      'rmsd':False}.items() + \
+    args['default_dock'] = OrderedDict(args['default_cool'].items() + [
+      ('site',None),
+      ('site_center',None),
+      ('site_direction',None),
+      ('site_max_X',None),
+      ('site_max_R',None),
+      ('site_density',50.),
+      ('site_measured',None),
+      ('MCMC_moves',1),
+      ('rmsd',False)] + \
       [('receptor_'+phase,None) for phase in allowed_phases])
     args['default_dock']['snaps_per_independent'] = 20.0
 
     # Store passed arguments in dictionary
     for p in ['cool','dock']:
-      args['new_'+p] = {}
+      args['new_'+p] = OrderedDict()
       for key in args['default_'+p].keys():
         specific_key = p + '_' + key
         if (specific_key in kwargs.keys()) and \
@@ -402,7 +411,7 @@ last modified {2}
           # Use the general key
           args['new_'+p][key] = kwargs[key]
 
-    self.params = {}
+    self.params = OrderedDict()
     for p in ['cool','dock']:
       self.params[p] = merge_dictionaries(
         [args[src] for src in ['new_'+p,p,'default_'+p]])
@@ -1848,7 +1857,7 @@ last modified {2}
         for program in ['NAMD','sander','gbnsr6','OpenMM','APBS']:
           if phase.startswith(program):
             Es[moiety+phase] = getattr(self,'_%s_Energy'%program)(confs, \
-              moiety, phase, traj_FN, outputname, debug=debug)
+              moiety, phase, traj_FN, outputname, debug=DEBUG)
             break
     for FN in toClear:
       if os.path.isfile(FN):

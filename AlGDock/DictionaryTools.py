@@ -3,12 +3,14 @@
 import os
 import numpy as np
 
+from collections import OrderedDict
+
 def merge_dictionaries(dicts, required_consistency=[]):
   """
   Merges a list of dictionaries, giving priority to items in descending order.
   Items in the required_consistency list must be consistent with one another.
   """
-  merged = {}
+  merged = OrderedDict()
   for a in range(len(dicts)): # Loop over all dictionaries,
                               # giving priority to the first
     if not isinstance(dicts[a],dict):
@@ -46,7 +48,7 @@ def convert_dictionary_relpath(d, relpath_o=None, relpath_n=None):
   If relpath_o is None, nothing is joined to the original path.
   If relpath_n is None, an absolute path is used.
   """
-  converted = {}
+  converted = OrderedDict()
   for key in d.keys():
     if d[key] is None:
       pass
