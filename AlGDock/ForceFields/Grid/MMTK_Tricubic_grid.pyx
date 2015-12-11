@@ -60,67 +60,67 @@ cdef class TricubicGridTerm(EnergyTerm):
   # Suggestion to make the derivatives: Use the four points in the BSPline, but make an addition, for example, add the 0 with the 1. And for the interpolator, it can be used to get the difference, get the module, in this case
 
   # Values of df/dx
-  cdef float_t dfdx(self, float_t p[4][4][4], float_t x):
+  cdef float_t dfdx(self, float_t* p[4], float_t x):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0] + p[1], x, 0, 0) 
-    arr[1] = self.tricubicInterpolate(p[1] + p[2], x, 0, 0) 
-    arr[2] = self.tricubicInterpolate(p[2] + p[3], x, 0, 0) 
-    arr[3] = self.tricubicInterpolate(p[0] + p[3], x, 0, 0)
+    arr[0] = self.tricubicInterpolate(p[0], x, 0, 0) 
+    arr[1] = self.tricubicInterpolate(p[1], x, 0, 0) 
+    arr[2] = self.tricubicInterpolate(p[2], x, 0, 0) 
+    arr[3] = self.tricubicInterpolate(p[3], x, 0, 0)
     return self.derivativeIntp(arr, x, 0, 0)
   
   # Values of df/dy
-  cdef float_t dfdy(self, float_t p[4][4][4], float_t y):
+  cdef float_t dfdy(self, float_t* p[4], float_t y):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0] + p[1], 0, y, 0) 
-    arr[1] = self.tricubicInterpolate(p[1] + p[2], 0, y, 0) 
-    arr[2] = self.tricubicInterpolate(p[2] + p[3], 0, y, 0) 
-    arr[3] = self.tricubicInterpolate(p[0] + p[3], 0, y, 0)
+    arr[0] = self.tricubicInterpolate(p[0], 0, y, 0) 
+    arr[1] = self.tricubicInterpolate(p[1], 0, y, 0) 
+    arr[2] = self.tricubicInterpolate(p[2], 0, y, 0) 
+    arr[3] = self.tricubicInterpolate(p[3], 0, y, 0)
     return self.derivativeIntp(arr, 0, y, 0)    
 
   # Values of df/dz
-  cdef float_t dfdz(self, float_t p[4][4][4], float_t z):
+  cdef float_t dfdz(self, float_t* p[4], float_t z):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0] + p[1], 0, 0, z) 
-    arr[1] = self.tricubicInterpolate(p[1] + p[2], 0, 0, z)  
-    arr[2] = self.tricubicInterpolate(p[2] + p[3], 0, 0, z) 
-    arr[3] = self.tricubicInterpolate(p[0] + p[3], 0, 0, z)   
+    arr[0] = self.tricubicInterpolate(p[0], 0, 0, z) 
+    arr[1] = self.tricubicInterpolate(p[1], 0, 0, z)  
+    arr[2] = self.tricubicInterpolate(p[2], 0, 0, z) 
+    arr[3] = self.tricubicInterpolate(p[3], 0, 0, z)   
     return self.derivativeIntp(arr, 0, 0, z)
 
   # Values of d2f/dxdy
-  cdef float_t d2fdxdy(self, float_t p[4][4][4], float_t x, float_t y):
+  cdef float_t d2fdxdy(self, float_t* p[4], float_t x, float_t y):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0] + p[1], x, y, 0) 
-    arr[1] = self.tricubicInterpolate(p[1] + p[2], x, y, 0)  
-    arr[2] = self.tricubicInterpolate(p[2] + p[3], x, y, 0) 
-    arr[3] = self.tricubicInterpolate(p[0] + p[3], x, y, 0)      
+    arr[0] = self.tricubicInterpolate(p[0], x, y, 0) 
+    arr[1] = self.tricubicInterpolate(p[1], x, y, 0)  
+    arr[2] = self.tricubicInterpolate(p[2], x, y, 0) 
+    arr[3] = self.tricubicInterpolate(p[3], x, y, 0)      
     return self.derivativeIntp(arr, x, y, 0)
 
   # Values of d2f/dxdz
-  cdef float_t d2fdxdz(self, float_t p[4][4][4], float_t x, float_t z):
+  cdef float_t d2fdxdz(self, float_t* p[4], float_t x, float_t z):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0] + p[1], x, 0, z) 
-    arr[1] = self.tricubicInterpolate(p[1] + p[2], x, 0, z)  
-    arr[2] = self.tricubicInterpolate(p[2] + p[3], x, 0, z) 
-    arr[3] = self.tricubicInterpolate(p[0] + p[3], x, 0, z) 
+    arr[0] = self.tricubicInterpolate(p[0], x, 0, z) 
+    arr[1] = self.tricubicInterpolate(p[1], x, 0, z)  
+    arr[2] = self.tricubicInterpolate(p[2], x, 0, z) 
+    arr[3] = self.tricubicInterpolate(p[3], x, 0, z) 
     return self.derivativeIntp(arr, x, 0, z)
 
   # Values of d2f/dydz
-  cdef float_t d2fdydz(self, float_t p[4][4][4], float_t y, float_t z):
+  cdef float_t d2fdydz(self, float_t* p[4], float_t y, float_t z):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0] + p[1], 0, y, z) 
-    arr[1] = self.tricubicInterpolate(p[1] + p[2], 0, y, z)  
-    arr[2] = self.tricubicInterpolate(p[2] + p[3], 0, y, z) 
-    arr[3] = self.tricubicInterpolate(p[0] + p[3], 0, y, z)
-    return derivativeIntp(arr, 0, y, z)
+    arr[0] = self.tricubicInterpolate(p[0], 0, y, z) 
+    arr[1] = self.tricubicInterpolate(p[1], 0, y, z)  
+    arr[2] = self.tricubicInterpolate(p[2], 0, y, z) 
+    arr[3] = self.tricubicInterpolate(p[3], 0, y, z)
+    return self.derivativeIntp(arr, 0, y, z)
 
   # Values of d3f/dxdydz
-  cdef float_t d3fdxdydz(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
+  cdef float_t d3fdxdydz(self, float_t* p[4], float_t x, float_t y, float_t z):
     cdef float_t arr[4]
-    arr[0] = self.tricubicInterpolate(p[0] + p[1], x, y, z) 
-    arr[1] = self.tricubicInterpolate(p[1] + p[2], x, y, z)  
-    arr[2] = self.tricubicInterpolate(p[2] + p[3], x, y, z) 
-    arr[3] = self.tricubicInterpolate(p[0] + p[3], x, y, z)
-    return derivativeIntp(arr, x, y, z)
+    arr[0] = self.tricubicInterpolate(p[0], x, y, z) 
+    arr[1] = self.tricubicInterpolate(p[1], x, y, z)  
+    arr[2] = self.tricubicInterpolate(p[2], x, y, z) 
+    arr[3] = self.tricubicInterpolate(p[3], x, y, z)
+    return self.derivativeIntp(arr, x, y, z)
 
   def __init__(self, universe, spacing, counts, vals, strength, \
     scaling_factor, grid_name, max_val):
