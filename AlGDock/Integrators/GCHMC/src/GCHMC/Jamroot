@@ -1,0 +1,67 @@
+# Copyright David Abrahams 2006. Distributed under the Boost
+# Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import python ;
+
+if ! [ python.configured ]
+{
+    ECHO "notice: no Python configured in user-config.jam" ;
+    ECHO "notice: will use default configuration" ;
+    using python ;
+}
+
+# Specify the path to the Boost project.  If you move this project,
+# adjust this path to refer to the Boost root directory.
+use-project boost
+  : /home/lspirido/Installers/boost_1_55_0 ;
+# Set up the project-wide requirements that everything uses the
+# boost_python library from the project whose global ID is
+# /boost/python.
+project
+  : requirements <library>/boost/python//boost_python 
+                 <implicit-dependency>/boost//headers
+                 <include>/home/lspirido/Installers/simbody/SimTK-3.0/include 
+                 <include>/home/lspirido/Installers/molmodel/molmodel-3.0.0/src
+                 <include>/export/apps/canopy/1.5.0/Canopy_64bit/User/include/python2.7/
+                 <include>/export/apps/canopy/1.5.0/appdata/canopy-1.5.0.2717.rh5-x86_64/include/python2.7/
+                 <include>/export/apps/canopy/1.5.0/Canopy_64bit/User/include/python2.7/MMTK/
+                 <include>/export/apps/canopy/1.5.0/Canopy_64bit/User/include/python2.7/Scientific
+                 <include>/share/apps/canopy/1.5.0/Canopy_64bit/User/lib/python2.7/site-packages/numpy/core/include
+                 <include>/export/apps/amber/12/AmberTools/src/mtkpp/src/eigen3b2
+                 <include>gmolmodel/
+
+  : usage-requirements <implicit-dependency>/boost//headers
+  ;
+lib gmolmodel
+    :
+    : <file>./gmolmodel/libgmolmodel.so <variant>release
+    ;
+
+# Declare the three extension modules.  You can specify multiple
+# source files after the colon separated by spaces.
+python-extension GCHMC : 
+  ./gmolmodel//<link>shared
+  ./gmolmodel/simmain.cpp ./gmolmodel//gmolmodel
+  ;
+
+# Put the extension and Boost.Python DLL in the current directory, so
+# that running script by hand works.
+install convenient_copy 
+  : GCHMC
+  : <install-dependencies>on <install-type>SHARED_LIB <install-type>PYTHON_EXTENSION 
+    <location>. 
+  ;
+
+# A little "rule" (function) to clean up the syntax of declaring tests
+# of these extension modules.
+local rule run-test ( test-name : sources + )
+{
+    import testing ;
+    testing.make-test run-pyd : $(sources) : : $(test-name) ;
+}
+
+# Declare test targets
+run-test GCHMCIntegrator : GCHMC test_GCHMC.py ;
+
+
