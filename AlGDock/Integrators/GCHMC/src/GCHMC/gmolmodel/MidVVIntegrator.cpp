@@ -1842,53 +1842,28 @@ bool MidVVIntegratorRep::attemptDAEStep
 
     // * CHECKPOINT Increment trial * //
     if((step == 0) && (*step0Flag == 0)){
-      #ifdef DEBUG_CPS
-      std::cout<<"MidVV:CP2 <step==0 && step0Flag == DOWN>"<<std::endl;
-      #endif
-      // * CHECKPOINT Transfer initial coordinates * //
       if(totStepsInCall == 0){ // Begining of Call (trial == 0)
-        #ifdef DEBUG_CPS
-        std::cout<<"  MidVV:CP3 <totStepsInCall == 0>"<<std::endl;
-        #endif
         if(*beginFlag == 0){ 
-          #ifdef DEBUG_CPS
-          std::cout<<"    MidVV:CP4 <beginFlag == 0>"<<std::endl;
-          #endif
           raiseBeginFlag();
           advanced = assignConfAndTVectorFromShm3Opt(advanced);
           advanced.setTime(starttime);
           setMMTKConf(c, advanced);
         }
-        //setMMTKConf(c, advanced);
       }
       raiseStep0Flag();
       incrTrial();
       setTb(shm[arrays_cut + 2]);
-      //initializeVelsFromMobods(c, advanced, getTb());
-      #ifdef DEBUG_LEVEL02
-      printf("MidVV before iniVels Sim E= %.7lf (pe= %.7lf ke= %.7lf); MMTK pe= %.7lfg; Cart ke= %.7lf\n",
-      Caller->system->calcEnergy(advanced), Caller->system->calcPotentialEnergy(advanced), Caller->system->calcKineticEnergy(advanced),
-      calcPEFromMMTK(), calcKEFromAtoms(c, advanced));
-      #endif
       initializeVelsFromVRT(c, advanced, getTb());
       this->UFixi = calcUFix(c, advanced);
       // Set initial energies after initialize vels
       setKe(Caller->system->calcKineticEnergy(advanced));
       setPe(calcPEFromMMTK());
       system.realize(advanced, SimTK::Stage::Acceleration);
-      #ifdef DEBUG_LEVEL02
-      printf("MidVV after iniVels Sim E= %.7lf (pe= %.7lf ke= %.7lf); MMTK pe= %.7lfg; Cart ke= %.7lf\n",
-      Caller->system->calcEnergy(advanced), Caller->system->calcPotentialEnergy(advanced), Caller->system->calcKineticEnergy(advanced),
-      calcPEFromMMTK(), calcKEFromAtoms(c, advanced));
-      #endif
       #ifdef DEBUG_WRITEALLPDBS
         writePdb(c, advanced, "pdbs", "sb_i", 10, "");
         //if(( (int(advanced.getTime() * 10000) % 150000) < 150)){writePdb(c, advanced, "pdbs", "sb_i", 10, "");} // every 1000 step
       #endif
     } else{ // BEGIN DAE
-      #ifdef DEBUG_CPS
-      std::cout<<"MidVV:CP5 [DAE]"<<std::endl;
-      #endif
 
       numIterations = 0;
   
@@ -1948,13 +1923,7 @@ bool MidVVIntegratorRep::attemptDAEStep
       //bool converged = false;
       converged = false;
       SimTK::Real prevChange = SimTK::Infinity; // use this to quit early
-      #ifdef DEBUG_LEVEL02
-      int tz;
-      #endif
       for (int i = 0; !converged && i < 10; ++i) {
-          #ifdef DEBUG_LEVEL02
-          tz = i;
-          #endif
           ++numIterations;
           // At this point we know that the advanced state has been realized
           // through the Acceleration level, so its uDot and zDot reflect
@@ -1998,9 +1967,6 @@ bool MidVVIntegratorRep::attemptDAEStep
               break; // we're headed the wrong way after two iterations -- give up
           prevChange = change;
       }
-      #ifdef DEBUG_LEVEL02
-      std::cout<<"Converged in "<<tz<<" steps"<<std::endl;
-      #endif
   
       // Now that we have achieved 2nd order estimates of u and z, we can use 
       // them to calculate a 3rd order error estimate for q and 2nd order error 
@@ -2051,28 +2017,11 @@ bool MidVVIntegratorRep::attemptDAEStep
 
         *beginFlag = *step0Flag = 0;
 
-        #if defined(DEBUG_CPS) || defined(DEBUG_ENERGY)
-        printf("MidVV:CP6 <stepsDone> (t-prevt)/ts to endt (%.4lf-%.4lf)/%.4lf to %.4lf steps_done %d step/nosteps %d/%d ke %.6f pe %.6f \n",
-          advanced.getTime(), starttime, (shm[arrays_cut + 3]), getTimeToReach(), steps_done, getStep(), getNoSteps()
-          , calcKEFromAtoms(c, advanced), Caller->p_energy_po->energy);
-        //printPoss(c, advanced);
-        #endif
-
-        #ifdef DEBUG_LEVEL02
-        calcDetMBAT(c, advanced);
-        #endif
-        
         // * CHECKPOINT Metropolize * //
         if(step == stepsPerTrial){ // End of MD cycle 
-          #ifdef DEBUG_LEVEL02
-          std::cout<<"  MidVV:CP7 <step == stepsPerTrial>"<<std::endl;
-          #endif
-
-
           metropolis(c, advanced);
 
           #ifdef DEBUG_WRITEPDBS
-          //std::cout<<"MidVV: PID "<<getpid()<<" thread "<<std::this_thread::get_id()<<std::endl;
           //if(( (int(advanced.getTime() * 10000) % 1500) < 150)){writePdb(c, advanced, "pdbs", "sb_", 10, "");} // every 10 step
           if((advanced.getTime() < 100.0)){writePdb(c, advanced, "pdbs", "sb_", 10, "");}
           #endif
@@ -2084,9 +2033,6 @@ bool MidVVIntegratorRep::attemptDAEStep
           this->Caller->sysRetPotEsPoi[trial - 1] = getPe(); // RetPotEsPoi[trial] = PE
 
           // * Set return configuration * //
-          #ifdef DEBUG_LEVEL02
-          assert(Caller->sysRetConfsPois); assert(shm);
-          #endif
           xMid = (vector3 *)(Caller->sysRetConfsPois[trial - 1]);
           for(int a=0; a<this->natms; a++){
             tx = Caller->_indexMap[ a ][2];
@@ -2104,7 +2050,6 @@ bool MidVVIntegratorRep::attemptDAEStep
     #ifdef DEBUG_TIME
     //printf("Time %.3lf\n", boost_timer.elapsed());
     #endif
-
 
     return converged;
   }
