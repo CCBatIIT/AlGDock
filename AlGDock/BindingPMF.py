@@ -1001,8 +1001,12 @@ last modified {1}
     # in units of RT
     updated = False
     for phase in self.params['cool']['phases']:
+
       if not phase+'_solv' in self.f_L:
         self.f_L[phase+'_solv'] = []
+      if not 'mean_'+phase in self.f_L:
+        self.f_L['mean_'+phase] = []
+
       for c in range(len(self.f_L[phase+'_solv']), self._cool_cycle):
         if not updated:
           self._set_lock('cool')
@@ -1017,15 +1021,18 @@ last modified {1}
         
         # Arbitrarily, solvation is the
         # 'forward' direction and desolvation the 'reverse'
-        u_phase = np.concatenate([\
-          self.cool_Es[-1][n]['L'+phase] for n in range(fromCycle,toCycle)])
-        u_MM = np.concatenate([\
-          self.cool_Es[-1][n]['MM'] for n in range(fromCycle,toCycle)])
-        du_F = (u_phase[:,-1] - u_MM)/self.RT_TARGET
+        u_L = np.concatenate([self.cool_Es[-1][n]['L'+phase] \
+          for n in range(fromCycle,toCycle)])/self.RT_TARGET
+        u_MM = np.concatenate([self.cool_Es[-1][n]['MM'] \
+          for n in range(fromCycle,toCycle)])/self.RT_TARGET
+        du_F = (u_L[:,-1] - u_MM)
         min_du_F = min(du_F)
-        f_L_solv = -np.log(np.exp(-du_F+min_du_F).mean()) + min_du_F
+        w_L = np.exp(-du_F+min_du_F)
+        f_L_solv = -np.log(np.mean(w_L)) + min_du_F
+        mean_u_phase = np.sum(u_L[:,-1]*w_L)/np.sum(w_L)
 
         self.f_L[phase+'_solv'].append(f_L_solv)
+        self.f_L['mean_'+phase].append(mean_u_phase)
         self.tee("  calculated " + phase + " solvation free energy of " + \
                  "%f RT "%(f_L_solv) + \
                  "using cycles %d to %d"%(fromCycle, toCycle-1))
@@ -1341,7 +1348,7 @@ last modified {1}
       # Simulate
       sim_start_time = time.time()
       self._set_universe_evaluator(lambda_n)
-      if self.params['dock']['darts_per_seed']>0:
+      if self.params['dock']['darts_per_seed']>0  and lambda_n['a']>0.1:
         self.tee(self.sampler['dock_SmartDarting'].set_confs(\
           self.confs['dock']['SmartDarting']))
         self.confs['dock']['SmartDarting'] = self.sampler['dock_SmartDarting'].confs
@@ -1477,6 +1484,11 @@ last modified {1}
     if self.dock_protocol==[]:
       return # Initial docking is incomplete
 
+    phase_f_RL_keys = \
+      [phase+'_solv' for phase in self.params['dock']['phases']] + \
+      ['Theta_1'+phase for phase in self.params['dock']['phases']] + \
+      ['Theta_RL'+phase for phase in self.params['dock']['phases']]
+
     # Initialize variables as empty lists or by loading data
     f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
 #    if redo:
@@ -1501,8 +1513,8 @@ last modified {1}
       self.stats_RL = dict(stats_RL)
       self.stats_RL['protocol'] = self.dock_protocol
       # Free energy components
-      self.f_RL = dict([(key,[]) for key in ['grid_BAR','grid_MBAR'] + \
-        [phase+'_solv' for phase in self.params['dock']['phases']]])
+      self.f_RL = dict([(key,[]) \
+        for key in ['grid_BAR','grid_MBAR'] + phase_f_RL_keys])
       # Binding PMF estimates
       self.B = {'MBAR':[]}
       for phase in self.params['dock']['phases']:
@@ -1516,7 +1528,10 @@ last modified {1}
       for phase in self.params['dock']['phases']:
         for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
           self.B[phase+'_'+method] = []
-
+      for key in phase_f_RL_keys:
+          if key in self.f_RL.keys():
+              del self.f_RL[key]
+    
     # Make sure postprocessing is complete
     pp_complete = self._postprocess()
     if not pp_complete:
@@ -1631,10 +1646,11 @@ last modified {1}
     self.B['MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
       self.f_RL['grid_MBAR'][c][-1] for c in range(len(self.f_RL['grid_MBAR']))]
 
-    # BPMFs
+    # BPMFs and Thetas
     for phase in self.params['dock']['phases']:
-      if not phase+'_solv' in self.f_RL:
-        self.f_RL[phase+'_solv'] = []
+      for key in [phase+'_solv','Theta_1'+phase,'Theta_RL'+phase]:
+        if not key in self.f_RL:
+          self.f_RL[key] = []
       for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
         if not phase+'_'+method in self.B:
           self.B[phase+'_'+method] = []
@@ -1644,27 +1660,47 @@ last modified {1}
 
       for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
-        du = np.concatenate([self.stats_RL['u_K_'+phase][c] - \
+        u_L = np.concatenate([\
+          self.dock_Es[-1][c]['L'+phase][:,-1]/self.RT_TARGET \
+          for c in extractCycles])
+        u_RL = np.concatenate([\
+          self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_TARGET \
+          for c in extractCycles])
+        u_MM = np.concatenate([\
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
-        # Complex solvation
+        
+        # From the full grid to the fully bound complex in phase
+        du = u_RL - u_MM
         min_du = min(du)
         f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
         weights = np.exp(-du+min_du)
         weights = weights/sum(weights)
+        
+        # From the full grid to the free ligand in phase
+        du = u_L - u_MM
+        min_du = min(du)
+        weights_2RL = np.exp(-du+min_du)
+        
+        # Interaction energies
         Psi = np.concatenate([self.stats_RL['Psi_'+phase][c] \
           for c in extractCycles])
         min_Psi = min(Psi)
-        # If the range is too large, filter Psi
-        if np.any((Psi-min_Psi)>500):
-          keep = (Psi-min_Psi)<500
-          weights = weights[keep]
-          Psi = Psi[keep]
+        max_Psi = max(Psi)
         
+        # Complex solvation
         self.f_RL[phase+'_solv'].append(f_RL_solv)
+        
+        # To help calculate the mean energy of the fully bound complex in phase
+        Theta_1 = np.sum(np.exp(-Psi+min_Psi)*weights_2RL)/np.sum(weights_2RL)
+        self.f_RL['Theta_1'+phase].append(Theta_1)
+        Theta_RL = np.sum(u_RL*np.exp(-Psi+min_Psi)*weights_2RL)/np.sum(weights_2RL)
+        self.f_RL['Theta_RL'+phase].append(Theta_RL)
+        
+        # Various BPMF estimates
         self.B[phase+'_min_Psi'].append(min_Psi)
         self.B[phase+'_mean_Psi'].append(np.mean(Psi))
         self.B[phase+'_inverse_FEP'].append(\
-          np.log(sum(weights*np.exp(Psi-min_Psi))) + min_Psi)
+          np.log(sum(weights*np.exp(Psi-max_Psi))) + max_Psi)
         
         self.B[phase+'_BAR'].append(-f_R_solv \
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_BAR'][-1][-1] \
@@ -2476,7 +2512,7 @@ last modified {1}
     results['time_Sampler'] = (time.time() - time_start_Sampler)
 
     # Execute smart darting
-    if ndarts>0:
+    if (ndarts>0) and not ((process == 'dock') and (lambda_k['a']<0.1)):
       time_start_SmartDarting = time.time()
       dat = self.sampler[process+'_SmartDarting'](\
         ntrials=ndarts, T=lambda_k['T'], random_seed=random_seed+5)

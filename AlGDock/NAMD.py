@@ -657,7 +657,7 @@ binaryoutput         yes
     else:
       return None
 
-  def mintherm(self, outputname, keepScript=False):
+  def mintherm(self, outputname, margin=0.0, keepScript=False):
     """
     Minimizes a configuration and thermalizes it to 300 K.
     """
@@ -672,7 +672,9 @@ stepspercycle        20
 '''
 
     output_script = '''
-outputEnergies       1000 ;# 1 ps'''
+outputEnergies       1000 ;# 1 ps
+margin              {0}
+'''.format(margin)
 
     execution_script = '''
 minimize 1000
@@ -689,6 +691,7 @@ for { set curTemp 10 } { $curTemp <= $temperature } { incr curTemp 10 } {
     return energies
 
   def simulate(self, outputname, temperature=300.0, steps=10000000, \
+    margin=0.0, \
     energyFields=[12], \
     keepScript=False, keepCoor=False, write_energy_pkl_gz=False):
     """
@@ -707,7 +710,8 @@ stepspercycle        20
     output_script = '''
 dcdfreq             1000 ;# 1 ps
 outputEnergies      1000 ;# 1 ps
-'''
+margin              {0}
+'''.format(margin)
 
     execution_script = '''
 reinitvels           $temperature
