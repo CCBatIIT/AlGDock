@@ -333,7 +333,7 @@ if False:
      ('MMTK_BSpline_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'), \
      ('MMTK_BSpline_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx')])
 
-if False:
+# if False:
 #  These extension modules need to be debugged.
 #  ext_module_name_and_path.extend(\
 #    [('MMTK_CatmullRom_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx'), \
