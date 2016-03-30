@@ -666,7 +666,7 @@ last modified {1}
     elif run_type=='redo_postprocess':
       self._postprocess(redo_dock=True)
     elif (run_type=='free_energies') or (run_type=='redo_free_energies'):
-      self.calc_f_L()
+      self.calc_f_L(redo=(run_type=='redo_free_energies'))
       self.calc_f_RL(redo=(run_type=='redo_free_energies'))
     elif run_type=='all':
       self.cool()

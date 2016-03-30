@@ -1,6 +1,27 @@
 # Cython force field implementation for Catmull-Rom grid
 
-# TODO: The energy as a function of position is not smooth; it has a bug.
+# TODO:
+# The energy as a function of position is not smooth; it has a bug.
+# There is also an error with the gradient.
+#
+#  {'interpolation_type': 'CatmullRom', 'energy_thresh': -1.0, 'inv_power': None}
+#
+#  Energy Terms:
+#  ------------test start---------------
+#  {'Interpolation': -0.36982152367567905}
+#  Gradient on Atom 1
+#  [1.7910440000000518, 3.434588000000026, 1.7477680000000217]
+#  Gradient on Atom 2
+#  [-1.7422873983687215, 12.311098529374798, 0.7493368867320583]
+#  Gradient Test
+#  Energy:  -0.369821523676
+#  Atom carbon
+#  [1.7910440000000518, 3.434588000000026, 1.7477680000000217]
+#  [1216.466229195447, 3308.5022727193846, 853.4695245635202]
+#  Atom carbon
+#  [-1.7422873983687215, 12.311098529374798, 0.7493368867320583]
+#  [-1.742253507639735, 12.311127123676712, 0.7493498464522519]
+#  Time to do 50000 energy and gradient evaluations: 2.287814 s
 
 #
 # Get all the required declarations
@@ -63,7 +84,6 @@ cdef class CatmullRomGridTerm(EnergyTerm):
         arr[2] = self.bisplineInterpolate(p[2], y, z)
         arr[3] = self.bisplineInterpolate(p[3], y, z)
         return self.splineInterpolate(arr, x)
-
 
     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):
         return -.5*p[0]+.5*p[2]+x*(-4.*p[0]+7.*p[1]-2.*p[2]-p[3]+1.5*x*(3.*p[0]-5.*p[1]+p[2]+p[3]))

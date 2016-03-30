@@ -331,15 +331,15 @@ if False:
      ('MMTK_trilinear_thresh_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx'), \
      ('MMTK_trilinear_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx'), \
      ('MMTK_BSpline_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'), \
-     ('MMTK_BSpline_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx'), \
-     ('MMTK_CatmullRom_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx'), \
-     ('MMTK_CatmullRom_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx')])
+     ('MMTK_BSpline_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx')])
 
 if False:
-  # These extension modules need to be debugged.
-  ext_module_name_and_path.extend(\
-    [('MMTK_tricubic_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_grid.pyx'), \
-     ('MMTK_tricubic_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_transformgrid.pyx')])
+#  These extension modules need to be debugged.
+#  ext_module_name_and_path.extend(\
+#    [('MMTK_CatmullRom_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx'), \
+#     ('MMTK_CatmullRom_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx'), \
+#     ('MMTK_tricubic_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_grid.pyx'), \
+#     ('MMTK_tricubic_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_tricubic_transformgrid.pyx')])
 
 setup (name = package_name,
        version = pkginfo.__version__,
