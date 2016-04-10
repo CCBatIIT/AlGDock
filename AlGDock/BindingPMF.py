@@ -2739,7 +2739,7 @@ last modified {1}
     else:
       count['nconfs'] = len(confs)
     count['minimized'] = {True:' minimized', False:''}[minimize]
-    Es['total'] = energies
+    Es['total'] = np.array(energies)
 
     self.tee("  keeping {nconfs}{minimized} configurations out of {xtal} from xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
     return (confs, Es)
