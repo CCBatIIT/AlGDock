@@ -80,8 +80,9 @@ class identifier(converter):
       rigid_bodies.append(self.rings[index].union(attached_terminal_atoms))
     self.rigid_bodies = sorted(_join_sets(rigid_bodies), key=lambda b:len(b))
 
-    # Choose terminal atom attached to the largest ring as the initial atom
-    if len(self.rings)>0:
+    # Choose initial atom
+    if len(self.rings)>0 and len(attached_terminal_atoms)>0:
+      # heaviest terminal atom attached to the largest ring
       attached_terminal_atoms = sorted(list(attached_terminal_atoms), \
          key=lambda atom:atom.mass())
       self._converter_setup(

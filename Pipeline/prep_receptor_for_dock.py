@@ -55,7 +55,6 @@ protein = loadpdb pqr/{0}.pdb2pqr_amber.pqr
 saveamberparm protein ../amber_in/{0}.prmtop ../amber_in/{0}.inpcrd
 
 savepdb protein amber_prep/{0}.amber.pdb
-# savemol2 protein dock_prep/{0}.mol2 0 # default atom types, seems to have a bug
 quit
 '''.format(name))
   tleap_F.close()
