@@ -45,7 +45,7 @@ cdef class TricubicGridTerm(EnergyTerm):
   # file. Note that EnergyTerm.__init__ takes care of storing the
   # name and the universe object.
 
-  cdef float_t tricubicInterpolate(self, float_t p[4], float_t x, float_t y, float_t z):
+  """ cdef float_t tricubicInterpolate(self, float_t p[4], float_t x, float_t y, float_t z):
     return (0.5*p[0]-0.25*p[1]+0.125*p[2]-p[3] + \
       x*(-0.5*p[0]+0.25*p[1]-0.125*p[2]+0.625*p[3] + \
       y*(0.5*p[0]-0.25*p[1]+0.125*p[2]-0.625*p[3] + \
@@ -55,11 +55,31 @@ cdef class TricubicGridTerm(EnergyTerm):
   cdef float_t derivativeIntp(self, float_t p[4], float_t x, float_t y, float_t z):
     return (-0.1*p[0]+0.5*p[1]-0.25*p[2]+0.125*p[3] + \
       x*(0.1*p[0]-0.5*p[1]+0.25*p[2]-0.125*p[3] + \
-      x*(-0.1*p[0]+0.5*p[1]-0.25*p[2]+0.125*p[3])))/6
+      x*(-0.1*p[0]+0.5*p[1]-0.25*p[2]+0.125*p[3])))/6 """
+	  
+  cdef float_t tricubicInterpolate(list xyz):
+	  fptype x = extract<fptype>(xyz[0]);
+	  fptype y = extract<fptype>(xyz[1]);
+	  fptype z = extract<fptype>(xyz[2]);
+	  
+	  fptype dx = fmod(x/_spacing, _n1), dy = fmod(y/_spacing, _n2), dz = fmod(z/_spacing, _n3); //determine the relative position in the box enclosed by nearest data points
+	  
+	  if(dx < 0) dx += _n1; //periodicity is built in
+	  if(dy < 0) dy += _n2;
+	  if(dz < 0) dz += _n3;
+	  
+	  int xi = (int)floor(dx); //calculate lower-bound grid indices
+	  int yi = (int)floor(dy);
+	  int zi = (int)floor(dz);
+	  
+	  #Numeric derivatives
+	  cdef float_t dfdx():
+		
+  
   
   # Suggestion to make the derivatives: Use the four points in the BSPline, but make an addition, for example, add the 0 with the 1. And for the interpolator, it can be used to get the difference, get the module, in this case
 
-  # Values of df/dx
+  """# Values of df/dx
   cdef float_t dfdx(self, float_t* p[4], float_t x):
     cdef float_t arr[4]
     arr[0] = self.tricubicInterpolate(p[0], x, 0, 0) 
@@ -120,7 +140,7 @@ cdef class TricubicGridTerm(EnergyTerm):
     arr[1] = self.tricubicInterpolate(p[1], x, y, z)  
     arr[2] = self.tricubicInterpolate(p[2], x, y, z) 
     arr[3] = self.tricubicInterpolate(p[3], x, y, z)
-    return self.derivativeIntp(arr, x, y, z)
+    return self.derivativeIntp(arr, x, y, z)"""
 
   def __init__(self, universe, spacing, counts, vals, strength, \
     scaling_factor, grid_name, max_val):
