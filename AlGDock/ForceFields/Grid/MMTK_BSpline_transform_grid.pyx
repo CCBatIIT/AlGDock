@@ -207,7 +207,6 @@ cdef class BSplineTransformGridTerm(EnergyTerm):
 
     def __init__(self, universe, spacing, counts, vals, strength,
                  scaling_factor, grid_name, inv_power):
-        print "------------test start---------------"
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
         self.eval_func = <void *>BSplineTransformGridTerm.evaluate
@@ -223,9 +222,9 @@ cdef class BSplineTransformGridTerm(EnergyTerm):
         self.counts = counts
         self.vals = vals
         self.nyz = self.counts[1]*self.counts[2]
-        self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
-                        self.spacing[1]*(self.counts[1]-1),
-                        self.spacing[2]*(self.counts[2]-1)), dtype=float)
+        self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),
+                        self.spacing[1]*(self.counts[1]-2),
+                        self.spacing[2]*(self.counts[2]-2)), dtype=float)
         # To keep atoms within the grid
         self.k = 10000. # kJ/mol nm**2
           
@@ -282,9 +281,9 @@ cdef class BSplineTransformGridTerm(EnergyTerm):
         indicies = [ai for ai in range(self.natoms) if self.scaling_factor[ai]!=0]
         for atom_index in indicies:
           # Check to make sure coordinate is in grid
-          if (coordinates[atom_index][0]>0 and 
-              coordinates[atom_index][1]>0 and 
-              coordinates[atom_index][2]>0 and
+          if (coordinates[atom_index][0]>spacing[0] and
+              coordinates[atom_index][1]>spacing[1] and
+              coordinates[atom_index][2]>spacing[2] and
               coordinates[atom_index][0]<hCorner[0] and
               coordinates[atom_index][1]<hCorner[1] and
               coordinates[atom_index][2]<hCorner[2]):
@@ -349,7 +348,7 @@ cdef class BSplineTransformGridTerm(EnergyTerm):
           else:
             for i in range(3):
               if (coordinates[atom_index][i]<0):
-                gridEnergy += self.k*coordinates[atom_index][i]**2/2.
+                gridEnergy += self.k*(coordinates[atom_index][i]+spacing[i])**2/2.
                 if energy.gradients != NULL:
                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]
               elif (coordinates[atom_index][i]>hCorner[i]):

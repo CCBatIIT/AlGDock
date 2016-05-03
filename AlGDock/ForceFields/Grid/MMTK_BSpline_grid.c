@@ -1039,14 +1039,6 @@ static Py_ssize_t __Pyx_minusones[] = {-1, -1, -1, -1, -1, -1, -1, -1};
 
 static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level);
 
-static int __Pyx_Print(PyObject*, PyObject *, int);
-#if CYTHON_COMPILING_IN_PYPY || PY_MAJOR_VERSION >= 3
-static PyObject* __pyx_print = 0;
-static PyObject* __pyx_print_kwargs = 0;
-#endif
-
-static int __Pyx_PrintOne(PyObject* stream, PyObject *o);
-
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_long(long value);
 
 static CYTHON_INLINE int __Pyx_PyInt_As_int(PyObject *);
@@ -1264,8 +1256,6 @@ static char __pyx_k_ex[] = "ex";
 static char __pyx_k_ey[] = "ey";
 static char __pyx_k_ez[] = "ez";
 static char __pyx_k_np[] = "np";
-static char __pyx_k_end[] = "end";
-static char __pyx_k_file[] = "file";
 static char __pyx_k_gzip[] = "gzip";
 static char __pyx_k_init[] = "__init__";
 static char __pyx_k_main[] = "__main__";
@@ -1274,7 +1264,6 @@ static char __pyx_k_vals[] = "vals";
 static char __pyx_k_array[] = "array";
 static char __pyx_k_dtype[] = "dtype";
 static char __pyx_k_numpy[] = "numpy";
-static char __pyx_k_print[] = "print";
 static char __pyx_k_range[] = "range";
 static char __pyx_k_Vector[] = "Vector";
 static char __pyx_k_counts[] = "counts";
@@ -1285,7 +1274,6 @@ static char __pyx_k_universe[] = "universe";
 static char __pyx_k_grid_name[] = "grid_name";
 static char __pyx_k_ValueError[] = "ValueError";
 static char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
-static char __pyx_k_test_start[] = "------------test start---------------";
 static char __pyx_k_RuntimeError[] = "RuntimeError";
 static char __pyx_k_scaling_factor[] = "scaling_factor";
 static char __pyx_k_Scientific_Geometry[] = "Scientific.Geometry";
@@ -1305,11 +1293,9 @@ static PyObject *__pyx_n_s_Vector;
 static PyObject *__pyx_n_s_array;
 static PyObject *__pyx_n_s_counts;
 static PyObject *__pyx_n_s_dtype;
-static PyObject *__pyx_n_s_end;
 static PyObject *__pyx_n_s_ex;
 static PyObject *__pyx_n_s_ey;
 static PyObject *__pyx_n_s_ez;
-static PyObject *__pyx_n_s_file;
 static PyObject *__pyx_n_s_grid_name;
 static PyObject *__pyx_n_s_gzip;
 static PyObject *__pyx_n_s_import;
@@ -1319,19 +1305,17 @@ static PyObject *__pyx_kp_u_ndarray_is_not_C_contiguous;
 static PyObject *__pyx_kp_u_ndarray_is_not_Fortran_contiguou;
 static PyObject *__pyx_n_s_np;
 static PyObject *__pyx_n_s_numpy;
-static PyObject *__pyx_n_s_print;
 static PyObject *__pyx_n_s_pyx_vtable;
 static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_scaling_factor;
 static PyObject *__pyx_n_s_spacing;
 static PyObject *__pyx_n_s_strength;
 static PyObject *__pyx_n_s_test;
-static PyObject *__pyx_kp_s_test_start;
 static PyObject *__pyx_n_s_universe;
 static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
 static PyObject *__pyx_n_s_vals;
 static PyObject *__pyx_int_0;
-static PyObject *__pyx_int_1;
+static PyObject *__pyx_int_2;
 static PyObject *__pyx_int_4;
 static PyObject *__pyx_int_15;
 static PyObject *__pyx_tuple_;
@@ -1347,9 +1331,9 @@ static PyObject *__pyx_tuple__9;
 /* "MMTK_BSpline_grid.pyx":47
  *     # name and the universe object.
  * 
- *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
- *         return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
- *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):
+ *     cdef float_t splineInterpolate(self, float_t p[4], float_t x):             # <<<<<<<<<<<<<<
+ *         return (8*p[0]-5*p[1]+4*p[2]-p[3] + x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(6*p[0]-15*p[1]+12*p[2]-3*p[3] + x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
+ *     cdef float_t bisplineInterpolate(self, float_t p[4][4], float_t x, float_t y):
  */
 
 static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_splineInterpolate(CYTHON_UNUSED struct __pyx_obj_17MMTK_BSpline_grid_BSplineGridTerm *__pyx_v_self, __pyx_t_17MMTK_BSpline_grid_float_t *__pyx_v_p, __pyx_t_17MMTK_BSpline_grid_float_t __pyx_v_x) {
@@ -1359,9 +1343,9 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
 
   /* "MMTK_BSpline_grid.pyx":48
  * 
- *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
- *         return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6             # <<<<<<<<<<<<<<
- *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):
+ *     cdef float_t splineInterpolate(self, float_t p[4], float_t x):
+ *         return (8*p[0]-5*p[1]+4*p[2]-p[3] + x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(6*p[0]-15*p[1]+12*p[2]-3*p[3] + x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6             # <<<<<<<<<<<<<<
+ *     cdef float_t bisplineInterpolate(self, float_t p[4][4], float_t x, float_t y):
  *         cdef float_t arr[4]
  */
   __pyx_r = ((((((8.0 * (__pyx_v_p[0])) - (5.0 * (__pyx_v_p[1]))) + (4.0 * (__pyx_v_p[2]))) - (__pyx_v_p[3])) + (__pyx_v_x * (((((-12.0 * (__pyx_v_p[0])) + (21.0 * (__pyx_v_p[1]))) - (12.0 * (__pyx_v_p[2]))) + (3.0 * (__pyx_v_p[3]))) + (__pyx_v_x * (((((6.0 * (__pyx_v_p[0])) - (15.0 * (__pyx_v_p[1]))) + (12.0 * (__pyx_v_p[2]))) - (3.0 * (__pyx_v_p[3]))) + (__pyx_v_x * ((((-(__pyx_v_p[0])) + (3.0 * (__pyx_v_p[1]))) - (3.0 * (__pyx_v_p[2]))) + (__pyx_v_p[3])))))))) / 6.0);
@@ -1370,9 +1354,9 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
   /* "MMTK_BSpline_grid.pyx":47
  *     # name and the universe object.
  * 
- *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
- *         return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
- *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):
+ *     cdef float_t splineInterpolate(self, float_t p[4], float_t x):             # <<<<<<<<<<<<<<
+ *         return (8*p[0]-5*p[1]+4*p[2]-p[3] + x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(6*p[0]-15*p[1]+12*p[2]-3*p[3] + x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
+ *     cdef float_t bisplineInterpolate(self, float_t p[4][4], float_t x, float_t y):
  */
 
   /* function exit code */
@@ -1382,9 +1366,9 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
 }
 
 /* "MMTK_BSpline_grid.pyx":49
- *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
- *         return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
- *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
+ *     cdef float_t splineInterpolate(self, float_t p[4], float_t x):
+ *         return (8*p[0]-5*p[1]+4*p[2]-p[3] + x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(6*p[0]-15*p[1]+12*p[2]-3*p[3] + x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
+ *     cdef float_t bisplineInterpolate(self, float_t p[4][4], float_t x, float_t y):             # <<<<<<<<<<<<<<
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)
  */
@@ -1396,7 +1380,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
   __Pyx_RefNannySetupContext("bisplineInterpolate", 0);
 
   /* "MMTK_BSpline_grid.pyx":51
- *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):
+ *     cdef float_t bisplineInterpolate(self, float_t p[4][4], float_t x, float_t y):
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)             # <<<<<<<<<<<<<<
  *         arr[1] = self.splineInterpolate(p[1], y)
@@ -1427,7 +1411,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)             # <<<<<<<<<<<<<<
  *         return self.splineInterpolate(arr, x)
- *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
+ *     cdef float_t trisplineInterpolate(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
  */
   (__pyx_v_arr[3]) = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, (__pyx_v_p[3]), __pyx_v_y);
 
@@ -1435,16 +1419,16 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
  *         arr[2] = self.splineInterpolate(p[2], y)
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.splineInterpolate(arr, x)             # <<<<<<<<<<<<<<
- *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
+ *     cdef float_t trisplineInterpolate(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
  *         cdef float_t arr[4]
  */
   __pyx_r = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->splineInterpolate(__pyx_v_self, __pyx_v_arr, __pyx_v_x);
   goto __pyx_L0;
 
   /* "MMTK_BSpline_grid.pyx":49
- *     cdef float_t splineInterpolate(self,float_t p[4],float_t x):
- *         return (8*p[0]-5*p[1]+4*p[2]-p[3]+x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(6*p[0]-15*p[1]+12*p[2]-3*p[3]+x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
- *     cdef float_t bisplineInterpolate(self,float_t p[4][4],float_t x,float_t y):             # <<<<<<<<<<<<<<
+ *     cdef float_t splineInterpolate(self, float_t p[4], float_t x):
+ *         return (8*p[0]-5*p[1]+4*p[2]-p[3] + x*(-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(6*p[0]-15*p[1]+12*p[2]-3*p[3] + x*(-p[0]+3*p[1]-3*p[2]+p[3]))))/6
+ *     cdef float_t bisplineInterpolate(self, float_t p[4][4], float_t x, float_t y):             # <<<<<<<<<<<<<<
  *         cdef float_t arr[4]
  *         arr[0] = self.splineInterpolate(p[0], y)
  */
@@ -1458,7 +1442,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
 /* "MMTK_BSpline_grid.pyx":56
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.splineInterpolate(arr, x)
- *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
+ *     cdef float_t trisplineInterpolate(self, float_t p[4][4][4], float_t x, float_t y, float_t z):             # <<<<<<<<<<<<<<
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  */
@@ -1470,7 +1454,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
   __Pyx_RefNannySetupContext("trisplineInterpolate", 0);
 
   /* "MMTK_BSpline_grid.pyx":58
- *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):
+ *     cdef float_t trisplineInterpolate(self, float_t p[4][4][4], float_t x, float_t y, float_t z):
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)             # <<<<<<<<<<<<<<
  *         arr[1] = self.bisplineInterpolate(p[1], y, z)
@@ -1518,7 +1502,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
   /* "MMTK_BSpline_grid.pyx":56
  *         arr[3] = self.splineInterpolate(p[3], y)
  *         return self.splineInterpolate(arr, x)
- *     cdef float_t trisplineInterpolate(self,float_t p[4][4][4],float_t x,float_t y,float_t z):             # <<<<<<<<<<<<<<
+ *     cdef float_t trisplineInterpolate(self, float_t p[4][4][4], float_t x, float_t y, float_t z):             # <<<<<<<<<<<<<<
  *         cdef float_t arr[4]
  *         arr[0] = self.bisplineInterpolate(p[0], y, z)
  */
@@ -1533,7 +1517,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
  *         return self.splineInterpolate(arr, x)
  * 
  *     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
- *         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(12*p[0]-30*p[1]+24*p[2]-6*p[3]+x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6
+ *         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(12*p[0]-30*p[1]+24*p[2]-6*p[3] + x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6
  * 
  */
 
@@ -1545,7 +1529,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
   /* "MMTK_BSpline_grid.pyx":65
  * 
  *     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):
- *         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(12*p[0]-30*p[1]+24*p[2]-6*p[3]+x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6             # <<<<<<<<<<<<<<
+ *         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(12*p[0]-30*p[1]+24*p[2]-6*p[3] + x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6             # <<<<<<<<<<<<<<
  * 
  *   # the following functions are used to calculate gradients (first derivative)
  */
@@ -1556,7 +1540,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
  *         return self.splineInterpolate(arr, x)
  * 
  *     cdef float_t derivateOfIntp(self,float_t p[4],float_t x):             # <<<<<<<<<<<<<<
- *         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3]+x*(12*p[0]-30*p[1]+24*p[2]-6*p[3]+x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6
+ *         return (-12*p[0]+21*p[1]-12*p[2]+3*p[3] + x*(12*p[0]-30*p[1]+24*p[2]-6*p[3] + x*(-3*p[0]+9*p[1]-9*p[2]+3*p[3])))/6
  * 
  */
 
@@ -2792,7 +2776,7 @@ static __pyx_t_17MMTK_BSpline_grid_float_t __pyx_f_17MMTK_BSpline_grid_15BSpline
  * 
  *     def __init__(self, universe, spacing, counts, vals, strength,             # <<<<<<<<<<<<<<
  *                  scaling_factor, grid_name):
- *         print "------------test start---------------"
+ *         EnergyTerm.__init__(self, universe,
  */
 
 /* Python wrapper */
@@ -2922,30 +2906,21 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
   /* "MMTK_BSpline_grid.pyx":210
  *     def __init__(self, universe, spacing, counts, vals, strength,
  *                  scaling_factor, grid_name):
- *         print "------------test start---------------"             # <<<<<<<<<<<<<<
- *         EnergyTerm.__init__(self, universe,
- *                             grid_name, (grid_name,))
- */
-  if (__Pyx_PrintOne(0, __pyx_kp_s_test_start) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 210; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-
-  /* "MMTK_BSpline_grid.pyx":211
- *                  scaling_factor, grid_name):
- *         print "------------test start---------------"
  *         EnergyTerm.__init__(self, universe,             # <<<<<<<<<<<<<<
  *                             grid_name, (grid_name,))
  *         self.eval_func = <void *>BSplineGridTerm.evaluate
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)((PyObject*)__pyx_ptype_17MMTK_BSpline_grid_EnergyTerm)), __pyx_n_s_init); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)((PyObject*)__pyx_ptype_17MMTK_BSpline_grid_EnergyTerm)), __pyx_n_s_init); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 210; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "MMTK_BSpline_grid.pyx":212
- *         print "------------test start---------------"
+  /* "MMTK_BSpline_grid.pyx":211
+ *                  scaling_factor, grid_name):
  *         EnergyTerm.__init__(self, universe,
  *                             grid_name, (grid_name,))             # <<<<<<<<<<<<<<
  *         self.eval_func = <void *>BSplineGridTerm.evaluate
  * 
  */
-  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 212; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_INCREF(__pyx_v_grid_name);
   PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_v_grid_name);
@@ -2962,7 +2937,7 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
       __pyx_t_5 = 1;
     }
   }
-  __pyx_t_6 = PyTuple_New(4+__pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyTuple_New(4+__pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 210; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   if (__pyx_t_4) {
     PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_4); __Pyx_GIVEREF(__pyx_t_4); __pyx_t_4 = NULL;
@@ -2979,13 +2954,13 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
   PyTuple_SET_ITEM(__pyx_t_6, 3+__pyx_t_5, __pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
   __pyx_t_3 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 210; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":213
+  /* "MMTK_BSpline_grid.pyx":212
  *         EnergyTerm.__init__(self, universe,
  *                             grid_name, (grid_name,))
  *         self.eval_func = <void *>BSplineGridTerm.evaluate             # <<<<<<<<<<<<<<
@@ -2994,49 +2969,49 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
  */
   __pyx_v_self->__pyx_base.eval_func = ((void *)__pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate);
 
-  /* "MMTK_BSpline_grid.pyx":215
+  /* "MMTK_BSpline_grid.pyx":214
  *         self.eval_func = <void *>BSplineGridTerm.evaluate
  * 
  *         self.strength = strength             # <<<<<<<<<<<<<<
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)
  *         self.natoms = len(self.scaling_factor)
  */
-  __pyx_t_7 = __pyx_PyFloat_AsDouble(__pyx_v_strength); if (unlikely((__pyx_t_7 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = __pyx_PyFloat_AsDouble(__pyx_v_strength); if (unlikely((__pyx_t_7 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 214; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->strength = __pyx_t_7;
 
-  /* "MMTK_BSpline_grid.pyx":216
+  /* "MMTK_BSpline_grid.pyx":215
  * 
  *         self.strength = strength
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)             # <<<<<<<<<<<<<<
  *         self.natoms = len(self.scaling_factor)
  *         self.grid_name = grid_name
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_scaling_factor);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_scaling_factor);
   __Pyx_GIVEREF(__pyx_v_scaling_factor);
-  __pyx_t_6 = PyDict_New(); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyDict_New(); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
-  if (PyDict_SetItem(__pyx_t_6, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_6); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_6, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_6); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  if (!(likely(((__pyx_t_3) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_3, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_t_3) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_3, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GIVEREF(__pyx_t_3);
   __Pyx_GOTREF(__pyx_v_self->scaling_factor);
   __Pyx_DECREF(((PyObject *)__pyx_v_self->scaling_factor));
   __pyx_v_self->scaling_factor = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":217
+  /* "MMTK_BSpline_grid.pyx":216
  *         self.strength = strength
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)
  *         self.natoms = len(self.scaling_factor)             # <<<<<<<<<<<<<<
@@ -3045,28 +3020,28 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
  */
   __pyx_t_3 = ((PyObject *)__pyx_v_self->scaling_factor);
   __Pyx_INCREF(__pyx_t_3);
-  __pyx_t_5 = PyObject_Length(__pyx_t_3); if (unlikely(__pyx_t_5 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = PyObject_Length(__pyx_t_3); if (unlikely(__pyx_t_5 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_self->natoms = __pyx_t_5;
 
-  /* "MMTK_BSpline_grid.pyx":218
+  /* "MMTK_BSpline_grid.pyx":217
  *         self.scaling_factor = np.array(scaling_factor, dtype=float)
  *         self.natoms = len(self.scaling_factor)
  *         self.grid_name = grid_name             # <<<<<<<<<<<<<<
  * 
  *         self.spacing = spacing
  */
-  __pyx_t_8 = __Pyx_PyObject_AsString(__pyx_v_grid_name); if (unlikely((!__pyx_t_8) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyObject_AsString(__pyx_v_grid_name); if (unlikely((!__pyx_t_8) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 217; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->grid_name = __pyx_t_8;
 
-  /* "MMTK_BSpline_grid.pyx":220
+  /* "MMTK_BSpline_grid.pyx":219
  *         self.grid_name = grid_name
  * 
  *         self.spacing = spacing             # <<<<<<<<<<<<<<
  *         self.counts = counts
  *         self.vals = vals
  */
-  if (!(likely(((__pyx_v_spacing) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_spacing, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 220; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_v_spacing) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_spacing, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 219; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_3 = __pyx_v_spacing;
   __Pyx_INCREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3075,14 +3050,14 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
   __pyx_v_self->spacing = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":221
+  /* "MMTK_BSpline_grid.pyx":220
  * 
  *         self.spacing = spacing
  *         self.counts = counts             # <<<<<<<<<<<<<<
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
  */
-  if (!(likely(((__pyx_v_counts) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_counts, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 221; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_v_counts) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_counts, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 220; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_3 = __pyx_v_counts;
   __Pyx_INCREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3091,14 +3066,14 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
   __pyx_v_self->counts = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":222
+  /* "MMTK_BSpline_grid.pyx":221
  *         self.spacing = spacing
  *         self.counts = counts
  *         self.vals = vals             # <<<<<<<<<<<<<<
  *         self.nyz = self.counts[1]*self.counts[2]
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),
  */
-  if (!(likely(((__pyx_v_vals) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_vals, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_v_vals) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_vals, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 221; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_3 = __pyx_v_vals;
   __Pyx_INCREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3107,95 +3082,95 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
   __pyx_v_self->vals = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":223
+  /* "MMTK_BSpline_grid.pyx":222
  *         self.counts = counts
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]             # <<<<<<<<<<<<<<
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
- *                         self.spacing[1]*(self.counts[1]-1),
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),
+ *                         self.spacing[1]*(self.counts[1]-2),
  */
-  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_6 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_6 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_6 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_6 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_1 = PyNumber_Multiply(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyNumber_Multiply(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->nyz = __pyx_t_9;
 
-  /* "MMTK_BSpline_grid.pyx":224
+  /* "MMTK_BSpline_grid.pyx":223
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),             # <<<<<<<<<<<<<<
- *                         self.spacing[1]*(self.counts[1]-1),
- *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),             # <<<<<<<<<<<<<<
+ *                         self.spacing[1]*(self.counts[1]-2),
+ *                         self.spacing[2]*(self.counts[2]-2)), dtype=float)
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_3 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = PyNumber_Subtract(__pyx_t_3, __pyx_int_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyNumber_Subtract(__pyx_t_3, __pyx_int_2); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = PyNumber_Multiply(__pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = PyNumber_Multiply(__pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":225
+  /* "MMTK_BSpline_grid.pyx":224
  *         self.nyz = self.counts[1]*self.counts[2]
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
- *                         self.spacing[1]*(self.counts[1]-1),             # <<<<<<<<<<<<<<
- *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),
+ *                         self.spacing[1]*(self.counts[1]-2),             # <<<<<<<<<<<<<<
+ *                         self.spacing[2]*(self.counts[2]-2)), dtype=float)
  *         # To keep atoms within the grid
  */
-  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_1 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = PyNumber_Subtract(__pyx_t_1, __pyx_int_1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyNumber_Subtract(__pyx_t_1, __pyx_int_2); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyNumber_Multiply(__pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyNumber_Multiply(__pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":226
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
- *                         self.spacing[1]*(self.counts[1]-1),
- *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)             # <<<<<<<<<<<<<<
+  /* "MMTK_BSpline_grid.pyx":225
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),
+ *                         self.spacing[1]*(self.counts[1]-2),
+ *                         self.spacing[2]*(self.counts[2]-2)), dtype=float)             # <<<<<<<<<<<<<<
  *         # To keep atoms within the grid
  *         self.k = 10000. # kJ/mol nm**2
  */
-  __pyx_t_4 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_4 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_4 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->spacing), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_4 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->counts), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_10 = PyNumber_Subtract(__pyx_t_2, __pyx_int_1); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = PyNumber_Subtract(__pyx_t_2, __pyx_int_2); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyNumber_Multiply(__pyx_t_4, __pyx_t_10); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 226; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyNumber_Multiply(__pyx_t_4, __pyx_t_10); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":224
+  /* "MMTK_BSpline_grid.pyx":223
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),             # <<<<<<<<<<<<<<
- *                         self.spacing[1]*(self.counts[1]-1),
- *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),             # <<<<<<<<<<<<<<
+ *                         self.spacing[1]*(self.counts[1]-2),
+ *                         self.spacing[2]*(self.counts[2]-2)), dtype=float)
  */
-  __pyx_t_10 = PyTuple_New(3); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = PyTuple_New(3); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
   PyTuple_SET_ITEM(__pyx_t_10, 0, __pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_3);
@@ -3206,44 +3181,44 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
   __pyx_t_3 = 0;
   __pyx_t_1 = 0;
   __pyx_t_2 = 0;
-  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_10);
   __Pyx_GIVEREF(__pyx_t_10);
   __pyx_t_10 = 0;
-  __pyx_t_10 = PyDict_New(); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = PyDict_New(); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "MMTK_BSpline_grid.pyx":226
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),
- *                         self.spacing[1]*(self.counts[1]-1),
- *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)             # <<<<<<<<<<<<<<
+  /* "MMTK_BSpline_grid.pyx":225
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),
+ *                         self.spacing[1]*(self.counts[1]-2),
+ *                         self.spacing[2]*(self.counts[2]-2)), dtype=float)             # <<<<<<<<<<<<<<
  *         # To keep atoms within the grid
  *         self.k = 10000. # kJ/mol nm**2
  */
-  if (PyDict_SetItem(__pyx_t_10, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_10, __pyx_n_s_dtype, ((PyObject *)((PyObject*)(&PyFloat_Type)))) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "MMTK_BSpline_grid.pyx":224
+  /* "MMTK_BSpline_grid.pyx":223
  *         self.vals = vals
  *         self.nyz = self.counts[1]*self.counts[2]
- *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-1),             # <<<<<<<<<<<<<<
- *                         self.spacing[1]*(self.counts[1]-1),
- *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
+ *         self.hCorner = np.array((self.spacing[0]*(self.counts[0]-2),             # <<<<<<<<<<<<<<
+ *                         self.spacing[1]*(self.counts[1]-2),
+ *                         self.spacing[2]*(self.counts[2]-2)), dtype=float)
  */
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_2, __pyx_t_10); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_2, __pyx_t_10); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 224; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 223; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GIVEREF(__pyx_t_1);
   __Pyx_GOTREF(__pyx_v_self->hCorner);
   __Pyx_DECREF(((PyObject *)__pyx_v_self->hCorner));
   __pyx_v_self->hCorner = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":228
- *                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
+  /* "MMTK_BSpline_grid.pyx":227
+ *                         self.spacing[2]*(self.counts[2]-2)), dtype=float)
  *         # To keep atoms within the grid
  *         self.k = 10000. # kJ/mol nm**2             # <<<<<<<<<<<<<<
  * 
@@ -3256,7 +3231,7 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
  * 
  *     def __init__(self, universe, spacing, counts, vals, strength,             # <<<<<<<<<<<<<<
  *                  scaling_factor, grid_name):
- *         print "------------test start---------------"
+ *         EnergyTerm.__init__(self, universe,
  */
 
   /* function exit code */
@@ -3276,7 +3251,7 @@ static int __pyx_pf_17MMTK_BSpline_grid_15BSplineGridTerm___init__(struct __pyx_
   return __pyx_r;
 }
 
-/* "MMTK_BSpline_grid.pyx":234
+/* "MMTK_BSpline_grid.pyx":233
  *     # do_force_constants are flags that indicate if gradients and/or
  *     # force constants are requested.
  *     cdef void evaluate(self, PyFFEvaluatorObject *eval,             # <<<<<<<<<<<<<<
@@ -3359,7 +3334,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
   __pyx_pybuffernd_force_constants.data = NULL;
   __pyx_pybuffernd_force_constants.rcbuffer = &__pyx_pybuffer_force_constants;
 
-  /* "MMTK_BSpline_grid.pyx":261
+  /* "MMTK_BSpline_grid.pyx":260
  *         cdef float_t dvdxdx, dvdxdy, dvdxdz,dvdydy,dvdydz,dvdzdz
  * 
  *         gridEnergy = 0             # <<<<<<<<<<<<<<
@@ -3368,7 +3343,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
   __pyx_v_gridEnergy = 0.0;
 
-  /* "MMTK_BSpline_grid.pyx":262
+  /* "MMTK_BSpline_grid.pyx":261
  * 
  *         gridEnergy = 0
  *         coordinates = <vector3 *>input.coordinates.data             # <<<<<<<<<<<<<<
@@ -3377,7 +3352,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
   __pyx_v_coordinates = ((vector3 *)__pyx_v_input->coordinates->data);
 
-  /* "MMTK_BSpline_grid.pyx":265
+  /* "MMTK_BSpline_grid.pyx":264
  * 
  *         # Pointers to numpy arrays for faster indexing
  *         scaling_factor = <float_t *>self.scaling_factor.data             # <<<<<<<<<<<<<<
@@ -3386,7 +3361,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
   __pyx_v_scaling_factor = ((__pyx_t_17MMTK_BSpline_grid_float_t *)__pyx_v_self->scaling_factor->data);
 
-  /* "MMTK_BSpline_grid.pyx":266
+  /* "MMTK_BSpline_grid.pyx":265
  *         # Pointers to numpy arrays for faster indexing
  *         scaling_factor = <float_t *>self.scaling_factor.data
  *         vals = <float_t *>self.vals.data             # <<<<<<<<<<<<<<
@@ -3395,7 +3370,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
   __pyx_v_vals = ((__pyx_t_17MMTK_BSpline_grid_float_t *)__pyx_v_self->vals->data);
 
-  /* "MMTK_BSpline_grid.pyx":267
+  /* "MMTK_BSpline_grid.pyx":266
  *         scaling_factor = <float_t *>self.scaling_factor.data
  *         vals = <float_t *>self.vals.data
  *         counts = <int_t *>self.counts.data             # <<<<<<<<<<<<<<
@@ -3404,7 +3379,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
   __pyx_v_counts = ((__pyx_t_17MMTK_BSpline_grid_int_t *)__pyx_v_self->counts->data);
 
-  /* "MMTK_BSpline_grid.pyx":268
+  /* "MMTK_BSpline_grid.pyx":267
  *         vals = <float_t *>self.vals.data
  *         counts = <int_t *>self.counts.data
  *         spacing = <float_t *>self.spacing.data             # <<<<<<<<<<<<<<
@@ -3413,7 +3388,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
   __pyx_v_spacing = ((__pyx_t_17MMTK_BSpline_grid_float_t *)__pyx_v_self->spacing->data);
 
-  /* "MMTK_BSpline_grid.pyx":269
+  /* "MMTK_BSpline_grid.pyx":268
  *         counts = <int_t *>self.counts.data
  *         spacing = <float_t *>self.spacing.data
  *         hCorner = <float_t *>self.hCorner.data             # <<<<<<<<<<<<<<
@@ -3422,7 +3397,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
   __pyx_v_hCorner = ((__pyx_t_17MMTK_BSpline_grid_float_t *)__pyx_v_self->hCorner->data);
 
-  /* "MMTK_BSpline_grid.pyx":272
+  /* "MMTK_BSpline_grid.pyx":271
  * 
  *         # Initialize variables
  *         if energy.gradients != NULL:             # <<<<<<<<<<<<<<
@@ -3432,7 +3407,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
   __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
   if (__pyx_t_1) {
 
-    /* "MMTK_BSpline_grid.pyx":273
+    /* "MMTK_BSpline_grid.pyx":272
  *         # Initialize variables
  *         if energy.gradients != NULL:
  *           gradients = <vector3 *>(<PyArrayObject *> energy.gradients).data             # <<<<<<<<<<<<<<
@@ -3444,7 +3419,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
   }
   __pyx_L3:;
 
-  /* "MMTK_BSpline_grid.pyx":276
+  /* "MMTK_BSpline_grid.pyx":275
  * 
  *         # Initialize variables
  *         if energy.force_constants != NULL:             # <<<<<<<<<<<<<<
@@ -3454,7 +3429,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
   __pyx_t_1 = ((__pyx_v_energy->force_constants != NULL) != 0);
   if (__pyx_t_1) {
 
-    /* "MMTK_BSpline_grid.pyx":277
+    /* "MMTK_BSpline_grid.pyx":276
  *         # Initialize variables
  *         if energy.force_constants != NULL:
  *             force_constants = <np.ndarray[float_t, ndim=4] >(<PyArrayObject *> energy.force_constants)             # <<<<<<<<<<<<<<
@@ -3477,7 +3452,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         }
       }
       __pyx_pybuffernd_force_constants.diminfo[0].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_force_constants.diminfo[0].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_force_constants.diminfo[1].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_force_constants.diminfo[1].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[1]; __pyx_pybuffernd_force_constants.diminfo[2].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[2]; __pyx_pybuffernd_force_constants.diminfo[2].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[2]; __pyx_pybuffernd_force_constants.diminfo[3].strides = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.strides[3]; __pyx_pybuffernd_force_constants.diminfo[3].shape = __pyx_pybuffernd_force_constants.rcbuffer->pybuffer.shape[3];
-      if (unlikely(__pyx_t_3 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__pyx_t_3 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 276; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
     __pyx_v_force_constants = ((PyArrayObject *)__pyx_t_2);
     __pyx_t_2 = 0;
@@ -3485,28 +3460,28 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
   }
   __pyx_L4:;
 
-  /* "MMTK_BSpline_grid.pyx":279
+  /* "MMTK_BSpline_grid.pyx":278
  *             force_constants = <np.ndarray[float_t, ndim=4] >(<PyArrayObject *> energy.force_constants)
  * 
  *         indicies = [ai for ai in range(self.natoms) if self.scaling_factor[ai]!=0]             # <<<<<<<<<<<<<<
  *         for atom_index in indicies:
  *           # Check to make sure coordinate is in grid
  */
-  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = __pyx_v_self->natoms;
   for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_3; __pyx_t_7+=1) {
     __pyx_v_ai = __pyx_t_7;
-    __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->scaling_factor), __pyx_v_ai, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_self->scaling_factor), __pyx_v_ai, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_8);
-    __pyx_t_9 = PyObject_RichCompare(__pyx_t_8, __pyx_int_0, Py_NE); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PyObject_RichCompare(__pyx_t_8, __pyx_int_0, Py_NE); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_1 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_1 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     if (__pyx_t_1) {
-      __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_ai); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_ai); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_9);
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_9))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_9))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       goto __pyx_L7;
     }
@@ -3515,33 +3490,47 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
   __pyx_v_indicies = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":280
+  /* "MMTK_BSpline_grid.pyx":279
  * 
  *         indicies = [ai for ai in range(self.natoms) if self.scaling_factor[ai]!=0]
  *         for atom_index in indicies:             # <<<<<<<<<<<<<<
  *           # Check to make sure coordinate is in grid
- *           if (coordinates[atom_index][0]>0 and
+ *           if (coordinates[atom_index][0]>spacing[0] and
  */
   __pyx_t_2 = __pyx_v_indicies; __Pyx_INCREF(__pyx_t_2); __pyx_t_10 = 0;
   for (;;) {
     if (__pyx_t_10 >= PyList_GET_SIZE(__pyx_t_2)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_9 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_10); __Pyx_INCREF(__pyx_t_9); __pyx_t_10++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_10); __Pyx_INCREF(__pyx_t_9); __pyx_t_10++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     #else
-    __pyx_t_9 = PySequence_ITEM(__pyx_t_2, __pyx_t_10); __pyx_t_10++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PySequence_ITEM(__pyx_t_2, __pyx_t_10); __pyx_t_10++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     #endif
-    __pyx_t_3 = __Pyx_PyInt_As_int(__pyx_t_9); if (unlikely((__pyx_t_3 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyInt_As_int(__pyx_t_9); if (unlikely((__pyx_t_3 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_v_atom_index = __pyx_t_3;
 
-    /* "MMTK_BSpline_grid.pyx":282
+    /* "MMTK_BSpline_grid.pyx":281
  *         for atom_index in indicies:
  *           # Check to make sure coordinate is in grid
- *           if (coordinates[atom_index][0]>0 and             # <<<<<<<<<<<<<<
- *               coordinates[atom_index][1]>0 and
- *               coordinates[atom_index][2]>0 and
+ *           if (coordinates[atom_index][0]>spacing[0] and             # <<<<<<<<<<<<<<
+ *               coordinates[atom_index][1]>spacing[1] and
+ *               coordinates[atom_index][2]>spacing[2] and
  */
-    __pyx_t_11 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[0]) > 0.0) != 0);
+    __pyx_t_11 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[0]) > (__pyx_v_spacing[0])) != 0);
+    if (__pyx_t_11) {
+    } else {
+      __pyx_t_1 = __pyx_t_11;
+      goto __pyx_L11_bool_binop_done;
+    }
+
+    /* "MMTK_BSpline_grid.pyx":282
+ *           # Check to make sure coordinate is in grid
+ *           if (coordinates[atom_index][0]>spacing[0] and
+ *               coordinates[atom_index][1]>spacing[1] and             # <<<<<<<<<<<<<<
+ *               coordinates[atom_index][2]>spacing[2] and
+ *               coordinates[atom_index][0]<hCorner[0] and
+ */
+    __pyx_t_11 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[1]) > (__pyx_v_spacing[1])) != 0);
     if (__pyx_t_11) {
     } else {
       __pyx_t_1 = __pyx_t_11;
@@ -3549,13 +3538,13 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
     }
 
     /* "MMTK_BSpline_grid.pyx":283
- *           # Check to make sure coordinate is in grid
- *           if (coordinates[atom_index][0]>0 and
- *               coordinates[atom_index][1]>0 and             # <<<<<<<<<<<<<<
- *               coordinates[atom_index][2]>0 and
+ *           if (coordinates[atom_index][0]>spacing[0] and
+ *               coordinates[atom_index][1]>spacing[1] and
+ *               coordinates[atom_index][2]>spacing[2] and             # <<<<<<<<<<<<<<
  *               coordinates[atom_index][0]<hCorner[0] and
+ *               coordinates[atom_index][1]<hCorner[1] and
  */
-    __pyx_t_11 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[1]) > 0.0) != 0);
+    __pyx_t_11 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[2]) > (__pyx_v_spacing[2])) != 0);
     if (__pyx_t_11) {
     } else {
       __pyx_t_1 = __pyx_t_11;
@@ -3563,22 +3552,8 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
     }
 
     /* "MMTK_BSpline_grid.pyx":284
- *           if (coordinates[atom_index][0]>0 and
- *               coordinates[atom_index][1]>0 and
- *               coordinates[atom_index][2]>0 and             # <<<<<<<<<<<<<<
- *               coordinates[atom_index][0]<hCorner[0] and
- *               coordinates[atom_index][1]<hCorner[1] and
- */
-    __pyx_t_11 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[2]) > 0.0) != 0);
-    if (__pyx_t_11) {
-    } else {
-      __pyx_t_1 = __pyx_t_11;
-      goto __pyx_L11_bool_binop_done;
-    }
-
-    /* "MMTK_BSpline_grid.pyx":285
- *               coordinates[atom_index][1]>0 and
- *               coordinates[atom_index][2]>0 and
+ *               coordinates[atom_index][1]>spacing[1] and
+ *               coordinates[atom_index][2]>spacing[2] and
  *               coordinates[atom_index][0]<hCorner[0] and             # <<<<<<<<<<<<<<
  *               coordinates[atom_index][1]<hCorner[1] and
  *               coordinates[atom_index][2]<hCorner[2]):
@@ -3590,8 +3565,8 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
       goto __pyx_L11_bool_binop_done;
     }
 
-    /* "MMTK_BSpline_grid.pyx":286
- *               coordinates[atom_index][2]>0 and
+    /* "MMTK_BSpline_grid.pyx":285
+ *               coordinates[atom_index][2]>spacing[2] and
  *               coordinates[atom_index][0]<hCorner[0] and
  *               coordinates[atom_index][1]<hCorner[1] and             # <<<<<<<<<<<<<<
  *               coordinates[atom_index][2]<hCorner[2]):
@@ -3604,7 +3579,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
       goto __pyx_L11_bool_binop_done;
     }
 
-    /* "MMTK_BSpline_grid.pyx":287
+    /* "MMTK_BSpline_grid.pyx":286
  *               coordinates[atom_index][0]<hCorner[0] and
  *               coordinates[atom_index][1]<hCorner[1] and
  *               coordinates[atom_index][2]<hCorner[2]):             # <<<<<<<<<<<<<<
@@ -3616,7 +3591,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
     __pyx_L11_bool_binop_done:;
     if (__pyx_t_1) {
 
-      /* "MMTK_BSpline_grid.pyx":290
+      /* "MMTK_BSpline_grid.pyx":289
  * 
  *             # Index within the grid
  *             ix = int(coordinates[atom_index][0]/spacing[0]-1)             # <<<<<<<<<<<<<<
@@ -3631,11 +3606,11 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 290; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 289; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __pyx_v_ix = ((int)((((__pyx_v_coordinates[__pyx_v_atom_index])[0]) / (__pyx_v_spacing[0])) - 1.0));
 
-      /* "MMTK_BSpline_grid.pyx":291
+      /* "MMTK_BSpline_grid.pyx":290
  *             # Index within the grid
  *             ix = int(coordinates[atom_index][0]/spacing[0]-1)
  *             iy = int(coordinates[atom_index][1]/spacing[1]-1)             # <<<<<<<<<<<<<<
@@ -3650,11 +3625,11 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 291; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 290; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __pyx_v_iy = ((int)((((__pyx_v_coordinates[__pyx_v_atom_index])[1]) / (__pyx_v_spacing[1])) - 1.0));
 
-      /* "MMTK_BSpline_grid.pyx":292
+      /* "MMTK_BSpline_grid.pyx":291
  *             ix = int(coordinates[atom_index][0]/spacing[0]-1)
  *             iy = int(coordinates[atom_index][1]/spacing[1]-1)
  *             iz = int(coordinates[atom_index][2]/spacing[2]-1)             # <<<<<<<<<<<<<<
@@ -3669,11 +3644,11 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 292; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 291; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __pyx_v_iz = ((int)((((__pyx_v_coordinates[__pyx_v_atom_index])[2]) / (__pyx_v_spacing[2])) - 1.0));
 
-      /* "MMTK_BSpline_grid.pyx":294
+      /* "MMTK_BSpline_grid.pyx":293
  *             iz = int(coordinates[atom_index][2]/spacing[2]-1)
  * 
  *             i = ix*self.nyz + iy*counts[2] + iz             # <<<<<<<<<<<<<<
@@ -3682,22 +3657,22 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
       __pyx_v_i = (((__pyx_v_ix * __pyx_v_self->nyz) + (__pyx_v_iy * (__pyx_v_counts[2]))) + __pyx_v_iz);
 
-      /* "MMTK_BSpline_grid.pyx":297
+      /* "MMTK_BSpline_grid.pyx":296
  * 
  * 
  *             for x in range(0,4):             # <<<<<<<<<<<<<<
  *                 for y in range(0,4):
  *                     for z in range(0,4):
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_9);
       if (likely(PyList_CheckExact(__pyx_t_9)) || PyTuple_CheckExact(__pyx_t_9)) {
         __pyx_t_8 = __pyx_t_9; __Pyx_INCREF(__pyx_t_8); __pyx_t_12 = 0;
         __pyx_t_13 = NULL;
       } else {
-        __pyx_t_12 = -1; __pyx_t_8 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_12 = -1; __pyx_t_8 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_13 = Py_TYPE(__pyx_t_8)->tp_iternext; if (unlikely(!__pyx_t_13)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_13 = Py_TYPE(__pyx_t_8)->tp_iternext; if (unlikely(!__pyx_t_13)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       for (;;) {
@@ -3705,16 +3680,16 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           if (likely(PyList_CheckExact(__pyx_t_8))) {
             if (__pyx_t_12 >= PyList_GET_SIZE(__pyx_t_8)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_9 = PyList_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyList_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #else
-            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #endif
           } else {
             if (__pyx_t_12 >= PyTuple_GET_SIZE(__pyx_t_8)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_8, __pyx_t_12); __Pyx_INCREF(__pyx_t_9); __pyx_t_12++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #else
-            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PySequence_ITEM(__pyx_t_8, __pyx_t_12); __pyx_t_12++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             #endif
           }
         } else {
@@ -3723,7 +3698,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
             PyObject* exc_type = PyErr_Occurred();
             if (exc_type) {
               if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-              else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             }
             break;
           }
@@ -3732,22 +3707,22 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         __Pyx_XDECREF_SET(__pyx_v_x, __pyx_t_9);
         __pyx_t_9 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":298
+        /* "MMTK_BSpline_grid.pyx":297
  * 
  *             for x in range(0,4):
  *                 for y in range(0,4):             # <<<<<<<<<<<<<<
  *                     for z in range(0,4):
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  */
-        __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_9);
         if (likely(PyList_CheckExact(__pyx_t_9)) || PyTuple_CheckExact(__pyx_t_9)) {
           __pyx_t_14 = __pyx_t_9; __Pyx_INCREF(__pyx_t_14); __pyx_t_15 = 0;
           __pyx_t_16 = NULL;
         } else {
-          __pyx_t_15 = -1; __pyx_t_14 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          __pyx_t_15 = -1; __pyx_t_14 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
           __Pyx_GOTREF(__pyx_t_14);
-          __pyx_t_16 = Py_TYPE(__pyx_t_14)->tp_iternext; if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          __pyx_t_16 = Py_TYPE(__pyx_t_14)->tp_iternext; if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         for (;;) {
@@ -3755,16 +3730,16 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
             if (likely(PyList_CheckExact(__pyx_t_14))) {
               if (__pyx_t_15 >= PyList_GET_SIZE(__pyx_t_14)) break;
               #if CYTHON_COMPILING_IN_CPYTHON
-              __pyx_t_9 = PyList_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PyList_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #else
-              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #endif
             } else {
               if (__pyx_t_15 >= PyTuple_GET_SIZE(__pyx_t_14)) break;
               #if CYTHON_COMPILING_IN_CPYTHON
-              __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_14, __pyx_t_15); __Pyx_INCREF(__pyx_t_9); __pyx_t_15++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #else
-              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = PySequence_ITEM(__pyx_t_14, __pyx_t_15); __pyx_t_15++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               #endif
             }
           } else {
@@ -3773,7 +3748,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
               PyObject* exc_type = PyErr_Occurred();
               if (exc_type) {
                 if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-                else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               }
               break;
             }
@@ -3782,22 +3757,22 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           __Pyx_XDECREF_SET(__pyx_v_y, __pyx_t_9);
           __pyx_t_9 = 0;
 
-          /* "MMTK_BSpline_grid.pyx":299
+          /* "MMTK_BSpline_grid.pyx":298
  *             for x in range(0,4):
  *                 for y in range(0,4):
  *                     for z in range(0,4):             # <<<<<<<<<<<<<<
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  * 
  */
-          __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_range, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
           __Pyx_GOTREF(__pyx_t_9);
           if (likely(PyList_CheckExact(__pyx_t_9)) || PyTuple_CheckExact(__pyx_t_9)) {
             __pyx_t_17 = __pyx_t_9; __Pyx_INCREF(__pyx_t_17); __pyx_t_18 = 0;
             __pyx_t_19 = NULL;
           } else {
-            __pyx_t_18 = -1; __pyx_t_17 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_18 = -1; __pyx_t_17 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_17);
-            __pyx_t_19 = Py_TYPE(__pyx_t_17)->tp_iternext; if (unlikely(!__pyx_t_19)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_19 = Py_TYPE(__pyx_t_17)->tp_iternext; if (unlikely(!__pyx_t_19)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
           }
           __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
           for (;;) {
@@ -3805,16 +3780,16 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
               if (likely(PyList_CheckExact(__pyx_t_17))) {
                 if (__pyx_t_18 >= PyList_GET_SIZE(__pyx_t_17)) break;
                 #if CYTHON_COMPILING_IN_CPYTHON
-                __pyx_t_9 = PyList_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PyList_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #else
-                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #endif
               } else {
                 if (__pyx_t_18 >= PyTuple_GET_SIZE(__pyx_t_17)) break;
                 #if CYTHON_COMPILING_IN_CPYTHON
-                __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_17, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #else
-                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                __pyx_t_9 = PySequence_ITEM(__pyx_t_17, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 #endif
               }
             } else {
@@ -3823,7 +3798,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
                 PyObject* exc_type = PyErr_Occurred();
                 if (exc_type) {
                   if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-                  else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+                  else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
                 }
                 break;
               }
@@ -3832,44 +3807,44 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
             __Pyx_XDECREF_SET(__pyx_v_z, __pyx_t_9);
             __pyx_t_9 = 0;
 
-            /* "MMTK_BSpline_grid.pyx":300
+            /* "MMTK_BSpline_grid.pyx":299
  *                 for y in range(0,4):
  *                     for z in range(0,4):
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]             # <<<<<<<<<<<<<<
  * 
  *            # Fraction within the box
  */
-            __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_9);
-            __pyx_t_20 = __Pyx_PyInt_From_int(__pyx_v_self->nyz); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_20 = __Pyx_PyInt_From_int(__pyx_v_self->nyz); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_20);
-            __pyx_t_21 = PyNumber_Multiply(__pyx_v_x, __pyx_t_20); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_21 = PyNumber_Multiply(__pyx_v_x, __pyx_t_20); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_21);
             __Pyx_DECREF(__pyx_t_20); __pyx_t_20 = 0;
-            __pyx_t_20 = PyNumber_Add(__pyx_t_9, __pyx_t_21); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_20 = PyNumber_Add(__pyx_t_9, __pyx_t_21); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_20);
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
             __Pyx_DECREF(__pyx_t_21); __pyx_t_21 = 0;
-            __pyx_t_21 = __Pyx_PyInt_From_npy_long((__pyx_v_counts[2])); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_21 = __Pyx_PyInt_From_npy_long((__pyx_v_counts[2])); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_21);
-            __pyx_t_9 = PyNumber_Multiply(__pyx_v_y, __pyx_t_21); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyNumber_Multiply(__pyx_v_y, __pyx_t_21); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_9);
             __Pyx_DECREF(__pyx_t_21); __pyx_t_21 = 0;
-            __pyx_t_21 = PyNumber_Add(__pyx_t_20, __pyx_t_9); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_21 = PyNumber_Add(__pyx_t_20, __pyx_t_9); if (unlikely(!__pyx_t_21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_21);
             __Pyx_DECREF(__pyx_t_20); __pyx_t_20 = 0;
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-            __pyx_t_9 = PyNumber_Add(__pyx_t_21, __pyx_v_z); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = PyNumber_Add(__pyx_t_21, __pyx_v_z); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_9);
             __Pyx_DECREF(__pyx_t_21); __pyx_t_21 = 0;
-            __pyx_t_22 = __Pyx_PyIndex_AsSsize_t(__pyx_t_9); if (unlikely((__pyx_t_22 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_22 = __Pyx_PyIndex_AsSsize_t(__pyx_t_9); if (unlikely((__pyx_t_22 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-            __pyx_t_23 = __Pyx_PyIndex_AsSsize_t(__pyx_v_x); if (unlikely((__pyx_t_23 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-            __pyx_t_24 = __Pyx_PyIndex_AsSsize_t(__pyx_v_y); if (unlikely((__pyx_t_24 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-            __pyx_t_25 = __Pyx_PyIndex_AsSsize_t(__pyx_v_z); if (unlikely((__pyx_t_25 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 300; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_23 = __Pyx_PyIndex_AsSsize_t(__pyx_v_x); if (unlikely((__pyx_t_23 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_24 = __Pyx_PyIndex_AsSsize_t(__pyx_v_y); if (unlikely((__pyx_t_24 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_25 = __Pyx_PyIndex_AsSsize_t(__pyx_v_z); if (unlikely((__pyx_t_25 == (Py_ssize_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             (((__pyx_v_vertex[__pyx_t_23])[__pyx_t_24])[__pyx_t_25]) = (__pyx_v_vals[__pyx_t_22]);
 
-            /* "MMTK_BSpline_grid.pyx":299
+            /* "MMTK_BSpline_grid.pyx":298
  *             for x in range(0,4):
  *                 for y in range(0,4):
  *                     for z in range(0,4):             # <<<<<<<<<<<<<<
@@ -3879,7 +3854,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           }
           __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
 
-          /* "MMTK_BSpline_grid.pyx":298
+          /* "MMTK_BSpline_grid.pyx":297
  * 
  *             for x in range(0,4):
  *                 for y in range(0,4):             # <<<<<<<<<<<<<<
@@ -3889,7 +3864,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         }
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":297
+        /* "MMTK_BSpline_grid.pyx":296
  * 
  * 
  *             for x in range(0,4):             # <<<<<<<<<<<<<<
@@ -3899,7 +3874,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
       }
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-      /* "MMTK_BSpline_grid.pyx":303
+      /* "MMTK_BSpline_grid.pyx":302
  * 
  *            # Fraction within the box
  *             fx = (coordinates[atom_index][0] - (ix*spacing[0]))/spacing[0]             # <<<<<<<<<<<<<<
@@ -3915,14 +3890,14 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 302; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_XDECREF_SET(__pyx_v_fx, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "MMTK_BSpline_grid.pyx":304
+      /* "MMTK_BSpline_grid.pyx":303
  *            # Fraction within the box
  *             fx = (coordinates[atom_index][0] - (ix*spacing[0]))/spacing[0]
  *             fy = (coordinates[atom_index][1] - (iy*spacing[1]))/spacing[1]             # <<<<<<<<<<<<<<
@@ -3938,14 +3913,14 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 303; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_XDECREF_SET(__pyx_v_fy, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "MMTK_BSpline_grid.pyx":305
+      /* "MMTK_BSpline_grid.pyx":304
  *             fx = (coordinates[atom_index][0] - (ix*spacing[0]))/spacing[0]
  *             fy = (coordinates[atom_index][1] - (iy*spacing[1]))/spacing[1]
  *             fz = (coordinates[atom_index][2] - (iz*spacing[2]))/spacing[2]             # <<<<<<<<<<<<<<
@@ -3961,26 +3936,26 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 305; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 305; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_8 = PyFloat_FromDouble((__pyx_t_26 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_XDECREF_SET(__pyx_v_fz, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "MMTK_BSpline_grid.pyx":307
+      /* "MMTK_BSpline_grid.pyx":306
  *             fz = (coordinates[atom_index][2] - (iz*spacing[2]))/spacing[2]
  * 
  *             gridEnergy += scaling_factor[atom_index]*self.trisplineInterpolate(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *                 # hessian funciton          ************************
  *             if energy.force_constants !=NULL:
  */
-      __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 306; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 306; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 306; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_v_gridEnergy = (__pyx_v_gridEnergy + ((__pyx_v_scaling_factor[__pyx_v_atom_index]) * ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->trisplineInterpolate(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28)));
 
-      /* "MMTK_BSpline_grid.pyx":309
+      /* "MMTK_BSpline_grid.pyx":308
  *             gridEnergy += scaling_factor[atom_index]*self.trisplineInterpolate(vertex,fx,fy,fz)
  *                 # hessian funciton          ************************
  *             if energy.force_constants !=NULL:             # <<<<<<<<<<<<<<
@@ -3990,95 +3965,95 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
       __pyx_t_1 = ((__pyx_v_energy->force_constants != NULL) != 0);
       if (__pyx_t_1) {
 
-        /* "MMTK_BSpline_grid.pyx":311
+        /* "MMTK_BSpline_grid.pyx":310
  *             if energy.force_constants !=NULL:
  *                # x direction
  *               dvdxdx = self.derivateOfIntp_XX(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               dvdxdy = self.derivateOfIntp_XY(vertex,fx,fy,fz)
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 311; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 311; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 311; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdxdx = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XX(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_BSpline_grid.pyx":312
+        /* "MMTK_BSpline_grid.pyx":311
  *                # x direction
  *               dvdxdx = self.derivateOfIntp_XX(vertex,fx,fy,fz)
  *               dvdxdy = self.derivateOfIntp_XY(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)
  *               # y direction
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 311; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 311; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 311; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdxdy = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XY(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_BSpline_grid.pyx":313
+        /* "MMTK_BSpline_grid.pyx":312
  *               dvdxdx = self.derivateOfIntp_XX(vertex,fx,fy,fz)
  *               dvdxdy = self.derivateOfIntp_XY(vertex,fx,fy,fz)
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # y direction
  *               dvdydy = self.derivateOfIntp_YY(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdxdz = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_XZ(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_BSpline_grid.pyx":315
+        /* "MMTK_BSpline_grid.pyx":314
  *               dvdxdz = self.derivateOfIntp_XZ(vertex,fx,fy,fz)
  *               # y direction
  *               dvdydy = self.derivateOfIntp_YY(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               dvdydz = self.derivateOfIntp_YZ(vertex,fx,fy,fz)
  *               # z direction
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdydy = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YY(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_BSpline_grid.pyx":316
+        /* "MMTK_BSpline_grid.pyx":315
  *               # y direction
  *               dvdydy = self.derivateOfIntp_YY(vertex,fx,fy,fz)
  *               dvdydz = self.derivateOfIntp_YZ(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # z direction
  *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdydz = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_YZ(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_BSpline_grid.pyx":318
+        /* "MMTK_BSpline_grid.pyx":317
  *               dvdydz = self.derivateOfIntp_YZ(vertex,fx,fy,fz)
  *               # z direction
  *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
  *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 317; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 317; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 317; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdzdz = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_ZZ(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_BSpline_grid.pyx":319
+        /* "MMTK_BSpline_grid.pyx":318
  *               # z direction
  *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)
  *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
  *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __pyx_t_12 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdx);
         if (unlikely((__pyx_v_spacing[0]) == 0)) {
@@ -4089,7 +4064,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[0]));
         if (unlikely((__pyx_v_spacing[0]) == 0)) {
@@ -4100,35 +4075,35 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[0]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":320
+        /* "MMTK_BSpline_grid.pyx":319
  *               dvdzdz = self.derivateOfIntp_ZZ(vertex,fx,fy,fz)
  *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
  *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
  *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __pyx_t_12 = 1;
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
         __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdydy);
         if (unlikely((__pyx_v_spacing[1]) == 0)) {
@@ -4139,7 +4114,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[1]));
         if (unlikely((__pyx_v_spacing[1]) == 0)) {
@@ -4150,35 +4125,35 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":321
+        /* "MMTK_BSpline_grid.pyx":320
  *               force_constants[atom_index][0][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdx/spacing[0]/spacing[0]
  *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
  *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
  *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __pyx_t_12 = 2;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdzdz);
         if (unlikely((__pyx_v_spacing[2]) == 0)) {
@@ -4189,7 +4164,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[2]));
         if (unlikely((__pyx_v_spacing[2]) == 0)) {
@@ -4200,35 +4175,35 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":322
+        /* "MMTK_BSpline_grid.pyx":321
  *               force_constants[atom_index][1][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydy/spacing[1]/spacing[1]
  *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
  *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
  *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __pyx_t_12 = 0;
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
         __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdy);
         if (unlikely((__pyx_v_spacing[0]) == 0)) {
@@ -4239,7 +4214,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[0]));
         if (unlikely((__pyx_v_spacing[1]) == 0)) {
@@ -4250,35 +4225,35 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[1]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":323
+        /* "MMTK_BSpline_grid.pyx":322
  *               force_constants[atom_index][2][atom_index][2] +=  self.strength*scaling_factor[atom_index]*dvdzdz/spacing[2]/spacing[2]
  *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
  *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __pyx_t_12 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __pyx_t_28 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdxdz);
         if (unlikely((__pyx_v_spacing[0]) == 0)) {
@@ -4289,7 +4264,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __pyx_t_27 = (__pyx_t_28 / (__pyx_v_spacing[0]));
         if (unlikely((__pyx_v_spacing[2]) == 0)) {
@@ -4300,35 +4275,35 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_27 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_9 = PyNumber_InPlaceAdd(__pyx_t_14, __pyx_t_17); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_9, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 322; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":324
+        /* "MMTK_BSpline_grid.pyx":323
  *               force_constants[atom_index][1][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdy/spacing[0]/spacing[1]
  *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
  *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
  *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __pyx_t_12 = 1;
-        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_8, __pyx_t_12, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_9);
         __pyx_t_27 = ((__pyx_v_self->strength * (__pyx_v_scaling_factor[__pyx_v_atom_index])) * __pyx_v_dvdydz);
         if (unlikely((__pyx_v_spacing[1]) == 0)) {
@@ -4339,7 +4314,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         __pyx_t_28 = (__pyx_t_27 / (__pyx_v_spacing[1]));
         if (unlikely((__pyx_v_spacing[2]) == 0)) {
@@ -4350,112 +4325,112 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_17 = PyFloat_FromDouble((__pyx_t_28 / (__pyx_v_spacing[2]))); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_17);
-        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_14 = PyNumber_InPlaceAdd(__pyx_t_9, __pyx_t_17); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, __pyx_t_12, __pyx_t_14, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 323; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":325
+        /* "MMTK_BSpline_grid.pyx":324
  *               force_constants[atom_index][2][atom_index][0] +=  self.strength*scaling_factor[atom_index]*dvdxdz/spacing[0]/spacing[2]
  *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]
  *               force_constants[atom_index][1][atom_index][2] = force_constants[atom_index][2][atom_index][1]
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_17);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 1, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 1, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":326
+        /* "MMTK_BSpline_grid.pyx":325
  *               force_constants[atom_index][2][atom_index][1] +=  self.strength*scaling_factor[atom_index]*dvdydz/spacing[1]/spacing[2]
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
  *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]             # <<<<<<<<<<<<<<
  *               force_constants[atom_index][1][atom_index][2] = force_constants[atom_index][2][atom_index][1]
  * 
  */
-        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
-        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_17);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_14, 2, __pyx_t_8, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_14, 2, __pyx_t_8, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 325; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-        /* "MMTK_BSpline_grid.pyx":327
+        /* "MMTK_BSpline_grid.pyx":326
  *               force_constants[atom_index][0][atom_index][1] = force_constants[atom_index][1][atom_index][0]
  *               force_constants[atom_index][0][atom_index][2] = force_constants[atom_index][2][atom_index][0]
  *               force_constants[atom_index][1][atom_index][2] = force_constants[atom_index][2][atom_index][1]             # <<<<<<<<<<<<<<
  * 
  *               #*****************************************
  */
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_14, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_14 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_14 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_14);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(((PyObject *)__pyx_v_force_constants), __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_17 = __Pyx_GetItemInt(__pyx_t_8, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_17 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_17);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_8 = __Pyx_GetItemInt(__pyx_t_17, __pyx_v_atom_index, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_8 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 2, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 327; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        if (unlikely(__Pyx_SetItemInt(__pyx_t_8, 2, __pyx_t_14, long, 1, __Pyx_PyInt_From_long, 0, 0, 1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         goto __pyx_L23;
       }
       __pyx_L23:;
 
-      /* "MMTK_BSpline_grid.pyx":330
+      /* "MMTK_BSpline_grid.pyx":329
  * 
  *               #*****************************************
  *             if energy.gradients != NULL:             # <<<<<<<<<<<<<<
@@ -4465,43 +4440,43 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
       __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
       if (__pyx_t_1) {
 
-        /* "MMTK_BSpline_grid.pyx":332
+        /* "MMTK_BSpline_grid.pyx":331
  *             if energy.gradients != NULL:
  *               # x coordinate
  *               dvdx = self.derivateOfIntp_X(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # y self.coordinate
  *               dvdy = self.derivateOfIntp_Y(vertex,fx,fy,fz)
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 332; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 332; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 332; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 331; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 331; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 331; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdx = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_X(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_BSpline_grid.pyx":334
+        /* "MMTK_BSpline_grid.pyx":333
  *               dvdx = self.derivateOfIntp_X(vertex,fx,fy,fz)
  *               # y self.coordinate
  *               dvdy = self.derivateOfIntp_Y(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  *               # z coordinate
  *               dvdz = self.derivateOfIntp_Z(vertex,fx,fy,fz)
  */
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 334; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 334; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 334; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 333; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 333; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 333; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdy = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Y(__pyx_v_self, __pyx_v_vertex, __pyx_t_26, __pyx_t_27, __pyx_t_28);
 
-        /* "MMTK_BSpline_grid.pyx":336
+        /* "MMTK_BSpline_grid.pyx":335
  *               dvdy = self.derivateOfIntp_Y(vertex,fx,fy,fz)
  *               # z coordinate
  *               dvdz = self.derivateOfIntp_Z(vertex,fx,fy,fz)             # <<<<<<<<<<<<<<
  * 
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
  */
-        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 336; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 336; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 336; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_28 = __pyx_PyFloat_AsDouble(__pyx_v_fx); if (unlikely((__pyx_t_28 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27 = __pyx_PyFloat_AsDouble(__pyx_v_fy); if (unlikely((__pyx_t_27 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_PyFloat_AsDouble(__pyx_v_fz); if (unlikely((__pyx_t_26 == (npy_double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 335; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __pyx_v_dvdz = ((struct __pyx_vtabstruct_17MMTK_BSpline_grid_BSplineGridTerm *)__pyx_v_self->__pyx_vtab)->derivateOfIntp_Z(__pyx_v_self, __pyx_v_vertex, __pyx_t_28, __pyx_t_27, __pyx_t_26);
 
-        /* "MMTK_BSpline_grid.pyx":338
+        /* "MMTK_BSpline_grid.pyx":337
  *               dvdz = self.derivateOfIntp_Z(vertex,fx,fy,fz)
  * 
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]             # <<<<<<<<<<<<<<
@@ -4519,11 +4494,11 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 338; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 337; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         ((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) = (((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) + (__pyx_t_26 / (__pyx_v_spacing[0])));
 
-        /* "MMTK_BSpline_grid.pyx":339
+        /* "MMTK_BSpline_grid.pyx":338
  * 
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
  *               gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dvdy/spacing[1]             # <<<<<<<<<<<<<<
@@ -4541,11 +4516,11 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 339; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 338; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         ((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) = (((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) + (__pyx_t_26 / (__pyx_v_spacing[1])));
 
-        /* "MMTK_BSpline_grid.pyx":340
+        /* "MMTK_BSpline_grid.pyx":339
  *               gradients[atom_index][0] += self.strength*scaling_factor[atom_index]*dvdx/spacing[0]
  *               gradients[atom_index][1] += self.strength*scaling_factor[atom_index]*dvdy/spacing[1]
  *               gradients[atom_index][2] += self.strength*scaling_factor[atom_index]*dvdz/spacing[2]             # <<<<<<<<<<<<<<
@@ -4563,7 +4538,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           #ifdef WITH_THREAD
           PyGILState_Release(__pyx_gilstate_save);
           #endif
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 340; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 339; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         ((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) = (((__pyx_v_gradients[__pyx_t_3])[__pyx_t_29]) + (__pyx_t_26 / (__pyx_v_spacing[2])));
         goto __pyx_L24;
@@ -4573,38 +4548,38 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
     }
     /*else*/ {
 
-      /* "MMTK_BSpline_grid.pyx":342
+      /* "MMTK_BSpline_grid.pyx":341
  *               gradients[atom_index][2] += self.strength*scaling_factor[atom_index]*dvdz/spacing[2]
  *           else:
  *             for i in range(3):             # <<<<<<<<<<<<<<
- *               if (coordinates[atom_index][i]<0):
- *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.
+ *               if (coordinates[atom_index][i]<spacing[i]):
+ *                 gridEnergy += self.k*(coordinates[atom_index][i]+spacing[i])**2/2.
  */
       for (__pyx_t_3 = 0; __pyx_t_3 < 3; __pyx_t_3+=1) {
         __pyx_v_i = __pyx_t_3;
 
-        /* "MMTK_BSpline_grid.pyx":343
+        /* "MMTK_BSpline_grid.pyx":342
  *           else:
  *             for i in range(3):
- *               if (coordinates[atom_index][i]<0):             # <<<<<<<<<<<<<<
- *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.
+ *               if (coordinates[atom_index][i]<spacing[i]):             # <<<<<<<<<<<<<<
+ *                 gridEnergy += self.k*(coordinates[atom_index][i]+spacing[i])**2/2.
  *                 if energy.gradients != NULL:
  */
-        __pyx_t_1 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) < 0.0) != 0);
+        __pyx_t_1 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) < (__pyx_v_spacing[__pyx_v_i])) != 0);
         if (__pyx_t_1) {
 
-          /* "MMTK_BSpline_grid.pyx":344
+          /* "MMTK_BSpline_grid.pyx":343
  *             for i in range(3):
- *               if (coordinates[atom_index][i]<0):
- *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.             # <<<<<<<<<<<<<<
+ *               if (coordinates[atom_index][i]<spacing[i]):
+ *                 gridEnergy += self.k*(coordinates[atom_index][i]+spacing[i])**2/2.             # <<<<<<<<<<<<<<
  *                 if energy.gradients != NULL:
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]
  */
-          __pyx_v_gridEnergy = (__pyx_v_gridEnergy + ((__pyx_v_self->k * pow(((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]), 2.0)) / 2.));
+          __pyx_v_gridEnergy = (__pyx_v_gridEnergy + ((__pyx_v_self->k * pow((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) + (__pyx_v_spacing[__pyx_v_i])), 2.0)) / 2.));
 
-          /* "MMTK_BSpline_grid.pyx":345
- *               if (coordinates[atom_index][i]<0):
- *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.
+          /* "MMTK_BSpline_grid.pyx":344
+ *               if (coordinates[atom_index][i]<spacing[i]):
+ *                 gridEnergy += self.k*(coordinates[atom_index][i]+spacing[i])**2/2.
  *                 if energy.gradients != NULL:             # <<<<<<<<<<<<<<
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]
  *               elif (coordinates[atom_index][i]>hCorner[i]):
@@ -4612,8 +4587,8 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
           if (__pyx_t_1) {
 
-            /* "MMTK_BSpline_grid.pyx":346
- *                 gridEnergy += self.k*coordinates[atom_index][i]**2/2.
+            /* "MMTK_BSpline_grid.pyx":345
+ *                 gridEnergy += self.k*(coordinates[atom_index][i]+spacing[i])**2/2.
  *                 if energy.gradients != NULL:
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]             # <<<<<<<<<<<<<<
  *               elif (coordinates[atom_index][i]>hCorner[i]):
@@ -4628,7 +4603,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           goto __pyx_L27;
         }
 
-        /* "MMTK_BSpline_grid.pyx":347
+        /* "MMTK_BSpline_grid.pyx":346
  *                 if energy.gradients != NULL:
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]
  *               elif (coordinates[atom_index][i]>hCorner[i]):             # <<<<<<<<<<<<<<
@@ -4638,7 +4613,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
         __pyx_t_1 = ((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) > (__pyx_v_hCorner[__pyx_v_i])) != 0);
         if (__pyx_t_1) {
 
-          /* "MMTK_BSpline_grid.pyx":348
+          /* "MMTK_BSpline_grid.pyx":347
  *                   gradients[atom_index][i] += self.k*coordinates[atom_index][i]
  *               elif (coordinates[atom_index][i]>hCorner[i]):
  *                 gridEnergy += self.k*(coordinates[atom_index][i]-hCorner[i])**2/2.             # <<<<<<<<<<<<<<
@@ -4647,7 +4622,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
  */
           __pyx_v_gridEnergy = (__pyx_v_gridEnergy + ((__pyx_v_self->k * pow((((__pyx_v_coordinates[__pyx_v_atom_index])[__pyx_v_i]) - (__pyx_v_hCorner[__pyx_v_i])), 2.0)) / 2.));
 
-          /* "MMTK_BSpline_grid.pyx":349
+          /* "MMTK_BSpline_grid.pyx":348
  *               elif (coordinates[atom_index][i]>hCorner[i]):
  *                 gridEnergy += self.k*(coordinates[atom_index][i]-hCorner[i])**2/2.
  *                 if energy.gradients != NULL:             # <<<<<<<<<<<<<<
@@ -4657,7 +4632,7 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
           __pyx_t_1 = ((__pyx_v_energy->gradients != NULL) != 0);
           if (__pyx_t_1) {
 
-            /* "MMTK_BSpline_grid.pyx":350
+            /* "MMTK_BSpline_grid.pyx":349
  *                 gridEnergy += self.k*(coordinates[atom_index][i]-hCorner[i])**2/2.
  *                 if energy.gradients != NULL:
  *                   gradients[atom_index][i] += self.k*(coordinates[atom_index][i]-hCorner[i])             # <<<<<<<<<<<<<<
@@ -4677,24 +4652,24 @@ static void __pyx_f_17MMTK_BSpline_grid_15BSplineGridTerm_evaluate(struct __pyx_
     }
     __pyx_L10:;
 
-    /* "MMTK_BSpline_grid.pyx":280
+    /* "MMTK_BSpline_grid.pyx":279
  * 
  *         indicies = [ai for ai in range(self.natoms) if self.scaling_factor[ai]!=0]
  *         for atom_index in indicies:             # <<<<<<<<<<<<<<
  *           # Check to make sure coordinate is in grid
- *           if (coordinates[atom_index][0]>0 and
+ *           if (coordinates[atom_index][0]>spacing[0] and
  */
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "MMTK_BSpline_grid.pyx":352
+  /* "MMTK_BSpline_grid.pyx":351
  *                   gradients[atom_index][i] += self.k*(coordinates[atom_index][i]-hCorner[i])
  * 
  *         energy.energy_terms[self.index] = gridEnergy*self.strength             # <<<<<<<<<<<<<<
  */
   (__pyx_v_energy->energy_terms[__pyx_v_self->__pyx_base.index]) = (__pyx_v_gridEnergy * __pyx_v_self->strength);
 
-  /* "MMTK_BSpline_grid.pyx":234
+  /* "MMTK_BSpline_grid.pyx":233
  *     # do_force_constants are flags that indicate if gradients and/or
  *     # force constants are requested.
  *     cdef void evaluate(self, PyFFEvaluatorObject *eval,             # <<<<<<<<<<<<<<
@@ -6911,11 +6886,9 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_array, __pyx_k_array, sizeof(__pyx_k_array), 0, 0, 1, 1},
   {&__pyx_n_s_counts, __pyx_k_counts, sizeof(__pyx_k_counts), 0, 0, 1, 1},
   {&__pyx_n_s_dtype, __pyx_k_dtype, sizeof(__pyx_k_dtype), 0, 0, 1, 1},
-  {&__pyx_n_s_end, __pyx_k_end, sizeof(__pyx_k_end), 0, 0, 1, 1},
   {&__pyx_n_s_ex, __pyx_k_ex, sizeof(__pyx_k_ex), 0, 0, 1, 1},
   {&__pyx_n_s_ey, __pyx_k_ey, sizeof(__pyx_k_ey), 0, 0, 1, 1},
   {&__pyx_n_s_ez, __pyx_k_ez, sizeof(__pyx_k_ez), 0, 0, 1, 1},
-  {&__pyx_n_s_file, __pyx_k_file, sizeof(__pyx_k_file), 0, 0, 1, 1},
   {&__pyx_n_s_grid_name, __pyx_k_grid_name, sizeof(__pyx_k_grid_name), 0, 0, 1, 1},
   {&__pyx_n_s_gzip, __pyx_k_gzip, sizeof(__pyx_k_gzip), 0, 0, 1, 1},
   {&__pyx_n_s_import, __pyx_k_import, sizeof(__pyx_k_import), 0, 0, 1, 1},
@@ -6925,21 +6898,19 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_u_ndarray_is_not_Fortran_contiguou, __pyx_k_ndarray_is_not_Fortran_contiguou, sizeof(__pyx_k_ndarray_is_not_Fortran_contiguou), 0, 1, 0, 0},
   {&__pyx_n_s_np, __pyx_k_np, sizeof(__pyx_k_np), 0, 0, 1, 1},
   {&__pyx_n_s_numpy, __pyx_k_numpy, sizeof(__pyx_k_numpy), 0, 0, 1, 1},
-  {&__pyx_n_s_print, __pyx_k_print, sizeof(__pyx_k_print), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_vtable, __pyx_k_pyx_vtable, sizeof(__pyx_k_pyx_vtable), 0, 0, 1, 1},
   {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
   {&__pyx_n_s_scaling_factor, __pyx_k_scaling_factor, sizeof(__pyx_k_scaling_factor), 0, 0, 1, 1},
   {&__pyx_n_s_spacing, __pyx_k_spacing, sizeof(__pyx_k_spacing), 0, 0, 1, 1},
   {&__pyx_n_s_strength, __pyx_k_strength, sizeof(__pyx_k_strength), 0, 0, 1, 1},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
-  {&__pyx_kp_s_test_start, __pyx_k_test_start, sizeof(__pyx_k_test_start), 0, 0, 1, 0},
   {&__pyx_n_s_universe, __pyx_k_universe, sizeof(__pyx_k_universe), 0, 0, 1, 1},
   {&__pyx_kp_u_unknown_dtype_code_in_numpy_pxd, __pyx_k_unknown_dtype_code_in_numpy_pxd, sizeof(__pyx_k_unknown_dtype_code_in_numpy_pxd), 0, 1, 0, 0},
   {&__pyx_n_s_vals, __pyx_k_vals, sizeof(__pyx_k_vals), 0, 0, 1, 1},
   {0, 0, 0, 0, 0, 0, 0}
 };
 static int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 279; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 278; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 799; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   return 0;
@@ -6951,36 +6922,36 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "MMTK_BSpline_grid.pyx":297
+  /* "MMTK_BSpline_grid.pyx":296
  * 
  * 
  *             for x in range(0,4):             # <<<<<<<<<<<<<<
  *                 for y in range(0,4):
  *                     for z in range(0,4):
  */
-  __pyx_tuple_ = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple_)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple_ = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple_)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 296; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple_);
   __Pyx_GIVEREF(__pyx_tuple_);
 
-  /* "MMTK_BSpline_grid.pyx":298
+  /* "MMTK_BSpline_grid.pyx":297
  * 
  *             for x in range(0,4):
  *                 for y in range(0,4):             # <<<<<<<<<<<<<<
  *                     for z in range(0,4):
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  */
-  __pyx_tuple__2 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__2 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "MMTK_BSpline_grid.pyx":299
+  /* "MMTK_BSpline_grid.pyx":298
  *             for x in range(0,4):
  *                 for y in range(0,4):
  *                     for z in range(0,4):             # <<<<<<<<<<<<<<
  *                         vertex[x][y][z]=vals[i+x*self.nyz+y*counts[2]+z]
  * 
  */
-  __pyx_tuple__3 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 299; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__3 = PyTuple_Pack(2, __pyx_int_0, __pyx_int_4); if (unlikely(!__pyx_tuple__3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 298; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__3);
   __Pyx_GIVEREF(__pyx_tuple__3);
 
@@ -7059,7 +7030,7 @@ static int __Pyx_InitCachedConstants(void) {
 static int __Pyx_InitGlobals(void) {
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __pyx_int_0 = PyInt_FromLong(0); if (unlikely(!__pyx_int_0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_int_1 = PyInt_FromLong(1); if (unlikely(!__pyx_int_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_int_2 = PyInt_FromLong(2); if (unlikely(!__pyx_int_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_4 = PyInt_FromLong(4); if (unlikely(!__pyx_int_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_15 = PyInt_FromLong(15); if (unlikely(!__pyx_int_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   return 0;
@@ -8765,147 +8736,6 @@ bad:
     Py_XDECREF(empty_dict);
     return module;
 }
-
-#if !CYTHON_COMPILING_IN_PYPY && PY_MAJOR_VERSION < 3
-static PyObject *__Pyx_GetStdout(void) {
-    PyObject *f = PySys_GetObject((char *)"stdout");
-    if (!f) {
-        PyErr_SetString(PyExc_RuntimeError, "lost sys.stdout");
-    }
-    return f;
-}
-static int __Pyx_Print(PyObject* f, PyObject *arg_tuple, int newline) {
-    int i;
-    if (!f) {
-        if (!(f = __Pyx_GetStdout()))
-            return -1;
-    }
-    Py_INCREF(f);
-    for (i=0; i < PyTuple_GET_SIZE(arg_tuple); i++) {
-        PyObject* v;
-        if (PyFile_SoftSpace(f, 1)) {
-            if (PyFile_WriteString(" ", f) < 0)
-                goto error;
-        }
-        v = PyTuple_GET_ITEM(arg_tuple, i);
-        if (PyFile_WriteObject(v, f, Py_PRINT_RAW) < 0)
-            goto error;
-        if (PyString_Check(v)) {
-            char *s = PyString_AsString(v);
-            Py_ssize_t len = PyString_Size(v);
-            if (len > 0) {
-                switch (s[len-1]) {
-                    case ' ': break;
-                    case '\f': case '\r': case '\n': case '\t': case '\v':
-                        PyFile_SoftSpace(f, 0);
-                        break;
-                    default:  break;
-                }
-            }
-        }
-    }
-    if (newline) {
-        if (PyFile_WriteString("\n", f) < 0)
-            goto error;
-        PyFile_SoftSpace(f, 0);
-    }
-    Py_DECREF(f);
-    return 0;
-error:
-    Py_DECREF(f);
-    return -1;
-}
-#else
-static int __Pyx_Print(PyObject* stream, PyObject *arg_tuple, int newline) {
-    PyObject* kwargs = 0;
-    PyObject* result = 0;
-    PyObject* end_string;
-    if (unlikely(!__pyx_print)) {
-        __pyx_print = PyObject_GetAttr(__pyx_b, __pyx_n_s_print);
-        if (!__pyx_print)
-            return -1;
-    }
-    if (stream) {
-        kwargs = PyDict_New();
-        if (unlikely(!kwargs))
-            return -1;
-        if (unlikely(PyDict_SetItem(kwargs, __pyx_n_s_file, stream) < 0))
-            goto bad;
-        if (!newline) {
-            end_string = PyUnicode_FromStringAndSize(" ", 1);
-            if (unlikely(!end_string))
-                goto bad;
-            if (PyDict_SetItem(kwargs, __pyx_n_s_end, end_string) < 0) {
-                Py_DECREF(end_string);
-                goto bad;
-            }
-            Py_DECREF(end_string);
-        }
-    } else if (!newline) {
-        if (unlikely(!__pyx_print_kwargs)) {
-            __pyx_print_kwargs = PyDict_New();
-            if (unlikely(!__pyx_print_kwargs))
-                return -1;
-            end_string = PyUnicode_FromStringAndSize(" ", 1);
-            if (unlikely(!end_string))
-                return -1;
-            if (PyDict_SetItem(__pyx_print_kwargs, __pyx_n_s_end, end_string) < 0) {
-                Py_DECREF(end_string);
-                return -1;
-            }
-            Py_DECREF(end_string);
-        }
-        kwargs = __pyx_print_kwargs;
-    }
-    result = PyObject_Call(__pyx_print, arg_tuple, kwargs);
-    if (unlikely(kwargs) && (kwargs != __pyx_print_kwargs))
-        Py_DECREF(kwargs);
-    if (!result)
-        return -1;
-    Py_DECREF(result);
-    return 0;
-bad:
-    if (kwargs != __pyx_print_kwargs)
-        Py_XDECREF(kwargs);
-    return -1;
-}
-#endif
-
-#if !CYTHON_COMPILING_IN_PYPY && PY_MAJOR_VERSION < 3
-static int __Pyx_PrintOne(PyObject* f, PyObject *o) {
-    if (!f) {
-        if (!(f = __Pyx_GetStdout()))
-            return -1;
-    }
-    Py_INCREF(f);
-    if (PyFile_SoftSpace(f, 0)) {
-        if (PyFile_WriteString(" ", f) < 0)
-            goto error;
-    }
-    if (PyFile_WriteObject(o, f, Py_PRINT_RAW) < 0)
-        goto error;
-    if (PyFile_WriteString("\n", f) < 0)
-        goto error;
-    Py_DECREF(f);
-    return 0;
-error:
-    Py_DECREF(f);
-    return -1;
-    /* the line below is just to avoid C compiler
-     * warnings about unused functions */
-    return __Pyx_Print(f, NULL, 0);
-}
-#else
-static int __Pyx_PrintOne(PyObject* stream, PyObject *o) {
-    int res;
-    PyObject* arg_tuple = PyTuple_Pack(1, o);
-    if (unlikely(!arg_tuple))
-        return -1;
-    res = __Pyx_Print(stream, arg_tuple, 1);
-    Py_DECREF(arg_tuple);
-    return res;
-}
-#endif
 
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_long(long value) {
     const long neg_one = (long) -1, const_zero = 0;

@@ -316,7 +316,9 @@ high_opt.append('-g')
 ext_module_name_and_path = [\
   ('MMTK_sphere', 'AlGDock/ForceFields/Sphere/MMTK_sphere.pyx'), \
   ('MMTK_trilinear_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_grid.pyx'), \
-  ('MMTK_trilinear_isqrt_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_isqrt_grid.pyx'), \
+  ('MMTK_trilinear_one_fourth_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid.pyx'), \
+  ('MMTK_BSpline_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'), \
+  ('MMTK_BSpline_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx'), \
   ('NUTS', 'AlGDock/Integrators/NUTS/NUTS.pyx'), \
   ('NUTS_no_stopping', 'AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx'), \
   ('SmartDarting', 'AlGDock/Integrators/SmartDarting/SmartDarting.pyx'), \
@@ -329,9 +331,7 @@ if False:
   ext_module_name_and_path.extend(\
     [('MMTK_cylinder','AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx'), \
      ('MMTK_trilinear_thresh_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx'), \
-     ('MMTK_trilinear_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx'), \
-     ('MMTK_BSpline_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx'), \
-     ('MMTK_BSpline_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx')])
+     ('MMTK_trilinear_transform_grid', 'AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx')])
 
 # if False:
 #  These extension modules need to be debugged.

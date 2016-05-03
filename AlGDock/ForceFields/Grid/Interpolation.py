@@ -133,9 +133,9 @@ class InterpolationForceField(ForceField):
             self.grid_data['vals'], self.params['strength'], scaling_factor, \
             self.params['name'], self.params['energy_thresh'])]
       elif self.params['inv_power'] is not None:
-        if self.params['inv_power']==-2:
-          from MMTK_trilinear_isqrt_grid import TrilinearISqrtGridTerm
-          return [TrilinearISqrtGridTerm(universe, \
+        if self.params['inv_power']==4:
+          from MMTK_trilinear_one_fourth_grid import TrilinearOneFourthGridTerm
+          return [TrilinearOneFourthGridTerm(universe, \
             self.grid_data['spacing'], self.grid_data['counts'], \
             self.grid_data['vals'], self.params['strength'], scaling_factor, \
             self.params['name'])]

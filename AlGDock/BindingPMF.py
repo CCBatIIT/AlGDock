@@ -1273,7 +1273,7 @@ last modified {1}
             self._tL_tensor(E,lambda_o)))
     
       if not undock:
-        (cool0_confs, E) = self.random_dock()
+        (confs, E) = self.random_dock()
         self.tee("  random docking complete in " + \
                  HMStime(time.time()-dock_start_time))
         if randomOnly:
@@ -1326,7 +1326,7 @@ last modified {1}
         # Use the lowest energy configuration in the first docking state for replica exchange
         ind = np.argmin(u_n)
         (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
-        repX_conf = np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]),\
+        repX_conf = np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]),\
                            self._random_trans[i_trans].array)
         self.confs['dock']['replicas'] = [repX_conf]
         self.confs['dock']['samples'] = [[repX_conf]]
@@ -1334,7 +1334,7 @@ last modified {1}
         seeds = []
         for ind in seedIndicies:
           (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
-          seeds.append(np.add(np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]), self._random_trans[i_trans].array))
+          seeds.append(np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]), self._random_trans[i_trans].array))
         confs = None
         E = {}
       else: # Seeds from last state
@@ -1827,40 +1827,48 @@ last modified {1}
     """
     Calculates the energy for poses from self._FNs['score']
     """
-    lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
-    self._set_universe_evaluator(lambda_o)
-
-    # Load the poses
-    (confs, Es) = self._get_confs_to_rescore(site=False, minimize=minimize, \
-      sort=False)
-
-    # Calculate MM energies
+    # Determine the name of the file
     prefix = 'xtal' if self._FNs['score']=='default' else \
       os.path.basename(self._FNs['score']).split('.')[0]
     if minimize:
       prefix = 'min_' + prefix
-    Es = self._energyTerms(confs, Es)
+    energyFN = join(self.dir['dock'],prefix+'.pkl.gz')
+
+    # Load the poses
+    if os.path.isfile(energyFN):
+      (confs, Es) = self._load_pkl_gz(energyFN)
+    else:
+      (confs, Es) = self._get_confs_to_rescore(site=False, \
+        minimize=minimize, sort=False)
+
+    # Calculate MM energies
+    if not 'MM' in Es.keys():
+      lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
+      self._set_universe_evaluator(lambda_o)
+      Es = self._energyTerms(confs, Es)
 
     # Calculate RMSD
-    if self.params['dock']['rmsd'] is not False:
+    if (self.params['dock']['rmsd'] is not False) and (not 'rmsd' in Es.keys()):
       Es['rmsd'] = np.array([np.sqrt(((confs[c][self.molecule.heavy_atoms,:] - \
         self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
           for c in range(len(confs))])
 
     # Grid interpolation energies
+    inv_powers = np.array(range(-12,0) + range(1,13), dtype=float)
+    n_powers = len(inv_powers)
     from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
     for grid_type in ['LJa','LJr']:
       for interpolation_type in ['Trilinear','BSpline']: # ,'Tricubic']:
         key = '%s_%sTransform'%(grid_type,interpolation_type)
-        Es[key] = np.zeros((12,len(confs)),dtype=np.float)
-        for p in range(12):
+        Es[key] = np.zeros((n_powers,len(confs)),dtype=np.float)
+        for p in range(n_powers):
           print interpolation_type + ' interpolation of the ' + \
-            grid_type + ' grid with an inverse power of %d'%(p+1)
+            grid_type + ' grid with a power of 1/%d'%(inv_powers[p])
           FF = InterpolationForceField(self._FNs['grids'][grid_type], \
-            name='%f'%(p+1),
+            name='%f'%(inv_powers[p]),
             interpolation_type=interpolation_type, strength=1.0,
             scaling_property='scaling_factor_'+grid_type, \
-            inv_power=-float(p+1))
+            inv_power=inv_powers[p])
           self.universe.setForceField(FF)
           for c in range(len(confs)):
             self.universe.setConfiguration(Configuration(self.universe,confs[c]))
@@ -1870,38 +1878,39 @@ last modified {1}
     self._load_programs(self.params['dock']['phases'])
     toClear = []
     for phase in self.params['dock']['phases']:
-      Es['R'+phase] = self.params['dock']['receptor_'+phase]
-      for moiety in ['L','RL']:
-        outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
-        if phase.startswith('NAMD'):
-          traj_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
-          self._write_traj(traj_FN, confs, moiety)
-        elif phase.startswith('sander'):
-          traj_FN = join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety))
-          self._write_traj(traj_FN, confs, moiety)
-        elif phase.startswith('gbnsr6'):
-          traj_FN = join(self.dir['dock'], \
-            '%s.%s%s'%(prefix,moiety,phase),'in.crd')
-        elif phase.startswith('OpenMM'):
-          traj_FN = None
-        elif phase in ['APBS_PBSA']:
-          traj_FN = join(self.dir['dock'],'%s.%s.pqr'%(prefix,moiety))
-        else:
-          raise Exception('Unknown phase!')
-        if not traj_FN in toClear:
-          toClear.append(traj_FN)
-        for program in ['NAMD','sander','gbnsr6','OpenMM','APBS']:
-          if phase.startswith(program):
-            Es[moiety+phase] = getattr(self,'_%s_Energy'%program)(confs, \
-              moiety, phase, traj_FN, outputname, debug=DEBUG)
-            break
+      if not 'R'+phase in Es.keys():
+        Es['R'+phase] = self.params['dock']['receptor_'+phase]
+        for moiety in ['L','RL']:
+          outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
+          if phase.startswith('NAMD'):
+            traj_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
+            self._write_traj(traj_FN, confs, moiety)
+          elif phase.startswith('sander'):
+            traj_FN = join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety))
+            self._write_traj(traj_FN, confs, moiety)
+          elif phase.startswith('gbnsr6'):
+            traj_FN = join(self.dir['dock'], \
+              '%s.%s%s'%(prefix,moiety,phase),'in.crd')
+          elif phase.startswith('OpenMM'):
+            traj_FN = None
+          elif phase in ['APBS_PBSA']:
+            traj_FN = join(self.dir['dock'],'%s.%s.pqr'%(prefix,moiety))
+          else:
+            raise Exception('Unknown phase!')
+          if not traj_FN in toClear:
+            toClear.append(traj_FN)
+          for program in ['NAMD','sander','gbnsr6','OpenMM','APBS']:
+            if phase.startswith(program):
+              Es[moiety+phase] = getattr(self,'_%s_Energy'%program)(confs, \
+                moiety, phase, traj_FN, outputname, debug=DEBUG)
+              break
     for FN in toClear:
       if os.path.isfile(FN):
         os.remove(FN)
     self._combine_MM_and_solvent(Es)
 
     # Store the data
-    self._write_pkl_gz(join(self.dir['dock'],prefix+'.pkl.gz'),(confs,Es))
+    self._write_pkl_gz(energyFN,(confs,Es))
     return (confs,Es)
 
   ######################
@@ -2035,7 +2044,7 @@ last modified {1}
           self._forceFields[scalable] = InterpolationForceField(grid_FN, \
             name=scalable, interpolation_type='Trilinear', \
             strength=lambda_n[scalable], scaling_property=grid_scaling_factor,
-            inv_power=-2 if scalable=='LJr' else None, \
+            inv_power=4 if scalable=='LJr' else None, \
             grid_thresh=grid_thresh)
           self.tee('  %s grid loaded from %s in %s'%(scalable, grid_FN, \
             HMStime(time.time()-loading_start_time)))
@@ -2654,6 +2663,7 @@ last modified {1}
     # based on the seeds
     if self.confs['dock']['seeds'] is not None:
       confs = confs + self.confs['dock']['seeds']
+      Es = {}
       count['initial_dock'] = len(self.confs['dock']['seeds'])
 
     if len(confs)==0:
@@ -2722,7 +2732,7 @@ last modified {1}
         self.universe.setConfiguration(Configuration(self.universe, conf))
         energies.append(self.universe.energy())
 
-    if sort:
+    if sort and len(confs)>0:
       # Sort configurations by DECREASING energy
       energies, confs = (list(l) for l in zip(*sorted(zip(energies, confs), \
         key=lambda p:p[0], reverse=True)))

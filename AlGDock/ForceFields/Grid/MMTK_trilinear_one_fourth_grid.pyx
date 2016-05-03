@@ -33,7 +33,7 @@ ctypedef np.int_t int_t
 # - The function "evaluate" must have exactly the parameter
 #   list given in this example.
 #
-cdef class TrilinearISqrtGridTerm(EnergyTerm):
+cdef class TrilinearOneFourthGridTerm(EnergyTerm):
     cdef char* grid_name
     cdef np.ndarray scaling_factor, vals, counts, spacing, hCorner
     cdef int npts, nyz, natoms
@@ -47,7 +47,7 @@ cdef class TrilinearISqrtGridTerm(EnergyTerm):
 
         EnergyTerm.__init__(self, universe,
                             grid_name, (grid_name,))
-        self.eval_func = <void *>TrilinearISqrtGridTerm.evaluate
+        self.eval_func = <void *>TrilinearOneFourthGridTerm.evaluate
 
         self.grid_name = grid_name
         self.strength = strength
@@ -63,7 +63,7 @@ cdef class TrilinearISqrtGridTerm(EnergyTerm):
                         self.spacing[2]*(self.counts[2]-1)), dtype=float)
         # To keep atoms within the grid
         self.k = 10000. # kJ/mol nm**2
-
+        
     # This method is called for every single energy evaluation, so make
     # it as efficient as possible. The parameters do_gradients and
     # do_force_constants are flags that indicate if gradients and/or
@@ -153,7 +153,7 @@ cdef class TrilinearISqrtGridTerm(EnergyTerm):
             interpolated = (ax*vm + fx*vp)
             if interpolated==0.0:
               continue
-            gridEnergy += scaling_factor[atom_index]/(interpolated*interpolated)
+            gridEnergy += scaling_factor[atom_index]*interpolated*interpolated*interpolated*interpolated
 
             if energy.gradients != NULL:
               # x coordinate
@@ -162,7 +162,7 @@ cdef class TrilinearISqrtGridTerm(EnergyTerm):
               dvdy = (-vmm + vmp)*ax + (-vpm + vpp)*fx
               # z coordinate
               dvdz = ((-vmmm + vmmp)*ay + (-vmpm + vmpp)*fy)*ax + ((-vpmm + vpmp)*ay + (-vppm + vppp)*fy)*fx
-              prefactor = -2.*self.strength*scaling_factor[atom_index]/(interpolated*interpolated*interpolated)
+              prefactor = self.strength*scaling_factor[atom_index]*4*interpolated*interpolated*interpolated
               gradients[atom_index][0] += prefactor*dvdx/spacing[0]
               gradients[atom_index][1] += prefactor*dvdy/spacing[1]
               gradients[atom_index][2] += prefactor*dvdz/spacing[2]
