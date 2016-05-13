@@ -64,11 +64,11 @@ cdef class TricubicGridTerm(EnergyTerm):
 	  
 	  fptype dx = fmod(x/_spacing, _n1), dy = fmod(y/_spacing, _n2), dz = fmod(z/_spacing, _n3); //determine the relative position in the box enclosed by nearest data points
 	  
-	  if(dx < 0) dx += _n1; //periodicity is built in
+	  if(dx < 0) dx += _n1; #periodicity is built in
 	  if(dy < 0) dy += _n2;
 	  if(dz < 0) dz += _n3;
 	  
-	  int xi = (int)floor(dx); //calculate lower-bound grid indices
+	  int xi = (int)floor(dx); #calculate lower-bound grid indices
 	  int yi = (int)floor(dy);
 	  int zi = (int)floor(dz);
 	  
