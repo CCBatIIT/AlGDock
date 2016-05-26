@@ -64,7 +64,7 @@ arguments = {
     'help':'Number of replica exchange cycles for cooling'},
   'dock_repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking'},
-  'run_type':{'choices':['pose_energies','minimized_pose_energies',
+  'run_type':{'choices':['configuration_energies','minimized_configuration_energies',
               'store_params', 'initial_cool', 'cool', \
               'dock','timed','postprocess',\
               'redo_postprocess','free_energies','redo_free_energies', 'all', \
@@ -140,7 +140,10 @@ arguments = {
   'site_max_R':{'type':float,
     'help':'Maximum radial position for a spherical or cylindrical binding site'},
   'site_density':{'type':float,
-    'help':'Density of center-of-mass points in the first docking state'}}
+    'help':'Density of center-of-mass points in the first docking state'},
+  # Binding pose
+  'pose':{'type':int, 'default':-1,
+    'help':'Confine the ligand to a specific pose from the "score" file. If the argument is negative there is no pose restriction. Otherwise the argument is the index of the pose. (Not yet implemented)'}}
 
 import copy
 for process in ['cool','dock']:

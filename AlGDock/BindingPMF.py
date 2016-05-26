@@ -635,8 +635,10 @@ last modified {1}
 
   def _run(self, run_type):
     self.run_type = run_type
-    if run_type=='pose_energies' or run_type=='minimized_pose_energies':
-      self.pose_energies(minimize=(run_type=='minimized_pose_energies'))
+    if run_type=='configuration_energies' or \
+       run_type=='minimized_configuration_energies':
+      self.configuration_energies(minimize=(\
+        run_type=='minimized_configuration_energies'))
     elif run_type=='store_params':
       self._save('cool', keys=['progress'])
       self._save('dock', keys=['progress'])
@@ -1823,9 +1825,9 @@ last modified {1}
       lowest_e_ind[phase] = linear_index_to_pair(np.argmin(un))
     return (pose_ind, lowest_e_ind)
 
-  def pose_energies(self, minimize=False):
+  def configuration_energies(self, minimize=False):
     """
-    Calculates the energy for poses from self._FNs['score']
+    Calculates the energy for configurations from self._FNs['score']
     """
     # Determine the name of the file
     prefix = 'xtal' if self._FNs['score']=='default' else \

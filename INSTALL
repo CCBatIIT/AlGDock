@@ -11,6 +11,11 @@ or
 Anaconda Scientific Python
 https://store.continuum.io/cshop/anaconda/
 
+Unfortunately, due to the issue with a dependency, Scientific Python, 
+AlGDock requires that:
+numpy is prior to 1.9, which requires that 
+SciPy is prior to 0.15.1-2
+
 After installing a scientific python distribution, the following extensions are also required:
 
 Scientific Python (tested with version 2.9.2)

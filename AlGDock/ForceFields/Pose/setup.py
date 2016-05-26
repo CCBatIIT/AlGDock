@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# Run
+#
+# python setup.py build
+#
+# to build this extension in place.
+# To use it, the extension should be copied to the appropriate AlGDock
+# subdirectory for extensions.
+
 package_name = "MMTK"
 
 from distutils.core import setup, Command, Extension
@@ -321,7 +329,7 @@ simulations.
        headers = headers,
        ext_package = 'MMTK.'+sys.platform,
        ext_modules = [Extension('MMTK_pose',
-                                [poseff_src + 'Src/MMTK_pose.c', poseff_src + 'Src/pose.c',
+                                [poseff_src + 'MMTK_pose.c', poseff_src + 'pose.c',
                                  mmtk_home + 'Src/bonded.c', mmtk_home + 'Src/nonbonded.c',
                                  mmtk_home + 'Src/ewald.c', mmtk_home + 'Src/sparsefc.c'],
                                 extra_compile_args = compile_args + high_opt,
