@@ -54,12 +54,12 @@ def findPaths(keys):
 def loadModules(programs):
   import os
   import numpy as np
-  if os.path.isdir('/share/apps/amber/14') and np.array([p in programs \
+  if os.path.isdir('/share/apps/amber/16') and np.array([p in programs \
       for p in ['sander','elsize','gbnsr6','ambpdb','molsurf']]).any():
-    os.environ['PATH'] = '/share/apps/amber/14/bin:' + os.environ['PATH']
-    os.environ['LD_LIBRARY_PATH'] = '/share/apps/netcdf/4.3.0/lib:/share/apps/amber/14/lib:' + os.environ['LD_LIBRARY_PATH']
-    os.environ['PYTHONPATH'] = '/share/apps/amber/14/lib/python2.6/site-packages' + os.environ['PYTHONPATH']
-    os.environ['AMBERHOME'] = '/share/apps/amber/14'
+    os.environ['PATH'] = '/share/apps/amber/16/bin:' + os.environ['PATH']
+    os.environ['LD_LIBRARY_PATH'] = '/share/apps/netcdf/4.3.0/lib:/share/apps/amber/16/lib:' + os.environ['LD_LIBRARY_PATH']
+    os.environ['PYTHONPATH'] = '/share/apps/amber/16/lib/python2.6/site-packages' + os.environ['PYTHONPATH']
+    os.environ['AMBERHOME'] = '/share/apps/amber/16'
 
 # Define search paths for external programs and files
 # Defined for
@@ -74,25 +74,25 @@ search_paths = {
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
               'namd2'],
              # For postprocessing snapshots with sander
-    'sander':['/Users/dminh/Installers/amber14/bin/sander',
-              '/share/apps/amber/14/bin/sander',
+    'sander':['/Users/dminh/Installers/amber16/bin/sander',
+              '/share/apps/amber/16/bin/sander',
               'sander'],
-    'elsize':['/Users/dminh/Installers/amber14/bin/elsize',
-              '/share/apps/amber/14/bin/elsize',
+    'elsize':['/Users/dminh/Installers/amber16/bin/elsize',
+              '/share/apps/amber/16/bin/elsize',
               'elsize'],
              # For postprocessing snapshots with gbnsr6
-    'gbnsr6':['/Users/dminh/Installers/amber14/bin/gbnsr6',
-              '/share/apps/amber/14/bin/gbnsr6',
+    'gbnsr6':['/Users/dminh/Installers/amber16/bin/gbnsr6',
+              '/share/apps/amber/16/bin/gbnsr6',
               'gbnsr6'],
              # For postprocessing snapshots with APBS
       'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
               '/share/apps/apbs/1.4/bin/apbs',
               'apbs'],
-    'ambpdb':['/Users/dminh/Installers/amber14/bin/ambpdb',
-              '/share/apps/amber/14/bin/ambpdb',
+    'ambpdb':['/Users/dminh/Installers/amber16/bin/ambpdb',
+              '/share/apps/amber/16/bin/ambpdb',
               'ambpdb'],
-   'molsurf':['/Users/dminh/Installers/amber14/bin/molsurf',
-              '/share/apps/amber/14/bin/molsurf',
+   'molsurf':['/Users/dminh/Installers/amber16/bin/molsurf',
+              '/share/apps/amber/16/bin/molsurf',
               'molsurf'],
              # BindingPMF.py is built on MMTK
       'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',

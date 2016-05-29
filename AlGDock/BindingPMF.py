@@ -555,7 +555,7 @@ last modified {1}
     if self.params['dock']['rmsd'] is not False:
       if self.params['dock']['rmsd'] is True:
         if lig_crd is not None:
-          rmsd_crd = lig_crd
+          rmsd_crd = lig_crd[self.molecule.inv_prmtop_atom_order,:]
         else:
           raise Exception('Reference structure for rmsd calculations unknown')
       else:
@@ -1850,7 +1850,7 @@ last modified {1}
       Es = self._energyTerms(confs, Es)
 
     # Calculate RMSD
-    if (self.params['dock']['rmsd'] is not False) and (not 'rmsd' in Es.keys()):
+    if (self.params['dock']['rmsd'] is not False):
       Es['rmsd'] = np.array([np.sqrt(((confs[c][self.molecule.heavy_atoms,:] - \
         self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
           for c in range(len(confs))])

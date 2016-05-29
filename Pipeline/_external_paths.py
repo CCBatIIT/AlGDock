@@ -79,9 +79,9 @@ search_paths = {
                 '/Applications/dock6/sphgen',
                 '/share/apps/sphgen_cpp/1.2/sphgen_cpp'],
                # Preparing the system for AMBER
-      'sander':['/Users/dminh/Installers/amber14/bin/sander',
-                '/Applications/amber14/bin/sander',
-                '/share/apps/amber/14/bin/sander'],
+      'sander':['/Users/dminh/Installers/amber16/bin/sander',
+                '/Applications/amber16/bin/sander',
+                '/share/apps/amber/16/bin/sander'],
                # Calculating a Poisson-Boltzmann Grid
         'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
                 '/share/apps/apbs/1.4/bin/apbs'],
