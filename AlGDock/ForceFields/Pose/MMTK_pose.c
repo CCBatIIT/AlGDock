@@ -1458,6 +1458,12 @@ pose_ext_dihe_evaluator(PyFFEnergyTermObject *self,
                         energy_data *energy);
 
 void
+pose_ext_dihe2_evaluator(PyFFEnergyTermObject *self,
+                        PyFFEvaluatorObject *eval,
+                        energy_spec *input,
+                        energy_data *energy);
+
+void
 pose_dihedral_evaluator(PyFFEnergyTermObject *self,
                         PyFFEvaluatorObject *eval,
                         energy_spec *input,
@@ -1483,6 +1489,7 @@ PoseExtDistTerm(PyObject *dummy, PyObject *args)
   Py_INCREF(self->universe_spec);
   Py_INCREF(self->data[0]);
   Py_INCREF(self->data[1]);
+  Py_INCREF(self->data[2]);
   self->n = ((PyArrayObject *)self->data[0])->dimensions[0];
   self->nterms = 1;
   self->eval_func = pose_ext_dist_evaluator;
@@ -1513,6 +1520,7 @@ PoseExtAnglTerm(PyObject *dummy, PyObject *args)
   Py_INCREF(self->universe_spec);
   Py_INCREF(self->data[0]);
   Py_INCREF(self->data[1]);
+  Py_INCREF(self->data[2]);
   self->n = ((PyArrayObject *)self->data[0])->dimensions[0];
   self->nterms = 1;
   self->eval_func = pose_ext_angl_evaluator;
@@ -1547,6 +1555,38 @@ PoseExtDiheTerm(PyObject *dummy, PyObject *args)
   self->n = ((PyArrayObject *)self->data[0])->dimensions[0];
   self->nterms = 1;
   self->eval_func = pose_ext_dihe_evaluator;
+  self->threaded = 1;
+  self->thread_safe = 1;
+  self->nbarriers = 0;
+  self->parallelized = 1;
+  return (PyObject *)self;
+}
+
+static PyObject *
+PoseExtDihe2Term(PyObject *dummy, PyObject *args)
+{
+  PyFFEnergyTermObject *self;
+  char *name = "pose external dihedral";
+  self = PyFFEnergyTerm_New();
+  if (self == NULL)
+    return NULL;
+  if (!PyArg_ParseTuple(args, "O!OOOO|s",
+                        &PyUniverseSpec_Type, &self->universe_spec,
+                        &self->data[0], &self->data[1], &self->data[2], &self->data[3],
+                        &name))
+    return NULL;
+  self->evaluator_name = "pose external dihedral";
+  self->term_names[0] = allocstring(name);
+  if (self->term_names[0] == NULL)
+    return PyErr_NoMemory();
+  Py_INCREF(self->universe_spec);
+  Py_INCREF(self->data[0]);
+  Py_INCREF(self->data[1]);
+  Py_INCREF(self->data[2]);
+  Py_INCREF(self->data[3]);
+  self->n = ((PyArrayObject *)self->data[0])->dimensions[0];
+  self->nterms = 1;
+  self->eval_func = pose_ext_dihe2_evaluator;
   self->threaded = 1;
   self->thread_safe = 1;
   self->nbarriers = 0;
@@ -1611,6 +1651,7 @@ static PyMethodDef pose_methods[] = {
   {"PoseExtDistTerm", PoseExtDistTerm, 1},
   {"PoseExtAnglTerm", PoseExtAnglTerm, 1},
   {"PoseExtDiheTerm", PoseExtDiheTerm, 1},
+  {"PoseExtDihe2Term", PoseExtDihe2Term, 1},
   {"PoseDihedralTerm", PoseDihedralTerm, 1},
   {NULL, NULL}		/* sentinel */
 };
