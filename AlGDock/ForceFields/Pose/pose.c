@@ -194,7 +194,7 @@ pose_dihedral_evaluator(PyFFEnergyTermObject *self,
       }
       dphi = 0.; // initialize to make gcc happy
     }
-    printf("phii= %lf\n", phi); // EU
+    //printf("phii= %lf\n", phi); // EU
     if (energy->gradients != NULL || energy->force_constants != NULL) {
       double deriv;
       vector3 di, dj, dk, dl, ds;
@@ -539,7 +539,7 @@ pose_ext_dist_evaluator(PyFFEnergyTermObject *self,
 					   self->universe_spec->geometry_data);
     lrij = vector_length(rij);
     dr = lrij-param[0];
-    printf("d= %lf\n", lrij); // EU
+    //printf("d= %lf\n", lrij); // EU
 
     //printf("pose_ext_dist_evaluator: data[0]=ij= %d %d x[j] %lf %lf %lf data[1]=param= %lf %lf %lf data[2]=extx= %lf %lf %lf\n", \
       i, j, x[j][0], x[j][1], x[j][2], param[0], param[1], param[2], extx[0], extx[1], extx[2]);
@@ -675,7 +675,7 @@ pose_ext_angl_evaluator(PyFFEnergyTermObject *self,
     sin_theta = sqrt(1.-sqr(cos_theta));
     theta = acos(cos_theta);
     dtheta = (theta-param[0]);
-    printf("theta= %lf\n", theta); // EU
+    //printf("theta= %lf\n", theta); // EU
 
     //Harmonic: e += param[1]*sqr(dtheta);
     // Flat bottom:
@@ -1042,7 +1042,7 @@ pose_ext_dihe_evaluator(PyFFEnergyTermObject *self,
       }
       dphi = 0.; // initialize to make gcc happy
     }
-    printf("omega= %lf\n", phi); // EU
+    //printf("omega= %lf\n", phi); // EU
     if (energy->gradients != NULL || energy->force_constants != NULL) {
       double deriv;
       vector3 di, dj, dk, dl, ds;
@@ -1512,7 +1512,7 @@ pose_ext_dihe2_evaluator(PyFFEnergyTermObject *self,
       }
       dphi = 0.; // initialize to make gcc happy
     }
-    printf("phi= %lf\n", phi); // EU
+    //printf("phi= %lf\n", phi); // EU
     if (energy->gradients != NULL || energy->force_constants != NULL) {
       double deriv;
       vector3 di, dj, dk, dl, ds;
