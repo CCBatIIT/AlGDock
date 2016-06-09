@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# TODO: Find a sincos function that simultaneously calculates sine and cosine?
-
 import cython
 
 import numpy as np
@@ -81,32 +79,6 @@ cdef dihedral(np.ndarray[np.double_t] p1, np.ndarray[np.double_t] p2, \
   c = dotp(a,b)
   s = dotp(cross(b,a),normalize(v2))
   return atan2(s,c)
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True)
-cdef extended_coordinates(np.ndarray[np.double_t] p1, \
-    np.ndarray[np.double_t] p2, np.ndarray[np.double_t] p3):
-  # The rotation axis is a normalized vector pointing from atom 0 to 1
-  # It is described in two degrees of freedom by the polar angle and azimuth
-  cdef np.ndarray[np.double_t] e = normalize(p2-p1)
-  cdef double phi = atan2(e[1],e[0]) # Polar angle
-  cdef double theta = acos(e[2]) # Azimuthal angle
-  # Rotation to the z axis
-  cdef double cp = cos(phi)
-  cdef double sp = sin(phi)
-  cdef double ct = cos(theta)
-  cdef double st = sin(theta)
-  cdef np.ndarray[np.double_t, ndim=2] Rz = np.array([[cp*ct,ct*sp,-st],[-sp,cp,0],[cp*st,sp*st,ct]])
-  cdef np.ndarray[np.double_t] pos2 = Rz.dot(np.array(p3-p1))
-  # Angle about the rotation axis
-  cdef double omega = atan2(pos2[1],pos2[0])
-  cdef np.ndarray[np.double_t] coords = np.zeros((6,))
-  coords[:3] = p1
-  coords[3] = phi
-  coords[4] = theta
-  coords[5] = omega
-  return coords
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -198,7 +170,7 @@ cdef class converter:
     # If _firstTorsionTInd is not equal to the list index,
     # then the dihedrals will likely be correlated and it is more appropriate
     # to use a relative phase angle
-    prior_atoms = [(a2,a3,a4) for (a1,a2,a3,a4) in torsionL]
+    prior_atoms = [sorted([a2.index,a3.index]) for (a1,a2,a3,a4) in torsionL]
 
     self.rootInd = np.array([r.index for r in root], dtype=int)
     self._torsionIndL = np.array(\
@@ -249,7 +221,7 @@ cdef class converter:
       p3_v[i] = XYZ[self.rootInd[2],i]
 
     if extended:
-      bat[:offset] = extended_coordinates(p1,p2,p3)
+      bat[:offset] = self.extended_coordinates(p1,p2,p3)
     bat_v[offset] = distance(p1,p2)
     bat_v[offset+1] = distance(p2,p3)
     bat_v[offset+2] = angle(p1,p2,p3)
@@ -280,6 +252,32 @@ cdef class converter:
         bat_v[batInd+2] -= bat_v[offset+5+3*self._firstTorsionTInd[n]]
 
     return bat
+
+  @cython.boundscheck(False)
+  @cython.wraparound(False)
+  @cython.cdivision(True)
+  cpdef extended_coordinates(self, np.ndarray[np.double_t] p1, \
+      np.ndarray[np.double_t] p2, np.ndarray[np.double_t] p3):
+    # The rotation axis is a normalized vector pointing from atom 0 to 1
+    # It is described in two degrees of freedom by the polar angle and azimuth
+    cdef np.ndarray[np.double_t] e = normalize(p2-p1)
+    cdef double phi = atan2(e[1],e[0]) # Polar angle
+    cdef double theta = acos(e[2]) # Azimuthal angle
+    # Rotation to the z axis
+    cdef double cp = cos(phi)
+    cdef double sp = sin(phi)
+    cdef double ct = cos(theta)
+    cdef double st = sin(theta)
+    cdef np.ndarray[np.double_t, ndim=2] Rz = np.array([[cp*ct,ct*sp,-st],[-sp,cp,0],[cp*st,sp*st,ct]])
+    cdef np.ndarray[np.double_t] pos2 = Rz.dot(np.array(p3-p1))
+    # Angle about the rotation axis
+    cdef double omega = atan2(pos2[1],pos2[0])
+    cdef np.ndarray[np.double_t] coords = np.zeros((6,))
+    coords[:3] = p1
+    coords[3] = phi
+    coords[4] = theta
+    coords[5] = omega
+    return coords
 
   @cython.boundscheck(False)
   @cython.wraparound(False)

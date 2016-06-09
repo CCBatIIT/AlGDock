@@ -104,6 +104,29 @@ class identifier(converter):
       if body_id[1] != body_id[2]:
         softTorsionInd.append(torsion_ind)
     self._softTorsionInd = softTorsionInd
+    
+  def poseInp(self, k=1000.0):
+    """
+    Generates input for the pose force field
+    """
+    # External degrees of freedom
+    XYZ = self.universe.configuration().array
+
+    p1 = XYZ[self.rootInd[0]]
+    p2 = XYZ[self.rootInd[1]]
+    p3 = XYZ[self.rootInd[2]]
+    
+    extPoseInp = np.concatenate([self.rootInd, p1, p2, p3, \
+      self.extended_coordinates(p1,p2,p3)[3:]])
+
+    # Internal degrees of freedom
+    torsions = []
+    for ind in self._softTorsionInd:
+      t = self._torsionIndL[ind]
+      torsions.append(self._torsionIndL[ind]
+        + [0, dihedral(XYZ[t[0]],XYZ[t[1]],XYZ[t[2]],XYZ[t[3]]), 0.03490569/2., k])
+
+    return [extPoseInp, torsions]
 
   def setOccupancyTo(self, property='rings'):
     for atom in self.molecule.atoms:
@@ -112,10 +135,14 @@ class identifier(converter):
       for index in range(len(self.rings)):
         for atom in getattr(self, property)[index]:
           atom.occupancy = index+1
+    elif property=='first_torsions':
+      for index in self._firstTorsionTInd:
+        for atomInd in self._torsionIndL[index]:
+          self.molecule.atoms[atomInd].occupancy = index+1
     elif property=='soft_torsions':
       for index in self._softTorsionInd:
-        for atom in self._torsionIndL[index]:
-          atom.occupancy = index+1
+        for atomInd in self._torsionIndL[index]:
+          self.molecule.atoms[atomInd].occupancy = index+1
 
 ########
 # MAIN #
@@ -155,22 +182,27 @@ if __name__ == '__main__':
     molecule = MMTK.Molecule(os.path.basename(dbFN))
     universe.addObject(molecule)
 
+    original_xyz = np.copy(universe.configuration().array)
     self = identifier(universe, molecule)
+
     print 'There are %d unique rings'%len(self.rings)
     self.setOccupancyTo('soft_torsions')
 
-    # This rotates the last primary torsion
-    BAT = self.BAT(extended=True)
+    # This tests a conversion to BAT coordinates and back
+    BAT = self.BAT(original_xyz, extended=True)
+    new_xyz = self.Cartesian(BAT)
+    print sum(sum(new_xyz - original_xyz))
 
+    # This rotates a random primary torsion
     from random import randrange
-    torsion_ind = self._softTorsionInd[randrange(len(self._softTorsionInd))]
-    BAT_ind = len(BAT)-self.ntorsions+torsion_ind
+    softTorsionInd = self._softTorsionInd[randrange(len(self._softTorsionInd))]
+    BAT_ind = np.array(range(6+5,self.natoms*3,3))[softTorsionInd]
     confs = []
     for torsion_offset in np.linspace(0,2*np.pi):
       BAT_n = [BAT[ind] if ind!=BAT_ind else BAT[ind] + torsion_offset \
         for ind in range(len(BAT))]
-      self.Cartesian(BAT_n)
-      confs.append(np.copy(self.universe.configuration().array))
+      XYZ = self.Cartesian(BAT_n)
+      confs.append(XYZ)
 
     import AlGDock.IO
     IO_dcd = AlGDock.IO.dcd(molecule)

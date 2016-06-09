@@ -75,7 +75,7 @@ parser.add_argument('--cool_repX_cycles', type=int,
 parser.add_argument('--dock_repX_cycles', type=int,
   help='Number of replica exchange cycles for docking')
 parser.add_argument('--run_type',
-  choices=['pose_energies','minimized_pose_energies', \
+  choices=['configuration_energies','minimized_configuration_energies', \
            'store_params', 'cool', \
            'dock','timed','postprocess',\
            'redo_postprocess','free_energies','redo_free_energies', 'all', \
@@ -173,7 +173,7 @@ parser.add_argument('--dock_keep_intermediate', action='store_true',
 parser.add_argument('--site',
   choices=['Sphere','Cylinder','Measure'], \
   help='Type of binding site. "Measure" means that parameters' + \
-         ' for a sphere will be measured from docked poses.')
+         ' for a sphere will be measured from docked configurations.')
 parser.add_argument('--site_center', nargs=3, type=float,
   help='Position of binding site center')
 #  parser.add_argument('--site_direction', nargs=3, type=float,
@@ -350,7 +350,7 @@ print args_in
 
 namespace = locals()
 
-job_status = {'submitted':0, 'skipped':0, 'no_complex':0, 'no_poses':0, \
+job_status = {'submitted':0, 'skipped':0, 'no_complex':0, 'no_configurations':0, \
   'no_dock6':0, 'missing_file':0, 'onq':0, 'recently_redone':0, 'complete':0}
 
 import tarfile
@@ -533,9 +533,9 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
               labels['lib_subdir'], labels['key'], labels['receptor'] + '.nc'))
             if not nonzero(val):
               if os.path.isfile(val[:-3]+'.mol2.gz'):
-                job_status['no_poses'] += 1
+                job_status['no_configurations'] += 1
                 skip_job = True
-                break # No poses in dock6
+                break # No configurations in dock6
               else:
                 print 'No dock6 output in '+val
                 job_status['no_dock6'] += 1
@@ -641,7 +641,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
 
 format_str = "Jobs: {submitted} submitted, {skipped} skipped, " + \
   "{no_complex} without complex files, {no_dock6} without dock6 files, " + \
-  "{no_poses} have no docked poses, " + \
+  "{no_configurations} have no docked configurations, " + \
   "{missing_file} missing other files, {onq} on the queue, " + \
   "{recently_redone} recently redone, {complete} complete"
 print format_str.format(**job_status)

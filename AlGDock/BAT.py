@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# TODO: Find a module that calculates both the sine and cosine simultaneously
-
 import numpy as np
 from Scientific.Geometry.Objects3D import Sphere, Cone, Plane, Line, \
                                           rotatePoint
@@ -112,7 +110,7 @@ class converter():
     # If _firstTorsionTInd is not equal to the list index,
     # then the dihedrals will likely be correlated and it is more appropriate
     # to use a relative phase angle
-    prior_atoms = [(a2,a3,a4) for (a1,a2,a3,a4) in torsionL]
+    prior_atoms = [sorted([a2.index,a3.index]) for (a1,a2,a3,a4) in torsionL]
 
     self.rootInd = [r.index for r in root]
     self._torsionIndL = [[a.index for a in tset] for tset in torsionL]
@@ -121,6 +119,9 @@ class converter():
     self.ntorsions = self.natoms-3
 
   def getFirstTorsionInds(self, extended):
+    """
+    Indices of the first torsions in the BAT array
+    """
     offset = 6 if extended else 0
     torsionInds = np.array(range(offset+5,self.natoms*3,3))
     primaryTorsions = sorted(list(set(self._firstTorsionTInd)))
@@ -151,9 +152,14 @@ class converter():
     if not extended:
       return np.array(internal)
 
+    external = self.extended_coordinates(XYZ[self.rootInd[0]], \
+      XYZ[self.rootInd[1]], XYZ[self.rootInd[2]])
+    return np.array(list(external)+list(internal))
+    
+  def extended_coordinates(self,p1,p2,p3):
     # The rotation axis is a normalized vector pointing from atom 0 to 1
     # It is described in two degrees of freedom by the polar angle and azimuth
-    e = normalize(XYZ[self.rootInd[1]]-XYZ[self.rootInd[0]])
+    e = normalize(p2-p1)
     phi = np.arctan2(e[1],e[0]) # Polar angle
     theta = np.arccos(e[2]) # Azimuthal angle
     # Rotation to the z axis
@@ -162,12 +168,11 @@ class converter():
     ct = np.cos(theta)
     st = np.sin(theta)
     Rz = np.array([[cp*ct,ct*sp,-st],[-sp,cp,0],[cp*st,sp*st,ct]])
-    pos2 = Rz.dot(np.array(XYZ[self.rootInd[2]]-XYZ[self.rootInd[0]]))
+    pos2 = Rz.dot(np.array(p3-p2))
     # Angle about the rotation axis
     omega = np.arctan2(pos2[1],pos2[0])
-    external = list(XYZ[self.rootInd[0]]) + [phi, theta, omega]
-    return np.array(external+internal)
-
+    return np.array(list(p1) + [phi, theta, omega])
+    
   def Cartesian(self, BAT):
     """
     Conversion from (internal or extended) Bond-Angle-Torsion 
@@ -339,8 +344,10 @@ if __name__ == '__main__':
     new_xyz = self.Cartesian(BAT)
     print sum(sum(new_xyz - original_xyz))
 
-    # This rotates the last primary torsion
-    BAT_ind = self.getFirstTorsionInds(True)[-1]
+    # This rotates a random primary torsion
+    from random import randrange
+    firstTorsionInds = self.getFirstTorsionInds(True)
+    BAT_ind = firstTorsionInds[randrange(len(firstTorsionInds))]
     confs = []
     for torsion_offset in np.linspace(0,2*np.pi):
       BAT_n = np.array([BAT[ind] if ind!=BAT_ind else BAT[ind] + torsion_offset \
@@ -353,3 +360,7 @@ if __name__ == '__main__':
     IO_dcd.write('rotation.dcd', confs)
     self.showMolecule(dcdFN='rotation.dcd')
     os.remove('rotation.dcd')
+
+#  [[51, 10, 5, 46],
+#   [2, 5, 10, 51],
+#   [4, 5, 10, 51],

@@ -16,8 +16,6 @@ cdef inline angle(np.ndarray[np.double_t] p1, np.ndarray[np.double_t] p2, \
     np.ndarray[np.double_t] p3)
 cdef dihedral(np.ndarray[np.double_t] p1, np.ndarray[np.double_t] p2, \
     np.ndarray[np.double_t] p3, np.ndarray[np.double_t] p4)
-cdef extended_coordinates(np.ndarray[np.double_t] p1, \
-    np.ndarray[np.double_t] p2, np.ndarray[np.double_t] p3)
 cdef rotate123(np.ndarray[np.double_t] p1, \
     np.ndarray[np.double_t] p2, np.ndarray[np.double_t] p3, \
     np.ndarray[np.double_t] origin, \
@@ -30,5 +28,6 @@ cdef class converter:
   cdef np.ndarray rootInd, _torsionIndL, _firstTorsionTInd
 
   cpdef BAT(self, double[:,:] XYZ, bool extended)
+  cpdef extended_coordinates(self, np.ndarray[np.double_t] p1, np.ndarray[np.double_t] p2, np.ndarray[np.double_t] p3)
   cpdef Cartesian(self, double[:] BAT)
 

@@ -40,6 +40,8 @@ class PoseForceField(ForceField):
         self.input = input
         #print "input", self.input
         offset = 0.3
+        
+        # 0.03490659/2 is 20 degrees (full width)/2 (to make half width)
 
         self.extXYZ  = N.array([[self.input[0][3], self.input[0][4], self.input[0][5]]])
         self.extDistIs  = N.array([[-1, int(self.input[0][0])]]);
