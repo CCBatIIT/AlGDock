@@ -264,6 +264,9 @@ class BPMF_plots(BPMF):
       os.environ['VMDNOCUDA'] = "True"
 
       import subprocess
+      if not 'vmd' in self._FNs.keys():
+        self._FNs['vmd'] = a.findPaths(['vmd'])['vmd']
+      
       vmd_args = [self._FNs['vmd']]
       if quit:
         vmd_args.extend(['-dispdev', 'text'])

@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# TODO: Pose BPMF works but are very large, acceptance rates are very low,
+#       and external pose energies are finite. Why?
+# TODO: Give unique file name to each pose BPMF
+
 import os # Miscellaneous operating system interfaces
 from os.path import join
 import cPickle as pickle
@@ -41,6 +45,7 @@ from multiprocessing import Process
 #############
 
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
+k_r = 1000.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K
 
 term_map = {
   'cosine dihedral angle':'MM',
@@ -55,6 +60,10 @@ term_map = {
   'LJr':'LJr',
   'LJa':'LJa',
   'ELE':'ELE',
+  'pose dihedral angle':'k_angular_int',
+  'pose external dihedral':'k_angular_ext',
+  'pose external distance':'k_spatial_ext',
+  'pose external angle':'k_angular_ext',
   'electrostatic':'misc'}
 
 # In APBS, minimum ratio of PB grid length to maximum dimension of solute
@@ -388,6 +397,7 @@ last modified {1}
       ('site_max_R',None),
       ('site_density',50.),
       ('site_measured',None),
+      ('pose',-1),
       ('MCMC_moves',1),
       ('rmsd',False)] + \
       [('receptor_'+phase,None) for phase in allowed_phases])
@@ -577,8 +587,8 @@ last modified {1}
     if np.array([p.find('ALPB')>-1 for p in all_phases]).any():
       self.elsize = self._get_elsize()
 
-    # If poses are being rescored, start with a docked structure
-    (confs,Es) = self._get_confs_to_rescore(site=False, minimize=False)
+    # If configurations are being rescored, start with a docked structure
+    (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
     if len(confs)>0:
       self.universe.setConfiguration(Configuration(self.universe,confs[-1]))
 
@@ -1094,14 +1104,6 @@ last modified {1}
     for k in range(1,len(self.cool_Es[0])):
       E_MM += list(self.cool_Es[0][k]['MM'])
       confs += list(self.confs['cool']['samples'][0][k])
-    while len(E_MM)<self.params['dock']['seeds_per_state']:
-      self.tee("More samples from high temperature ligand simulation needed")
-      self._replica_exchange('cool')
-      E_MM = []
-      confs = []
-      for k in range(1,len(self.cool_Es[0])):
-        E_MM += list(self.cool_Es[0][k]['MM'])
-        confs += list(self.confs['cool']['samples'][0][k])
 
     random_dock_inds = np.array(np.linspace(0,len(E_MM), \
       self.params['dock']['seeds_per_state'],endpoint=False),dtype=int)
@@ -1166,7 +1168,7 @@ last modified {1}
         E_c[term] = np.ravel(E[term][:,:self._n_rot,:n_trans_n])
       self.tee("  allocated memory for %d translations"%n_trans_n)
       (u_kln,N_k) = self._u_kln([E_c],\
-        [lambda_o,self._next_dock_state(E=E_c, lambda_o=lambda_o)])
+        [lambda_o,self._next_dock_state(E=E_c, lambda_o=lambda_o, undock=False)])
       du = u_kln[0,1,:] - u_kln[0,0,:]
       bootstrap_reps = 50
       f_grid0 = np.zeros(bootstrap_reps)
@@ -1207,7 +1209,7 @@ last modified {1}
 
     return (cool0_confs, E)
 
-  def initial_dock(self, randomOnly=False, undock=True):
+  def initial_dock(self, randomOnly=False):
     """
       Docks the ligand into the receptor
       
@@ -1221,6 +1223,8 @@ last modified {1}
 
     self._set_lock('dock')
     dock_start_time = time.time()
+    
+    undock = True if (self.params['dock']['pose'] == -1) else False
 
     if self.dock_protocol==[]:
       self.tee("\n>>> Initial docking, starting at " + \
@@ -1275,12 +1279,44 @@ last modified {1}
             self._tL_tensor(E,lambda_o)))
     
       if not undock:
-        (confs, E) = self.random_dock()
-        self.tee("  random docking complete in " + \
-                 HMStime(time.time()-dock_start_time))
-        if randomOnly:
-          self._clear_lock('dock')
-          return
+        # Select samples from the high T unbound state and ensure there are enough
+        confs_HT = []
+        for k in range(1,len(self.cool_Es[0])):
+          confs_HT += list(self.confs['cool']['samples'][0][k])
+        while len(confs_HT)<self.params['dock']['seeds_per_state']:
+          self.tee("More samples from high temperature ligand simulation needed")
+          self._replica_exchange('cool')
+          confs_HT = []
+          for k in range(1,len(self.cool_Es[0])):
+            confs_HT += list(self.confs['cool']['samples'][0][k])
+        confs_HT = confs_HT[:self.params['dock']['seeds_per_state']]
+        
+        if (self.params['dock']['pose'] > -1):
+          lambda_o = self._lambda(0.0, 'dock', MM=True, site=True, crossed=False)
+          self.dock_protocol = [lambda_o]
+          self._set_universe_evaluator(lambda_o)
+
+          # Set external coordinates of all high temperature configurations
+          # to the reference external coordinates
+          ExternalRestraintSpecs = self._forceFields['ExternalRestraint'].get_reference_external_BAT()
+          import AlGDock.RigidBodies
+          rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
+          confs = []
+          for conf in confs_HT:
+            BAT_o = rb.BAT(conf, extended=True)
+            BAT_n = np.concatenate((ExternalRestraintSpecs, BAT_o[6:]))
+            confs.append(rb.Cartesian(BAT_n))
+          E = self._energyTerms(confs)
+          self.confs['dock']['replicas'] = [confs[np.random.randint(len(confs))]]
+          self.confs['dock']['samples'] = [[confs]]
+          self.dock_Es = [[E]]
+        else:
+          (confs, E) = self.random_dock()
+          self.tee("  random docking complete in " + \
+                   HMStime(time.time()-dock_start_time))
+          if randomOnly:
+            self._clear_lock('dock')
+            return
     else:
       # Continuing from a previous docking instance
       self.tee("\n>>> Initial docking, continuing at " + \
@@ -1323,7 +1359,8 @@ last modified {1}
         size = self.params['dock']['seeds_per_state'], \
         p=weights/sum(weights))
 
-      if (not undock) and (len(self.dock_protocol)==2):
+      if (not undock) and (self.params['dock']['pose'] == -1) \
+          and (len(self.dock_protocol)==2):
         # Cooling state 0 configurations, randomly oriented
         # Use the lowest energy configuration in the first docking state for replica exchange
         ind = np.argmin(u_n)
@@ -1836,7 +1873,7 @@ last modified {1}
       prefix = 'min_' + prefix
     energyFN = join(self.dir['dock'],prefix+'.pkl.gz')
 
-    # Load the poses
+    # Load the configurations
     if os.path.isfile(energyFN):
       (confs, Es) = self._load_pkl_gz(energyFN)
     else:
@@ -1931,6 +1968,12 @@ last modified {1}
       LJr - scaling of the Lennard-Jones repulsive grid
       LJa - scaling of the Lennard-Jones attractive grid
       ELE - scaling of the electrostatic grid
+      hwidth_angular_int - half width of flat-bottom wells for angular internal degrees of freedom (radians)
+      k_angular_int - spring constant of flat-bottom wells for angular internal degrees of freedom (kJ/nm)
+      hwidth_spatial_ext - half width of flat-bottom wells for spatial external degrees of freedom (nm)
+      k_spatial_ext - spring constant of flat-bottom wells for spatial external degrees of freedom (kJ/nm)
+      hwidth_angular_ext - half width of flat-bottom wells for angular external degrees of freedom (radians)
+      k_angular_ext - spring constant of flat-bottom wells for angular external degrees of freedom (kJ/nm)
       T - the temperature in K
     """
 
@@ -1943,7 +1986,8 @@ last modified {1}
       self.delta_t = self.params['cool']['delta_t']*MMTK.Units.fs
 
     # Reuse evaluators that have been stored
-    evaluator_key = '-'.join(repr(v) for v in lambda_n.values())
+    evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
+      for k in sorted(lambda_n.keys())])
     if evaluator_key in self._evaluators.keys():
       self.universe._evaluator[(None,None,None)] = \
         self._evaluators[evaluator_key]
@@ -2011,6 +2055,8 @@ last modified {1}
         else:
           raise Exception('Binding site type not recognized!')
       fflist.append(self._forceFields['site'])
+
+    # Add grid terms
     for scalable in self._scalables:
       if (scalable in lambda_n.keys()) and lambda_n[scalable]>0:
         # Load the force field if it has not been loaded
@@ -2052,8 +2098,62 @@ last modified {1}
             HMStime(time.time()-loading_start_time)))
 
         # Set the force field strength to the desired value
-        self._forceFields[scalable].params['strength'] = lambda_n[scalable]
+        self._forceFields[scalable].set_strength(lambda_n[scalable])
         fflist.append(self._forceFields[scalable])
+
+    if ('k_angular_int' in lambda_n.keys()) or \
+       ('k_spatial_ext' in lambda_n.keys()) or \
+       ('k_angular_ext' in lambda_n.keys()):
+       
+      # Load the force field if it has not been loaded
+      if not ('ExternalRestraint' in self._forceFields.keys()):
+        # Obtain reference pose
+        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
+        confs.reverse() # Order by increasing energy
+        if self.params['dock']['pose']<len(confs):
+          self.confs['pose'] = confs[self.params['dock']['pose']]
+        else:
+          raise Exception('Pose index greater than number of poses')
+
+        Xo = np.copy(self.universe.configuration().array)
+        self.universe.setConfiguration(Configuration(self.universe, \
+          self.confs['pose']))
+        import AlGDock.RigidBodies
+        rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
+        (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
+        self.universe.setConfiguration(Configuration(self.universe, Xo))
+
+        # Create force fields
+        from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
+        self._forceFields['InternalRestraint'] = \
+          InternalRestraintForceField(TorsionRestraintSpecs)
+        from AlGDock.ForceFields.Pose.PoseFF import ExternalRestraintForceField
+        self._forceFields['ExternalRestraint'] = \
+          ExternalRestraintForceField(*ExternalRestraintSpecs)
+
+      # Set parameter values
+      if ('hwidth_angular_int' in lambda_n.keys()):
+        self._forceFields['InternalRestraint'].set_hwidth(\
+          lambda_n['hwidth_angular_int'])
+      if ('k_angular_int' in lambda_n.keys()):
+        self._forceFields['InternalRestraint'].set_k(\
+          lambda_n['k_angular_int'])
+        fflist.append(self._forceFields['InternalRestraint'])
+
+      if ('hwidth_spatial_exp' in lambda_n.keys()):
+        self._forceFields['ExternalRestraint'].set_hwidth_spatial(\
+          lambda_n['hwidth_spatial_exp'])
+      if ('k_spatial_ext' in lambda_n.keys()):
+        self._forceFields['ExternalRestraint'].set_k_spatial(\
+          lambda_n['k_spatial_ext'])
+        fflist.append(self._forceFields['ExternalRestraint'])
+
+      if ('hwidth_angular_exp' in lambda_n.keys()):
+        self._forceFields['ExternalRestraint'].set_hwidth_angular(\
+          lambda_n['hwidth_angular_exp'])
+      if ('k_angular_ext' in lambda_n.keys()):
+        self._forceFields['ExternalRestraint'].set_k_angular(\
+          lambda_n['k_angular_ext'])
 
     compoundFF = fflist[0]
     for ff in fflist[1:]:
@@ -2238,7 +2338,12 @@ last modified {1}
 
     if process=='cool':
       terms = ['MM']
+    elif self.params['dock']['pose'] > -1:
+      # Pose BPMF
+      terms = ['MM','misc',\
+        'k_angular_ext','k_spatial_ext','k_angular_int'] + self._scalables
     else:
+      # BPMF
       terms = ['MM','site','misc'] + self._scalables
 
     cycle = getattr(self,'_%s_cycle'%process)
@@ -2504,7 +2609,7 @@ last modified {1}
     
     # Execute external MCMC moves
     if (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
-        and (lambda_k['a'] < 0.1):
+        and (lambda_k['a'] < 0.1) and (self.params['dock']['pose']==-1):
       time_start_ExternalMC = time.time()
       dat = self.sampler['ExternalMC'](ntrials=5, T=lambda_k['T'])
       results['acc_ExternalMC'] = dat[2]
@@ -2558,6 +2663,7 @@ last modified {1}
 
       # Load configurations to score from another program
       if (process=='dock') and (self._dock_cycle==1) and \
+         (self.params['dock']['pose'] == -1) and \
          (self._FNs['score'] is not None) and \
          (self._FNs['score']!='default'):
         self._set_lock('dock')
@@ -2810,7 +2916,9 @@ last modified {1}
 
     addMM = ('MM' in lambdas[0].keys()) and (lambdas[0]['MM'])
     addSite = ('site' in lambdas[0].keys()) and (lambdas[0]['site'])
-    probe_key = [key for key in lambdas[0].keys() if key in (['MM'] + self._scalables)][0]
+    probe_keys = ['MM','k_angular_ext','k_spatial_ext','k_angular_int'] + \
+      self._scalables
+    probe_key = [key for key in lambdas[0].keys() if key in probe_keys][0]
     
     if isinstance(eTs,dict):
       # There is one configuration per state
@@ -2827,6 +2935,9 @@ last modified {1}
         for scalable in self._scalables:
           if scalable in lambdas[l].keys():
             E += lambdas[l][scalable]*eTs[scalable]
+        for key in ['k_angular_ext','k_spatial_ext','k_angular_int']:
+          if key in lambdas[l].keys():
+            E += lambdas[l][key]*eTs[key]
         if noBeta:
           u_kln.append(E)
         else:
@@ -2842,15 +2953,18 @@ last modified {1}
           E_base += eTs[k]['MM']
         if addSite:
           E_base += eTs[k]['site']          
-      for l in range(L):
-        E = 1.*E_base
-        for scalable in self._scalables:
-          if scalable in lambdas[l].keys():
-            E += lambdas[l][scalable]*eTs[k][scalable]
-        if noBeta:
-          u_kln[k,l,:N_k[k]] = E
-        else:
-          u_kln[k,l,:N_k[k]] = E/(R*lambdas[l]['T'])
+        for l in range(L):
+          E = 1.*E_base
+          for scalable in self._scalables:
+            if scalable in lambdas[l].keys():
+              E += lambdas[l][scalable]*eTs[k][scalable]
+          for key in ['k_angular_ext','k_spatial_ext','k_angular_int']:
+            if key in lambdas[l].keys():
+              E += lambdas[l][key]*eTs[k][key]
+          if noBeta:
+            u_kln[k,l,:N_k[k]] = E
+          else:
+            u_kln[k,l,:N_k[k]] = E/(R*lambdas[l]['T'])
     elif isinstance(eTs[0],list):
       K = len(eTs)
       N_k = np.zeros(K, dtype=int)
@@ -2871,7 +2985,12 @@ last modified {1}
           E = 1.*E_base
           for scalable in self._scalables:
             if scalable in lambdas[l].keys():
-              E += lambdas[l][scalable]*np.concatenate([eTs[k][c][scalable] for c in range(C)])
+              E += lambdas[l][scalable]*np.concatenate([eTs[k][c][scalable] \
+                for c in range(C)])
+          for key in ['k_angular_ext','k_spatial_ext','k_angular_int']:
+            if key in lambdas[l].keys():
+              E += lambdas[l][key]*np.concatenate([eTs[k][c][key] \
+                for c in range(C)])
           if noBeta:
             u_kln[k,l,:N_k[k]] = E
           else:
@@ -2929,23 +3048,43 @@ last modified {1}
         return lambda_n
 
   def _tL_tensor(self, E, lambda_c, process='dock'):
+    # Metric tensor for the thermodynamic length
     T = lambda_c['T']
     if process=='dock':
-      # Metric tensor for the thermodynamic length
       a = lambda_c['a']
-      a_sg = 1.-4.*(a-0.5)**2
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
-      da_sg_da = -8*(a-0.5)
-      da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(1+np.exp(-100.*(a-0.5)))**2 + \
+      # TODO: set a_g to zero if it is small
+      da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(\
+        1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
-      Psi_sg = self._u_kln([E], [{'sLJr':1,'sELE':1}], noBeta=True)
       Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
-      U_RL_g = self._u_kln([E],
-        [{'MM':True, 'site':True, 'T':T,\
-        'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
-      return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
-             np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-             np.abs(self.T_TARGET-self.T_HIGH)*U_RL_g.std()/(R*T*T)
+
+      if self.params['dock']['pose'] > -1:
+        # Pose BPMF
+        a_r = np.tanh(16*a*a)
+        da_r_da = 38.*a/np.cosh(16.*a*a)**2
+        U_r = self._u_kln([E], [{'k_angular_ext':k_r, \
+          'k_spatial_ext':k_r, 'k_angular_int':k_r}], noBeta=True)
+        U_RL_g = self._u_kln([E],
+          [{'MM':True, 'T':T, \
+            'k_angular_ext':lambda_c['k_angular_ext'], \
+            'k_spatial_ext':lambda_c['k_spatial_ext'], \
+            'k_angular_int':lambda_c['k_angular_int'], \
+            'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
+        return np.abs(da_r_da)*U_r.std()/(R*T) + \
+               np.abs(da_g_da)*Psi_g.std()/(R*T) + \
+               np.abs(self.T_TARGET-self.T_HIGH)*U_RL_g.std()/(R*T*T)
+      else:
+        # BPMF
+        a_sg = 1.-4.*(a-0.5)**2
+        da_sg_da = -8*(a-0.5)
+        Psi_sg = self._u_kln([E], [{'sLJr':1,'sELE':1}], noBeta=True)
+        U_RL_g = self._u_kln([E],
+          [{'MM':True, 'site':True, 'T':T,\
+          'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
+        return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
+               np.abs(da_g_da)*Psi_g.std()/(R*T) + \
+               np.abs(self.T_TARGET-self.T_HIGH)*U_RL_g.std()/(R*T*T)
     elif process=='cool':
       return self._u_kln([E],[{'MM':True}], noBeta=True).std()/(R*T*T)
     else:
@@ -2953,7 +3092,7 @@ last modified {1}
 
   def _lambda(self, a, process='dock', lambda_o=None, \
       MM=None, site=None, crossed=None):
-
+    
     if (lambda_o is None) and len(getattr(self,process+'_protocol'))>0:
       lambda_o = copy.deepcopy(getattr(self,process+'_protocol')[-1])
     if (lambda_o is not None):
@@ -2962,22 +3101,34 @@ last modified {1}
       lambda_n = {}
     if MM is not None:
       lambda_n['MM'] = MM
-    if site is not None:
-      lambda_n['site'] = site
     if crossed is not None:
       lambda_n['crossed'] = crossed
 
     if process=='dock':
-      a_sg = 1.-4.*(a-0.5)**2
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
       if a_g<1E-10:
         a_g=0
-      lambda_n['a'] = a
-      lambda_n['sLJr'] = a_sg
-      lambda_n['sELE'] = a_sg
-      lambda_n['LJr'] = a_g
-      lambda_n['LJa'] = a_g
-      lambda_n['ELE'] = a_g
+      if self.params['dock']['pose'] > -1:
+        # Pose BPMF
+        a_r = np.tanh(16*a*a)
+        lambda_n['a'] = a
+        lambda_n['k_angular_int'] = k_r*a_r
+        lambda_n['k_angular_ext'] = k_r
+        lambda_n['k_spatial_ext'] = k_r
+        lambda_n['LJr'] = a_g
+        lambda_n['LJa'] = a_g
+        lambda_n['ELE'] = a_g
+      else:
+        # BPMF
+        a_sg = 1.-4.*(a-0.5)**2
+        lambda_n['a'] = a
+        lambda_n['sLJr'] = a_sg
+        lambda_n['sELE'] = a_sg
+        lambda_n['LJr'] = a_g
+        lambda_n['LJa'] = a_g
+        lambda_n['ELE'] = a_g
+        if site is not None:
+          lambda_n['site'] = site
       lambda_n['T'] = a*(self.T_TARGET-self.T_HIGH) + self.T_HIGH
     elif process=='cool':
       lambda_n['a'] = a
@@ -3271,20 +3422,31 @@ last modified {1}
     if E is None:
       E = {}
 
-    lambda_full = {'T':self.T_HIGH,'MM':True,'site':True}
+    lambda_full = self._lambda(a=1.0)
     for scalable in self._scalables:
       lambda_full[scalable] = 1
     self._set_universe_evaluator(lambda_full)
     # Molecular mechanics and grid interaction energies
-    for term in (['MM','site','misc'] + self._scalables):
+    for term in (['MM','misc'] + self._scalables):
       E[term] = np.zeros(len(confs), dtype=float)
+    if 'site' in self._forceFields.keys():
+      E['site'] = np.zeros(len(confs), dtype=float)
+    if 'InternalRestraint' in self._forceFields.keys():
+      E['k_angular_int'] = np.zeros(len(confs), dtype=float)
+    if 'ExternalRestraint' in self._forceFields.keys():
+      E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
+      E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
     for c in range(len(confs)):
       self.universe.setConfiguration(Configuration(self.universe,confs[c]))
       eT = self.universe.energyTerms()
       for (key,value) in eT.iteritems():
-        E[term_map[key]][c] += value
+        if not key.startswith('pose'):
+          E[term_map[key]][c] += value
+        else:
+          # For pose restraints, the energy is per spring constant unit
+          E[term_map[key]][c] += value/lambda_full[term_map[key]]
     return E
-
+  
   def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,
       debug=DEBUG, reference=None):
     """

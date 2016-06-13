@@ -9,7 +9,8 @@ from MMTK.Dynamics import VelocityVerletIntegrator, TranslationRemover, Rotation
 
 import AlGDock.IO
 from AlGDock.Integrators.VelocityVerlet.VelocityVerlet import VelocityVerletIntegrator
-from PoseFF import PoseForceField
+from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
+from AlGDock.ForceFields.Pose.PoseFF import ExternalRestraintForceField
 
 import numpy as np
 import AlGDock.RigidBodies
@@ -27,22 +28,24 @@ conf = universe.configuration().array
 
 rb = AlGDock.RigidBodies.identifier(universe, molecule)
 
-poseFF = PoseForceField(rb.poseInp())
-compoundFF = amberFF + poseFF
+(TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
+InternalRestraintFF = InternalRestraintForceField(TorsionRestraintSpecs)
+ExternalRestraintFF = ExternalRestraintForceField(*ExternalRestraintSpecs)
+compoundFF = amberFF + InternalRestraintFF + ExternalRestraintFF
 universe.setForceField(compoundFF)
 
-universe.energyTerms()
+print universe.energyTerms()
 
 #
-universe.writeToFile("1s3v.pdb")
-
-integrator = VelocityVerletIntegrator(universe, delta_t = 1.*MMTK.Units.fs)
-
-allconfs = []
-for i in range(10000):
-  (confs, energies, H, acc, delta_t) = integrator(steps=20, T=300, steps_per_trial =1)
-  allconfs.append(confs[-1])
-
-traj_FN = "1s3v.dcd"
-IO_dcd = AlGDock.IO.dcd(molecule)
-IO_dcd.write(traj_FN, allconfs)
+#  universe.writeToFile("1s3v.pdb")
+#
+#  integrator = VelocityVerletIntegrator(universe, delta_t = 1.*MMTK.Units.fs)
+#
+#  allconfs = []
+#  for i in range(100):
+#    (confs, energies, H, acc, delta_t) = integrator(steps=20, T=300, steps_per_trial =1)
+#    allconfs.append(confs[-1])
+#
+#  traj_FN = "1s3v.dcd"
+#  IO_dcd = AlGDock.IO.dcd(molecule)
+#  IO_dcd.write(traj_FN, allconfs)

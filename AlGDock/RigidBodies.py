@@ -105,28 +105,28 @@ class identifier(converter):
         softTorsionInd.append(torsion_ind)
     self._softTorsionInd = softTorsionInd
     
-  def poseInp(self, k=1000.0):
+  def poseInp(self):
     """
     Generates input for the pose force field
     """
-    # External degrees of freedom
+    # Restraints on external degrees of freedom
     XYZ = self.universe.configuration().array
 
     p1 = XYZ[self.rootInd[0]]
     p2 = XYZ[self.rootInd[1]]
     p3 = XYZ[self.rootInd[2]]
     
-    extPoseInp = np.concatenate([self.rootInd, p1, p2, p3, \
-      self.extended_coordinates(p1,p2,p3)[3:]])
-
-    # Internal degrees of freedom
-    torsions = []
+    ExternalRestraintSpecs = self.rootInd + \
+      list(self.extended_coordinates(p1,p2,p3))
+    
+    # Restraints on internal torsions
+    TorsionRestraintSpecs = []
     for ind in self._softTorsionInd:
       t = self._torsionIndL[ind]
-      torsions.append(self._torsionIndL[ind]
-        + [0, dihedral(XYZ[t[0]],XYZ[t[1]],XYZ[t[2]],XYZ[t[3]]), 0.03490569/2., k])
+      TorsionRestraintSpecs.append(self._torsionIndL[ind]
+        + [dihedral(XYZ[t[0]],XYZ[t[1]],XYZ[t[2]],XYZ[t[3]])])
 
-    return [extPoseInp, torsions]
+    return [TorsionRestraintSpecs, ExternalRestraintSpecs]
 
   def setOccupancyTo(self, property='rings'):
     for atom in self.molecule.atoms:

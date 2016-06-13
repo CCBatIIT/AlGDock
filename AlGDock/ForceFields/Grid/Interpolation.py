@@ -91,6 +91,9 @@ class InterpolationForceField(ForceField):
     else:
       self.params['scaling_prefactor'] = -1. if neg_vals else 1.
 
+  def set_strength(self, strength):
+    self.params['strength'] = strength
+
   # The following method is called by the energy evaluation engine
   # to inquire if this force field term has all the parameters it
   # requires. This is necessary for interdependent force field
