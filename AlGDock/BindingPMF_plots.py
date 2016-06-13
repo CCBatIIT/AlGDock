@@ -189,13 +189,9 @@ class BPMF_plots(BPMF):
     # Show the starting pose
     start_ligand_dcd_FN = os.path.join(self.dir[process],'L_start.dcd')
     if show_starting_pose:
-      if not 'starting_pose' in self.confs['dock'].keys():
-        self._set_universe_evaluator(\
-          self._lambda(1.0, 'dock', MM=True, site=True, crossed=False))
-        self.confs['dock']['starting_pose'] = self._get_confs_to_rescore(\
-          nconfs=1, site=True, minimize=True)[0]
-      if self.confs['dock']['starting_pose'] is not None:
-        IO_dcd.write(start_ligand_dcd_FN, self.confs['dock']['starting_pose'], \
+      if self.confs['dock']['starting_poses'] is not None:
+        IO_dcd.write(start_ligand_dcd_FN, \
+          self.confs['dock']['starting_poses'][-1], \
           includeLigand=True, includeReceptor=False)
         script += 'set start_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
         script += 'mol addfile '+start_ligand_dcd_FN+' type dcd waitfor all\n'

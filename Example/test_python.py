@@ -33,7 +33,7 @@ for run_type in run_types:
     complex_fixed_atoms='complex.pdb', \
     score = 'prmtopcrd/anchor_and_grow_scored.mol2', \
     dir_grid='grids', \
-    protocol='Adaptive', cool_therm_speed=1.5, dock_therm_speed=0.1,\
+    protocol='Adaptive', cool_therm_speed=1.5, dock_therm_speed=0.2,\
     sampler='HMC', \
     MCMC_moves=1, \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \

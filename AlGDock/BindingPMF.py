@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-# TODO: Pose BPMF works but are very large, acceptance rates are very low,
-#       and external pose energies are finite. Why?
-# TODO: Give unique file name to each pose BPMF
-
 import os # Miscellaneous operating system interfaces
 from os.path import join
 import cPickle as pickle
@@ -163,7 +159,7 @@ last modified {1}
     FNs = OrderedDict()
     args = OrderedDict()
     for p in ['dock','cool']:
-      params = self._load(p)
+      params = self._load(p, kwargs['pose'])
       if params is not None:
         (fn_dict, arg_dict) = params
         FNs[p] = convert_dictionary_relpath(fn_dict,
@@ -1367,6 +1363,7 @@ last modified {1}
         (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
         repX_conf = np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]),\
                            self._random_trans[i_trans].array)
+        self.confs['dock']['starting_poses'] = [repX_conf]
         self.confs['dock']['replicas'] = [repX_conf]
         self.confs['dock']['samples'] = [[repX_conf]]
         self.dock_Es = [[dict([(key,np.array([val[ind]])) for (key,val) in E.iteritems()])]]
@@ -1529,7 +1526,12 @@ last modified {1}
       ['Theta_RL'+phase for phase in self.params['dock']['phases']]
 
     # Initialize variables as empty lists or by loading data
-    f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+    if self.params['dock']['pose']==-1:
+      f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+    else:
+      f_RL_FN = join(self.dir['dock'], \
+        'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
+    
 #    if redo:
 #      if os.path.isfile(f_RL_FN):
 #        os.remove(f_RL_FN)
@@ -1761,7 +1763,11 @@ last modified {1}
     self._clear_lock('dock')
     
   def _store_infinite_f_RL(self):
-    f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+    if self.params['dock']['pose']==-1:
+      f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+    else:
+      f_RL_FN = join(self.dir['dock'],\
+        'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
     self._write_pkl_gz(f_RL_FN, (self.f_L, [], np.inf, np.inf))
 
   def _get_equilibrated_cycle(self, process):
@@ -2111,13 +2117,16 @@ last modified {1}
         (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
         confs.reverse() # Order by increasing energy
         if self.params['dock']['pose']<len(confs):
-          self.confs['pose'] = confs[self.params['dock']['pose']]
+          starting_pose = np.copy(confs[self.params['dock']['pose']])
+          self.confs['dock']['starting_poses'] = [starting_pose]
         else:
+          self._clear('dock')
+          self._save('dock')
+          self._store_infinite_f_RL()
           raise Exception('Pose index greater than number of poses')
 
         Xo = np.copy(self.universe.configuration().array)
-        self.universe.setConfiguration(Configuration(self.universe, \
-          self.confs['pose']))
+        self.universe.setConfiguration(Configuration(self.universe, starting_pose))
         import AlGDock.RigidBodies
         rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
         (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
@@ -2769,7 +2778,8 @@ last modified {1}
       raise Exception('Input configuration format not recognized')
 
     # based on the seeds
-    if self.confs['dock']['seeds'] is not None:
+    if (self.confs['dock']['seeds'] is not None) and \
+       (self.params['dock']['pose']==-1):
       confs = confs + self.confs['dock']['seeds']
       Es = {}
       count['initial_dock'] = len(self.confs['dock']['seeds'])
@@ -3053,7 +3063,8 @@ last modified {1}
     if process=='dock':
       a = lambda_c['a']
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
-      # TODO: set a_g to zero if it is small
+      if a_g<1E-10:
+        a_g=0
       da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(\
         1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
@@ -4064,9 +4075,14 @@ END
     F.close()
     self.tee("  wrote to "+FN)
 
-  def _load(self, p):
-    progress_FN = join(self.dir[p],'%s_progress.pkl.gz'%(p))
-    data_FN = join(self.dir[p],'%s_data.pkl.gz'%(p))
+  def _load(self, p, pose):
+    if p=='dock' and pose>-1:
+      progress_FN = join(self.dir[p],'%s_progress_pose%03d.pkl.gz'%(p, pose))
+      data_FN = join(self.dir[p],'%s_data_pose%03d.pkl.gz'%(p, pose))
+    else:
+      progress_FN = join(self.dir[p],'%s_progress.pkl.gz'%(p))
+      data_FN = join(self.dir[p],'%s_data.pkl.gz'%(p))
+
     saved = {'progress':self._load_pkl_gz(progress_FN),
              'data':self._load_pkl_gz(data_FN)}
     if (saved['progress'] is None) or (saved['data'] is None):
@@ -4074,8 +4090,13 @@ END
         os.remove(progress_FN)
       if os.path.isfile(data_FN):
         os.remove(data_FN)
-      progress_FN = join(self.dir[p],'%s_progress.pkl.gz.BAK'%(p))
-      data_FN = join(self.dir[p],'%s_data.pkl.gz.BAK'%(p))
+      if p=='dock' and pose>-1:
+        progress_FN = join(self.dir[p],'%s_progress_pose%03d.pkl.gz.BAK'%(p, pose))
+        data_FN = join(self.dir[p],'%s_data_pose%03d.pkl.gz.BAK'%(p, pose))
+      else:
+        progress_FN = join(self.dir[p],'%s_progress.pkl.gz.BAK'%(p))
+        data_FN = join(self.dir[p],'%s_data.pkl.gz.BAK'%(p))
+
       saved = {'progress':self._load_pkl_gz(progress_FN),
                'data':self._load_pkl_gz(data_FN)}
       if (saved['progress'] is None):
@@ -4096,13 +4117,14 @@ END
       if p=='dock' and saved['data'][0] is not None:
         (self._n_trans, self._max_n_trans, self._random_trans, \
          self._n_rot, self._max_n_rot, self._random_rotT) = saved['data'][0]
-      self.confs[p]['replicas'] = saved['data'][1]
-      self.confs[p]['seeds'] = saved['data'][2]
-      self.confs[p]['SmartDarting'] = saved['data'][3]
-      self.confs[p]['samples'] = saved['data'][4]
-      setattr(self,'%s_Es'%p, saved['data'][5])
-      if saved['data'][4] is not None:
-        cycle = len(saved['data'][4][-1])
+      self.confs[p]['starting_poses'] = saved['data'][1]
+      self.confs[p]['replicas'] = saved['data'][2]
+      self.confs[p]['seeds'] = saved['data'][3]
+      self.confs[p]['SmartDarting'] = saved['data'][4]
+      self.confs[p]['samples'] = saved['data'][5]
+      setattr(self,'%s_Es'%p, saved['data'][6])
+      if saved['data'][5] is not None:
+        cycle = len(saved['data'][5][-1])
         setattr(self,'_%s_cycle'%p,cycle)
       else:
         setattr(self,'_%s_cycle'%p,0)
@@ -4155,6 +4177,7 @@ END
                    getattr(self,'%s_protocol'%p),
                    getattr(self,'_%s_cycle'%p)),
       'data': (random_orient,
+               self.confs[p]['starting_poses'],
                self.confs[p]['replicas'],
                self.confs[p]['seeds'],
                self.confs[p]['SmartDarting'],
@@ -4162,7 +4185,11 @@ END
                getattr(self,'%s_Es'%p))}
     
     for key in keys:
-      saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
+      if p=='dock' and self.params['dock']['pose']>-1:
+        saved_FN = join(self.dir[p],'%s_%s_pose%03d.pkl.gz'%(\
+          p, key, self.params['dock']['pose']))
+      else:
+        saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
       if not os.path.isdir(self.dir[p]):
         os.system('mkdir -p '+self.dir[p])
       if os.path.isfile(saved_FN):
@@ -4178,7 +4205,11 @@ END
     else:
       lockF = open(lockFN,'w')
       lockF.close()
-    logFN = join(self.dir[p],p+'_log.txt')
+    if p=='dock' and self.params['dock']['pose']>-1:
+      logFN = join(self.dir[p],'%s_pose%03d_log.txt'%(\
+        p, self.params['dock']['pose']))
+    else:
+      logFN = join(self.dir[p],p+'_log.txt')
     self.log = open(logFN,'a')
 
   def _clear_lock(self, p):
