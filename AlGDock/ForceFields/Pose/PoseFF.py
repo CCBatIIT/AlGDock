@@ -6,8 +6,8 @@
 from MMTK.ForceFields.ForceField import ForceField, EnergyTerm
 from MMTK_pose import PoseDihedralTerm, PoseExtDistTerm, PoseExtAnglTerm, PoseExtDiheTerm, PoseExtDihe2Term
 from MMTK import ParticleVector, SymmetricPairTensor
-from Scientific.Geometry import delta
-from Scientific import N
+
+import numpy as np
 
 from collections import OrderedDict
 
@@ -61,13 +61,13 @@ class InternalRestraintForceField(ForceField):
     # that handles energy calculations.
 
     # intDiheIs[] = 4 atom indices
-    intDiheIs = N.array([t[:4] for t in self.params['torsions']])
+    intDiheIs = np.array([t[:4] for t in self.params['torsions']])
 
     # intDiheParams[0] = n: periodicity
     # intDiheParams[1] = gamma: reference angle
     # intDiheParams[2] = b: flat bottom range (it gets halfed below)
     # intDiheParams[3] = k: force constant
-    intDiheParams = N.array([[0, t[4], self.params['hwidth'], self.params['k']] \
+    intDiheParams = np.array([[0, t[4], self.params['hwidth'], self.params['k']] \
       for t in self.params['torsions']])
 
     return [PoseDihedralTerm(universe._spec, intDiheIs, intDiheParams)]
@@ -121,7 +121,7 @@ class ExternalRestraintForceField(ForceField):
     self.params['k_angular'] = k_angular
   
   def get_reference_external_BAT(self):
-    return N.array([self.params[key] \
+    return np.array([self.params[key] \
       for key in ['X1','Y1','Z1','phi','theta','omega']])
   
   # The following method is called by the energy evaluation engine
@@ -156,22 +156,22 @@ class ExternalRestraintForceField(ForceField):
     # ext[Dist,Angl]Params[]: ref value, force K, bottom width
     # extDiheParams[]: same shape as intDiheParams
 
-    extXYZ  = N.array([[self.params['X1'], self.params['Y1'], self.params['Z1']]])
-    extDistIs  = N.array([[-1, ind1]]);
-    extDistParams  = N.array([[0.0, k_spatial, hwidth_spatial]]);
+    extXYZ  = np.array([[self.params['X1'], self.params['Y1'], self.params['Z1']]])
+    extDistIs  = np.array([[-1, ind1]]);
+    extDistParams  = np.array([[0.0, k_spatial, hwidth_spatial]]);
 
-    PhiDummy1 = N.array([[offset, 0.0, -offset]]) + extXYZ
-    PhiDummy2 = N.array([[0.0, 0.0, -offset]]) + extXYZ
-    extDihe2Is  = N.array([[-2, -1, ind1, ind2]]);
-    extDihe2Params  = N.array([[0, phi, hwidth_angular, k_angular]]);
+    PhiDummy1 = np.array([[offset, 0.0, -offset]]) + extXYZ
+    PhiDummy2 = np.array([[0.0, 0.0, -offset]]) + extXYZ
+    extDihe2Is  = np.array([[-2, -1, ind1, ind2]]);
+    extDihe2Params  = np.array([[0, phi, hwidth_angular, k_angular]]);
 
-    ThetaDummy = N.array([[0.0, 0.0, offset]]) + extXYZ
-    extAnglIs  = N.array([[-1, ind1, ind2]]);
-    extAnglParams  = N.array([[theta, k_angular, hwidth_angular]]);
+    ThetaDummy = np.array([[0.0, 0.0, offset]]) + extXYZ
+    extAnglIs  = np.array([[-1, ind1, ind2]]);
+    extAnglParams  = np.array([[theta, k_angular, hwidth_angular]]);
 
-    OmegaDummy = N.array([[0.0, 0.0, -1.0]]) + extXYZ
-    extDiheIs  = N.array([[-1, ind1, ind2, ind3]]);
-    extDiheParams  = N.array([[0, omega, hwidth_angular, k_angular]]);
+    OmegaDummy = np.array([[0.0, 0.0, -1.0]]) + extXYZ
+    extDiheIs  = np.array([[-1, ind1, ind2, ind3]]);
+    extDiheParams  = np.array([[0, omega, hwidth_angular, k_angular]]);
 
     # Here we pass all the parameters to the code
     # that handles energy calculations.

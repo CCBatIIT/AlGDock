@@ -4117,17 +4117,33 @@ END
       if p=='dock' and saved['data'][0] is not None:
         (self._n_trans, self._max_n_trans, self._random_trans, \
          self._n_rot, self._max_n_rot, self._random_rotT) = saved['data'][0]
-      self.confs[p]['starting_poses'] = saved['data'][1]
-      self.confs[p]['replicas'] = saved['data'][2]
-      self.confs[p]['seeds'] = saved['data'][3]
-      self.confs[p]['SmartDarting'] = saved['data'][4]
-      self.confs[p]['samples'] = saved['data'][5]
-      setattr(self,'%s_Es'%p, saved['data'][6])
-      if saved['data'][5] is not None:
-        cycle = len(saved['data'][5][-1])
-        setattr(self,'_%s_cycle'%p,cycle)
+      if len(saved['data'])==7:
+        # New file format (after 6/13/2016) storing starting poses
+        self.confs[p]['starting_poses'] = saved['data'][1]
+        self.confs[p]['replicas'] = saved['data'][2]
+        self.confs[p]['seeds'] = saved['data'][3]
+        self.confs[p]['SmartDarting'] = saved['data'][4]
+        self.confs[p]['samples'] = saved['data'][5]
+        setattr(self,'%s_Es'%p, saved['data'][6])
+        if saved['data'][5] is not None:
+          cycle = len(saved['data'][5][-1])
+          setattr(self,'_%s_cycle'%p,cycle)
+        else:
+          setattr(self,'_%s_cycle'%p,0)
       else:
-        setattr(self,'_%s_cycle'%p,0)
+        # Old file format without starting poses
+        print 'Loading file from old format'
+        self.confs[p]['starting_poses'] = []
+        self.confs[p]['replicas'] = saved['data'][1]
+        self.confs[p]['seeds'] = saved['data'][2]
+        self.confs[p]['SmartDarting'] = saved['data'][3]
+        self.confs[p]['samples'] = saved['data'][4]
+        setattr(self,'%s_Es'%p, saved['data'][5])
+        if saved['data'][4] is not None:
+          cycle = len(saved['data'][4][-1])
+          setattr(self,'_%s_cycle'%p,cycle)
+        else:
+          setattr(self,'_%s_cycle'%p,0)
     if getattr(self,'%s_protocol'%p)==[] or \
         (not getattr(self,'%s_protocol'%p)[-1]['crossed']):
       setattr(self,'_%s_cycle'%p,0)

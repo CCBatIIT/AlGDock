@@ -61,12 +61,14 @@ if not mmtk_ok:
   print "AlGDock requires MMTK version 2.6 or higher"
   raise SystemExit
 
+MMTK_source_path = findPath(search_paths['MMTK'])
+
 # Configure compile arguments and include directories 
 compile_args = []
 include_dirs = ['Include',
-                os.path.join(findPath(search_paths['MMTK']),'Include'),
-                os.path.join(findPath(search_paths['MMTK']),'include',
-                             'python%d.%d'%sys.version_info[:2],'MMTK')]
+                os.path.join(MMTK_source_path,'Include'),
+                os.path.join(MMTK_source_path,'include', \
+                  'python%d.%d'%sys.version_info[:2],'MMTK')]
 
 from Scientific import N
 assert N.package == "NumPy"
@@ -322,7 +324,11 @@ ext_module_name_and_path = [\
   ('MMTK_BSpline_grid', ['AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx']), \
   ('MMTK_BSpline_transform_grid', ['AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx']), \
   ('MMTK_pose', ['AlGDock/ForceFields/Pose/MMTK_pose.c', \
-    'AlGDock/ForceFields/Pose/pose.c']), \
+    'AlGDock/ForceFields/Pose/pose.c', \
+    os.path.join(MMTK_source_path, 'Src', 'bonded.c'), \
+    os.path.join(MMTK_source_path, 'Src', 'nonbonded.c'), \
+    os.path.join(MMTK_source_path, 'Src', 'ewald.c'), \
+    os.path.join(MMTK_source_path, 'Src', 'sparsefc.c')]), \
   ('NUTS', ['AlGDock/Integrators/NUTS/NUTS.pyx']), \
   ('NUTS_no_stopping', ['AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx']), \
   ('SmartDarting', ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx']), \
