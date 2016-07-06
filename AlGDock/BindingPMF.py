@@ -1559,7 +1559,7 @@ last modified {1}
       # Binding PMF estimates
       self.B = {'MBAR':[]}
       for phase in self.params['dock']['phases']:
-        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
+        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR','MBAR_c2']:
           self.B[phase+'_'+method] = []
     if readOnly:
       return True
@@ -1567,7 +1567,7 @@ last modified {1}
     if redo:
       self.B = {'MBAR':[]}
       for phase in self.params['dock']['phases']:
-        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
+        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR','MBAR_c2']:
           self.B[phase+'_'+method] = []
       for key in phase_f_RL_keys:
           if key in self.f_RL.keys():
@@ -1689,10 +1689,10 @@ last modified {1}
 
     # BPMFs and Thetas
     for phase in self.params['dock']['phases']:
-      for key in [phase+'_solv','Theta_1'+phase,'Theta_RL'+phase]:
+      for key in [phase+'_solv',phase+'_solv_c2','Theta_1'+phase,'Theta_RL'+phase]:
         if not key in self.f_RL:
           self.f_RL[key] = []
-      for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR']:
+      for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR','MBAR_c2']:
         if not phase+'_'+method in self.B:
           self.B[phase+'_'+method] = []
       
@@ -1713,7 +1713,11 @@ last modified {1}
         # From the full grid to the fully bound complex in phase
         du = u_RL - u_MM
         min_du = min(du)
+        #   Exponential average
         f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
+        #   2nd order cumulant expansion
+        f_RL_solv_c2 = du.mean() - du.var()/2
+        
         weights = np.exp(-du+min_du)
         weights = weights/sum(weights)
         
@@ -1730,6 +1734,7 @@ last modified {1}
         
         # Complex solvation
         self.f_RL[phase+'_solv'].append(f_RL_solv)
+        self.f_RL[phase+'_solv_c2'].append(f_RL_solv_c2)
         
         # To help calculate the mean energy of the fully bound complex in phase
         Theta_1 = np.sum(np.exp(-Psi+min_Psi)*weights_2RL)/np.sum(weights_2RL)
@@ -1749,6 +1754,9 @@ last modified {1}
         self.B[phase+'_MBAR'].append(-f_R_solv \
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
           + self.f_RL['grid_MBAR'][-1][-1] + f_RL_solv)
+        self.B[phase+'_MBAR_c2'].append(-f_R_solv \
+          - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
+          + self.f_RL['grid_MBAR'][-1][-1] + f_RL_solv_c2)
 
         self.tee("  calculated %s binding PMF of %f RT with cycles %d to %d"%(\
           phase, self.B[phase+'_MBAR'][-1], \
@@ -2114,7 +2122,7 @@ last modified {1}
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
         # Obtain reference pose
-        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
+        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=True)
         confs.reverse() # Order by increasing energy
         if self.params['dock']['pose']<len(confs):
           starting_pose = np.copy(confs[self.params['dock']['pose']])

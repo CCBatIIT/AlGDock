@@ -741,7 +741,8 @@ stepspercycle        1
     output_script = '''
 outputEnergies       1
 '''
-    if not test:
+    import os
+    if os.path.isfile(dcdname):
       execution_script = '''
 set ts 0
 coorfile open dcd {'''+dcdname+'''}
