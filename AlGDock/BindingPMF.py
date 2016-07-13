@@ -41,7 +41,6 @@ from multiprocessing import Process
 #############
 
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
-k_r = 1000.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K
 
 term_map = {
   'cosine dihedral angle':'MM',
@@ -394,6 +393,7 @@ last modified {1}
       ('site_density',50.),
       ('site_measured',None),
       ('pose',-1),
+      ('k_pose', 1000.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K),
       ('MCMC_moves',1),
       ('rmsd',False)] + \
       [('receptor_'+phase,None) for phase in allowed_phases])
@@ -3082,8 +3082,9 @@ last modified {1}
         # Pose BPMF
         a_r = np.tanh(16*a*a)
         da_r_da = 38.*a/np.cosh(16.*a*a)**2
-        U_r = self._u_kln([E], [{'k_angular_ext':k_r, \
-          'k_spatial_ext':k_r, 'k_angular_int':k_r}], noBeta=True)
+        U_r = self._u_kln([E], [{'k_angular_ext':self.params['dock']['k_pose'], \
+          'k_spatial_ext':self.params['dock']['k_pose'], \
+          'k_angular_int':self.params['dock']['k_pose']}], noBeta=True)
         U_RL_g = self._u_kln([E],
           [{'MM':True, 'T':T, \
             'k_angular_ext':lambda_c['k_angular_ext'], \
@@ -3131,9 +3132,9 @@ last modified {1}
         # Pose BPMF
         a_r = np.tanh(16*a*a)
         lambda_n['a'] = a
-        lambda_n['k_angular_int'] = k_r*a_r
-        lambda_n['k_angular_ext'] = k_r
-        lambda_n['k_spatial_ext'] = k_r
+        lambda_n['k_angular_int'] = self.params['dock']['k_pose']*a_r
+        lambda_n['k_angular_ext'] = self.params['dock']['k_pose']
+        lambda_n['k_spatial_ext'] = self.params['dock']['k_pose']
         lambda_n['LJr'] = a_g
         lambda_n['LJa'] = a_g
         lambda_n['ELE'] = a_g

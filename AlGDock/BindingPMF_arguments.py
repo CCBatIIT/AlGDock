@@ -143,7 +143,9 @@ arguments = {
     'help':'Density of center-of-mass points in the first docking state'},
   # Binding pose
   'pose':{'type':int, 'default':-1,
-    'help':'Confine the ligand to a specific pose from the "score" file. If the argument is negative there is no pose restriction. Otherwise the argument is the index of the pose. (Not yet implemented)'}}
+    'help':'Confine the ligand to a specific pose from the "score" file. If the argument is negative there is no pose restriction. Otherwise the argument is the index of the pose.'},
+  'k_pose':{'type':float, \
+    'help':'Spring constant for restraint to the binding pose.'}}
 
 import copy
 for process in ['cool','dock']:
