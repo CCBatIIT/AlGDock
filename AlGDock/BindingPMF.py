@@ -21,7 +21,7 @@ try:
   from Scientific._vector import Vector
 except:
   from Scientific.Geometry.VectorModule import Vector
-  
+
 import AlGDock as a
 # Define allowed_phases list and arguments dictionary
 from AlGDock.BindingPMF_arguments import *
@@ -603,6 +603,12 @@ last modified {1}
     self.sampler['ExternalMC'] = ExternalMCIntegrator(\
       self.universe, self.molecule, step_size=0.25*MMTK.Units.Ang)
 
+    from GCHMC import GCHMCIntegrator # EU
+    self.mixed_samplers = [] # EU
+    from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo import HamiltonianMonteCarloIntegrator # EU
+    self.mixed_samplers.append(GCHMCIntegrator(self.universe, os.path.dirname(self._FNs['ligand_database']), os.path.dirname(self._FNs['forcefield']))) # EU
+    self.mixed_samplers.append(HamiltonianMonteCarloIntegrator(self.universe)) # EU
+
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'NUTS':
         from NUTS import NUTSIntegrator # @UnresolvedImport
@@ -614,14 +620,12 @@ last modified {1}
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
         self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
-      elif self.params[p]['sampler'] == 'TDHMC':
-        from Integrators.TDHamiltonianMonteCarlo.TDHamiltonianMonteCarlo \
-          import TDHamiltonianMonteCarloIntegrator
-        self.sampler[p] = TDHamiltonianMonteCarloIntegrator(self.universe)
       elif self.params[p]['sampler'] == 'VV':
         from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
           import VelocityVerletIntegrator
         self.sampler[p] = VelocityVerletIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'TDHMC': #EU
+        self.sampler[p] = self._mixed_sampler2   #EU
       else:
         raise Exception('Unrecognized sampler!')
 
@@ -699,6 +703,8 @@ last modified {1}
           for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
             self.confs[process]['samples'][state_ind][cycle_ind] = []
         self._save(process)
+    (self.mixed_samplers[0]).Clear() #EU
+
 
   ###########
   # Cooling #
@@ -4049,6 +4055,38 @@ END
         if os.path.isfile(FN):
           os.remove(FN)
           print '  removed '+os.path.relpath(FN,self.dir['start'])
+
+  def _mixed_sampler2(self, steps, steps_per_trial, T, delta_t, random_seed, normalize=False, adapt=False):
+    ntrials = int(steps/steps_per_trial)
+    if ntrials%2:
+      lowh = int(ntrials/2)
+      highh = ntrials-lowh
+    else:
+      lowh = highh = int(ntrials/2)
+    if steps_per_trial < 100:
+      steps_per_trial_h = 3
+    else:
+      steps_per_trial_h = 3
+    if lowh:
+      steps_h = lowh * steps_per_trial_h
+    else:
+      steps_h = steps_per_trial_h
+    steps = highh * steps_per_trial
+
+    (mixed_confs0, mixed_potEs0, mixed_accs0, mixed_ntrials0, mixed_dts0) = \
+      self.mixed_samplers[0].Call(steps_h, steps_per_trial_h, T, 0.0030, random_seed%254, 1, 0)
+
+    (mixed_confs1, mixed_potEs1, mixed_accs1, mixed_ntrials1, mixed_dts1) = \
+      self.mixed_samplers[1](steps=steps, steps_per_trial=steps_per_trial, T=T, delta_t=delta_t, \
+      normalize=normalize, adapt=adapt, random_seed=random_seed)
+
+    mixed_confs = mixed_confs0 + mixed_confs1
+    mixed_potEs = mixed_potEs0 + mixed_potEs1
+    mixed_accs = mixed_accs0 + mixed_accs1
+    mixed_ntrials = mixed_ntrials0 + mixed_ntrials1
+
+    return (mixed_confs, mixed_potEs, mixed_accs, mixed_ntrials, delta_t)
+  #
 
 if __name__ == '__main__':
   import argparse
