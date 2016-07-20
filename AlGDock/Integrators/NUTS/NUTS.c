@@ -1674,7 +1674,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
 static PyObject *__pyx_tp_new_4NUTS_NUTSIntegrator(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_float_1_;
 static PyObject *__pyx_float_0_5;
-static PyObject *__pyx_float_50_;
+static PyObject *__pyx_float_200_;
 static PyObject *__pyx_float_8_3144621;
 static PyObject *__pyx_int_0;
 static PyObject *__pyx_int_1;
@@ -5936,7 +5936,7 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_build_tree(struct __pyx_obj_4NUT
  *       # Is the new point in the slice?
  *       nprime = (logu < joint)             # <<<<<<<<<<<<<<
  *       # Is the simulation wildly inaccurate
- *       sprime = (np.abs(joint_o - joint) < 50.) and (np.abs((e_o - eprime)/self.RT) < 50.)
+ *       sprime = (np.abs(joint_o - joint) < 200.) and (np.abs((e_o - eprime)/self.RT) < 200.)
  */
     __pyx_t_3 = __Pyx_PyBool_FromLong((__pyx_v_logu < __pyx_v_joint)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 395, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
@@ -5946,7 +5946,7 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_build_tree(struct __pyx_obj_4NUT
     /* "NUTS.pyx":397
  *       nprime = (logu < joint)
  *       # Is the simulation wildly inaccurate
- *       sprime = (np.abs(joint_o - joint) < 50.) and (np.abs((e_o - eprime)/self.RT) < 50.)             # <<<<<<<<<<<<<<
+ *       sprime = (np.abs(joint_o - joint) < 200.) and (np.abs((e_o - eprime)/self.RT) < 200.)             # <<<<<<<<<<<<<<
  *       # Compute the acceptance probability
  *       alphaprime = min(1, np.exp(joint - joint_o)) if sprime else 0.
  */
@@ -5983,7 +5983,7 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_build_tree(struct __pyx_obj_4NUT
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     }
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    __pyx_t_7 = PyObject_RichCompare(__pyx_t_5, __pyx_float_50_, Py_LT); __Pyx_XGOTREF(__pyx_t_7); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 397, __pyx_L1_error)
+    __pyx_t_7 = PyObject_RichCompare(__pyx_t_5, __pyx_float_200_, Py_LT); __Pyx_XGOTREF(__pyx_t_7); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 397, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_7); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 397, __pyx_L1_error)
     if (__pyx_t_1) {
@@ -6027,7 +6027,7 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_build_tree(struct __pyx_obj_4NUT
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_4 = PyObject_RichCompare(__pyx_t_7, __pyx_float_50_, Py_LT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 397, __pyx_L1_error)
+    __pyx_t_4 = PyObject_RichCompare(__pyx_t_7, __pyx_float_200_, Py_LT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 397, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_INCREF(__pyx_t_4);
     __pyx_t_3 = __pyx_t_4;
@@ -6037,7 +6037,7 @@ static PyObject *__pyx_f_4NUTS_14NUTSIntegrator_build_tree(struct __pyx_obj_4NUT
     __pyx_t_3 = 0;
 
     /* "NUTS.pyx":399
- *       sprime = (np.abs(joint_o - joint) < 50.) and (np.abs((e_o - eprime)/self.RT) < 50.)
+ *       sprime = (np.abs(joint_o - joint) < 200.) and (np.abs((e_o - eprime)/self.RT) < 200.)
  *       # Compute the acceptance probability
  *       alphaprime = min(1, np.exp(joint - joint_o)) if sprime else 0.             # <<<<<<<<<<<<<<
  *       # Set the return values---minus=plus for all things here, since the
@@ -10401,7 +10401,7 @@ static int __Pyx_InitGlobals(void) {
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
   __pyx_float_1_ = PyFloat_FromDouble(1.); if (unlikely(!__pyx_float_1_)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_float_0_5 = PyFloat_FromDouble(0.5); if (unlikely(!__pyx_float_0_5)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __pyx_float_50_ = PyFloat_FromDouble(50.); if (unlikely(!__pyx_float_50_)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_float_200_ = PyFloat_FromDouble(200.); if (unlikely(!__pyx_float_200_)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_float_8_3144621 = PyFloat_FromDouble(8.3144621); if (unlikely(!__pyx_float_8_3144621)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_int_0 = PyInt_FromLong(0); if (unlikely(!__pyx_int_0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_int_1 = PyInt_FromLong(1); if (unlikely(!__pyx_int_1)) __PYX_ERR(0, 1, __pyx_L1_error)

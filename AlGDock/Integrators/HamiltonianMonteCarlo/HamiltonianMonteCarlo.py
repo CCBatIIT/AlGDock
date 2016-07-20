@@ -100,7 +100,7 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
           en = pe_n + 0.5*np.sum(np.multiply(m3,np.square(v.array)))
           
           if ((en<eo) or (np.random.random()<N.exp(-(en-eo)/RT))) and \
-             ((abs(pe_o-pe_n)<100.) or (abs(eo-en)<100.)):
+             ((abs(pe_o-pe_n)/RT<250.) or (abs(eo-en)/RT<250.)):
             xo = np.copy(self.universe.configuration().array)
             pe_o = pe_n
             acc += 1

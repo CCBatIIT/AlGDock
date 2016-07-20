@@ -17,8 +17,8 @@ class InternalRestraintForceField(ForceField):
   """
 
   def __init__(self, torsions, \
-               hwidth = 0.7853981633974483, \
-               k = 1000.0):
+               hwidth = 0., \
+               k = 200.0):
     """
     Internal torsional dofs:
     @param input: [4 atom indices, gamma] x internal dofs
@@ -78,10 +78,10 @@ class ExternalRestraintForceField(ForceField):
   """
 
   def __init__(self, ind1, ind2, ind3, X1, Y1, Z1, phi, theta, omega, \
-               hwidth_spatial = 0.05, \
-               k_spatial = 1000.0, \
-               hwidth_angular = 0.7853981633974483, \
-               k_angular = 1000.0):
+               hwidth_spatial = 0.0, \
+               k_spatial = 200.0, \
+               hwidth_angular = 0.0, \
+               k_angular = 200.0):
     """
     @param input: [index1, index2, index3, X1, Y1, Z1, phi, theta, omega]
     ind1 - index of atom 1

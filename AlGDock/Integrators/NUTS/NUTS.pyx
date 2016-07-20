@@ -394,7 +394,7 @@ cdef class NUTSIntegrator(MMTK_trajectory_generator.EnergyBasedTrajectoryGenerat
       # Is the new point in the slice?
       nprime = (logu < joint)
       # Is the simulation wildly inaccurate
-      sprime = (np.abs(joint_o - joint) < 50.) and (np.abs((e_o - eprime)/self.RT) < 50.)
+      sprime = (np.abs(joint_o - joint) < 200.) and (np.abs((e_o - eprime)/self.RT) < 200.)
       # Compute the acceptance probability
       alphaprime = min(1, np.exp(joint - joint_o)) if sprime else 0.
       # Set the return values---minus=plus for all things here, since the

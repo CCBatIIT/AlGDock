@@ -393,7 +393,7 @@ last modified {1}
       ('site_density',50.),
       ('site_measured',None),
       ('pose',-1),
-      ('k_pose', 1000.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K),
+      ('k_pose', 200.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K),
       ('MCMC_moves',1),
       ('rmsd',False)] + \
       [('receptor_'+phase,None) for phase in allowed_phases])
@@ -2122,7 +2122,7 @@ last modified {1}
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
         # Obtain reference pose
-        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=True)
+        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
         confs.reverse() # Order by increasing energy
         if self.params['dock']['pose']<len(confs):
           starting_pose = np.copy(confs[self.params['dock']['pose']])
