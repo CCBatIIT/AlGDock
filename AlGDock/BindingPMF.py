@@ -6,6 +6,7 @@ import cPickle as pickle
 import gzip
 import copy
 
+import sys
 import time
 import numpy as np
 
@@ -469,7 +470,6 @@ last modified {1}
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
   
     # Set up the system
-    import sys
     original_stderr = sys.stderr
     sys.stderr = NullDevice()
     MMTK.Database.molecule_types.directory = \
@@ -737,7 +737,7 @@ last modified {1}
     if self.cool_protocol==[]:
       self.tee("\n>>> Initial %sing of the ligand "%direction_name + \
         "from %d K to %d K, "%(T_START,T_END) + "starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
 
       # Set up the force field
       T = T_START
@@ -789,7 +789,7 @@ last modified {1}
     else:
       self.tee("\n>>> Initial %s of the ligand "%direction_name + \
         "from %d K to %d K, "%(T_START,T_END) + "continuing at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
       confs = self.confs['cool']['samples'][-1][0]
       Es_MM = self.cool_Es[-1][0]['MM']
       T = self.cool_protocol[-1]['T']
@@ -983,7 +983,7 @@ last modified {1}
         return
 
     start_string = "\n>>> Ligand free energy calculations, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime())
     free_energy_start_time = time.time()
 
     # Store stats_L internal energies
@@ -1224,7 +1224,7 @@ last modified {1}
 
     if self.dock_protocol==[]:
       self.tee("\n>>> Initial docking, starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
       if undock:
         lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
         self.dock_protocol = [lambda_o]
@@ -1281,7 +1281,9 @@ last modified {1}
           confs_HT += list(self.confs['cool']['samples'][0][k])
         while len(confs_HT)<self.params['dock']['seeds_per_state']:
           self.tee("More samples from high temperature ligand simulation needed")
+          self._clear_lock('dock')
           self._replica_exchange('cool')
+          self._set_lock('dock')
           confs_HT = []
           for k in range(1,len(self.cool_Es[0])):
             confs_HT += list(self.confs['cool']['samples'][0][k])
@@ -1316,7 +1318,7 @@ last modified {1}
     else:
       # Continuing from a previous docking instance
       self.tee("\n>>> Initial docking, continuing at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
       confs = self.confs['dock']['samples'][-1][0]
       E = self.dock_Es[-1][0]
 
@@ -1595,7 +1597,7 @@ last modified {1}
 
     self._set_lock('dock')
     self.tee("\n>>> Binding PMF estimation, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
     BPMF_start_time = time.time()
 
     updated = False
@@ -1819,7 +1821,6 @@ last modified {1}
       for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
 
     # RMSD matrix
-    import sys
     original_stdout = sys.stdout
     original_stderr = sys.stderr
     sys.stdout = NullDevice()
@@ -2095,8 +2096,9 @@ last modified {1}
             scaling_factors_LJr = np.array([ \
               self.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
                 for a in self.molecule.atomList()],dtype=float)
-            scaling_factors_ELE = scaling_factors_ELE[scaling_factors_LJr>10]
-            scaling_factors_LJr = scaling_factors_LJr[scaling_factors_LJr>10]
+            toKeep = np.logical_and(scaling_factors_LJr>10., abs(scaling_factors_ELE)>0.1)
+            scaling_factors_ELE = scaling_factors_ELE[toKeep]
+            scaling_factors_LJr = scaling_factors_LJr[toKeep]
             grid_thresh = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
           else:
             grid_thresh = -1 # There is no threshold for grid points
@@ -2692,7 +2694,7 @@ last modified {1}
           self.confs['dock']['replicas'] = confs
 
       self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
-        process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())), \
+        process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime())), \
         process=process)
       self.timing[process+'_repX_start'] = time.time()
       start_cycle = getattr(self,'_%s_cycle'%process)
@@ -2824,6 +2826,9 @@ last modified {1}
       from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
       minimizer = SteepestDescentMinimizer(self.universe)
 
+      original_stderr = sys.stderr
+      sys.stderr = NullDevice() # Suppresses warnings for minimization
+
       minimized_confs = []
       minimized_energies = []
       min_start_time = time.time()
@@ -2845,6 +2850,9 @@ last modified {1}
         if not np.isnan(e_o):
           minimized_confs.append(x_o)
           minimized_energies.append(e_o)
+    
+      sys.stderr = original_stderr # Restores error reporting
+      
       confs = minimized_confs
       energies = minimized_energies
       self.tee("\n  minimized %d configurations in "%len(confs) + \
@@ -3312,7 +3320,7 @@ last modified {1}
     # Start postprocessing
     self._set_lock('dock' if 'dock' in [loc[0] for loc in incomplete] else 'cool')
     self.tee("\n>>> Postprocessing, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
     postprocess_start_time = time.time()
 
     done_queue = m.Queue()
