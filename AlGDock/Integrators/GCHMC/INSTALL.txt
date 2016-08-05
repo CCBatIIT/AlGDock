@@ -1,0 +1,20 @@
+# Description
+GCHMC is a Python C++ extension. The source code is in gmolmodel dir.
+Compilation consists of two parts:
+  - compilation of the libgmolmodel.so.1.0 library
+  - compilation of GCHMC.so python extension
+
+# Requirements:
+Simbody
+Molmodel
+Enthought Canopy
+Boost
+Eigen
+MMTK
+
+# Install:
+Edit path.py
+Run:
+  python compile_gmolmodel.py
+
+

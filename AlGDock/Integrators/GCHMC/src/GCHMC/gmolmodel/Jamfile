@@ -1,5 +1,0 @@
-# gmolmodel/Jamfile
-lib gmolmodel
-  :
-  : <file>libgmolmodel.so.1
-  ;
