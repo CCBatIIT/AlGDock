@@ -43,7 +43,7 @@ del os, sys, glob, Scientific, MMTK, AlGDock
 
 a = Analysis(['../AlGDock/BindingPMF.py'],
              pathex=['../AlGDock'],
-             hiddenimports=['scipy.special._ufuncs_cxx','netCDF4_utils','netcdftime'],
+             hiddenimports=['scipy.special._ufuncs_cxx','netCDF4_utils','netcdftime','MMTK.ForceFields.Amber'],
              hookspath=None,
              runtime_hooks=None)
 

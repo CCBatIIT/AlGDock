@@ -123,6 +123,13 @@ python setup.py install
 
 conda install matplotlib PIL numpy=1.8
 
+6. (Optional) To prepare a binary with DistTools/Distribute.sh, you will need
+pyinstaller, setuptools, and openmm. Fortunately they can all be installed with conda.
+
+conda install -c omnia openmm
+conda install pyinstaller
+conda install setuptools=19.2
+
 --- Testing ---
 
 In the AlGDock/Example/ subdirectory, you may test the program with:

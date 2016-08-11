@@ -18,6 +18,5 @@ cd dist
 tar czf algdock.tar.gz AlGDock/
 
 # Copy the compressed file to the OSG grid and to CCB
-# scp algdock.tar.gz dminh@ccb.tbc.iit.edu:/share/apps/algdock/
 scp algdock.tar.gz daveminh@login.osgconnect.net:~/public/
 cp algdock.tar.gz /share/apps/algdock/
