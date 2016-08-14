@@ -27,7 +27,7 @@ if os.environ.get('MMTKHOME'):
   mmtk_home = os.environ['MMTKHOME']
 else:
   mmtk_home = '/home/lspirido/Installers/0Work/0David/PoseFF/MMTK-2.7.9/'
-
+  mmtk_home = '/Users/dminh/Installers/MMTK-2.7.9/'
 poseff_src = os.getcwd() + '/'
 #poseff_src = '/home/lspirido/tmp/PoseFF/'
 #sys.path.insert(1, mmtk_home)

@@ -335,8 +335,6 @@ ext_module_name_and_path = [\
   ('BAT', ['Src/BAT.pyx']),
   ('repX', ['Src/repX.pyx'])]
 
-# PoseFF compilation does not work yet
-
 if False:
   # These extension modules are not used in the current code,
   # but may be used in the future.
@@ -354,7 +352,7 @@ if False:
 
 setup (name = package_name,
        version = pkginfo.__version__,
-       description = "Molecular docking with an adaptively alchemical interaction grid",
+       description = "Molecular docking with an adaptive alchemical interaction grid",
        long_description=
 """
 AlGDock is an Open Source program for molecular docking. In addition to 
@@ -382,7 +380,11 @@ rigid receptor.
        ext_package = 'AlGDock.'+sys.platform,
        ext_modules = [Extension(name, path, \
         extra_compile_args = compile_args + high_opt, \
-        include_dirs = include_dirs) \
+        include_dirs = include_dirs, \
+        define_macros = \
+          [('SERIAL', None), ('VIRIAL', None), ('MACROSCOPIC', None)] \
+          + macros,
+        libraries=libraries) \
           for (name,path) in ext_module_name_and_path]
 ,
        data_files = data_files,
