@@ -30,30 +30,26 @@ incl_flags['CURR']=["-I./"]
 incl_flags['GMOL']=["-Igmolmodel"]
 incl_flags['SIMTK']=["-I" + os.path.join(SIMBODYHOME, "include"), 
   "-I" + os.path.join(SIMBODYHOME, "include/molmodel/internal"), 
-  "-I" + SIMBODYSRC, "-I" + os.path.join(MOLMODELHOME, "src")]
-incl_flags['MMTK']=["-I" + os.path.join(ENTHOUGHTHOME, "User/include/python2.7"), \
-  "-I" + os.path.join(CANOPYHOME, "appdata/canopy-1.7.4.3348.rh5-x86_64/include/python2.7"), "-I" + PYTHON2_6_INCLUDE]
-incl_flags['NUMPY']=["-I" + os.path.join(ENTHOUGHTHOME, "User/lib/python2.7/site-packages/numpy/core/include")]
+  "-I" + SIMBODYSRC, "-I" + os.path.join(MOLMODELHOME, "src"),  "-I" + os.path.join(MOLMODELHOME, "include")]
+incl_flags['MMTK']=["-I" + os.path.join(PYTHONHOME, "include/python2.7"), "-I" + PYTHON2_6_INCLUDE]
+
+incl_flags['NUMPY']=["-I" + os.path.join(PYTHONHOME, "lib/python2.7/site-packages/numpy/core/include")]
 incl_flags['EIGEN']=["-I" + os.path.join(EIGENHOME)]
 incl_flags['BOOST']=["-I" + os.path.join(BOOSTHOME)]
-#print incl_flags
-#sys.exit(0)
 
 rdirs_flags['CURR']=["-Wl,-rpath,./"]
 rdirs_flags['GEN']=["-Wl,-rpath,/usr/lib64"]
 rdirs_flags['GMOL']=["-Wl,-rpath,gmolmodel"]
 rdirs_flags['SIMTK']=["-Wl,-rpath," + os.path.join(SIMBODYHOME, "lib64")]
-#rdirs_flags['MMTK']=["-Wl,-rpath," + ENTHOUGHTHOME + "User/lib/python2.7/site-packages/MMTK/linux2"]
 rdirs_flags['MMTK']=["-Wl,-rpath," + os.path.join(MMTKHOME, "MMTK/linux2")]
-rdirs_flags['NUMPY']=["-Wl,-rpath," + os.path.join(ENTHOUGHTHOME, "User/lib/python2.7/site-packages/numpy")]
+rdirs_flags['NUMPY']=["-Wl,-rpath," + os.path.join(PYTHONHOME, "lib/python2.7/site-packages/numpy")]
 
 ldirs_flags['CURR']=["-L./"]
 ldirs_flags['GEN']=["-L" + "/usr/lib64"]
 ldirs_flags['SIMTK']=["-L" + os.path.join(SIMBODYHOME, "lib64")]
 ldirs_flags['GMOL']=["-Lgmolmodel/"]
-#ldirs_flags['MMTK']=["-L" + ENTHOUGHTHOME + "User/lib/python2.7/site-packages/MMTK/linux2/"]
 ldirs_flags['MMTK']=["-L" + os.path.join(MMTKHOME, "MMTK/linux2")]
-ldirs_flags['NUMPY']=["-L" + os.path.join(ENTHOUGHTHOME, "User/lib/python2.7/site-packages/numpy")]
+ldirs_flags['NUMPY']=["-L" + os.path.join(PYTHONHOME, "lib/python2.7/site-packages/numpy")]
 
 libs_flags['GMOL']=["-lgmolmodel"]
 libs_flags['SIMTK']=["-lSimTKsimbody", "-lSimTKmath", "-lSimTKcommon"]
@@ -264,10 +260,10 @@ with open('compil.log', 'a') as f:
   a = sproc.call(command, stdout=f, stderr=f)
 
 if a != 0:
-  print a, "\n=== GCHMC extension failed to compile. ===\n"
+  print a, "\n=== GCHMC extension failed to compile or to be tested. ===\n"
   sys.exit(1)
 else:
-  print "\n=== GCHMC extension compiled successfully. ===\n"
+  print "\n=== GCHMC extension compiled and tested successfully. ===\n"
 
 
 

@@ -7,13 +7,16 @@ Compilation consists of two parts:
 # Requirements:
 Simbody
 Molmodel
-Enthought Canopy
+A Scientific Python Distribution with Numpy < 1.9 like
+  for example: Canopy, Anaconda
 Boost
 Eigen
 MMTK
 
 # Install:
-Edit path.py
+Copy BOOSTHOME/tools/build/v2/user-config.jam in home directory and edit the last line 
+  to point to the right python distribution
+Edit paths.py
 Run:
   python compile_gmolmodel.py
 
