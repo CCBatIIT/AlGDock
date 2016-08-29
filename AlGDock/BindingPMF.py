@@ -727,12 +727,15 @@ last modified {1}
     self._set_lock('cool')
     cool_start_time = time.time()
 
+    T_GEOMETRIC = np.exp(np.linspace(np.log(self.T_TARGET),np.log(self.T_HIGH),
+      int(1/self.params['cool']['therm_speed'])))
     if warm:
       T_START, T_END = self.T_TARGET, self.T_HIGH
       direction_name = 'warm'
     else:
       T_START, T_END = self.T_HIGH, self.T_TARGET
       direction_name = 'cool'
+      T_GEOMETRIC = T_GEOMETRIC[::-1]
 
     if self.cool_protocol==[]:
       self.tee("\n>>> Initial %sing of the ligand "%direction_name + \
@@ -806,20 +809,26 @@ last modified {1}
       # Choose new temperature
       To = self.cool_protocol[-1]['T']
       crossed = self.cool_protocol[-1]['crossed']
-      if tL_tensor>1E-5:
-        dL = self.params['cool']['therm_speed']/tL_tensor
-        if warm:
-          T = To + dL
-          if T > self.T_HIGH:
-            T = self.T_HIGH
-            crossed = True
+      
+      if self.params['cool']['protocol'] == 'Adaptive':
+        if tL_tensor>1E-5:
+          dL = self.params['cool']['therm_speed']/tL_tensor
+          if warm:
+            T = To + dL
+            if T > self.T_HIGH:
+              T = self.T_HIGH
+              crossed = True
+          else:
+            T = To - dL
+            if T < self.T_TARGET:
+              T = self.T_TARGET
+              crossed = True
         else:
-          T = To - dL
-          if T < self.T_TARGET:
-            T = self.T_TARGET
-            crossed = True
-      else:
-        raise Exception('No variance in configuration energies')
+          raise Exception('No variance in configuration energies')
+      elif self.params['cool']['protocol'] == 'Geometric':
+        T = T_GEOMETRIC[len(self.cool_protocol)]
+        crossed = (len(self.cool_protocol)==(len(T_GEOMETRIC)-1))
+
       self.cool_protocol.append(\
         {'T':T, 'a':(self.T_HIGH-T)/(self.T_HIGH-self.T_TARGET), 'MM':True, 'crossed':crossed})
 
@@ -865,7 +874,8 @@ last modified {1}
       self.tee("  dt=%.3f fs; tL_tensor=%.3e; estimated repX acceptance=%0.3f"%(\
         self.cool_protocol[-1]['delta_t']*1000., tL_tensor, mean_acc))
 
-      if mean_acc<self.params['cool']['min_repX_acc']:
+      if (mean_acc<self.params['cool']['min_repX_acc']) \
+          and (self.params['cool']['protocol']=='Adaptive'):
         # If the acceptance probability is too low,
         # reject the state and restart
         self.cool_protocol.pop()
@@ -874,7 +884,8 @@ last modified {1}
         tL_tensor = tL_tensor_o*1.25 # Use a smaller step
         self.tee("  rejected new state, as estimated repX" + \
           " acceptance is too low!")
-      elif (mean_acc>0.99) and (not crossed):
+      elif (mean_acc>0.99) and (not crossed) \
+          and (self.params['cool']['protocol'] == 'Adaptive'):
         # If the acceptance probability is too high,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.random.randint(len(confs))]
@@ -1416,7 +1427,8 @@ last modified {1}
         acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
         mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
         
-        if (mean_acc<self.params['dock']['min_repX_acc']):
+        if (mean_acc<self.params['dock']['min_repX_acc']) and \
+            (self.params['dock']['protocol']=='Adaptive'):
           # If the acceptance probability is too low,
           # reject the state and restart
           self.dock_protocol.pop()
@@ -1424,7 +1436,8 @@ last modified {1}
           E = E_o
           rejectStage += 1
           self.tee("  rejected new state, as estimated replica exchange acceptance rate of %f is too low"%mean_acc)
-        elif (mean_acc>0.99) and (not lambda_n['crossed']):
+        elif (mean_acc>0.99) and (not lambda_n['crossed']) and \
+            (self.params['dock']['protocol']=='Adaptive'):
           # If the acceptance probability is too high,
           # reject the previous state and restart
           self.confs['dock']['replicas'][-1] = confs[np.random.randint(len(confs))]
@@ -3039,9 +3052,7 @@ last modified {1}
       lambda_o = self.dock_protocol[-1]
     lambda_n = copy.deepcopy(lambda_o)
     
-    if self.params['dock']['protocol']=='Set':
-      raise Exception("Set protocol not currently supported")
-    elif self.params['dock']['protocol']=='Adaptive':
+    if self.params['dock']['protocol']=='Adaptive':
       # Change grid scaling and temperature simultaneously
       tL_tensor = self._tL_tensor(E,lambda_o)
       crossed = lambda_o['crossed']
@@ -3072,6 +3083,14 @@ last modified {1}
         self.tee('  no variance in previous stage!' + \
           ' trying time step of %f'%lambda_n['delta_t'])
         return lambda_n
+    elif self.params['dock']['protocol']=='Geometric':
+      A_GEOMETRIC = [0.] + list(np.exp(np.linspace(np.log(1E-10),np.log(1.0),
+        int(1/self.params['dock']['therm_speed']))))
+      if undock:
+        A_GEOMETRIC.reverse()
+      a = A_GEOMETRIC[len(self.dock_protocol)]
+      crossed = len(self.dock_protocol)==(len(A_GEOMETRIC)-1)
+      return self._lambda(a, process='dock', lambda_o=lambda_o, crossed=crossed)
 
   def _tL_tensor(self, E, lambda_c, process='dock'):
     # Metric tensor for the thermodynamic length

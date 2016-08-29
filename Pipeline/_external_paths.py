@@ -61,7 +61,7 @@ search_paths = {
                 '/share/apps/pdb2pqr/1.9.0/pdb2pqr'],
                # For adding hydrogens and charges to ligands
      'chimera':['/Applications/Chimera.app/Contents/MacOS/chimera', # same in WH210
-                '/share/apps/chimera/1.9/bin/chimera'],
+                '/share/apps/chimera/1.11/bin/chimera'],
                # For initial ligand pose
        'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
                 '/Applications/dock6/dock6',

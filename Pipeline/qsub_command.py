@@ -59,7 +59,7 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
     modules = ''
 
   if command.find('chimera')>-1:
-    modules += 'module load chimera/1.8.1\n'
+    modules += 'module load chimera/1.11\n'
 
   if command.find('modeller')>-1:
     modules += 'module load modeller/9.14\n'

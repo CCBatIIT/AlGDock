@@ -77,7 +77,7 @@ arguments = {
   'rotate_matrix':{'help':'Rotation matrix for viewing'},
   'random_seed':{'type':int, 'help':'Random number seed'},
   #   Defaults
-  'protocol':{'choices':['Adaptive','Set'],
+  'protocol':{'choices':['Adaptive','Geometric'],
     'help':'Approach to determining series of thermodynamic states'},
   'therm_speed':{'type':float,
     'help':'Thermodynamic speed during adaptive simulation'},

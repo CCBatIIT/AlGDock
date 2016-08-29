@@ -87,7 +87,7 @@ parser.add_argument('--max_time', type=int, default = 180, \
 parser.add_argument('--cores', type=int, \
   help='Number of CPU cores to use')
 #   Defaults
-parser.add_argument('--protocol', choices=['Adaptive','Set'],
+parser.add_argument('--protocol', choices=['Adaptive','Geometric'],
   help='Approach to determining series of thermodynamic states')
 parser.add_argument('--therm_speed', type=float,
   help='Thermodynamic speed during adaptive simulation')
