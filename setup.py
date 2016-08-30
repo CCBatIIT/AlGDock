@@ -114,6 +114,7 @@ headers = []
 paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'ForceFields', 'Sphere'),
          os.path.join('AlGDock', 'ForceFields', 'Grid'),
+         os.path.join('AlGDock', 'ForceFields', 'OpenMM'),
          os.path.join('AlGDock', 'ForceFields', 'Pose'),
          os.path.join('AlGDock', 'Integrators', 'VelocityVerlet'),
          os.path.join('AlGDock', 'Integrators', 'NUTS'),
@@ -323,6 +324,7 @@ ext_module_name_and_path = [\
   ('MMTK_trilinear_one_fourth_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid.pyx']), \
   ('MMTK_BSpline_grid', ['AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx']), \
   ('MMTK_BSpline_transform_grid', ['AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx']), \
+  ('MMTK_OpenMM', ['AlGDock/ForceFields/OpenMM/MMTK_OpenMM.pyx']), \
   ('MMTK_pose', ['AlGDock/ForceFields/Pose/MMTK_pose.c', \
     'AlGDock/ForceFields/Pose/pose.c', \
     os.path.join(MMTK_source_path, 'Src', 'bonded.c'), \
@@ -369,6 +371,7 @@ rigid receptor.
                    'AlGDock.ForceFields.Cylinder',
                    'AlGDock.ForceFields.Sphere',
                    'AlGDock.ForceFields.Grid',
+                   'AlGDock.ForceFields.OpenMM',
                    'AlGDock.ForceFields.Pose',
                    'AlGDock.Integrators',
                    'AlGDock.Integrators.VelocityVerlet',

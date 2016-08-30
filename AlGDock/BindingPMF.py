@@ -49,6 +49,7 @@ term_map = {
   'harmonic bond':'MM',
   'harmonic bond angle':'MM',
   'Lennard-Jones':'MM',
+  'OpenMM':'MM',
   'site':'site',
   'sLJr':'sLJr',
   'sELE':'sELE',
@@ -503,11 +504,18 @@ last modified {1}
     self._ligand_natoms = self.universe.numberOfAtoms()
 
     # Force fields
-    from MMTK.ForceFields import Amber12SBForceField
-
     self._forceFields = {}
+    
+    # Molecular mechanics force fields
+    from MMTK.ForceFields import Amber12SBForceField
     self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self._FNs['forcefield'],mod_files=self._FNs['frcmodList'])
+
+    # This works but is very slow
+#      from AlGDock.ForceFields.OpenMM.OpenMM import OpenMMForceField
+#      self._forceFields['OpenMM'] = OpenMMForceField(self._FNs['prmtop']['L'], \
+#        self.molecule.prmtop_atom_order, self.molecule.inv_prmtop_atom_order, \
+#        implicitSolvent='OpenMM_OBC2')
 
     # Determine ligand atomic index
     if (self._FNs['prmtop']['R'] is not None) and \
@@ -2025,6 +2033,7 @@ last modified {1}
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
       fflist.append(self._forceFields['gaff'])
+      # fflist.append(self._forceFields['OpenMM']) # This works but is very slow!
     if ('site' in lambda_n.keys()) and lambda_n['site']:
       if not 'site' in self._forceFields.keys():
         # Set up the binding site in the force field
