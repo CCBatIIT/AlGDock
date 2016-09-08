@@ -244,6 +244,7 @@ SymSystem::SymSystem(
     std::cout<<"After bMoleculeReader: NULL bAtomList"<<std::endl;
     exit(1);
   }
+ 
   bAddGaffParams(
     *forceField,
     gaffF.c_str(),

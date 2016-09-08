@@ -2,8 +2,7 @@
 class MidVVIntegratorRep;
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real_distribution.hpp>
-//#include "/home/lspirido/Installers/simbody/simbody-Simbody-3.0/SimTKmath/Integrators/src/AbstractIntegratorRep.h"
-#include "SimTKmath/Integrators/src/AbstractIntegratorRep.h"
+#include "/home/lspirido/Installers/simbody/simbody-Simbody-3.0/SimTKmath/Integrators/src/AbstractIntegratorRep.h"
 
 //==============================================================================
 //                           CLASS MidVVIntegrator

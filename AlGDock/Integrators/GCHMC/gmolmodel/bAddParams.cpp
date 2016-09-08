@@ -49,10 +49,6 @@ void bAddGaffParams(
     string frcmodfn
   ){
 
-  #ifdef DEBUG_PARAMS_LEVEL01
-  std::cout<<"bAddGaffParams() BEGIN"<<std::endl<<std::flush;
-  #endif
-
   /*Atomic masses*/
   std::map<string, float> am;
   /* //Molmodel masses
@@ -1153,10 +1149,6 @@ void bAddGaffParams(
 
   fclose(fpo);
   fclose(frcmod);    
-
-  #ifdef DEBUG_PARAMS_LEVEL01
-  std::cout<<"bAddGaffParams() END"<<std::endl<<std::flush;
-  #endif
 }  
 
 

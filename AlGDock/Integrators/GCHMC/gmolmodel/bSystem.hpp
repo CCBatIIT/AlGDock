@@ -133,8 +133,7 @@ class GridForce : public SimTK::Force::Custom::Implementation {
 //////// MIDVV INTEGRATOR ///
 /////////////////////////////
 class MidVVIntegratorRep;
-//#include "/home/lspirido/Installers/simbody/simbody-Simbody-3.0/SimTKmath/Integrators/src/AbstractIntegratorRep.h"
-#include "SimTKmath/Integrators/src/AbstractIntegratorRep.h"
+#include "/home/lspirido/Installers/simbody/simbody-Simbody-3.0/SimTKmath/Integrators/src/AbstractIntegratorRep.h"
 #include "MidVVIntegrator.hpp"
 /////////////////////////////
 //////// MIDVV INTEGRATOR ///
