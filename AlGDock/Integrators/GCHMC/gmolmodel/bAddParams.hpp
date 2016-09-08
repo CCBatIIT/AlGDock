@@ -19,6 +19,8 @@
 */
 
 // Conveninet functions (Pointers have to be allocated first).
+SimTK::Real bDihedral(SimTK::Vec3, SimTK::Vec3, SimTK::Vec3, SimTK::Vec3);
+
 bool Type2atomType(char *Type, char *atomType, int ATOMTYPE_MAX_LEN);
 bool Type2atomType(string Type, char *atomType, int ATOMTYPE_MAX_LEN);
 

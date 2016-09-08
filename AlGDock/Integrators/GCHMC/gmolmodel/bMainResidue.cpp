@@ -268,7 +268,7 @@ using namespace SimTK;
       dumm.defineChargedAtomType(
         dumm.getNextUnusedChargedAtomTypeIndex(),
         abuff.c_str(),
-        dumm.getAtomClassIndex(bAtomList[k].fftype), //Amber
+        dumm.getAtomClassIndex(bAtomList[k].fftype), //Amber ??????????
         bAtomList[k].charge
       );
       dumm.setBiotypeChargedAtomType( 
@@ -276,6 +276,16 @@ using namespace SimTK;
         Biotype::get("mainRes", bAtomList[k].biotype).getIndex()
       );
 
+      #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC
+      //dumm.getBiotypeChargedAtomType( 
+      //  dumm.getChargedAtomTypeIndex(
+          
+          std::cout<<"BiotypeIndex: "<<Biotype::get("mainRes", bAtomList[k].biotype).getIndex()<<std::endl<<std::flush;
+          std::cout<<"Biotype: "<<Biotype::get("mainRes", bAtomList[k].biotype).getElement()<<std::endl<<std::flush;
+          std::cout<<"DuMM atomClassIndex: "<<dumm.getAtomClassIndex(bAtomList[k].fftype)<<std::endl<<std::flush;
+      //  )
+      //);
+      #endif
     }
 
     /* Assign AtomIndex values to atoms in bAtomList[] */
@@ -284,7 +294,7 @@ using namespace SimTK;
     std::string cname, myname;
     for (Compound::AtomIndex aIx(0); aIx < getNumAtoms(); ++aIx){
       for(ix = 0; ix<natms; ix++){
-        cname = getAtomName(aIx);
+        cname = getAtomName(aIx); // WRONG
         myname = bAtomList[ix].name;
         if(cname == myname){
           bAtomList[ix].atomIndex = aIx;
@@ -292,6 +302,9 @@ using namespace SimTK;
         }
       }
     }
+    #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC
+    std::cout<<"bAtomList[ix].atomIndexs assigend"<<std::endl<<std::flush;
+    #endif
 
     /* Assign BondIndex values to bonds in bonds[] */
     int inumber, jnumber;
@@ -319,17 +332,28 @@ using namespace SimTK;
         }
       }
     }
+    #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC
+    std::cout<<"bonds[m].bondIndexes assigned"<<std::endl<<std::flush;
+    #endif
 
 
     /* ============= */
     /* Fill indexMap */
     /* ============= */
+   
    for(ix = 0; ix<natms; ix++){
+     #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC
+     std::cout<<"ix "<<ix<<std::endl<<std::flush;
+     std::cout<<"bAtomList[ix].atomIndex "<<bAtomList[ix].atomIndex<<std::endl<<std::flush;
+     #endif
       //indexMap[bAtomList[ix].atomIndex][0] = bAtomList[ix].atomIndex;
       //indexMap[bAtomList[ix].atomIndex][1] = ix;
       indexMap[ix][0] = ix;
       indexMap[ix][1] = bAtomList[ix].atomIndex;
     }
+    #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC
+    std::cout<<"indexMap filled "<<std::endl<<std::flush;
+    #endif
 
     for(unsigned int i=0; i<natms; i++){
       for(unsigned int k=0; k<natms; k++){
@@ -338,6 +362,9 @@ using namespace SimTK;
         }
       }
     }  
+    #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC
+    std::cout<<"PrmToAx_po filled "<<std::endl<<std::flush;
+    #endif
 
     for(unsigned int i=0; i<natms; i++){
       for(unsigned int k=0; k<natms; k++){
@@ -346,6 +373,9 @@ using namespace SimTK;
         }
       }
     }
+    #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC
+    std::cout<<"MMTkToPrm_po filled"<<std::endl<<std::flush;
+    #endif
 
     /* Create atomTargets from passed coords array*/
     std::map<AtomIndex, Vec3> atomTargets;  
@@ -376,13 +406,13 @@ using namespace SimTK;
     }
 
     #ifdef MAIN_RESIDUE_DEBUG_LEVEL02
-    std::cout<<"bMainRes: Before matchDefault"<<std::endl;
+    std::cout<<"bMainRes: Before matchDefault"<<std::endl<<std::flush;
     #endif
     matchDefaultTopLevelTransform(atomTargets);
     matchDefaultConfiguration(atomTargets, Match_Exact, true, 150.0); //Compound::Match_Idealized
     //matchDefaultConfiguration(atomTargets, Match_Idealized, true, 150.0); //Compound::Match_Idealized
     #ifdef MAIN_RESIDUE_DEBUG_LEVEL02
-    std::cout<<"bMainRes: After  matchDefault"<<std::endl;
+    std::cout<<"bMainRes: After  matchDefault"<<std::endl<<std::flush;
     #endif
 
     PdbStructure  pdb(*this);
