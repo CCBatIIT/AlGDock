@@ -1,5 +1,6 @@
 #include "bMoleculeReader.hpp"
 
+/*
 #ifndef DEBUG_LEVEL01
 #define DEBUG_LEVEL01
 #endif
@@ -7,9 +8,42 @@
 #ifndef DEBUG_LEVEL02
 #define DEBUG_LEVEL02
 #endif
+*/
 
 //using namespace std;
 using namespace SimTK;
+
+
+MMTKElement::MMTKElement(int atomicNumber, Name name, Symbol symbol, SimTK::mdunits::Mass typicalMass)
+  : SimTK::Element(atomicNumber, name, symbol, typicalMass){}
+MMTKElement::~MMTKElement(){
+}
+
+MMTKElement::MMTKHydrogen::MMTKHydrogen() 
+    //: MMTKElement::MMTKElement(1, "mmtkhydrogen", "MMTKH", 1.00797598){
+    : MMTKElement::MMTKElement(301, "mmtkhydrogen", "MMTKH", 3.108){
+}
+
+MMTKElement MMTKElement::getBySymbol(const SimTK::String& symbol)
+{
+    if      (symbol == "MMTKH")  return MMTKHydrogen();
+    else {
+        assert(false);
+        return MMTKHydrogen();
+    }
+
+}
+
+MMTKElement MMTKElement::getByAtomicNumber(int atomicNumber) {
+    switch (atomicNumber) {
+        case 300: return MMTKHydrogen();
+        default: assert(false); return MMTKHydrogen();
+    }
+}
+
+
+
+
 
 /****
  *  Trivalent Atom Class with tetrahedral geometry.
@@ -468,8 +502,9 @@ bMoleculeReader::bMoleculeReader(DuMMForceFieldSubsystem& dumm,
       if(bAtomList[i].nbonds == 1){
         if(toupper(bAtomList[i].elem) == 'H'){
           bAtomList[i].bAtomType = new
-            //UnivalentAtom(bAtomList[i].name, Element(1, "Hydrogen", "H", 1.008));
-            UnivalentAtom(bAtomList[i].name, Element::Hydrogen());
+            //UnivalentAtom(bAtomList[i].name, MMTKElement(1, "MMTKHydrogen", "MMTKH", 1.00797598)); // MMTK mass
+            //UnivalentAtom(bAtomList[i].name, MMTKElement::MMTKHydrogen()); // Molmodel Mass
+            UnivalentAtom(bAtomList[i].name, Element::Hydrogen()); // Molmodel Mass
         }
         else if(toupper(bAtomList[i].name[0]) == 'C'){
           bAtomList[i].bAtomType = new
@@ -506,7 +541,8 @@ bMoleculeReader::bMoleculeReader(DuMMForceFieldSubsystem& dumm,
       else if (bAtomList[i].nbonds == 2){
         if(toupper(bAtomList[i].elem) == 'H'){
           bAtomList[i].bAtomType = new
-            //BivalentAtom(bAtomList[i].name, Element(1, "Hydrogen", "H", 1.008));
+            //BivalentAtom(bAtomList[i].name, Element(1, "MMTKHydrogen", "MMTKH", 1.00797598)); // MMTK mass
+            //BivalentAtom(bAtomList[i].name, MMTKElement::MMTKHydrogen()); // Molmodel Mass
             BivalentAtom(bAtomList[i].name, Element::Hydrogen());
         }
         else if(toupper(bAtomList[i].elem) == 'C'){
@@ -566,8 +602,8 @@ bMoleculeReader::bMoleculeReader(DuMMForceFieldSubsystem& dumm,
       else if (bAtomList[i].nbonds == 4){
         if(toupper(bAtomList[i].elem) == 'C'){
           bAtomList[i].bAtomType = new
-            //QuadrivalentAtom(bAtomList[i].name,  Element(6, "Carbon", "C", 12.01));
-            QuadrivalentAtom(bAtomList[i].name,  Element::Carbon());
+            //QuadrivalentAtom(bAtomList[i].name,  Element(6, "Carbon", "C", 12.01103690)); // MMTK mass
+            QuadrivalentAtom(bAtomList[i].name,  Element::Carbon()); // Molmodel mass
         }
         else if(toupper(bAtomList[i].elem) == 'O'){
           bAtomList[i].bAtomType = new

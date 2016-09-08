@@ -51,7 +51,7 @@ void GCHMCIntegrator::Clear(void)
 // * GCHMCIntegrator Constructor * //
 GCHMCIntegrator::GCHMCIntegrator(PyObject *universe, std::string ligdir, std::string gaffdir)
 {
-  std::cout<<"GCHMCIntegrator instance created"<<std::endl;
+  std::cout<<"GCHMCIntegrator instance created 20160826"<<std::endl;
   import_array();
 
   temperature = 300.0;
@@ -130,6 +130,7 @@ GCHMCIntegrator::GCHMCIntegrator(PyObject *universe, std::string ligdir, std::st
   TARGET_TYPE *PrmToAx_po = NULL;
   TARGET_TYPE *MMTkToPrm_po = NULL;
 
+  std::cout<<"MMTK configuration->dimensions[0]"<<configuration->dimensions[0]<<std::endl;
   indexMap = new TARGET_TYPE*[(configuration->dimensions[0])];
   int _indexMap[natoms][3];
   PrmToAx_po = new TARGET_TYPE[configuration->dimensions[0]];

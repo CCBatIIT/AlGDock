@@ -4,6 +4,28 @@
 using namespace SimTK;
 //using namespace std;
 
+
+SimTK::Real bDihedral(SimTK::Vec3 pos0, SimTK::Vec3 pos1, SimTK::Vec3 pos2, SimTK::Vec3 pos3){
+  SimTK::Vec3 diffs[3];
+  SimTK::Vec3 normals[2];
+  double dots[2];
+  double psin, pcos, dih;
+
+  diffs[0] = pos1 - pos0;
+  diffs[1] = pos2 - pos1;
+  diffs[2] = pos3 - pos2;
+
+  normals[0] = diffs[0] % diffs[1];
+  normals[1] = diffs[1] % diffs[2];
+  dots[0] = (normals[0][0] * diffs[2][0]) + (normals[0][1] * diffs[2][1]) + (normals[0][2] * diffs[2][2]);
+  dots[1] = (diffs[1][0] * diffs[1][0]) + (diffs[1][1] * diffs[1][1]) + (diffs[1][2] * diffs[1][2]);
+  psin = dots[0] * std::sqrt(dots[1]);
+  pcos = (normals[0][0] * normals[1][0]) + (normals[0][1] * normals[1][1]) + (normals[0][2] * normals[1][2]);
+
+  return atan2(psin, pcos);
+}
+
+
 /***********************************
  * ================================
  *    ADD NEW PARAMETERS FUNCTION 
@@ -82,6 +104,7 @@ void bAddGaffParams(
   am["o"]  = 16.00;
   am["p"]  = 31.00;
   am["s"]  = 32.00;
+  am["b2"]  = 14.00; // EU8/8
 
   // * Valences (TODO read from file)* //
   std::map<string, float> val;
@@ -159,13 +182,14 @@ void bAddGaffParams(
   val["sx"] = 3;
   val["sy"] = 4;
   val["cl"] = 1;
+  val["b2"] = 2; // EU8/8
   
   /*Valence layer electrons*/
   std::map<string, float> vle;
   vle["x"]  = 8;  //dummy atom
   vle["z"]  = 1;  //dummy atom
   vle["c"]  = 6;
-  vle["h"]  = 1;
+  vle["h"]  = 300; // for MMTK mass
   vle["f"]  = 9;
   vle["cl"] = 17;
   vle["br"] = 35;
@@ -174,6 +198,7 @@ void bAddGaffParams(
   vle["o"]  = 8;
   vle["p"]  = 15;
   vle["s"]  = 16;
+  vle["b2"] = 2; // EU8/8
 
   /*Van der Waals radii - read from gaff MOD4 section*/
   std::map<string, float> vdw;
@@ -332,6 +357,7 @@ void bAddGaffParams(
   }
   vdw.insert(std::pair<string, float>("x", 1.0));    // dummy atom
   vdw.insert(std::pair<string, float>("z", 1.0));    // dummy atom
+  vdw.insert(std::pair<string, float>("b2", 1.0));    // EU8/8
 
   /*Skip the first line*/
   rewind(fpo);
@@ -340,6 +366,17 @@ void bAddGaffParams(
 
   /*READ ATOM TYPES*/
   /*First deal with the dummy atoms*/
+  aIx = dumm.getNextUnusedAtomClassIndex();
+  Type2Ix.insert (std::pair<string, float>("gaff_b2", aIx)); // EU8/8
+  dumm.defineAtomClass(
+    (DuMM::AtomClassIndex)aIx,
+    "gaff_b2",
+    vle["b2"],
+    val["b2"],
+    vdw["b2"]/10,
+    0.1  //random
+  );
+
   aIx = dumm.getNextUnusedAtomClassIndex();
   Type2Ix.insert (std::pair<string, float>("gaff_x", aIx));
   dumm.defineAtomClass(
@@ -536,7 +573,7 @@ void bAddGaffParams(
 
     //Add bond param
     equil1 = equil1/10.0;  // From angstroms to nanometers
-    k1 = 418.4 * k1;    // From kcal to kJ
+    k1 = 4.184 * k1;    // From kcal to kJ // EU8/8
     #ifdef DEBUG_PARAMS_LEVEL02
     std::cout<<"bAddParams: BOND "<<buff1<<' '<<buff2<<' '<<k1/418.4<<' '<<equil1*10<<std::endl;
     #endif
@@ -549,7 +586,7 @@ void bAddGaffParams(
         );
       bondsSoFar.push_back(thisBond);
       #ifdef DEBUG_PARAMS_LEVEL02
-      std::cout<<"bAddParams: BondStretch "<<Type2Ix[buff1]<<' '<<Type2Ix[buff2]<<" added"<<std::endl;
+      std::cout<<"bAddParams: BondStretch "<<Type2Ix[buff1]<<' '<<Type2Ix[buff2]<<" added "<<k1<<' '<<equil1<<std::endl;
       #endif
     }
   }
@@ -610,6 +647,10 @@ void bAddGaffParams(
         equil1
       );
       anglesSoFar.push_back(thisAngle);
+      #ifdef DEBUG_PARAMS_LEVEL02
+      std::cout<<"bAddParams: Angle Bond Bend "<<Type2Ix[buff1]
+        <<' '<<Type2Ix[buff2]<<' '<<Type2Ix[buff3]<<" added "<<k1<<' '<<equil1<<std::endl;
+      #endif
     }
   }
 

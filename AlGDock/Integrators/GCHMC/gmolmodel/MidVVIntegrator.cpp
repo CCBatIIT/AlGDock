@@ -475,6 +475,8 @@ void MidVVIntegratorRep::initializeVelsFromRandU(const SimTK::Compound& c, SimTK
 
   SimTK::Vector V(nu);
   SimTK::Vector SqrtMInvV(nu);
+  this->gaurand.setSeed(*Caller->pyseed + time(NULL) + getTrial() + getpid());
+  //this->gaurand.setSeed(*Caller->pyseed);
   for (int i=0; i < nu; ++i){
     V[i] = gaurand.getValue();
   }
@@ -483,16 +485,41 @@ void MidVVIntegratorRep::initializeVelsFromRandU(const SimTK::Compound& c, SimTK
   //  EiV(i) = V[i];
   //}
 
+  system.realize(advanced, SimTK::Stage::Position);
   //std::cout<<"V:"<<V<<std::endl;
   matter.multiplyBySqrtMInv(advanced, V, SqrtMInvV);
+  SqrtMInvV *= sqrtkTb; // Set stddev according to temperature
   //std::cout<<"SqrtMInvV:"<<SqrtMInvV<<std::endl;
-  #ifdef DEBUG_SPECIFIC
-  printf("initializeVelsFromRandU\n"); fflush(stdout);
-  #endif
+
+  /*
+  SimTK::Vec3 pos[4];
+  SimTK::Vec3 diffs[3];
+  SimTK::Vec3 normals[2];
+  double dots[2];
+  double psin, pcos, dih;
+  for (SimTK::Compound::AtomIndex aIx(0); aIx < c.getNumAtoms(); ++aIx){
+      pos[aIx]   = c.calcAtomLocationInGroundFrame(advanced, aIx);
+      //std::cout<<"aIx "<<aIx<<' '<<c.getAtomName(aIx)<<"="<<std::setprecision(8)<<std::fixed
+      //  <<"["<<pos[aIx][0]<<" "<<pos[aIx][1]<<" "<<pos[aIx][2]<<"]"<<std::endl;
+  }
+  //std::cout<<pos[0]-pos[2]<<' '<<pos[1]-pos[0]<<' '<<pos[3]-pos[1]<<std::endl;
+
+  // Dihedral in lin4 2 - 0 - 1 - 3
+  diffs[0] = pos[0] - pos[2];
+  diffs[1] = pos[1] - pos[0];
+  diffs[2] = pos[3] - pos[1];
+  normals[0] = diffs[0] % diffs[1];
+  normals[1] = diffs[1] % diffs[2];
+  dots[0] = (normals[0][0] * diffs[2][0]) + (normals[0][1] * diffs[2][1]) + (normals[0][2] * diffs[2][2]);
+  dots[1] = (diffs[1][0] * diffs[1][0]) + (diffs[1][1] * diffs[1][1]) + (diffs[1][2] * diffs[1][2]);
+  psin = dots[0] * std::sqrt(dots[1]);
+  pcos = (normals[0][0] * normals[1][0]) + (normals[0][1] * normals[1][1]) + (normals[0][2] * normals[1][2]);
+  dih = atan2(psin, pcos);
+  std::cout<<"dih "<<dih<<std::endl;
+  */
 
 
   if(getMetroFixmanOpt() == 1){ // Get it numerically for now (should be the same
-    //std::cout<<"Compute Pseudo Analytically Det(Mi)"<<std::endl;
     SimTK::Matrix M;
     matter.calcM(advanced, M);
     Eigen::MatrixXd EiM(nu, nu);
@@ -503,6 +530,7 @@ void MidVVIntegratorRep::initializeVelsFromRandU(const SimTK::Compound& c, SimTK
     }
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> Eims(EiM);
     Eigen::MatrixXd Eim = Eims.operatorSqrt();
+    this->numDetSqrtMi = Eim.determinant();
     this->detsqrtMi = Eim.determinant(); // Bottleneck
   }
   //M.det();
@@ -589,28 +617,16 @@ void MidVVIntegratorRep::initializeVelsFromRandU(const SimTK::Compound& c, SimTK
   //std::cout<<"SqrtMInvV"<<SqrtMInvV<<std::endl;
   //std::cout<<"--------------------------------"<<std::endl;
 
-
-  SqrtMInvV *= sqrtkTb; // Set stddev according to temperature
-
   advanced.updU() = SqrtMInvV;
   system.realize(advanced, SimTK::Stage::Velocity);
 
+  /*
   SimTK::Real T = (2*compoundSystem->calcKineticEnergy(advanced)) / ((nu)*SimTK_BOLTZMANN_CONSTANT_MD);
   float KETbTemp = 0.5 * kTb * (nu);
   const SimTK::Real scale = std::sqrt(TbTemp/T);
   advanced.updU() *= scale;
   system.realize(advanced, SimTK::Stage::Velocity);
-
-
-
-//  advanced.updU() = SqrtMInvV;
-//  system.realize(advanced, SimTK::Stage::Velocity);
-//
-//  SimTK::Real T = (2*compoundSystem->calcKineticEnergy(advanced)) / ((nu)*SimTK_BOLTZMANN_CONSTANT_MD);
-//  //float KETbTemp = 0.5 * kTb * (nu);
-//  const SimTK::Real scale = std::sqrt(TbTemp/T);
-//  advanced.updU() *= scale;
-//  system.realize(advanced, SimTK::Stage::Velocity);
+  */
 }
 
 // * Initialize velocities initially from Molmodel Velocity Rescaling Thermostat
@@ -629,6 +645,8 @@ void MidVVIntegratorRep::initializeVelsFromVRT(const SimTK::Compound& c, SimTK::
   SimTK::Vector V(nu);
   SimTK::Vector Vmod(nu);
   SimTK::Vector MInvV(nu);
+  this->gaurand.setSeed(*Caller->pyseed + time(NULL) + getTrial() + getpid());
+  //this->gaurand.setSeed(*Caller->pyseed);
   for (int i=0; i < advanced.getNU(); ++i){
     V[i] = gaurand.getValue();
   }
@@ -640,7 +658,109 @@ void MidVVIntegratorRep::initializeVelsFromVRT(const SimTK::Compound& c, SimTK::
   //// MInv must be resizeable or already the right size (nXn).
   SimTK::Matrix M;
   matter.calcM(advanced, M);
+  //SimTK::Matrix J_G;
+  //matter.calcSystemJacobian(advanced, J_G); // 6 nb X nu
+  //std::cout<<"Mass matrix"<<M<<std::endl;
+  //std::cout<<"Jacobian"<<J_G<<std::endl;
 
+  // Mobods Cartesian diagonal mass matrix in TD
+  /*
+  int mbi = 0;
+  std::cout<<"Simbody Mobods nb="<<nb<<" nq="<<nq<<" nu="<<nu<<std::endl;
+  for(int j=0; j<matter.getNumBodies(); j++){
+    const SimTK::MobilizedBody& mobod = matter.getMobilizedBody(SimTK::MobilizedBodyIndex(j));
+    SimTK::MassProperties mobod_mp = mobod.getBodyMassProperties(advanced);
+    const SimTK::Real mobod_mass = mobod_mp.getMass();
+    printf("mobod %d m %.11f\n", mbi, mobod_mass);
+    for(int t=0; t<6; t++){
+      std::cout<<'[';
+      for(int k=0; k<((6*mbi)+t); k++){
+        std::cout<<0<<' ';
+      }
+      std::cout<<mobod_mass<<' ';
+      for(int k=((6*mbi)+t)+2; k<=(matter.getNumBodies()*6); k++){
+        std::cout<<0<<' ';
+      }
+      std::cout<<']'<<std::endl;
+    }
+    mbi++;
+  }
+  */
+
+  // Mobods Cartesian diagonal mass matrix in 
+  /*
+  mbi = 0;
+  //std::cout<<"MC mobods"<<std::endl;
+  for(int j=0; j<matter.getNumBodies(); j++){
+    std::cout<<"mobods"<<j<<std::endl;
+    const SimTK::MobilizedBody& mobod = matter.getMobilizedBody(SimTK::MobilizedBodyIndex(j));
+    SimTK::MassProperties mobod_mp = mobod.getBodyMassProperties(advanced);
+    const SimTK::SpatialInertia Mk_G = mobod.getBodySpatialInertiaInGround(advanced);
+    std::cout<<"Spatial inertia in Ground "<<Mk_G.toSpatialMat()<<std::endl;
+    const SimTK::Real mobod_mass = mobod_mp.getMass();
+      std::cout<<'[';
+      for(int k=0; k<mbi; k++){
+        std::cout<<0<<' ';
+      }
+      std::cout<<mobod_mass<<' ';
+      for(int k=mbi+1; k<=matter.getNumBodies(); k++){
+        std::cout<<0<<' ';
+      }
+      std::cout<<']'<<std::endl;
+    mbi++;
+  }
+  std::cout<<"-----------------------------------------------"<<std::endl;
+  */
+
+  // Atoms Cartesian diagonal mass matrix
+  /*
+  SimTK::Vec3 pos[4];
+  SimTK::Vec3 diffs[3];
+  SimTK::Vec3 normals[2];
+  double dots[2];
+  double psin, pcos, dih;
+  for (SimTK::Compound::AtomIndex aIx(0); aIx < c.getNumAtoms(); ++aIx){
+      pos[aIx]   = c.calcAtomLocationInGroundFrame(advanced, aIx);
+      //std::cout<<"aIx "<<aIx<<' '<<c.getAtomName(aIx)<<"="<<std::setprecision(8)<<std::fixed
+      //  <<"["<<pos[aIx][0]<<" "<<pos[aIx][1]<<" "<<pos[aIx][2]<<"]"<<std::endl;
+  }
+  //std::cout<<pos[0]-pos[2]<<' '<<pos[1]-pos[0]<<' '<<pos[3]-pos[1]<<std::endl;
+
+  // Dihedral in lin4 2 - 0 - 1 - 3
+  diffs[0] = pos[0] - pos[2];
+  diffs[1] = pos[1] - pos[0];
+  diffs[2] = pos[3] - pos[1];
+  normals[0] = diffs[0] % diffs[1];
+  normals[1] = diffs[1] % diffs[2];
+  dots[0] = (normals[0][0] * diffs[2][0]) + (normals[0][1] * diffs[2][1]) + (normals[0][2] * diffs[2][2]);
+  dots[1] = (diffs[1][0] * diffs[1][0]) + (diffs[1][1] * diffs[1][1]) + (diffs[1][2] * diffs[1][2]);
+  psin = dots[0] * std::sqrt(dots[1]);
+  pcos = (normals[0][0] * normals[1][0]) + (normals[0][1] * normals[1][1]) + (normals[0][2] * normals[1][2]);
+  dih = atan2(psin, pcos);
+  std::cout<<"dih "<<dih<<std::endl;
+  */
+
+  /*
+  int ai = 0;
+  SimTK::Real mass;
+  std::cout<<"Molmodel Compound atoms"<<std::endl;
+  for (SimTK::Compound::AtomIndex aIx(0); aIx < c.getNumAtoms(); ++aIx){
+    mass = c.getAtomElement(aIx).getMass();
+    printf("atom %d m %.11f\n", ai, mass);
+    std::cout<<'[';
+    for(int k=0; k<ai; k++){
+      std::cout<<0<<' ';
+    }
+    std::cout<<mass;
+    for(int k=ai+1; k<=c.getNumAtoms(); k++){
+      std::cout<<0<<' ';
+    }
+    std::cout<<']'<<std::endl;
+    std::cout<<"DuMM atomElement by atomic number: "<<Caller->forceField->getAtomElement(c.getDuMMAtomIndex(aIx))<<std::endl;
+    ai++;
+  }
+  */
+ 
   SimTK::Matrix MInv;
   SimTK::Matrix SqrtMInv;
   matter.calcMInv(advanced, MInv);
@@ -661,6 +781,8 @@ void MidVVIntegratorRep::initializeVelsFromVRT(const SimTK::Compound& c, SimTK::
   for(int i=0; i<nu; i++){ // Put V in Eigen
     EiV(i) = V(i);
   }
+  EiV *= sqrtkTb; // Set stddev according to temperature
+  //std::cout<<"kTX ";for(int k=0; k<nu; k++){std::cout<<EiV[k]<<' ';}std::cout<<std::endl;
   for(int i=0; i<nu; i++){ // Put MInv in Eigen
     for(int j=0; j<nu; j++){
       EiM(i, j) = M(i, j);
@@ -670,26 +792,43 @@ void MidVVIntegratorRep::initializeVelsFromVRT(const SimTK::Compound& c, SimTK::
   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> Eims(EiM);
   Eigen::MatrixXd Eim = Eims.operatorSqrt();
   if(getMetroFixmanOpt() == 1){ // Get it numerically
-    //std::cout<<"Compute Numerically Det(Mi)"<<std::endl;
     this->numDetSqrtMi = Eim.determinant(); // Bottleneck
   }
-  //this->numDetMi = EiM.determinant(); // Bottleneck
   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> Eils(EiMInv);
   Eigen::MatrixXd Eil = Eils.operatorSqrt();
   EiVmod = Eil * EiV; // Multiply by sqrt of inverse mass matrix
   for(int i=0; i<nu; i++){ // Get Vmod from Eigen
     Vmod(i) = EiVmod(i);
   }
-  Vmod *= sqrtkTb; // Set stddev according to temperature
+  //Vmod *= sqrtkTb; // Set stddev according to temperature
 
   advanced.updU() = Vmod;
   system.realize(advanced, SimTK::Stage::Velocity);
 
-  SimTK::Real T = (2*compoundSystem->calcKineticEnergy(advanced)) / ((nu)*SimTK_BOLTZMANN_CONSTANT_MD);
-  float KETbTemp = 0.5 * kTb * (nu);
-  const SimTK::Real scale = std::sqrt(TbTemp/T);
-  advanced.updU() *= scale;
-  system.realize(advanced, SimTK::Stage::Velocity);
+  //SimTK::Real T = (2*compoundSystem->calcKineticEnergy(advanced)) / ((nu)*SimTK_BOLTZMANN_CONSTANT_MD);
+  //float KETbTemp = 0.5 * kTb * (nu);
+  //const SimTK::Real scale = std::sqrt(TbTemp/T);
+  //advanced.updU() *= scale;
+  //system.realize(advanced, SimTK::Stage::Velocity);
+
+  // Check if corresponding modal vels and generalized vp atisfy equipartition
+  #ifdef DEBUG_LEVEL02
+  SimTK::Vector ThetaDot(nu);
+  ThetaDot = advanced.getU();
+  std::cout<<"thetadot ";for(int k=0; k<nu; k++){std::cout<<ThetaDot(k)<<' ';}std::cout<<std::endl;
+  Eigen::VectorXd EiThetaDot(nu), EiModals(nu), EiMomenta(nu);
+  for(int i=0; i<nu; i++){ // Put betadot in Eigen
+    EiThetaDot(i) = ThetaDot(i);
+  }
+  EiModals  = Eim * EiThetaDot; // Multiply by sqrt of inverse mass matrix
+  EiMomenta = EiM * EiThetaDot; // Multiply by mass matrix
+  std::cout<<"lkTX ";for(int k=0; k<nu; k++){std::cout<<EiVmod[k]<<' ';}std::cout<<std::endl;
+  std::cout<<"modals ";for(int k=0; k<nu; k++){std::cout<<EiModals[k]<<' ';}std::cout<<std::endl;
+  std::cout<<"thetadotp "; for(int k=0; k<nu; k++){std::cout<<EiThetaDot[k] * EiMomenta[k]<<' ';}std::cout<<std::endl;
+  //printf("SimbodyKE %.10f\n", compoundSystem->calcKineticEnergy(advanced));
+  #endif
+  /////////////
+
 }
 
 // * Initialize vels from atoms inertias
@@ -1767,7 +1906,8 @@ unsigned long int MidVVIntegratorRep::getNtrials(void)
   return this->ntrials;
 }
 
-void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::State& advanced)
+/*
+void MidVVIntegratorRep::metropolis_old(const SimTK::Compound& compound, SimTK::State& advanced)
 {
       raiseMetroFlag();
 
@@ -1798,7 +1938,8 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
       //TARGET_TYPE eo = getKe() + getPe();
       //TARGET_TYPE RT = getTb() * SimTK_BOLTZMANN_CONSTANT_MD;
       #ifdef DEBUG_SPECIFIC
-      printf("ko %lf kn %lf po %lf pn %lf eo %lf en %lf\n", getKe(), ke_n, getPe(), pe_n, eo, en);
+      // ko kn po pn
+      printf("%lf %lf %lf %lf", getKe(), ke_n, getPe(), pe_n);
       #endif
      
       // Get Simbody Mass Matrix 
@@ -1839,29 +1980,30 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
       //this->numDetMj = EiM.determinant();
 
       SimTK::Real correction, correction2, correction3, correction4; 
-      /*
-      if(this->detMBATj){
-        correction = 1.6487212707001281468486507878141 * 
-        ((this->detMj * this->detMBATi) / (this->detMBATj * this->detMi));
-      }else{
-        correction = 1.0;
-      }
-      */
-      /*
-      if(detsqrtMj){ // numerical correction
-        correction2 = 1.6487212707001281468486507878141 * 
-        ((detsqrtMj * this->detMBATi) / (this->detMBATj * detsqrtMi));
-      }else{
-        correction2 = 1.0;
-      }
-      */
-      /*
-      if(this->detsqrtMj){ // numerical correction
-        correction4 = ((this->detsqrtMj * this->detMBATi) / (this->detMBATj * this->detsqrtMi));
-      }else{
-        correction4 = 1.0;
-      }
-      */
+      SimTK::Real fixo, fixn;
+      
+      //if(this->detMBATj){
+      //  correction = 1.6487212707001281468486507878141 * 
+      //  ((this->detMj * this->detMBATi) / (this->detMBATj * this->detMi));
+      //}else{
+      //  correction = 1.0;
+      //}
+      
+      
+      //if(detsqrtMj){ // numerical correction
+      //  correction2 = 1.6487212707001281468486507878141 * 
+      //  ((detsqrtMj * this->detMBATi) / (this->detMBATj * detsqrtMi));
+      //}else{
+      //  correction2 = 1.0;
+      //}
+      
+      
+      //if(this->detsqrtMj){ // numerical correction
+      //  correction4 = ((this->detsqrtMj * this->detMBATi) / (this->detMBATj * this->detsqrtMi));
+      //}else{
+      //  correction4 = 1.0;
+      //}
+      
       //std::cout<<"detMBATi "<<this->detMBATi<<" detMBATj "<<this->detMBATj
       //  <<" detMi "<<this->detMi<<" detMj "<<this->detMj
       //  <<" correction= "<<correction<<std::endl;
@@ -1882,11 +2024,17 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
       if(getMetroFixmanOpt() == 1){
         if(getMassMatNumOpt() == 1){
           correction = this->numDetSqrtMj/this->numDetSqrtMi;
+          fixo = RT*std::log(this->numDetSqrtMi);
+          fixn = RT*std::log(this->numDetSqrtMj);
+          #ifdef DEBUG_SPECIFIC
+          std::cout<<' '<<this->numDetSqrtMi<<' '<<this->numDetSqrtMj; // print dets
+          #endif
         }else{
           correction = this->detsqrtMj/this->detsqrtMi;
         }
         //std::cout<<"Apply Fixman correction in Metropolis"<<std::endl;
-        expression = exp(-(en-eo)/RT) * correction;
+        //expression = exp(-(en-eo)/RT) * correction;
+        expression = exp(-((en + fixn)-(eo + fixo))/RT); // Me02
       }else{
         //std::cout<<"Don't apply Fixman correction in Metropolis"<<std::endl;
         expression = exp(-(en-eo)/RT);
@@ -1898,19 +2046,23 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
         shm[arrays_cut + 7] = 0.0;
         printf("en is nan\n");
       }else{ 
-        if ((en<eo) or (rand_no<expression)){
+        if (((en+fixn)<(eo+fixo)) or (rand_no<expression)){ // First condition might not be correct
+        //if (rand_no<expression){ // Without en<eo as above = Me01
           shm[arrays_cut + 7] = 1.0;
         }else{
           shm[arrays_cut + 7] = 0.0;
         }
       }
       if(shm[arrays_cut + 7] < 0.5){ // Move not accepted - assign old conf TVector
-        //printf("move not accepted\n");
+      //if(0 == 1){ // Force the move to be always accepted
         assignConfFromTVector(advanced);
         advanced.updU() = 0.0;
         setKe(0.0);
         setPe(getIniPe()); // OPTIMZE = store old pe somewhere
         //std::cout<<"GC: 0,"<<getPe()<<','<<this->detMBATi<<','<<this->numDetMi<<std::endl;
+        #ifdef DEBUG_SPECIFIC
+        printf(" 0\n");
+        #endif
       }
       else{                          // Move accepted - set new TVector
         setTVector(advanced);
@@ -1919,9 +2071,118 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
         setKe(ke_n);
         setPe(pe_n);
         *this->Caller->sysAccs += 1.0;
+        #ifdef DEBUG_SPECIFIC
+        printf(" 1\n");
+        #endif
         //std::cout<<"GC: 1,"<<getPe()<<','<<this->detMBATj<<','<<this->numDetMj<<std::endl;
       } // else // Move accepted
 
+}
+*/
+
+void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::State& advanced)
+{
+      raiseMetroFlag();
+
+      const SimTK::System& system   = getSystem();
+      const SimTK::SimbodyMatterSubsystem& matter = Caller->system->getMatterSubsystem();
+      int nu = advanced.getNU();
+
+      TARGET_TYPE rand_no = boostRealRand(rng);
+
+      TARGET_TYPE ke_n = Caller->system->calcKineticEnergy(advanced); // from Sim
+      setMMTKConf(compound, advanced);
+      TARGET_TYPE pe_n = calcPEFromMMTK(); // from MMTK
+
+      system.realize(advanced, SimTK::Stage::Position);
+
+      // Get numerical quantities
+      SimTK::Matrix M;
+      matter.calcM(advanced, M); // Get Simbody Mass Matrix O(n^2)
+      this->detMj = calcDetM(c, advanced);
+      Eigen::MatrixXd EiM(nu, nu);
+      for(int i=0; i<nu; i++){ // Put M in Eigen
+        for(int j=0; j<nu; j++){
+          EiM(i, j) = M(i, j);
+        }
+      }
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> Eims(EiM);
+      Eigen::MatrixXd Eim = Eims.operatorSqrt(); // Get the sqrt(M) numerically
+      this->numDetSqrtMj = Eim.determinant(); // Get det{sqrt(M)} numerically
+
+      // Set the 2 Fixman posibilities
+      TARGET_TYPE RT = getTb() * SimTK_BOLTZMANN_CONSTANT_MD;
+      TARGET_TYPE en = ke_n + pe_n;
+      TARGET_TYPE eo = getKe() + getPe();
+      TARGET_TYPE expression;
+      SimTK::Real fixo, fixn;
+
+
+      if(getMetroFixmanOpt() == 1){   // M.F1
+          fixo = RT*std::log(this->numDetSqrtMi);
+          fixn = RT*std::log(this->numDetSqrtMj);
+      }else{                          // M.F0
+          fixo = 0.5*RT*std::log(this->detMi);
+          fixn = 0.5*RT*std::log(this->detMj);
+      }
+      #ifdef DEBUG_LEVEL02
+      std::cout<<' '<<this->numDetSqrtMi<<' '<<this->numDetSqrtMj // print dets
+        <<' '<<this->detMi<<' '<<this->detMj;
+      //printf("%lf %lf %lf %lf", getKe(), ke_n, (getPe() + fixo), (pe_n + fixn)); // ko kn po pn
+      #endif
+
+      // Add Fixman potentials
+      eo += fixo;
+      en += fixn;
+  
+      // Apply Metropolis criterion
+      if(isnan(en)){
+        shm[arrays_cut + 7] = 0.0;
+        printf("en is nan\n");
+      }else{ 
+        if ((en < eo) or (rand_no < exp(-(en-eo)/RT))){ 
+          shm[arrays_cut + 7] = 1.0;
+        }else{
+          shm[arrays_cut + 7] = 0.0;
+        }
+      }
+      if(shm[arrays_cut + 7] < 0.5){ // Move not accepted - assign old conf TVector
+      //if(0 == 1){ // Force the move to be always accepted
+        assignConfFromTVector(advanced);
+        advanced.updU() = 0.0;
+        setKe(0.0);
+        setPe(getIniPe()); // OPTIMZE = store old pe somewhere
+        #ifdef DEBUG_LEVEL02
+        printf(" 0 ");
+        #endif
+      }
+      else{                          // Move accepted - set new TVector
+        setTVector(advanced);
+        advanced.updU() = 0.0; // to advance Stage
+        writePossToShm(compound, advanced); // OPTIM
+        setKe(ke_n);
+        setPe(pe_n);
+        *this->Caller->sysAccs += 1.0;
+        #ifdef DEBUG_LEVEL02
+        printf(" 1 ");
+        #endif
+      } // else // Move accepted
+      #ifdef DEBUG_SPECIFIC
+      printf("%.5lf ", getPe() );
+      #endif
+
+  #ifdef DEBUG_CONF
+  SimTK::Vec3 pos[c.getNumAtoms()];
+  for (SimTK::Compound::AtomIndex aIx(0); aIx < c.getNumAtoms(); ++aIx){
+      pos[aIx]   = c.calcAtomLocationInGroundFrame(advanced, aIx);
+      //std::cout<<"aIx "<<aIx<<' '<<c.getAtomName(aIx)<<"="<<std::setprecision(8)<<std::fixed
+      //  <<"["<<pos[aIx][0]<<" "<<pos[aIx][1]<<" "<<pos[aIx][2]<<"]"<<std::endl<<std::flush;
+  }
+  // Dihedral in lin4 2 - 0 - 1 - 3
+  // DiAla Phi/Psi 1- 5 - 7 - 9 - 14
+  std::cout<<std::setprecision(10)<<SimTK_RADIAN_TO_DEGREE*bDihedral(pos[1], pos[5], pos[7], pos[9])
+    <<' '<<SimTK_RADIAN_TO_DEGREE*bDihedral(pos[5], pos[7], pos[9], pos[14])<<std::endl;
+  #endif
 
 }
 
@@ -1929,7 +2190,7 @@ void MidVVIntegratorRep::try_finalize(const SimTK::Compound& c, SimTK::State& ad
 {
   vector3 *xMid;
   int tx, tshm; // x -> shm index correspondence
-  #ifdef DEBUG_SPECIFIC
+  #ifdef DEBUG_LEVEL02
   printf("startt %.4lf time %.4lf arr3 %.4lf ", starttime, advanced.getTime(), (shm[arrays_cut + 3]));
   printf("f(time) %.2lf ", (advanced.getTime() - starttime) / (shm[arrays_cut + 3]));
   printf("steps_done %d step %d totStepsInCall %d \n", steps_done, step, totStepsInCall);
@@ -1945,7 +2206,7 @@ void MidVVIntegratorRep::try_finalize(const SimTK::Compound& c, SimTK::State& ad
 
     // * CHECKPOINT Metropolize * //
     if(step == stepsPerTrial){ // End of MD cycle 
-      #ifdef DEBUG_SPECIFIC
+      #ifdef DEBUG_LEVEL02
       printf("step %d trial %d stepsPerTrial %d \n", step, trial -1, stepsPerTrial);
       #endif
       metropolis(c, advanced);
@@ -2356,12 +2617,9 @@ bool MidVVIntegratorRep::attemptDAEStep
     //int tx, tshm; // x -> shm index correspondence
     //vector3 *xMid;
 
-    // ******************** //
-    // * Main integration * //
-    // ******************** //
     const SimTK::System& system   = getSystem();
     SimTK::State& advanced = updAdvancedState();
-    #ifdef DEBUG_SPECIFIC
+    #ifdef DEBUG_LEVEL02
     printf("time(0) %.4lf\n", advanced.getTime());
     #endif
     starttime = advanced.getTime();
@@ -2393,21 +2651,23 @@ bool MidVVIntegratorRep::attemptDAEStep
   {
     int i;
     step = totStepsInCall % stepsPerTrial;
-    #ifdef DEBUG_SPECIFIC
+    #ifdef DEBUG_LEVEL02
     printf("begin try step %d step0Flag %d, totStepsInCall %d, beginFlag %d\n", step, *step0Flag, totStepsInCall, *beginFlag);
     #endif
 
-    // * CHECKPOINT Increment trial * //
-    if((step == 0) && (*step0Flag == 0)){
+    if((step == 0) && (*step0Flag == 0)){ // Begining of new trial
+      #ifdef DEBUG_LEVEL02
+      printf("begin nonDAE initialization\n");
+      #endif
       if(totStepsInCall == 0){ // Begining of Call (trial == 0)
-        if(*beginFlag == 0){ 
+        if(*beginFlag == 0){
           raiseBeginFlag();
           advanced = assignConfAndTVectorFromShm3Opt(advanced);
           advanced.setTime(starttime);
           setMMTKConf(c, advanced);
           setIniPe(calcPEFromMMTK());
           setPe(getIniPe());
-          #ifdef DEBUG_SPECIFIC
+          #ifdef DEBUG_LEVEL02
           printf("step 0 totSteps 0 ini_pe %.2lf\n", getIniPe());
           #endif
           #ifdef DEBUG_WRITEPDBSPECIFIC
@@ -2422,13 +2682,11 @@ bool MidVVIntegratorRep::attemptDAEStep
       incrTrial();
       setTb(shm[arrays_cut + 2]);
       if(getMassMatNumOpt() == 1){
-        //std::cout<<"Use Numerical Mass Matrix Inverse to initialize vels"<<std::endl;
         initializeVelsFromVRT(c, advanced, getTb());
       }else{
-        //std::cout<<"Use Analytical Mass Matrix Inverse to initialize vels"<<std::endl;
         initializeVelsFromRandU(c, advanced, getTb());
       }
-      #ifdef DEBUG_SPECIFIC
+      #ifdef DEBUG_LEVEL02
       printf("out of totSteps and beginFlag step %d step0Flag %d, totStepsInCall %d, beginFlag %d\n", step, *step0Flag, totStepsInCall, *beginFlag);
       #endif
       //this->UFixi = calcUFixNum(c, advanced);
@@ -2437,19 +2695,13 @@ bool MidVVIntegratorRep::attemptDAEStep
       setKe(Caller->system->calcKineticEnergy(advanced));
       setIniPe(calcPEFromMMTK());
       setPe(getIniPe());
-      #ifdef DEBUG_SPECIFIC
+      #ifdef DEBUG_LEVEL02
       printf("  ini_pe %.2lf\n", getIniPe());
       #endif
       system.realize(advanced, SimTK::Stage::Acceleration);
-      #ifdef DEBUG_SPECIFIC
-      std::cout<<"Determinants calculation ------------- BEGIN"<<std::endl;
-      #endif
       this->detMBATi = calcDetMBAT(c, advanced);
       this->detMi = calcDetM(c, advanced);
-      #ifdef DEBUG_SPECIFIC
-      std::cout<<"Determinants calculation -------------   END"<<std::endl;
-      #endif
-    } else{ // BEGIN DAE
+    } else{ // Do DAE (is not the begining of the trial)
       #ifdef DEBUG_LEVEL02
       printf("begin DAE\n");
       #endif
@@ -2603,14 +2855,20 @@ bool MidVVIntegratorRep::attemptDAEStep
       //try_finalize(c, advanced, step, steps_done);
   vector3 *xMid;
   int tx, tshm; // x -> shm index correspondence
-  #ifdef DEBUG_SPECIFIC
+  #ifdef DEBUG_LEVEL02
   printf("startt %.4lf time %.4lf arr3 %.4lf ", starttime, advanced.getTime(), (shm[arrays_cut + 3]));
   printf("f(time) %.2lf ", (advanced.getTime() - starttime) / (shm[arrays_cut + 3]));
   printf("steps_done %d step %d totStepsInCall %d \n", steps_done, step, totStepsInCall);
   #endif
   if(steps_done){
+    #ifdef DEBUG_LEVEL02
+    //SimTK::Real temperature = (2*compoundSystem->calcKineticEnergy(advanced)) / ((advanced.getNU())*SimTK_BOLTZMANN_CONSTANT_MD);
+    setMMTKConf(c, advanced);
+    printf("-- KE %.10f  PE %.10f\n", compoundSystem->calcKineticEnergy(advanced), calcPEFromMMTK());
+    #endif
+
     #ifdef DEBUG_WRITEALLPDBS
-      writePdb(c, advanced, "pdbs", "sb_all", 10, "");
+    writePdb(c, advanced, "pdbs", "sb_all", 10, "");
     #endif
     incrStep();
     incrTotStepsInCall();
@@ -2619,7 +2877,11 @@ bool MidVVIntegratorRep::attemptDAEStep
 
     // * CHECKPOINT Metropolize * //
     if(step == stepsPerTrial){ // End of MD cycle 
-      #ifdef DEBUG_SPECIFIC
+      #ifdef DEBUG_LEVEL02
+      //std::cout<<"Stage: "<<matter.getStage(advanced)<<std::endl;
+      printf("KE %.10f  PE %.10f\n", compoundSystem->calcKineticEnergy(advanced), calcPEFromMMTK());
+      #endif
+      #ifdef DEBUG_LEVEL02
       printf("step %d trial %d stepsPerTrial %d \n", step, trial -1, stepsPerTrial);
       #endif
       metropolis(c, advanced);

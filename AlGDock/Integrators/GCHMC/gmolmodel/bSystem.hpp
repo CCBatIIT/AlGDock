@@ -51,6 +51,10 @@
 #ifndef DEBUG_WRITEPFPDB
 #define DEBUG_WRITEPFPDB
 #endif
+
+#ifndef DEBUG_CONF
+#define DEBUG_CONF
+#endif
 #ifndef DEBUG_SPECIFIC
 #define DEBUG_SPECIFIC
 #endif

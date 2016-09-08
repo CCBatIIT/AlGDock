@@ -14,6 +14,11 @@
 #include "Molmodel.h"
 #include "mol.h"
 
+#include "SimTKcommon.h"
+#include "molmodel/internal/common.h"
+#include "molmodel/internal/GrinPointer.h"
+#include "molmodel/internal/units.h"
+
 /*
 #ifndef DEBUG_LEVEL01
 #define DEBUG_LEVEL01
@@ -23,6 +28,30 @@
 #define DEBUG_LEVEL02
 #endif
 */
+
+//==============================================================================
+//                           CLASS MMTKElement
+//==============================================================================
+/** 
+ * MMTK Elements with slightly different masses
+**/
+
+class MMTKElement : public SimTK::Element{
+ public:
+  MMTKElement(int atomicNumber, Name name, Symbol symbol, SimTK::mdunits::Mass typicalMass);
+    //: SimTK::Element(atomicNumber, name, symbol, typicalMass){}
+  ~MMTKElement();
+
+  MMTKElement getByAtomicNumber(int atomicNumber);
+  MMTKElement getBySymbol(const SimTK::String& symbol);
+
+  class MMTKHydrogen;
+};
+
+class MMTKElement::MMTKHydrogen : public MMTKElement {
+  public: MMTKHydrogen(); 
+}; // EU
+
 
 //==============================================================================
 //                           CLASS TrivalentAtomTetra
