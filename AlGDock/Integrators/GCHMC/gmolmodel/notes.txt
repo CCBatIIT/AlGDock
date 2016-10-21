@@ -1,0 +1,31 @@
+# Roughly in order:
+
+simmain.cpp - Boost C++ python extension. Creates a system.
+simmain.hpp
+
+bSystem.cpp - include SimBody subsystems (which are parts of systems)
+bSystem.hpp
+
+bAddParams.cpp - reads gaff.dat to create new atom types for molmodel
+bAddParams.hpp
+
+bMoleculeReader.cpp - reads a mol2 file
+bMoleculeReader.hpp
+
+bMainResidue.cpp - builds a molecule based on bMoleculeReader
+bMainResidue.hpp
+
+MidVVIntegrator.cpp - the integrator based on velocity Verlet, but also include Metropolis acceptance/rejection. 
+MidVVIntegrator.hpp
+
+# Used everywhere:
+
+bgeneral.cpp - small functions like random numbers, amino acid code switching
+bgeneral.hpp
+
+server.hpp - defines macros used for share memory model
+
+# To be used without python
+
+bArgParser.cpp - to run without the python interface.
+bArgParser.hpp
