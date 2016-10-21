@@ -1,0 +1,18 @@
+notice: no Python configured in user-config.jam
+notice: will use default configuration
+link.jam: No such file or directory
+warning: No toolsets are configured.
+warning: Configuring default toolset "gcc".
+warning: If the default is wrong, your build may not work correctly.
+warning: Use the "toolset=xxxxx" option to override our guess.
+warning: For more configuration options, please consult
+warning: http://boost.org/boost-build2/doc/html/bbv2/advanced/configuration.html
+warning: <p.>libgmolmodel.so depends on itself
+...patience...
+...patience...
+...found 2338 targets...
+...updating 2 targets...
+capture-output bin/GCHMCIntegrator.test/gcc-4.4.7/debug/GCHMCIntegrator
+**passed** bin/GCHMCIntegrator.test/gcc-4.4.7/debug/GCHMCIntegrator.test
+...updated 2 targets...
+/home/dminh/Installers/boost_1_55_0/bjam cxxflags=-Wall -g -Xlinker -export-dynamic -std=gnu++0x -pthread -fno-strict-aliasing -DNDEBUG -DLIBM_HAS_ERFC -D_LONG64_ -DEXTENDED_TYPES -DUSE_NETCDF_H_FROM_SCIENTIFIC=1 -DNUMPY=1 -ffast-math -fomit-frame-pointer -I./ -I/export/apps/amber/12/AmberTools/src/mtkpp/src/eigen3b2 -I/home/lspirido/Installers/simbody/SimTK-3.0/include -I/home/lspirido/Installers/simbody/SimTK-3.0/include/molmodel/internal -I/home/lspirido/Installers/simbody/simbody-Simbody-3.0 -I/home/lspirido/Installers/molmodel/molmodel-3.0.0/src -I/home/lspirido/Installers/molmodel/molmodel-3.0.0/include -I/home/dminh/Installers/boost_1_55_0 -I/share/apps/miniconda/2/include/python2.7 -I/usr/include/python2.6 -I/share/apps/miniconda/2/lib/python2.7/site-packages/numpy/core/include -Igmolmodel -Wl,-rpath,./ -Wl,-rpath,/home/lspirido/Installers/simbody/SimTK-3.0/lib64 -Wl,-rpath,gmolmodel -Wl,-rpath,/share/apps/miniconda/2/lib/python2.7/site-packages/MMTK/linux2 -Wl,-rpath,/share/apps/miniconda/2/lib/python2.7/site-packages/numpy -Wl,-rpath,/usr/lib64 -L./ -L/home/lspirido/Installers/simbody/SimTK-3.0/lib64 -L/usr/lib64 -L/share/apps/miniconda/2/lib/python2.7/site-packages/MMTK/linux2 -L/share/apps/miniconda/2/lib/python2.7/site-packages/numpy -Lgmolmodel/ -lSimTKmolmodel -l_compiled_base -lgmolmodel -llapack -lblas -lpthread -ldl -lrt -lSimTKsimbody -lSimTKmath -lSimTKcommon

@@ -1,0 +1,8 @@
+source  /export/apps/amber/14/dat/leap/cmd/leaprc.gaff
+BUT = loadmol2 ligand.mol2
+loadamberparams ligand.frcmod
+saveoff BUT ligand.lib
+savepdb BUT ligand.pdb
+saveamberparm BUT ligand.prmtop ligand.inpcrd
+quit
+
