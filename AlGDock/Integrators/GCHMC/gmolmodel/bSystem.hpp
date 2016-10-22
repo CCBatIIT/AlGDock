@@ -28,6 +28,10 @@
 
 //#include "/home/lspirido/Installers/armadillo-6.400.3/include/armadillo.hpp"
 
+#ifndef TRY_SOFT_LJ
+#define TRY_SOFT_LJ
+#endif
+
 /*
 #ifndef DEBUG_LEVEL01
 #define DEBUG_LEVEL01
@@ -52,14 +56,14 @@
 #define DEBUG_WRITEPFPDB
 #endif
 
+*/
+/*
 #ifndef DEBUG_CONF
 #define DEBUG_CONF
 #endif
 #ifndef DEBUG_SPECIFIC
 #define DEBUG_SPECIFIC
 #endif
-*/
-/*
 #ifndef DEBUG_ENERGY
 #define DEBUG_ENERGY
 #endif
@@ -209,6 +213,7 @@ class SymSystem{
   long unsigned int *pyseed;
   int massMatNumOpt;
   int metroFixmanOpt;
+  double lj14sf; //-- MMTK default
   
   SymSystem(
     string mol2F, string rbF, string gaffF, string frcmodF,

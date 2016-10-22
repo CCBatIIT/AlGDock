@@ -1,6 +1,4 @@
 import sys, os, subprocess
-#sys.path.insert(1, '/usr/lib64/python2.6/site-packages') # MMTK installation
-#sys.path.insert(1, '/home/laurentiu/Downloads/MMTK-2.7.9/install_dir/lib64/python2.6/site-packages')
 import copy
 import numpy as np
 import random

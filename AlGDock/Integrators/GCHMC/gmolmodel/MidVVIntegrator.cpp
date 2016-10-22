@@ -2088,6 +2088,11 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
       const SimTK::SimbodyMatterSubsystem& matter = Caller->system->getMatterSubsystem();
       int nu = advanced.getNU();
 
+      #ifdef TRY_SOFT_LJ
+      (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] = 0.5;
+      //printf("Start Metropolis. LJ scale %lf\n", (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] );
+      #endif
+
       TARGET_TYPE rand_no = boostRealRand(rng);
 
       TARGET_TYPE ke_n = Caller->system->calcKineticEnergy(advanced); // from Sim
@@ -2152,6 +2157,12 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
         advanced.updU() = 0.0;
         setKe(0.0);
         setPe(getIniPe()); // OPTIMZE = store old pe somewhere
+
+        #ifdef TRY_SOFT_LJ
+        (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] = this->Caller->lj14sf;
+        //printf("Move rejected. LJ scale %lf\n", (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] );
+        #endif
+
         #ifdef DEBUG_LEVEL02
         printf(" 0 ");
         #endif
@@ -2163,6 +2174,12 @@ void MidVVIntegratorRep::metropolis(const SimTK::Compound& compound, SimTK::Stat
         setKe(ke_n);
         setPe(pe_n);
         *this->Caller->sysAccs += 1.0;
+
+        #ifdef TRY_SOFT_LJ
+        (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] = this->Caller->lj14sf;
+        //printf("Move accepted. LJ scale %lf\n", (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] );
+        #endif
+
         #ifdef DEBUG_LEVEL02
         printf(" 1 ");
         #endif
@@ -2665,8 +2682,20 @@ bool MidVVIntegratorRep::attemptDAEStep
           advanced = assignConfAndTVectorFromShm3Opt(advanced);
           advanced.setTime(starttime);
           setMMTKConf(c, advanced);
+
+          #ifdef TRY_SOFT_LJ
+          (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] = 0.5;
+          //printf("Before trial setIniPe. LJ scale %lf\n", (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1]);
+          #endif
+
           setIniPe(calcPEFromMMTK());
           setPe(getIniPe());
+
+          #ifdef TRY_SOFT_LJ
+          (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] = this->Caller->lj14sf;
+          //printf("After trial setIniPe. LJ scale %lf\n", (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] );
+          #endif
+
           #ifdef DEBUG_LEVEL02
           printf("step 0 totSteps 0 ini_pe %.2lf\n", getIniPe());
           #endif
@@ -2692,9 +2721,22 @@ bool MidVVIntegratorRep::attemptDAEStep
       //this->UFixi = calcUFixNum(c, advanced);
       //this->UFixi = calcUFix(c, advanced);
       // Set initial energies after initialize vels
+
+      #ifdef TRY_SOFT_LJ
+      (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] = 0.5;
+      //printf("Before setIniPe. LJ scale %lf\n", (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] );
+      #endif
+
       setKe(Caller->system->calcKineticEnergy(advanced));
       setIniPe(calcPEFromMMTK());
       setPe(getIniPe());
+
+      #ifdef TRY_SOFT_LJ
+      (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] = this->Caller->lj14sf;
+      //printf("After setIniPe. LJ scale %lf\n", (((PyFFEnergyTermObject **)(this->Caller->evaluator)->terms->data)[4])->param[1] );
+      #endif
+
+
       #ifdef DEBUG_LEVEL02
       printf("  ini_pe %.2lf\n", getIniPe());
       #endif

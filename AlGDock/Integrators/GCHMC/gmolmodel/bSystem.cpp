@@ -226,6 +226,7 @@ SymSystem::SymSystem(
   this->universe_spec = universe_spec;
   this->shm = shm;
   this->pyseed = new unsigned long int;
+  this->lj14sf = 0.5;
 
   system = new SimTK::CompoundSystem;
   matter = new SimTK::SimbodyMatterSubsystem(*system);

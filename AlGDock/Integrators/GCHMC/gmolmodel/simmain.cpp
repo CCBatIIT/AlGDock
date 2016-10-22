@@ -32,7 +32,8 @@ class GCHMCIntegrator{
     TARGET_TYPE _delta_t,
     int _pyseed,
     int _massMatNumOpt,
-    int _metroFixmanOpt
+    int _metroFixmanOpt,
+    double _lj14sf //--
   );
   void Clear();
   ~GCHMCIntegrator();
@@ -120,17 +121,19 @@ GCHMCIntegrator::GCHMCIntegrator(PyObject *universe, std::string ligdir, std::st
   "-ligdir", ligdir.c_str(),
   "-gaff",  gaff_fn.c_str(),
   "-ictd", "TD"
-  };
+  }; //TODO Check if files exist
 
   //+++++++ Simbody PART ++++++++++++
   bArgParser parser(argc, argv);
-  parser.Print();
  
   TARGET_TYPE **indexMap = NULL;
   TARGET_TYPE *PrmToAx_po = NULL;
   TARGET_TYPE *MMTkToPrm_po = NULL;
 
-  std::cout<<"MMTK configuration->dimensions[0]"<<configuration->dimensions[0]<<std::endl;
+  #ifdef DEBUG_LEVEL01
+  std::cout<<"MMTK configuration->dimensions[0] "<<configuration->dimensions[0]<<std::endl;
+  #endif
+
   indexMap = new TARGET_TYPE*[(configuration->dimensions[0])];
   int _indexMap[natoms][3];
   PrmToAx_po = new TARGET_TYPE[configuration->dimensions[0]];
@@ -284,7 +287,8 @@ boost::python::object GCHMCIntegrator::Call(
   TARGET_TYPE ts,
   int pyseed,
   int _massMatNumOpt, // EU
-  int _metroFixmanOpt // EU
+  int _metroFixmanOpt, // EU
+  double _lj14sf //--
 ){
   #ifdef DEBUG_TIME
   //boost::timer boost_timer;
@@ -339,6 +343,7 @@ boost::python::object GCHMCIntegrator::Call(
   *sys->pyseed = pyseed;
   sys->massMatNumOpt = _massMatNumOpt; // EU
   sys->metroFixmanOpt = _metroFixmanOpt; // EU
+  sys->lj14sf = _lj14sf; //--
   sys->sysRetConfsPois = retConfsPois;
   sys->sysRetPotEsPoi = retPotEsPoi;
   sys->sysAccs = accs;
