@@ -48,7 +48,6 @@ bArgParser::bArgParser(int argc, const char **argv){ // constructor
       option[AR_ICTD] = 1;  
     }
   }
-  printf("bArgParser END\n"); fflush(stdout);
 
 } // constructor
  

@@ -453,15 +453,36 @@ using namespace SimTK;
     }
     */
 
-    std::ostringstream sstream;
-    sstream<<"pdbs/sb_"<<"ini"<<".pdb";
-    std::string ofilename = sstream.str();
-    std::cout<<"Writing pdb file: "<<ofilename<<std::endl;
-    std::filebuf fb;
-    fb.open(ofilename.c_str(), std::ios::out);
-    std::ostream os(&fb);
-    pdb.write(os);
-    fb.close();
+    #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC //TODO Switch to Boost - will work on both Win and Linux
+    int dirOK = 0;
+    int mkdirRET = 0;
+    struct stat sb;
+    if (stat("pdbs", &sb) == 0){
+      if(S_ISDIR(sb.st_mode)){
+        dirOK = 1;
+      }else{
+        std::cout<<"bMainResidue: There is a file named \"pdbs\". Skipping writing the initial pdb file."<<std::endl;
+      }
+    }else{
+      mkdirRET = mkdir("pdbs", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+      if(mkdirRET){
+        std::cout<<"bMainResidue: mkdir retuned "<<mkdirRET<<". Skipping writing the initial pdb file."<<std::endl;
+      }else{
+        dirOK = 1;
+      }
+    }
+    if(dirOK){
+      std::ostringstream sstream;
+      sstream<<"pdbs/sb_"<<"ini"<<".pdb";
+      std::string ofilename = sstream.str();
+      std::cout<<"Writing pdb file: "<<ofilename<<std::endl;
+      std::filebuf fb;
+      fb.open(ofilename.c_str(), std::ios::out);
+      std::ostream os(&fb);
+      pdb.write(os);
+      fb.close();
+    }
+    #endif
 
   }
 
