@@ -22,7 +22,7 @@ for libboostFN in libboostFNs:
 print "Done."
 
 print "Cleaning extensions... ",
-extGCFNs = glob.glob("GCHMC*.so*")
+extGCFNs = glob.glob("TDHMC*.so*")
 for extGCFN in extGCFNs:
   os.remove(os.path.abspath(extGCFN))
 print "Done."

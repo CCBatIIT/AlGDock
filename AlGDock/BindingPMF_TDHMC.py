@@ -13,8 +13,8 @@ if 'ALGDOCKHOME' not in os.environ: # EU BEGIN
   print "Exiting..."
   sys.exit(1)
 else:
-  sys.path.insert(1, os.path.join(os.environ['ALGDOCKHOME'], 'Integrators/GCHMC'))
-  sys.path.insert(1, os.path.join(os.environ['ALGDOCKHOME'], 'Integrators/GCHMC/simbody')) # EU END
+  sys.path.insert(1, os.path.join(os.environ['ALGDOCKHOME'], 'Integrators/TDHMC'))
+  sys.path.insert(1, os.path.join(os.environ['ALGDOCKHOME'], 'Integrators/TDHMC/simbody')) # EU END
 
 import time
 import numpy as np
@@ -604,7 +604,7 @@ last modified {1}
     # normalize - normalizes configurations
     # adapt - uses an adaptive time step
 
-    print "BindingPMF_GCHMC.py sys.path", sys.path #EU
+    print "BindingPMF_TDHMC.py sys.path", sys.path #EU
     self.sampler = {}
     # Uses cython class
     # from SmartDarting import SmartDartingIntegrator # @UnresolvedImport
@@ -631,10 +631,10 @@ last modified {1}
           import HamiltonianMonteCarloIntegrator
         self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
       elif self.params[p]['sampler'] == 'TDHMC': # EU BEGIN
-        from GCHMC import GCHMCIntegrator
+        from TDHMC import TDHMCIntegrator
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo import HamiltonianMonteCarloIntegrator
         self.mixed_samplers = []
-        self.mixed_samplers.append(GCHMCIntegrator(self.universe, os.path.dirname(self._FNs['ligand_database']), os.path.dirname(self._FNs['forcefield'])))
+        self.mixed_samplers.append(TDHMCIntegrator(self.universe, os.path.dirname(self._FNs['ligand_database']), os.path.dirname(self._FNs['forcefield'])))
         self.mixed_samplers.append(HamiltonianMonteCarloIntegrator(self.universe))
         self.sampler[p] = self._mixed_sampler2   #EU END
       elif self.params[p]['sampler'] == 'VV':
@@ -722,7 +722,7 @@ last modified {1}
         self._save(process)
 
     (self.mixed_samplers[0]).Clear() #EU
-    print "GCHMC cleared"
+    print "TDHMC cleared"
 
 
   ###########
