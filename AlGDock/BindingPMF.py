@@ -473,7 +473,7 @@ last modified {1}
 
     self.timing = {'start':time.time(), 'max':kwargs['max_time']}
     self._run(kwargs['run_type'])
-    
+  
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
   
@@ -637,7 +637,6 @@ last modified {1}
         self.sampler[p] = MixedHMCIntegrator(self.universe, \
           TDIntegrator, MDIntegrator, \
           fraction_TD=self.params[p]['fraction_TD'])
-        # TODO: Integrate fraction_TD
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
@@ -832,7 +831,7 @@ last modified {1}
       crossed = self.cool_protocol[-1]['crossed']
       
       if self.params['cool']['protocol'] == 'Adaptive':
-        if tL_tensor>1E-5:
+        if tL_tensor>1E-7:
           dL = self.params['cool']['therm_speed']/tL_tensor
           if warm:
             T = To + dL
@@ -2220,41 +2219,69 @@ last modified {1}
     self.universe._evaluator[(None,None,None)] = eval
     self._evaluators[evaluator_key] = eval
 
+  def _clear_evaluators(self):
+    """
+    Deletes the stored evaluators and grids to save memory
+    """
+    self._evaluators = {}
+    for scalable in self._scalables:
+      if scalable in self._forceFields.keys():
+        del self._forceFields[scalable]
+
   def _initial_sim_state(self, seeds, process, lambda_k):
     """
     Initializes a state, returning the configurations and potential energy.
+    Attempts simulation with decreasing time steps up to 5 times
+    until the MC acceptance rate is above 40% 
+    and there is variance in the potential energy.
     """
     
-    results = []
-    if self._cores>1:
-      # Multiprocessing code
-      m = multiprocessing.Manager()
-      task_queue = m.Queue()
-      done_queue = m.Queue()
-      for k in range(len(seeds)):
-        task_queue.put((seeds[k], process, lambda_k, True, k))
-      processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
-          args=(task_queue, done_queue)) for p in range(self._cores)]
-      for p in range(self._cores):
-        task_queue.put('STOP')
-      for p in processes:
-        p.start()
-      for p in processes:
-        p.join()
-      results = [done_queue.get() for seed in seeds]
-      for p in processes:
-        p.terminate()
-    else:
-      # Single process code
-      results = [self._sim_one_state(\
-        seeds[k], process, lambda_k, True, k) for k in range(len(seeds))]
+    attempts_left = 5
+    while (attempts_left>0):
+      results = []
+      if self._cores>1:
+        # Multiprocessing code
+        m = multiprocessing.Manager()
+        task_queue = m.Queue()
+        done_queue = m.Queue()
+        for k in range(len(seeds)):
+          task_queue.put((seeds[k], process, lambda_k, True, k))
+        processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
+            args=(task_queue, done_queue)) for p in range(self._cores)]
+        for p in range(self._cores):
+          task_queue.put('STOP')
+        for p in processes:
+          p.start()
+        for p in processes:
+          p.join()
+        results = [done_queue.get() for seed in seeds]
+        for p in processes:
+          p.terminate()
+      else:
+        # Single process code
+        results = [self._sim_one_state(\
+          seeds[k], process, lambda_k, True, k) for k in range(len(seeds))]
 
-    confs = [result['confs'] for result in results]
-    potEs = [result['Etot'] for result in results]
-    
-    delta_t = np.median([result['delta_t'] for result in results])
-    delta_t = min(max(delta_t, self.params[process]['delta_t']/5.*MMTK.Units.fs), \
-      self.params[process]['delta_t']*2.*MMTK.Units.fs)
+      seeds = [result['confs'] for result in results]
+      potEs = np.array([result['Etot'] for result in results])
+
+      delta_t = np.array([result['delta_t'] for result in results])
+      if np.std(delta_t)>1E-7:
+        delta_t = min(max(delta_t, self.params[process]['delta_t']/5.*MMTK.Units.fs), \
+          self.params[process]['delta_t']*2.*MMTK.Units.fs)
+      else:
+        delta_t = delta_t[0]
+
+      acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
+        np.sum([r['att_Sampler'] for r in results])
+
+      if (np.std(potEs)>1E-7) and (acc_rate>0.4):
+        attempts_left = 0
+      else:
+        delta_t = 0.9*delta_t
+        lambda_k['delta_t'] = delta_t
+        attempts_left -= 1
+
     sampler_metrics = '  '
     for s in ['ExternalMC', 'SmartDarting', 'Sampler']:
       if np.array(['acc_'+s in r.keys() for r in results]).any():
@@ -2264,7 +2291,7 @@ last modified {1}
         if att>0:
           sampler_metrics += '%s acc=%d/%d=%.5f, t=%.3f s; '%(\
             s,acc,att,float(acc)/att,time)
-    return (confs, np.array(potEs), delta_t, sampler_metrics)
+    return (seeds, potEs, delta_t, sampler_metrics)
   
   def _replica_exchange(self, process):
     """
@@ -2771,6 +2798,9 @@ last modified {1}
         E_MM = []
         for k in range(len(self.cool_Es[0])):
           E_MM += list(self.cool_Es[0][k]['MM'])
+    
+    # Clear evaluators to save memory
+    self._clear_evaluators()
 
     return True # The process has completed
 
@@ -3080,7 +3110,7 @@ last modified {1}
       crossed = lambda_o['crossed']
       if pow is not None:
         tL_tensor = tL_tensor*(1.25**pow)
-      if tL_tensor>1E-5:
+      if tL_tensor>1E-7:
         dL = self.params['dock']['therm_speed']/tL_tensor
         if undock:
           a = lambda_o['a'] - dL
@@ -4312,6 +4342,9 @@ END
       self._clear_lock(process)
 
   def __del__(self):
+    for p in ['cool', 'dock']:
+      if self.params[p]['sampler'] == 'MixedHMC':
+        self.sampler[p].TDintegrator.Clear()
     if (not DEBUG) and len(self._toClear)>0:
       print '\n>>> Clearing files'
       for FN in self._toClear:

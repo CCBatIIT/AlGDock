@@ -195,3 +195,4 @@ class InterpolationForceField(ForceField):
           self.params['name'])]
     print self.params['interpolation_type'] + ' interpolation is unknown'
     raise NotImplementedError
+    

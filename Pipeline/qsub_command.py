@@ -52,9 +52,9 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
   command_list = args.command.split(';')
   command = '\n'.join([c.strip() for c in command_list])
 
-  # By default, use Enthought Canopy python
+  # By default, use miniconda
   if command.find('python')>-1:
-    modules = 'module load canopy/1.5.0\n'
+    modules = 'module load miniconda/2\n'
   else:
     modules = ''
 
