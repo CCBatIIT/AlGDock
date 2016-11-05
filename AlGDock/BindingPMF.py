@@ -191,13 +191,15 @@ last modified {1}
     # Identify files to look for in the tarballs
     seekFNs = []
     if len(tarFNs)>0:
+      # From the keyword arguments
       for prefix in ['ligand','receptor','complex']:
-        for postfix in ('database','prmtop','inpcrd','fixed_atoms'):
+        for postfix in ('database','prmtop','inpcrd','mol2','rb','fixed_atoms'):
           key = '%s_%s'%(prefix,postfix)
           if (key in kwargs.keys()) and (kwargs[key] is not None):
             FN = os.path.abspath(kwargs[key])
             if not os.path.isfile(FN):
               seekFNs.append(os.path.basename(FN))
+      # From files in a previous instance
       for p in ['cool','dock']:
         if p in FNs.keys():
           for level1 in ['ligand_database','prmtop','inpcrd','fixed_atoms']:
@@ -283,6 +285,10 @@ last modified {1}
         ('L',cdir_or_dir_dock(kwargs['ligand_inpcrd'])),
         ('R',cdir_or_dir_dock(kwargs['receptor_inpcrd'])),
         ('RL',cdir_or_dir_dock(kwargs['complex_inpcrd']))])),
+      ('mol2',OrderedDict([
+        ('L',cdir_or_dir_dock(kwargs['ligand_mol2']))])),
+      ('rb',OrderedDict([
+        ('L',cdir_or_dir_dock(kwargs['ligand_rb']))])),
       ('fixed_atoms',OrderedDict([
         ('R',cdir_or_dir_dock(kwargs['receptor_fixed_atoms'])),
         ('RL',cdir_or_dir_dock(kwargs['complex_fixed_atoms']))])),
@@ -369,6 +375,7 @@ last modified {1}
         ('T_HIGH',600.),
         ('T_TARGET',300.),
         ('H_mass',4.0),
+        ('fraction_TD',0.5),
         ('delta_t',3.0),
         ('sampler','NUTS'),
         ('steps_per_seed',1000),
@@ -618,20 +625,26 @@ last modified {1}
       self.universe, self.molecule, step_size=0.25*MMTK.Units.Ang)
 
     for p in ['cool', 'dock']:
-      if self.params[p]['sampler'] == 'NUTS':
-        from NUTS import NUTSIntegrator # @UnresolvedImport
-        self.sampler[p] = NUTSIntegrator(self.universe)
-      elif self.params[p]['sampler'] == 'NUTS_no_stopping':
-        from NUTS_no_stopping import NUTSIntegrator # @UnresolvedImport
-        self.sampler[p] = NUTSIntegrator(self.universe)
+      if self.params[p]['sampler'] == 'MixedHMC':
+        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+          import HamiltonianMonteCarloIntegrator
+        from AlGDock.Integrators.TDHMC import TDHMC
+        from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
+        MDIntegrator = HamiltonianMonteCarloIntegrator(self.universe)
+        TDIntegrator = TDHMC.TDHMCIntegrator(self.universe, \
+          os.path.dirname(self._FNs['mol2']['L']), \
+          os.path.dirname(self._FNs['forcefield']))
+        self.sampler[p] = MixedHMCIntegrator(self.universe, \
+          TDIntegrator, MDIntegrator, \
+          fraction_TD=self.params[p]['fraction_TD'])
+        # TODO: Integrate fraction_TD
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
         self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
-      elif self.params[p]['sampler'] == 'TDHMC':
-        from Integrators.TDHamiltonianMonteCarlo.TDHamiltonianMonteCarlo \
-          import TDHamiltonianMonteCarloIntegrator
-        self.sampler[p] = TDHamiltonianMonteCarloIntegrator(self.universe)
+      elif self.params[p]['sampler'] == 'NUTS':
+        from NUTS import NUTSIntegrator # @UnresolvedImport
+        self.sampler[p] = NUTSIntegrator(self.universe)
       elif self.params[p]['sampler'] == 'VV':
         from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
           import VelocityVerletIntegrator

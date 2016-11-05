@@ -20,4 +20,4 @@ Edit paths.py
 Run:
   python compile_gmolmodel.py
 
-
+# Set LD_LIBRARY_PATHS to the location of the shared objects

@@ -12,6 +12,8 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --forcefield prmtopcrd/gaff.dat \
   --ligand_prmtop ligand.prmtop \
   --ligand_inpcrd ligand.trans.inpcrd \
+  --ligand_mol2 ligand.mol2 \
+  --ligand_rb ligand.rb \
   --receptor_tarball prmtopcrd/receptor.tar.gz \
   --receptor_prmtop receptor.prmtop \
   --receptor_inpcrd receptor.trans.inpcrd \

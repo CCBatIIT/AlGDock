@@ -6,6 +6,7 @@ from distutils.core import setup, Command, Extension
 from distutils.command.build import build
 from distutils.command.sdist import sdist
 from distutils.command.install_data import install_data
+from distutils.command.install import install
 from distutils import dir_util
 from distutils.filelist import FileList, translate_pattern
 import distutils.sysconfig
@@ -116,9 +117,14 @@ paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'ForceFields', 'Grid'),
          os.path.join('AlGDock', 'ForceFields', 'OpenMM'),
          os.path.join('AlGDock', 'ForceFields', 'Pose'),
-         os.path.join('AlGDock', 'Integrators', 'VelocityVerlet'),
+         os.path.join('AlGDock', 'Integrators', 'ExternalMC'),
+         os.path.join('AlGDock', 'Integrators', 'HamiltonianMonteCarlo'),
+         os.path.join('AlGDock', 'Integrators', 'MixedHMC'),
          os.path.join('AlGDock', 'Integrators', 'NUTS'),
-         os.path.join('AlGDock', 'Integrators', 'SmartDarting')]
+         os.path.join('AlGDock', 'Integrators', 'SmartDarting'),
+         os.path.join('AlGDock', 'Integrators', 'TDHMC'),
+         os.path.join('AlGDock', 'Integrators', 'VelocityVerlet')]
+
 data_files = []
 for dir in paths:
     files = []
@@ -126,6 +132,8 @@ for dir in paths:
         if f[-3:] != '.py' and f[-4:-1] != '.py' and os.path.isfile(f):
             files.append(f)
     data_files.append((dir, files))
+
+# Customized distutils sources
 
 class ModifiedFileList(FileList):
 
@@ -197,6 +205,17 @@ class modified_sdist(sdist):
             else:
                 self.warn("'%s' not a regular file or directory -- skipping"
                           % file)
+
+#  class modified_install(install):
+#      def run(self):
+#          setup_dir = os.path.dirname(os.path.abspath(__file__))
+#          dest_dir = os.path.join(self.install_lib,'AlGDock',sys.platform)
+#          import glob
+#          so_FNs = glob.glob(os.path.join(setup_dir, 'AlGDock', 'Integrators', 'TDHMC','*.so.*'))
+#          for so_FN in so_FNs:
+#            print 'Copying %s to %s'%(so_FN, dest_dir)
+#            os.system('cp %s %s'%(so_FN, dest_dir))
+#          return install.run(self)
 
 class modified_install_data(install_data):
 
@@ -367,19 +386,21 @@ rigid receptor.
        url = "TBA",
        license = "MIT",
 
-       packages = ['AlGDock', 'AlGDock.ForceFields', 
+       packages = ['AlGDock',
+                   'AlGDock.ForceFields',
                    'AlGDock.ForceFields.Cylinder',
                    'AlGDock.ForceFields.Sphere',
                    'AlGDock.ForceFields.Grid',
                    'AlGDock.ForceFields.OpenMM',
                    'AlGDock.ForceFields.Pose',
                    'AlGDock.Integrators',
-                   'AlGDock.Integrators.VelocityVerlet',
-                   'AlGDock.Integrators.HamiltonianMonteCarlo',
-                   'AlGDock.Integrators.NUTS',
                    'AlGDock.Integrators.ExternalMC',
-                   'AlGDock.Integrators.SmartDarting'
-                   ],
+                   'AlGDock.Integrators.HamiltonianMonteCarlo',
+                   'AlGDock.Integrators.MixedHMC',
+                   'AlGDock.Integrators.NUTS',
+                   'AlGDock.Integrators.SmartDarting',
+                   'AlGDock.Integrators.TDHMC',
+                   'AlGDock.Integrators.VelocityVerlet'],
        ext_package = 'AlGDock.'+sys.platform,
        ext_modules = [Extension(name, path, \
         extra_compile_args = compile_args + high_opt, \

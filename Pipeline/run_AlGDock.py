@@ -92,7 +92,7 @@ parser.add_argument('--protocol', choices=['Adaptive','Geometric'],
 parser.add_argument('--therm_speed', type=float,
   help='Thermodynamic speed during adaptive simulation')
 parser.add_argument('--sampler',
-  choices=['HMC','NUTS','VV'],
+  choices=['HMC','MixedHMC','NUTS','VV'],
   help='Sampling method')
 parser.add_argument('--MCMC_moves', type=int,
   help='Types of MCMC moves to use')

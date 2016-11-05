@@ -30,10 +30,10 @@ universe.addObject(newmol)
 universe.configuration();
 configuration =  universe.configuration().array
 
-GCintegrator = TDHMC.TDHMCIntegrator(universe, mol_dir, parm_dir)
-(confs, Es_MM, acc, ntrials, dt) = GCintegrator.Call(30, 10, 300, 0.0015, random.randint(1,300), 0, 1, 0.5)
+TDIntegrator = TDHMC.TDHMCIntegrator(universe, mol_dir, parm_dir)
+(confs, Es_MM, acc, ntrials, dt) = TDIntegrator.Call(10000, 10, 300, 0.0015, random.randint(1,300), 0, 1, 0.5)
 print "GC: ", Es_MM
-GCintegrator.Clear()
+TDIntegrator.Clear()
 
 
 

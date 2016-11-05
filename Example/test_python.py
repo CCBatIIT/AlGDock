@@ -23,6 +23,8 @@ for run_type in run_types:
     forcefield='prmtopcrd/gaff.dat', \
     ligand_prmtop='ligand.prmtop', \
     ligand_inpcrd='ligand.trans.inpcrd', \
+    ligand_mol2='ligand.mol2', \
+    ligand_rb='ligand.rb', \
     receptor_tarball='prmtopcrd/receptor.tar.gz', \
     receptor_prmtop='receptor.prmtop', \
     receptor_inpcrd='receptor.trans.inpcrd', \
@@ -35,8 +37,8 @@ for run_type in run_types:
     pose=-1, \
     rmsd=True, \
     dir_grid='grids', \
-    protocol='Geometric', cool_therm_speed=0.05, dock_therm_speed=0.013,\
-    sampler='HMC', \
+    protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5, \
+    sampler='MixedHMC', \
     MCMC_moves=1, \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
     sweeps_per_cycle=25, attempts_per_sweep=100, \
@@ -49,6 +51,13 @@ for run_type in run_types:
     cores=-1, \
     random_seed=-1)
   self._run(run_type)
+
+# To test timed runs:
+#    run_type='timed',
+#    max_time=0.25)
+
+# A reasonable geometric protocol for testing:
+# protocol='Geometric', cool_therm_speed=0.05, dock_therm_speed=0.013,\
 
 # Good thermodynamic speeds for testing:
 # protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5

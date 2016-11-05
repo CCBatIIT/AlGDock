@@ -44,6 +44,8 @@ arguments = {
   'frcmodList':{'help':'AMBER force field modifications file(s)', 'nargs':'+'},
   'ligand_prmtop':{'help':'AMBER prmtop for the ligand'},
   'ligand_inpcrd':{'help':'AMBER coordinates for the ligand'},
+  'ligand_mol2':{'help':'mol2 file for the ligand'},
+  'ligand_rb':{'help':'rigid body specification for the ligand'},
   #   Stored in dir_dock
   'receptor_tarball':{'help':'tar file that contains prmtop, inpcrd, and fixed_atoms files for the receptor'},
   'receptor_prmtop':{'help':'AMBER prmtop for the receptor'},
@@ -82,7 +84,7 @@ arguments = {
   'therm_speed':{'type':float,
     'help':'Thermodynamic speed during adaptive simulation'},
   'sampler':{
-    'choices':['HMC','NUTS','NUTS_no_stopping','VV','TDHMC'],
+    'choices':['MixedHMC','HMC','NUTS','VV'],
     'help':'Sampling method'},
   'MCMC_moves':{'type':int,
     'help':'Types of MCMC moves to use'},
@@ -92,6 +94,8 @@ arguments = {
     'help':'Target temperature'},
   'H_mass':{'type':float, 'default':4.0, \
     'help':'The repartitioned mass of hydrogen. Set negative to turn off HMR'},
+  'fraction_TD':{'type':float, 'default':0.5, \
+    'help':'For the MixedHMC integrator, the fraction of MD steps spent with torsional MD'},
   'delta_t':{'type':float, 'default':3.0, \
     'help':'The default time step, in fs'},
   # For initialization
