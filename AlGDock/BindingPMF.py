@@ -780,23 +780,15 @@ last modified {1}
         self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
       self.confs['cool']['starting_poses'] = seeds
       
-      # Ramp the temperature from 0 to the desired starting temperature
-      T_LOW = 20.
-      T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
-      for T in T_SERIES:
-        random_seed = int(abs(seeds[0][0][0]*10000)) + int(T*10000)
-        if self._random_seed==0:
-          random_seed += int(time.time())
-        self.sampler['cool'](steps = 500, steps_per_trial = 100, T=T,\
-                             delta_t=self.delta_t, random_seed=random_seed)
-      self.universe.normalizePosition()
+      # Ramp the temperature from 0 to the desired starting temperature using HMC
+      self._ramp_T(T_START, normalize=True)
 
       # Run at starting temperature
       state_start_time = time.time()
       conf = self.universe.configuration().array
       (confs, Es_MM, self.cool_protocol[-1]['delta_t'], sampler_metrics) = \
         self._initial_sim_state(\
-        [conf for n in range(self.params['cool']['seeds_per_state'])], \
+        [self.universe.configuration().array]*self.params['cool']['seeds_per_state'], \
         'cool', self.cool_protocol[-1])
       self.confs['cool']['replicas'] = [confs[np.random.randint(len(confs))]]
       self.confs['cool']['samples'] = [[confs]]
@@ -1251,11 +1243,10 @@ last modified {1}
     self._set_lock('dock')
     dock_start_time = time.time()
     
-    undock = True if (self.params['dock']['pose'] == -1) else False
-
     if self.dock_protocol==[]:
       self.tee("\n>>> Initial docking, starting at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+      undock = True if (self.params['dock']['pose'] == -1) else False
       if undock:
         lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
         self.dock_protocol = [lambda_o]
@@ -1274,22 +1265,15 @@ last modified {1}
           elif len(seeds)>0:
             self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
           
-          # Ramp up the temperature
-          T_LOW = 20.
-          T_SERIES = T_LOW*(self.T_TARGET/T_LOW)**(np.arange(30)/29.)
-          for T in T_SERIES:
-            random_seed = int(abs(seeds[0][0][0]*10000)) + int(T*10000)
-            if self._random_seed==0:
-              random_seed += int(time.time())
-            self.sampler['dock'](steps = 500, steps_per_trial = 100, T=T,\
-                                 delta_t=self.delta_t, random_seed=random_seed)
-          seeds = [self.universe.configuration().array]
+          # Ramp up the temperature using HMC
+          self._ramp_T(self.T_TARGET, normalize=False)
 
           # Simulate
           sim_start_time = time.time()
           (confs, Es_tot, lambda_o['delta_t'], sampler_metrics) = \
             self._initial_sim_state(\
-              seeds*self.params['dock']['seeds_per_state'], 'dock', lambda_o)
+              [self.universe.configuration().array]*self.params['dock']['seeds_per_state'], \
+              'dock', lambda_o)
 
           # Get state energies
           E = self._energyTerms(confs)
@@ -1348,7 +1332,9 @@ last modified {1}
             return
     else:
       # Continuing from a previous docking instance
-      self.tee("\n>>> Initial docking, continuing at " + \
+      undock = self.dock_protocol[0]['a']>self.dock_protocol[1]['a']
+      self.tee("\n>>> Initial %sdocking, "%({True:'un',False:''}[undock]) + \
+        "continuing at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
       confs = self.confs['dock']['samples'][-1][0]
       E = self.dock_Es[-1][0]
@@ -2227,6 +2213,37 @@ last modified {1}
     for scalable in self._scalables:
       if scalable in self._forceFields.keys():
         del self._forceFields[scalable]
+
+  def _ramp_T(self, T_START, T_LOW = 20., normalize=False):
+    from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+      import HamiltonianMonteCarloIntegrator
+    sampler = HamiltonianMonteCarloIntegrator(self.universe)
+    
+    e_o = self.universe.energy()
+    T_LOW = 20.
+    T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
+    for T in T_SERIES:
+      attempts_left = 5
+      while attempts_left>0:
+        random_seed = int(T*10000) + attempts_left + \
+          int(self.universe.configuration().array[0][0]*10000)
+        if self._random_seed==0:
+          random_seed += int(time.time())
+        random_seed = random_seed%32767
+        (xs, energies, acc, ntrials, delta_t) = \
+          sampler(steps = 500, steps_per_trial = 50, T=T,\
+                  delta_t=self.delta_t, random_seed=random_seed)
+        if (np.std(energies)>1E-7) and float(acc)/ntrials>0.4:
+          attempts_left = 0
+        else:
+          self.delta_t *= 0.9
+          attempts_left -= 1
+    if normalize:
+      self.universe.normalizePosition()
+    e_f = self.universe.energy()
+    
+    self.tee("  ramped temperature from %d to %d K, changing energy from %f to %f kcal/mol\n"%(\
+      T_LOW, T_START, e_o, e_f))
 
   def _initial_sim_state(self, seeds, process, lambda_k):
     """
