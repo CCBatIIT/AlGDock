@@ -5,7 +5,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Run a command on the queue')
 parser.add_argument('name', help='Job name')
 parser.add_argument('command', help='Command to execute')
-parser.add_argument('--mem', type=int, default=1, help='Amount of memory to allocate (GB)')
+parser.add_argument('--mem', type=int, default=8, help='Amount of memory to allocate (GB)')
 parser.add_argument('--comment', default='', help='Adds a comment to the end of the script')
 parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')

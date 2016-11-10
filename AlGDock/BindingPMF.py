@@ -376,6 +376,8 @@ last modified {1}
         ('T_TARGET',300.),
         ('H_mass',4.0),
         ('fraction_TD',0.5),
+        ('TD_steps_per_trial',5),
+        ('delta_t_TD',4.0),
         ('delta_t',3.0),
         ('sampler','NUTS'),
         ('steps_per_seed',1000),
@@ -626,17 +628,15 @@ last modified {1}
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'MixedHMC':
-        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-          import HamiltonianMonteCarloIntegrator
         from AlGDock.Integrators.TDHMC import TDHMC
         from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
-        MDIntegrator = HamiltonianMonteCarloIntegrator(self.universe)
         TDIntegrator = TDHMC.TDHMCIntegrator(self.universe, \
           os.path.dirname(self._FNs['mol2']['L']), \
           os.path.dirname(self._FNs['forcefield']))
-        self.sampler[p] = MixedHMCIntegrator(self.universe, \
-          TDIntegrator, MDIntegrator, \
-          fraction_TD=self.params[p]['fraction_TD'])
+        self.sampler[p] = MixedHMCIntegrator(self.universe, TDIntegrator, \
+          fraction_TD=self.params[p]['fraction_TD'], \
+          TD_steps_per_trial=self.params[p]['TD_steps_per_trial'], \
+          delta_t_TD=self.params[p]['delta_t_TD'])
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator

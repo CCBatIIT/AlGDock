@@ -88,16 +88,20 @@ arguments = {
     'help':'Sampling method'},
   'MCMC_moves':{'type':int,
     'help':'Types of MCMC moves to use'},
+  'fraction_TD':{'type':float, 'default':0.5, \
+    'help':'For the MixedHMC integrator, the fraction of MD steps spent with torsional MD'},
+  'TD_steps_per_trial':{'type':int, 'default':5, \
+    'help':'The number of steps for torsional dynamics HMC trials'},
+  'delta_t_TD':{'type':float, 'default':4.0, \
+    'help':'The time step for torsional dynamics HMC trials'},
+  'delta_t':{'type':float, 'default':3.0, \
+    'help':'The default time step, in fs'},
   'T_HIGH':{'type':float, 'default':600.0,
     'help':'High temperature'},
   'T_TARGET':{'type':float, 'default':300.0,
     'help':'Target temperature'},
   'H_mass':{'type':float, 'default':4.0, \
     'help':'The repartitioned mass of hydrogen. Set negative to turn off HMR'},
-  'fraction_TD':{'type':float, 'default':0.5, \
-    'help':'For the MixedHMC integrator, the fraction of MD steps spent with torsional MD'},
-  'delta_t':{'type':float, 'default':3.0, \
-    'help':'The default time step, in fs'},
   # For initialization
   'seeds_per_state':{'type':int,
     'help':'Number of starting configurations in each state during initialization'},

@@ -16,14 +16,13 @@ R = 8.3144621*Units.J/Units.mol/Units.K
 # Mixed HMC integrator
 #
 class MixedHMCIntegrator(Dynamics.Integrator):
-  def __init__(self, universe, TDintegrator, MDintegrator, **options):
+  def __init__(self, universe, TDintegrator, **options):
     Dynamics.Integrator.__init__(self, universe, options)
     # Supported features: none for the moment, to keep it simple
     self.features = []
   
     self.TDintegrator = TDintegrator
-    self.MDintegrator = MDintegrator
-    
+  
   def __call__(self, **options):
     """
     options include:
@@ -61,12 +60,17 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       fraction_TD = self.getOption('fraction_TD')
     except ValueError:
       fraction_TD = 0.5
-
+      
     try:
       TD_steps_per_trial = self.getOption('TD_steps_per_trial')
     except ValueError:
       TD_steps_per_trial = 5
     
+    try:
+      delta_t_TD = self.getOption('delta_t_TD')
+    except ValueError:
+      delta_t_TD = 4.0
+
     # Allocate steps per cycle to TD and MD
     TD_steps_per_cycle = int(fraction_TD*steps_per_cycle)
     MD_steps_per_cycle = steps_per_cycle - TD_steps_per_cycle*TD_steps_per_trial
@@ -75,7 +79,8 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       random_seed = self.getOption('random_seed')
       np.random.seed(random_seed)
     else:
-      random_seed = np.int(np.random.rand()*1E5)
+      import time
+      random_seed = np.int(time.time()*1E5)
     
     if 'normalize' in self.call_options.keys():
       normalize = self.getOption('normalize')
@@ -112,10 +117,6 @@ class MixedHMCIntegrator(Dynamics.Integrator):
     xs = []
     energies = []
 
-    # Store initial configuration and potential energy
-    xo = np.copy(self.universe.configuration().array)
-    pe_o = self.universe.energy()
-
     TD_acc = 0
     TD_ntrials = 0
     MD_acc = 0
@@ -123,12 +124,16 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       # Do the torsional dynamics steps
       (TD_xs_c, TD_energies_c, TD_acc_c, TD_ntrials_c, TD_dts) = \
         self.TDintegrator.Call(TD_steps_per_cycle, TD_steps_per_trial, \
-          T, 0.0030, (random_seed+t)%32767, 1, 1, 0.5)
+          T, 0.0040, (random_seed+t)%32767, 1, 1, 0.5)
       xs.extend(TD_xs_c)
       energies.extend(TD_energies_c)
       TD_acc += TD_acc_c
       TD_ntrials += TD_ntrials_c
-      
+
+      # Store initial configuration and potential energy
+      xo = np.copy(self.universe.configuration().array)
+      pe_o = self.universe.energy()
+
       # Initialize the velocity
       v = self.universe.velocities()
       v.array = np.multiply(sigma_MB,np.random.randn(natoms,3))

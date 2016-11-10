@@ -38,7 +38,7 @@ for run_type in run_types:
     rmsd=True, \
     dir_grid='grids', \
     protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5, \
-    sampler='HMC', \
+    sampler='MixedHMC', fraction_TD=0.75, \
     MCMC_moves=1, \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
     sweeps_per_cycle=25, attempts_per_sweep=100, \
@@ -61,4 +61,5 @@ for run_type in run_types:
 # protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5
 
 # Reasonable sampler options:
+# sampler='HMC', \
 # sampler='MixedHMC', fraction_TD=0.75, \
