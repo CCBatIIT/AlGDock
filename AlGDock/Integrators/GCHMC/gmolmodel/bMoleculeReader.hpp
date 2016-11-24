@@ -127,7 +127,7 @@ int bAtomAssign(MolAtom *dest, const bSpecificAtom *src);
 **/
 class intpair{
  public:
-  int i; int j;
+  int i; int j; // These will correspond to bSpecificAtom.number
   intpair();
   intpair(int inI, int inJ);
   ~intpair();

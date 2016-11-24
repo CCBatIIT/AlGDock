@@ -409,11 +409,9 @@ bMoleculeReader::bMoleculeReader(DuMMForceFieldSubsystem& dumm,
     lno = 0;
     while(fgets(line_c, MAX_LINE_LENGTH, fpo) && (lno < natms)){ 
       ++lno;
-      #ifdef DEBUG_LEVEL01
       if(line_c != NULL){
         std::cout<<"bMoleculeReader::bMoleculeReader() line_c "<<strlen(line_c)<<" chars"<<std::endl<<std::flush;
       }
-      #endif
       //line = line_c; // RESTORE
       //bZeroStr(bAtomList[lno-1].name); // RESTORE
       //bZeroStr(bAtomList[lno-1].fftype); // RESTORE
@@ -445,9 +443,7 @@ bMoleculeReader::bMoleculeReader(DuMMForceFieldSubsystem& dumm,
       bZeroCharArray(buff, 80);
       bSubstr(buff, line_c, 37,9);
       bAtomList[lno-1].z = atof(buff);
-      #ifdef DEBUG_LEVEL01
-      bAtomList[lno-1].Print();
-      #endif
+      bAtomList[lno-1].Print(); // EU
     }
 
     #ifdef DEBUG_LEVEL02
@@ -805,6 +801,11 @@ bMoleculeReader::bMoleculeReader(DuMMForceFieldSubsystem& dumm,
         }
       }
     }
+
+    else if((sbuff = line.substr(0,17)) == "rigid_bodies"){
+      // TODO
+    }
+
   }
 
   #ifdef DEBUG_LEVEL01

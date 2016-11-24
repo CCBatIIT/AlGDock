@@ -1,8 +1,6 @@
 #ifndef BMAINRESIDUE_H_
 #define BMAINRESIDUE_H_
 
-#include <sys/stat.h>
-
 #include "bMoleculeReader.hpp"
 #include "bgeneral.hpp"
 #include "server.hpp"

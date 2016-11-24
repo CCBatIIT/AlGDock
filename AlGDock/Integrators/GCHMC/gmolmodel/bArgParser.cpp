@@ -6,6 +6,7 @@
 bArgParser::bArgParser(int argc, const char **argv){ // constructor
 
   MAX_NO_OPT = argc/2;
+  std::cout<<"MAX_NO_OPT "<<MAX_NO_OPT<<std::endl;
   option = new int[MAX_NO_OPT];
   for(int i=0; i<MAX_NO_OPT; i++){
     option[i] = 0;
@@ -48,6 +49,7 @@ bArgParser::bArgParser(int argc, const char **argv){ // constructor
       option[AR_ICTD] = 1;  
     }
   }
+  printf("bArgParser END\n"); fflush(stdout);
 
 } // constructor
  

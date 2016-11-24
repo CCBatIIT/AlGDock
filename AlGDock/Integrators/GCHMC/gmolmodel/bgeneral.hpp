@@ -29,6 +29,11 @@ using namespace std;
 #define sqr(x) ((x)*(x))
 #endif
 
+#ifndef ANG_360_TO_180
+//#define ANG_360_TO_180(x) (((x)>180) ? (180-(x)) : (x))
+#define ANG_360_TO_180(x) (((x)>180) ? ((x)-180) : (x)) // This is wrong but we need it to make DuMM happy
+#endif
+
 // Check versus Velocity Verlet in cart coords
 enum{
   SERV_QX, SERV_QY, SERV_QZ,

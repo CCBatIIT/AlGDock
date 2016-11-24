@@ -4,11 +4,7 @@
 #include <iostream>
 #include <string>
 #include <string.h>
-/*
-#ifndef DEBUG_ARGPARS
-#define DEBUG_ARGPARS
-#endif
-*/
+
 //==============================================================================
 //                           CLASS ArgParser
 //==============================================================================

@@ -94,22 +94,34 @@ void bAddGaffParams(
   // MMTK masses * //
   am["x"]  = 16.00;    //dummy atom
   am["z"]  = 1.000;    //dummy atom
-  am["c"]  = 12.00;
-  am["h"]  =  1.00;
-  am["f"]  = 19.00;
-  am["cl"] = 35.45;
-  am["br"] = 80.00;
-  am["i"]  = 127.0;
-  am["n"]  = 14.00;
-  am["o"]  = 16.00;
-  am["p"]  = 31.00;
-  am["s"]  = 32.00;
+  am["c"]  = am["C"] = 12.00;
+  am["h"]  = am["H"] =  1.00;
+  am["f"]  = am["F"]  = 19.00;
+  am["cl"] = am["Cl"] = 35.45;
+  am["br"] = am["Br"] = 80.00;
+  am["i"]  = am["I"]  = 127.0;
+  am["n"]  = am["N"]  = 14.00;
+  am["o"]  = am["O"]  = 16.00;
+  am["p"]  = am["P"]  = 31.00;
+  am["s"]  = am["S"]  = 32.00;
   am["b2"]  = 14.00; // EU8/8
 
   // * Valences (TODO read from file)* //
   std::map<string, float> val;
   val["x"]  = 2;      // dummy atom
   val["z"]  = 1;      // dummy atom
+
+  val["N3"] = 4;
+  val["H"] = 1;
+  val["CT"] = 4;
+  val["HP"] = 1;
+  val["HC"] = 1;
+  val["C"] = 3;
+  val["O"] = 1;
+  val["N"] = 3;
+  val["H1"] = 1;
+  val["O2"] = 1;
+
   val["c"]  = 3;
   val["c1"] = 2;
   val["c2"] = 3;
@@ -149,7 +161,7 @@ void bAddGaffParams(
   val["n1"] = 1;
   val["n2"] = 2;
   val["n3"] = 3;
-  val["n4"] = 3;
+  val["n4"] = 4;
   val["na"] = 2;
   val["nb"] = 2;
   val["nc"] = 2;
@@ -159,6 +171,7 @@ void bAddGaffParams(
   val["nh"] = 3;
   val["no"] = 4;
   val["o"] =  1;
+  val["o2"] = 1;
   val["oh"] = 2;
   val["os"] = 2;
   val["ow"] = 2;
@@ -188,17 +201,19 @@ void bAddGaffParams(
   std::map<string, float> vle;
   vle["x"]  = 8;  //dummy atom
   vle["z"]  = 1;  //dummy atom
-  vle["c"]  = 6;
-  vle["h"]  = 300; // for MMTK mass
-  vle["f"]  = 9;
-  vle["cl"] = 17;
-  vle["br"] = 35;
-  vle["i"]  = 53;
-  vle["n"]  = 7;
-  vle["o"]  = 8;
-  vle["p"]  = 15;
-  vle["s"]  = 16;
+  vle["c"]  = vle["C"] = 6;
+  vle["h"]  = vle["H"] = 300; // for MMTK mass
+  vle["f"]  = vle["F"] = 9;
+  vle["cl"] = vle["Cl"] = 17;
+  vle["br"] = vle["Br"] = 35;
+  vle["i"]  = vle["I"] = 53;
+  vle["n"]  = vle["N"] = 7;
+  vle["o"]  = vle["O"] = 8;
+  vle["p"]  = vle["P"] = 15;
+  vle["s"]  = vle["S"] = 16;
   vle["b2"] = 2; // EU8/8
+  vle["mg"] = vle["Mg"] = vle["MG"] = 12;
+  vle["ep"] = 1; // Amber Extra Point Type
 
   /*Van der Waals radii - read from gaff MOD4 section*/
   std::map<string, float> vdw;
@@ -339,6 +354,7 @@ void bAddGaffParams(
       if(line.length() >= 4){
         if((line.at(1) == 'O') && (line.at(2) == 'D') &&
           (line.at(3) == '4')){
+          std::cout<<"Found MOD4"<<std::endl<<std::flush;
           break;
         }
       }
@@ -366,6 +382,10 @@ void bAddGaffParams(
 
   /*READ ATOM TYPES*/
   /*First deal with the dummy atoms*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams ATOM TYPES defineAtomClass - dummy atoms"<<std::endl<<std::flush;
+  #endif
+
   aIx = dumm.getNextUnusedAtomClassIndex();
   Type2Ix.insert (std::pair<string, float>("gaff_b2", aIx)); // EU8/8
   dumm.defineAtomClass(
@@ -379,6 +399,10 @@ void bAddGaffParams(
 
   aIx = dumm.getNextUnusedAtomClassIndex();
   Type2Ix.insert (std::pair<string, float>("gaff_x", aIx));
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"defineAtomClass gaff_x "<<" vle "<<vle["x"]<<" val "<<val["x"]<<" vdw "
+    <<vdw["x"]/10<<" well "<<std::endl<<std::flush;
+  #endif
   dumm.defineAtomClass(
     (DuMM::AtomClassIndex)aIx,
     "gaff_x",
@@ -398,9 +422,28 @@ void bAddGaffParams(
     vdw["z"]/10,
     0.1  //random
   );
+
+  aIx = dumm.getNextUnusedAtomClassIndex();
+  Type2Ix.insert (std::pair<string, float>("gaff_2C", aIx));
+  dumm.defineAtomClass(
+    (DuMM::AtomClassIndex)aIx,
+    "gaff_2C",
+    vle["c"],
+    val["c3"],
+    (1.9080)/10,
+    0.1094  // de la c3
+  );
+  ////////////////////////////////////
   ////////////////////////////////////
   
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams ATOM TYPES defineAtomClass from gaff MOD4"<<std::endl<<std::flush;
+  #endif
+
   while(fgets(line_c, 200, fpo)){
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<line_c<<std::endl<<std::flush;
+    #endif
     line = line_c;
     if((line_c[0] == '\n') || (line_c[0] == '\r')){
       atomTypeFlag = 0;
@@ -411,16 +454,27 @@ void bAddGaffParams(
     sscanf(line_c, "%s%f%f", &atomType1, &atomicMass, &well);
     buff1 = "gaff_";
     buff1 += atomType1;
-    if((atomType1[0] == 'c') && (atomType1[1] == 'l')){
+    if((tolower(atomType1[0]) == 'c') && (tolower(atomType1[1]) == 'l')){
       buffvle = "cl";
     }
-    else if ((atomType1[0] == 'b') && (atomType1[1] == 'r')){
+    else if ((tolower(atomType1[0]) == 'b') && (tolower(atomType1[1]) == 'r')){
       buffvle = "br";
     }
+    else if ((tolower(atomType1[0]) == 'm') && (tolower(atomType1[1]) == 'g')){
+      buffvle = "mg";
+    }
+    else if ((tolower(atomType1[0]) == 'e') && (tolower(atomType1[1]) == 'p')){
+      buffvle = "ep";
+    }
     else{
-      buffvle = atomType1[0];
+      buffvle = atomType1[0]; 
+      std::transform(buffvle.begin(), buffvle.end(), buffvle.begin(), ::tolower); // LS
     }
     Type2Ix.insert (std::pair<string, float>(buff1, aIx));
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<"defineAtomClass "<<buff1.c_str()<<" buffvle "<<buffvle<<" vle "<<vle[buffvle]<<" val "<<val[atomType1]<<" vdw "
+      <<vdw[buff1.substr(5,buff1.length()-5)]/10<<" well "<<well<<" aIx "<<aIx<<std::endl<<std::flush;
+    #endif
     dumm.defineAtomClass(
       (DuMM::AtomClassIndex)aIx,
       buff1.c_str(),
@@ -431,9 +485,12 @@ void bAddGaffParams(
     );
   }
 
-
   /*READ BOND PARAMS*/
   /*First deal with the dummy atoms*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams BONDS defineBondStretch dummy atoms"<<std::endl<<std::flush;
+  #endif
+
   dumm.defineBondStretch(
     (DuMM::AtomClassIndex)(Type2Ix["gaff_z"]),
     (DuMM::AtomClassIndex)(Type2Ix["gaff_x"]),
@@ -449,6 +506,10 @@ void bAddGaffParams(
       0.1    //equil1
     );
   }
+
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams BONDS defineBondStretch gaff"<<std::endl<<std::flush;
+  #endif
 
   fgets(line_c, 200, fpo);
   while(fgets(line_c, 200, fpo)){
@@ -499,6 +560,10 @@ void bAddGaffParams(
   }
 
   /*READ ANGLE PARAMS*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams ANGLES defineBondBend dummy atoms"<<std::endl<<std::flush;
+  #endif
+
   /*Deal with dummy atoms first*/
   for(l1it = l1types.begin(); l1it != l1types.end(); ++l1it){
     dumm.defineBondBend(
@@ -522,6 +587,10 @@ void bAddGaffParams(
     }
   }
 
+
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams BONDS defineBondStretch frcmod"<<std::endl<<std::flush;
+  #endif
 
   /*Read bonds from frcmod NEW */
   while(fgets(line_c, 200, frcmod)){
@@ -592,6 +661,10 @@ void bAddGaffParams(
   }
 
   /*Read angles from frcmod*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams ANGLES defineBondBend frcmod"<<std::endl<<std::flush;
+  #endif
+
   while(fgets(line_c, 200, frcmod)){
     line = line_c;
     buff1 = line.substr(0,5);
@@ -639,6 +712,11 @@ void bAddGaffParams(
     //Add angle param
     k1 = 4.184 * k1;    // From kcal to kJ
     if(!found){
+      #ifdef DEBUG_PARAMS_LEVEL02
+      std::cout<<"bAddParams: Angle Bond Bend "<<buff1<<' '<<buff2<<' '<<buff3<<" "<<k1<<' '<<equil1<<std::endl;
+      std::cout<<"bAddParams: Angle Bond Bend "<<Type2Ix[buff1]
+        <<' '<<Type2Ix[buff2]<<' '<<Type2Ix[buff3]<<" "<<k1<<' '<<equil1<<std::endl;
+      #endif
       dumm.defineBondBend(
         (DuMM::AtomClassIndex)(Type2Ix[buff1]),
         DuMM::AtomClassIndex(Type2Ix[buff2]),
@@ -647,14 +725,14 @@ void bAddGaffParams(
         equil1
       );
       anglesSoFar.push_back(thisAngle);
-      #ifdef DEBUG_PARAMS_LEVEL02
-      std::cout<<"bAddParams: Angle Bond Bend "<<Type2Ix[buff1]
-        <<' '<<Type2Ix[buff2]<<' '<<Type2Ix[buff3]<<" added "<<k1<<' '<<equil1<<std::endl;
-      #endif
     }
   }
 
   /*Read angles from gaff*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams ANGLES defineBondBend gaff"<<std::endl<<std::flush;
+  #endif
+
   while(fgets(line_c, 200, fpo)){
     if((line_c[0] == '\n') || (line_c[0] == '\r')){
       angleFlag = 0;
@@ -693,6 +771,12 @@ void bAddGaffParams(
     }
 
     //Add angle param
+
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<"bAddParams hop angles "<<buff1<<" "<<buff2<<" "<<buff3<<std::endl<<std::flush;
+    std::cout<<"bAddParams hop angles "<<Type2Ix[buff1]<<" "<<Type2Ix[buff2]<<" "<<Type2Ix[buff3]<<std::endl<<std::flush;
+    #endif
+
     k1 = 4.184 * k1;    // From kcal to kJ
     if(!found){
       dumm.defineBondBend(
@@ -730,6 +814,10 @@ void bAddGaffParams(
 
 
   /*Deal with dummy atoms*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams DIHEDRALS defineBondTorsion dummy atoms"<<std::endl<<std::flush;
+  #endif
+
   for(l2it = l2types.begin(); l2it != l2types.end(); ++l2it){
     for(l1it = l1types.begin(); l1it != l1types.end(); ++l1it){
       dumm.defineBondTorsion(
@@ -751,6 +839,10 @@ void bAddGaffParams(
       spTaT4.push_back(atomType4);
     }
   }
+
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams hop 1"<<std::endl<<std::flush;
+  #endif
 
 
   for(l3it = l3types.begin(); l3it != l3types.end(); ++l3it){
@@ -781,6 +873,10 @@ void bAddGaffParams(
   /////////////////////////
   
   /*Read torsions from frcmod*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams DIHEDRALS defineBondTorsion frcmod"<<std::endl<<std::flush;
+  #endif
+
   string prevQuad = "";
   buff1 = "";
   atomType1[0] = '\0'; atomType1[1] = '\0';
@@ -802,7 +898,6 @@ void bAddGaffParams(
       break;
     }
     line = line_c;
-    std::cout<<line;
 
     if(prevQuad == line.substr(0,11)){
       ++cnt;
@@ -814,6 +909,12 @@ void bAddGaffParams(
         spTaT2.push_back(atomType2);
         spTaT3.push_back(atomType3);
         spTaT4.push_back(atomType4);
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<line;
+    std::cout<<"bAddParams frcmod dihe "<<buff1<<" "<<buff2<<" "<<buff3<<" "<<buff4<<std::endl<<std::flush;
+    std::cout<<"bAddParams frcmod dihe "<<Type2Ix[buff1]<<" "<<Type2Ix[buff2]<<" "<<Type2Ix[buff3]<<" "<<Type2Ix[buff4]<<std::endl<<std::flush;
+    #endif
+
         if(cnt == 1){
           dumm.defineBondTorsion(
             (DuMM::AtomClassIndex)(Type2Ix[buff1]),
@@ -833,7 +934,7 @@ void bAddGaffParams(
             2, k2, equil2
             );
         }
-        else if(cnt == 3){
+        else if(cnt >= 3){
           dumm.defineBondTorsion(
             (DuMM::AtomClassIndex)(Type2Ix[buff1]),
             (DuMM::AtomClassIndex)(Type2Ix[buff2]),
@@ -894,6 +995,9 @@ void bAddGaffParams(
       bZeroCharArray(paramDef, PARAMDEF_MAX_LEN);
       bSubstr(paramDef, line_c, 30,6); equil3 = atof(paramDef);
     }
+    equil1 = ANG_360_TO_180(equil1);
+    equil2 = ANG_360_TO_180(equil2);
+    equil3 = ANG_360_TO_180(equil3);
     
     bZeroCharArray(line_c, LINE_MAX_LEN);
   }
@@ -904,6 +1008,11 @@ void bAddGaffParams(
       spTaT2.push_back(atomType2);
       spTaT3.push_back(atomType3);
       spTaT4.push_back(atomType4);
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<line;
+    std::cout<<"bAddParams frcmod dihe cnt "<<cnt<<' '<<buff1<<" "<<buff2<<" "<<buff3<<" "<<buff4<<std::endl<<std::flush;
+    std::cout<<"bAddParams frcmod dihe "<<Type2Ix[buff1]<<" "<<Type2Ix[buff2]<<" "<<Type2Ix[buff3]<<" "<<Type2Ix[buff4]<<std::endl<<std::flush;
+    #endif
       if(cnt == 1){
         dumm.defineBondTorsion(
           (DuMM::AtomClassIndex)(Type2Ix[buff1]),
@@ -923,7 +1032,7 @@ void bAddGaffParams(
           2, k2, equil2
           );
       }
-      else if(cnt == 3){
+      else if(cnt >= 3){
         dumm.defineBondTorsion(
           (DuMM::AtomClassIndex)(Type2Ix[buff1]),
           (DuMM::AtomClassIndex)(Type2Ix[buff2]),
@@ -937,6 +1046,10 @@ void bAddGaffParams(
     } // if(atomType[0] != '\0')
 
   /*Read from GAFF*/
+  #ifdef DEBUG_PARAMS_LEVEL02
+  std::cout<<"bAddParams DIHEDRALS defineBondTorsion gaff"<<std::endl<<std::flush;
+  #endif
+
   prevQuad = "";
   atomType1[0] = '\0'; atomType1[1] = '\0';
   atomType2[0] = '\0'; atomType2[1] = '\0';
@@ -948,6 +1061,10 @@ void bAddGaffParams(
       break;
     }
     line = line_c;
+
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<"bAddParams hop 3 "<<buff1<<" "<<buff2<<" "<<buff3<<" "<<buff4<<std::endl<<std::flush;
+    #endif
 
     if(prevQuad == line.substr(0,11)){
       ++cnt;
@@ -978,7 +1095,7 @@ void bAddGaffParams(
             2, k2, equil2
             );
         }
-        else if(cnt == 3){
+        else if(cnt >= 3){
           dumm.defineBondTorsion(
             (DuMM::AtomClassIndex)(Type2Ix[buff1]),
             (DuMM::AtomClassIndex)(Type2Ix[buff2]),
@@ -1047,6 +1164,9 @@ void bAddGaffParams(
       bZeroCharArray(paramDef, PARAMDEF_MAX_LEN);
       bSubstr(paramDef, line_c, 30,6); equil3 = atof(paramDef);
     }
+    equil1 = ANG_360_TO_180(equil1);
+    equil2 = ANG_360_TO_180(equil2);
+    equil3 = ANG_360_TO_180(equil3);
     
     bZeroCharArray(line_c, LINE_MAX_LEN);
   }
@@ -1076,7 +1196,7 @@ void bAddGaffParams(
           2, k2, equil2
           );
       }
-      else if(cnt == 3){
+      else if(cnt >= 3){
         dumm.defineBondTorsion(
           (DuMM::AtomClassIndex)(Type2Ix[buff1]),
           (DuMM::AtomClassIndex)(Type2Ix[buff2]),
@@ -1088,6 +1208,10 @@ void bAddGaffParams(
           );
       }
     } // if(atomType[0] != '\0')
+
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<"bAddParams hop 4 "<<buff1<<" "<<buff2<<" "<<buff3<<" "<<buff4<<std::endl<<std::flush;
+    #endif
 
 
   /*Add parameters for unspecific quads (from unspecific params)*/
@@ -1164,6 +1288,13 @@ void bAddGaffParams(
                      (toBeAddRet2.second == false) &&
                      (buff1 == buff4) && (buff2 == buff3))
                     ){
+
+    #ifdef DEBUG_PARAMS_LEVEL02
+    std::cout<<"bAddParams hop 5 "<<bAtomList[l[li].i-1].fftype<<" "<<bAtomList[cen[ceni].i-1].fftype
+      <<" "<<bAtomList[cen[ceni].j-1].fftype<<" "<<bAtomList[r[ri].j-1].fftype<<std::endl<<std::flush;
+    std::cout<<Type2Ix[bAtomList[l[li].i-1].fftype]<<' '<<Type2Ix[bAtomList[cen[ceni].i-1].fftype]<<' '
+      <<Type2Ix[bAtomList[cen[ceni].j-1].fftype]<<' '<<Type2Ix[bAtomList[r[ri].j-1].fftype]<<std::endl;
+    #endif
 
                     dumm.defineBondTorsion(
                     (DuMM::AtomClassIndex)(Type2Ix[bAtomList[l[li].i-1].fftype]),

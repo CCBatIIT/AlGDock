@@ -437,52 +437,34 @@ using namespace SimTK;
         setBondMobility(BondMobility::Torsion, Compound::BondIndex(r));
       }
     }
+    else if(ictdF=="RR"){ // Torsional dynamics with rigid rings
+      for(unsigned int m=0; m<nbnds; m++){ // EU
+        if(bonds[m].isInRing()){
+          setBondMobility(BondMobility::Rigid, bonds[m].getBondIndex());
+          std::cout<<"Bond "<<m<<"("<<bonds[m].getBondIndex()<<")"<<" rigidized ";
+          for(ix = 0; ix < getNumAtoms(); ++ix){
+            if(bAtomList[ix].number == bonds[m].i || bAtomList[ix].number == bonds[m].j){
+              std::cout<<" mol2name "<<bAtomList[ix].mol2name<<" name  "<<bAtomList[ix].name;
+            }
+          }
+          std::cout<<std::endl;
+        }
+      }
+    }
     else{
       fprintf(stderr, "Dynamics type unknown\n");
       exit(1);
     }
 
-    /* Set the Rigidity, rigid RIGID */
-    /*
-    //for(unsigned int m=0; m<bonds.size(); m++){ // RESTORE
-    for(unsigned int m=0; m<nbnds; m++){ // EU
-      if(bonds[m].isInRing()){
-        setBondMobility(BondMobility::Rigid, bonds[m].getBondIndex());
-        std::cout<<"Bond "<<m<<" Rigidized"<<std::endl;
-      }
-    }
-    */
-
-    #ifdef MAIN_RESIDUE_DEBUG_SPECIFIC //TODO Switch to Boost - will work on both Win and Linux
-    int dirOK = 0;
-    int mkdirRET = 0;
-    struct stat sb;
-    if (stat("pdbs", &sb) == 0){
-      if(S_ISDIR(sb.st_mode)){
-        dirOK = 1;
-      }else{
-        std::cout<<"bMainResidue: There is a file named \"pdbs\". Skipping writing the initial pdb file."<<std::endl;
-      }
-    }else{
-      mkdirRET = mkdir("pdbs", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-      if(mkdirRET){
-        std::cout<<"bMainResidue: mkdir retuned "<<mkdirRET<<". Skipping writing the initial pdb file."<<std::endl;
-      }else{
-        dirOK = 1;
-      }
-    }
-    if(dirOK){
-      std::ostringstream sstream;
-      sstream<<"pdbs/sb_"<<"ini"<<".pdb";
-      std::string ofilename = sstream.str();
-      std::cout<<"Writing pdb file: "<<ofilename<<std::endl;
-      std::filebuf fb;
-      fb.open(ofilename.c_str(), std::ios::out);
-      std::ostream os(&fb);
-      pdb.write(os);
-      fb.close();
-    }
-    #endif
+    std::ostringstream sstream;
+    sstream<<"pdbs/sb_"<<"ini"<<".pdb";
+    std::string ofilename = sstream.str();
+    std::cout<<"Writing pdb file: "<<ofilename<<std::endl;
+    std::filebuf fb;
+    fb.open(ofilename.c_str(), std::ios::out);
+    std::ostream os(&fb);
+    pdb.write(os);
+    fb.close();
 
   }
 

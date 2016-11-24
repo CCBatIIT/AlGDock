@@ -30,7 +30,7 @@ universe.addObject(newmol)
 universe.configuration();
 configuration =  universe.configuration().array
 
-GCintegrator = GCHMC.GCHMCIntegrator(universe, mol_dir, parm_dir)
+GCintegrator = GCHMC.GCHMCIntegrator(universe, mol_dir, gaff_FN)
 (confs, Es_MM, acc, ntrials, dt) = GCintegrator.Call(30, 10, 300, 0.0015, random.randint(1,300), 0, 1, 0.5)
 print "GC: ", Es_MM
 GCintegrator.Clear()

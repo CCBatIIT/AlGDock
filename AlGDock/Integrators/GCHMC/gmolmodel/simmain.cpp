@@ -1,8 +1,12 @@
 #include "simmain.hpp"
 
+#ifndef bPYCHPRINT
 #define bPYCHPRINT(x) assert(x);\
-                      std::cout<<#x<<": "<<std::endl;\
-                      if(PyObject_Print(x, stdout, Py_PRINT_RAW) == -1){std::cout<<"PyObject_Print("<<#x<<"): error\n"<<std::endl;}
+                      std::cout<<"PyObject_Print "<<#x<<": "<<std::endl;\
+                      if(PyObject_Print(x, stdout, Py_PRINT_RAW) == -1){std::cout<<"PyObject_Print("<<#x<<"): error\n"<<std::endl;}\
+                      std::cout<<std::endl;
+#endif
+
 class GCHMCIntegrator{
  public:
   SymSystem *sys;
@@ -50,7 +54,7 @@ void GCHMCIntegrator::Clear(void)
 
 
 // * GCHMCIntegrator Constructor * //
-GCHMCIntegrator::GCHMCIntegrator(PyObject *universe, std::string ligdir, std::string gaffdir)
+GCHMCIntegrator::GCHMCIntegrator(PyObject *universe, std::string ligdir, std::string gaff_fn)
 {
   std::cout<<"GCHMCIntegrator instance created 20160826"<<std::endl;
   import_array();
@@ -115,25 +119,29 @@ GCHMCIntegrator::GCHMCIntegrator(PyObject *universe, std::string ligdir, std::st
 
   int argc = 6;
   ligdir += '/';
-  gaffdir += '/';
-  string gaff_fn = gaffdir + "gaff.dat";
+  //gaffdir += '/';
+  //string gaff_fn = gaffdir + "gaff.dat";
+
+  /* Options are:
+    IC: Internal Coordinates: fully flexible
+    TD: Torsional Dynamics: only torsions are flexible 
+    RR: Rigid Rings: torsional dynamics with rigid rings
+   */
   const char *argv[6] = {
   "-ligdir", ligdir.c_str(),
   "-gaff",  gaff_fn.c_str(),
   "-ictd", "TD"
-  }; //TODO Check if files exist
+  };
 
   //+++++++ Simbody PART ++++++++++++
   bArgParser parser(argc, argv);
+  parser.Print();
  
   TARGET_TYPE **indexMap = NULL;
   TARGET_TYPE *PrmToAx_po = NULL;
   TARGET_TYPE *MMTkToPrm_po = NULL;
 
-  #ifdef DEBUG_LEVEL01
-  std::cout<<"MMTK configuration->dimensions[0] "<<configuration->dimensions[0]<<std::endl;
-  #endif
-
+  std::cout<<"MMTK configuration->dimensions[0]"<<configuration->dimensions[0]<<std::endl<<std::flush;
   indexMap = new TARGET_TYPE*[(configuration->dimensions[0])];
   int _indexMap[natoms][3];
   PrmToAx_po = new TARGET_TYPE[configuration->dimensions[0]];
@@ -156,6 +164,16 @@ GCHMCIntegrator::GCHMCIntegrator(PyObject *universe, std::string ligdir, std::st
     1*sizeof(TARGET_TYPE) //+     // ac + 10      // trial
   );
   shm = new TARGET_TYPE[SHMSZ];
+
+  std::cout<<"parser.mol2F "<<parser.mol2F<<std::endl<<std::flush;
+  std::cout<<"parser.rbF "<<parser.rbF<<std::endl<<std::flush;
+  std::cout<<"parser.gaffF "<<parser.gaffF<<std::endl<<std::flush;
+  std::cout<<"parser.frcmodF "<<parser.frcmodF<<std::endl<<std::flush;
+  std::cout<<"parser.ictdF "<<parser.ictdF<<std::endl<<std::flush;
+
+  // LS EU
+  //(((PyFFEnergyTermObject **)(evaluator)->terms->data)[5])->param[0] = 0.5;
+  // LS EU
 
   sys = new SymSystem(
     parser.mol2F, parser.rbF, parser.gaffF, parser.frcmodF,
