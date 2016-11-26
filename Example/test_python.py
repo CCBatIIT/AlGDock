@@ -1,8 +1,8 @@
 # The example is 1of6
 
 # run_types = [None]
-run_types = ['all']
-# run_types = ['cool']
+# run_types = ['all']
+run_types = ['cool']
 # run_types = ['cool','dock','postprocess','free_energies']
 
 import AlGDock.BindingPMF_plots
@@ -38,7 +38,7 @@ for run_type in run_types:
     rmsd=True, \
     dir_grid='grids', \
     protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5, \
-    sampler='MixedHMC', fraction_TD=0.75, \
+    sampler='HMC', fraction_TD=0.5, TD_steps_per_trial=10, \
     MCMC_moves=1, \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
     sweeps_per_cycle=25, attempts_per_sweep=100, \

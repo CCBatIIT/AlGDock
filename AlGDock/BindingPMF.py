@@ -628,15 +628,24 @@ last modified {1}
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'MixedHMC':
+        # TODO: Test and remove
         from AlGDock.Integrators.TDHMC import TDHMC
-        from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
-        TDIntegrator = TDHMC.TDHMCIntegrator(self.universe, \
-          os.path.dirname(self._FNs['mol2']['L']), \
-          os.path.dirname(self._FNs['forcefield']))
-        self.sampler[p] = MixedHMCIntegrator(self.universe, TDIntegrator, \
-          fraction_TD=self.params[p]['fraction_TD'], \
-          TD_steps_per_trial=self.params[p]['TD_steps_per_trial'], \
-          delta_t_TD=self.params[p]['delta_t_TD'])
+        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo import HamiltonianMonteCarloIntegrator
+        self.mixed_samplers = []
+        self.mixed_samplers.append(TDHMC.TDHMCIntegrator(self.universe, \
+          os.path.dirname(self._FNs['ligand_database']), \
+          os.path.dirname(self._FNs['forcefield'])))
+        self.mixed_samplers.append(HamiltonianMonteCarloIntegrator(self.universe))
+        self.sampler[p] = self._mixed_sampler2   #EU END
+#        from AlGDock.Integrators.TDHMC import TDHMC
+#        from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
+#        TDIntegrator = TDHMC.TDHMCIntegrator(self.universe, \
+#          os.path.dirname(self._FNs['mol2']['L']), \
+#          os.path.dirname(self._FNs['forcefield']))
+#        self.sampler[p] = MixedHMCIntegrator(self.universe, TDIntegrator, \
+#          fraction_TD=self.params[p]['fraction_TD'], \
+#          TD_steps_per_trial=self.params[p]['TD_steps_per_trial'], \
+#          delta_t_TD=self.params[p]['delta_t_TD'])
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
@@ -2249,8 +2258,7 @@ last modified {1}
     """
     Initializes a state, returning the configurations and potential energy.
     Attempts simulation with decreasing time steps up to 5 times
-    until the MC acceptance rate is above 40% 
-    and there is variance in the potential energy.
+    until there is variance in the potential energy.
     """
     
     attempts_left = 5
@@ -2284,7 +2292,8 @@ last modified {1}
 
       delta_t = np.array([result['delta_t'] for result in results])
       if np.std(delta_t)>1E-7:
-        delta_t = min(max(delta_t, self.params[process]['delta_t']/5.*MMTK.Units.fs), \
+        delta_t = min(max(np.mean(delta_t), \
+          self.params[process]['delta_t']/5.*MMTK.Units.fs), \
           self.params[process]['delta_t']*2.*MMTK.Units.fs)
       else:
         delta_t = delta_t[0]
@@ -2292,7 +2301,7 @@ last modified {1}
       acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
         np.sum([r['att_Sampler'] for r in results])
 
-      if (np.std(potEs)>1E-7) and (acc_rate>0.4):
+      if (np.std(potEs)>1E-7):
         attempts_left = 0
       else:
         delta_t = 0.9*delta_t
@@ -2820,6 +2829,24 @@ last modified {1}
     self._clear_evaluators()
 
     return True # The process has completed
+
+  # TODO: Test and then revise/remove
+  def _mixed_sampler2(self, steps, steps_per_trial, T, delta_t, random_seed, normalize=False, adapt=False): # EU
+    ntrials = int(steps/steps_per_trial)
+
+    (mixed_confs0, mixed_potEs0, mixed_accs0, mixed_ntrials0, mixed_dts0) = \
+      self.mixed_samplers[0].Call(ntrials*5, 5, T, 0.0030, random_seed%254, 1, 1, 0.5)
+
+    (mixed_confs1, mixed_potEs1, mixed_accs1, mixed_ntrials1, mixed_dts1) = \
+      self.mixed_samplers[1](steps=steps, steps_per_trial=steps_per_trial, T=T, delta_t=delta_t, \
+      normalize=normalize, adapt=adapt, random_seed=random_seed)
+
+    mixed_confs = mixed_confs0 + mixed_confs1
+    mixed_potEs = mixed_potEs0 + mixed_potEs1
+    mixed_accs = mixed_accs0 + mixed_accs1
+    mixed_ntrials = mixed_ntrials0 + mixed_ntrials1
+
+    return (mixed_confs, mixed_potEs, mixed_accs, mixed_ntrials, delta_t)
 
   def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True, sort=True):
     """

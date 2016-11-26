@@ -80,7 +80,7 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       np.random.seed(random_seed)
     else:
       import time
-      random_seed = np.int(time.time()*1E5)
+      random_seed = np.int(time.time()*1E3 + rand.rand()*1E3)
     
     if 'normalize' in self.call_options.keys():
       normalize = self.getOption('normalize')
@@ -124,7 +124,7 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       # Do the torsional dynamics steps
       (TD_xs_c, TD_energies_c, TD_acc_c, TD_ntrials_c, TD_dts) = \
         self.TDintegrator.Call(TD_steps_per_cycle, TD_steps_per_trial, \
-          T, 0.0040, (random_seed+t)%32767, 1, 1, 0.5)
+          T, delta_t_TD/1000., (random_seed+t)%32767, 1, 1, 0.5)
       xs.extend(TD_xs_c)
       energies.extend(TD_energies_c)
       TD_acc += TD_acc_c
