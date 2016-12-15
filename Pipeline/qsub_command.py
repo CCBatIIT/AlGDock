@@ -87,6 +87,7 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 #PBS -d {4}
 #PBS -o {5}
 #PBS -e {6}
+#PBS -q default
 {10}#PBS -M {11}
 {10}#PBS -m {12}
 

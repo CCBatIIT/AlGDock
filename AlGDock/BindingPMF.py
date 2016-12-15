@@ -373,6 +373,7 @@ last modified {1}
         ('protocol','Adaptive'),
         ('therm_speed',0.2),
         ('T_HIGH',600.),
+        ('T_SIMMIN',320.),
         ('T_TARGET',300.),
         ('H_mass',4.0),
         ('fraction_TD',0.5),
@@ -462,6 +463,8 @@ last modified {1}
         self.original_Es[0][0]['R'+phase] = None
         
     self.T_HIGH = self.params['cool']['T_HIGH']
+    self.T_SIMMIN = self.params['cool']['T_SIMMIN']
+    self.RT_SIMMIN = R * self.params['cool']['T_SIMMIN']
     self.T_TARGET = self.params['cool']['T_TARGET']
     self.RT_TARGET = R * self.params['cool']['T_TARGET']
 
@@ -742,8 +745,8 @@ last modified {1}
   ###########
   def initial_cool(self, warm=True):
     """
-    Warms the ligand from self.T_TARGET to self.T_HIGH, or
-    cools the ligand from self.T_HIGH to self.T_TARGET
+    Warms the ligand from self.T_SIMMIN to self.T_HIGH, or
+    cools the ligand from self.T_HIGH to self.T_SIMMIN
     
     Intermediate thermodynamic states are chosen such that
     thermodynamic length intervals are approximately constant.
@@ -756,13 +759,13 @@ last modified {1}
     self._set_lock('cool')
     cool_start_time = time.time()
 
-    T_GEOMETRIC = np.exp(np.linspace(np.log(self.T_TARGET),np.log(self.T_HIGH),
+    T_GEOMETRIC = np.exp(np.linspace(np.log(self.T_SIMMIN),np.log(self.T_HIGH),
       int(1/self.params['cool']['therm_speed'])))
     if warm:
-      T_START, T_END = self.T_TARGET, self.T_HIGH
+      T_START, T_END = self.T_SIMMIN, self.T_HIGH
       direction_name = 'warm'
     else:
-      T_START, T_END = self.T_HIGH, self.T_TARGET
+      T_START, T_END = self.T_HIGH, self.T_SIMMIN
       direction_name = 'cool'
       T_GEOMETRIC = T_GEOMETRIC[::-1]
 
@@ -841,8 +844,8 @@ last modified {1}
               crossed = True
           else:
             T = To - dL
-            if T < self.T_TARGET:
-              T = self.T_TARGET
+            if T < self.T_SIMMIN:
+              T = self.T_SIMMIN
               crossed = True
         else:
           raise Exception('No variance in configuration energies')
@@ -851,7 +854,7 @@ last modified {1}
         crossed = (len(self.cool_protocol)==(len(T_GEOMETRIC)-1))
 
       self.cool_protocol.append(\
-        {'T':T, 'a':(self.T_HIGH-T)/(self.T_HIGH-self.T_TARGET), 'MM':True, 'crossed':crossed})
+        {'T':T, 'a':(self.T_HIGH-T)/(self.T_HIGH-self.T_SIMMIN), 'MM':True, 'crossed':crossed})
 
       # Randomly select seeds for new trajectory
       logweight = Es_MM/R*(1/T-1/To)
@@ -971,7 +974,7 @@ last modified {1}
   def cool(self):
     """
     Samples different ligand configurations 
-    at thermodynamic states between self.T_HIGH and self.T_TARGET
+    at thermodynamic states between self.T_HIGH and self.T_SIMMIN
     """
     return self._sim_process('cool')
 
@@ -980,7 +983,7 @@ last modified {1}
     Calculates ligand-specific free energies:
     1. solvation free energy of the ligand using single-step 
        free energy perturbation
-    2. reduced free energy of cooling the ligand from self.T_HIGH to self.T_TARGET
+    2. reduced free energy of cooling the ligand from self.T_HIGH to self.T_SIMMIN
     """
     # Initialize variables as empty lists or by loading data
     f_L_FN = join(self.dir['cool'],'f_L.pkl.gz')
@@ -996,7 +999,7 @@ last modified {1}
       self.stats_L = dict(\
         [(item,[]) for item in ['equilibrated_cycle','mean_acc']])
       self.stats_L['protocol'] = self.cool_protocol
-      self.f_L = dict([(key,[]) for key in ['cool_BAR','cool_MBAR'] + \
+      self.f_L = dict([(key,[]) for key in ['cool_MBAR'] + \
         [phase+'_solv' for phase in self.params['cool']['phases']]])
     if readOnly or self.cool_protocol==[]:
       return
@@ -1028,7 +1031,7 @@ last modified {1}
           for c in range(self._cool_cycle)]
     for phase in self.params['cool']['phases']:
       self.stats_L['u_K_'+phase] = \
-        [self.cool_Es[-1][c]['L'+phase][:,-1]/self.RT_TARGET \
+        [self.cool_Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
           for c in range(self._cool_cycle)]
 
     # Estimate cycle at which simulation has equilibrated and predict native pose
@@ -1063,9 +1066,9 @@ last modified {1}
         # 'forward' direction and desolvation the 'reverse'
         u_L = np.concatenate([self.cool_Es[-1][n]['L'+phase] \
           for n in range(fromCycle,toCycle)])/self.RT_TARGET
-        u_MM = np.concatenate([self.cool_Es[-1][n]['MM'] \
-          for n in range(fromCycle,toCycle)])/self.RT_TARGET
-        du_F = (u_L[:,-1] - u_MM)
+        u_sampled = np.concatenate([self.cool_Es[-1][n]['MM'] \
+          for n in range(fromCycle,toCycle)])/self.RT_SIMMIN
+        du_F = (u_L[:,-1] - u_sampled)
         min_du_F = min(du_F)
         w_L = np.exp(-du_F+min_du_F)
         f_L_solv = -np.log(np.mean(w_L)) + min_du_F
@@ -1079,7 +1082,7 @@ last modified {1}
 
     # Calculate cooling free energies that have not already been calculated,
     # in units of RT
-    for c in range(len(self.f_L['cool_BAR']), self._cool_cycle):
+    for c in range(len(self.f_L['cool_MBAR']), self._cool_cycle):
       if not updated:
         self._set_lock('cool')
         self.tee(start_string)
@@ -1093,8 +1096,7 @@ last modified {1}
       for cool_Es_state in self.cool_Es:
         cool_Es.append(cool_Es_state[fromCycle:toCycle])
       (u_kln,N_k) = self._u_kln(cool_Es,self.cool_protocol)
-      (BAR,MBAR) = self._run_MBAR(u_kln,N_k)
-      self.f_L['cool_BAR'].append(BAR)
+      MBAR = self._run_MBAR(u_kln,N_k)
       self.f_L['cool_MBAR'].append(MBAR)
 
       # Average acceptance probabilities
@@ -1275,7 +1277,7 @@ last modified {1}
             self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
           
           # Ramp up the temperature using HMC
-          self._ramp_T(self.T_TARGET, normalize=False)
+          self._ramp_T(self.T_SIMMIN, normalize=False)
 
           # Simulate
           sim_start_time = time.time()
@@ -1539,7 +1541,7 @@ last modified {1}
     Docks the ligand into the binding site
     by simulating at thermodynamic states
     between decoupled and fully interacting and
-    between self.T_HIGH and self.T_TARGET
+    between self.T_HIGH and self.T_SIMMIN
     """
     return self._sim_process('dock')
 
@@ -1551,9 +1553,7 @@ last modified {1}
       return # Initial docking is incomplete
 
     phase_f_RL_keys = \
-      [phase+'_solv' for phase in self.params['dock']['phases']] + \
-      ['Theta_1'+phase for phase in self.params['dock']['phases']] + \
-      ['Theta_RL'+phase for phase in self.params['dock']['phases']]
+      [phase+'_solv' for phase in self.params['dock']['phases']]
 
     # Initialize variables as empty lists or by loading data
     if self.params['dock']['pose']==-1:
@@ -1562,11 +1562,6 @@ last modified {1}
       f_RL_FN = join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
     
-#    if redo:
-#      if os.path.isfile(f_RL_FN):
-#        os.remove(f_RL_FN)
-#      dat = None
-#    else:
     dat = self._load_pkl_gz(f_RL_FN)
     if (dat is not None):
       (self.f_L, self.stats_RL, self.f_RL, self.B) = dat
@@ -1585,11 +1580,11 @@ last modified {1}
       self.stats_RL['protocol'] = self.dock_protocol
       # Free energy components
       self.f_RL = dict([(key,[]) \
-        for key in ['grid_BAR','grid_MBAR'] + phase_f_RL_keys])
+        for key in ['grid_MBAR'] + phase_f_RL_keys])
       # Binding PMF estimates
       self.B = {'MBAR':[]}
       for phase in self.params['dock']['phases']:
-        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR','MBAR_c2']:
+        for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR','MBAR_c2']:
           self.B[phase+'_'+method] = []
     if readOnly:
       return True
@@ -1597,12 +1592,12 @@ last modified {1}
     if redo:
       self.B = {'MBAR':[]}
       for phase in self.params['dock']['phases']:
-        for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR','MBAR_c2']:
+        for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR','MBAR_c2']:
           self.B[phase+'_'+method] = []
       for key in phase_f_RL_keys:
           if key in self.f_RL.keys():
               del self.f_RL[key]
-    
+
     # Make sure postprocessing is complete
     pp_complete = self._postprocess()
     if not pp_complete:
@@ -1634,7 +1629,7 @@ last modified {1}
     # Store stats_RL
     # Internal energies
     self.stats_RL['u_K_ligand'] = \
-      [self.dock_Es[-1][c]['MM']/self.RT_TARGET for c in range(self._dock_cycle)]
+      [self.dock_Es[-1][c]['MM']/self.RT_SIMMIN for c in range(self._dock_cycle)]
     self.stats_RL['u_K_sampled'] = \
       [self._u_kln([self.dock_Es[-1][c]],[self.dock_protocol[-1]]) \
         for c in range(self._dock_cycle)]
@@ -1644,7 +1639,7 @@ last modified {1}
           for c in range(self._dock_cycle)]
     for phase in self.params['dock']['phases']:
       self.stats_RL['u_K_'+phase] = \
-        [self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_TARGET \
+        [self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_SIMMIN \
           for c in range(self._dock_cycle)]
 
     # Interaction energies
@@ -1652,7 +1647,7 @@ last modified {1}
       self.stats_RL['Psi_grid'].append(
           (self.dock_Es[-1][c]['LJr'] + \
            self.dock_Es[-1][c]['LJa'] + \
-           self.dock_Es[-1][c]['ELE'])/self.RT_TARGET)
+           self.dock_Es[-1][c]['ELE'])/self.RT_SIMMIN)
       updated = True
     for phase in self.params['dock']['phases']:
       if (not 'Psi_'+phase in self.stats_RL) or redo:
@@ -1661,7 +1656,7 @@ last modified {1}
         self.stats_RL['Psi_'+phase].append(
           (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
            self.dock_Es[-1][c]['L'+phase][:,-1] - \
-           self.original_Es[0][0]['R'+phase][:,-1])/self.RT_TARGET)
+           self.original_Es[0][0]['R'+phase][:,-1])/self.RT_SIMMIN)
     
     # Estimate cycle at which simulation has equilibrated
     eqc_o = self.stats_RL['equilibrated_cycle']
@@ -1685,9 +1680,11 @@ last modified {1}
           pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
 
     # Store rmsd values
-    self.stats_RL['rmsd'] = [self.dock_Es[-1][c]['rmsd'] \
-      if 'rmsd' in self.dock_Es[-1][c].keys() else [] \
-      for c in range(self._dock_cycle)]
+    self.stats_RL['rmsd'] = [(np.hstack([self.dock_Es[k][c]['rmsd']
+      if 'rmsd' in self.dock_Es[k][c].keys() else [] \
+        for c in range(self.stats_RL['equilibrated_cycle'][-1], \
+                       self._dock_cycle)])) \
+          for k in range(len(self.dock_protocol))]
 
     # Calculate docking free energies that have not already been calculated
     for c in range(len(self.f_RL['grid_MBAR']), self._dock_cycle):
@@ -1699,9 +1696,8 @@ last modified {1}
       
       # Use MBAR for the grid scaling free energy estimate
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
-      (BAR,MBAR) = self._run_MBAR(u_kln,N_k)
+      MBAR = self._run_MBAR(u_kln,N_k)
       self.f_RL['grid_MBAR'].append(MBAR)
-      self.f_RL['grid_BAR'].append(BAR)
       updated = True
 
       # Average acceptance probabilities
@@ -1717,12 +1713,12 @@ last modified {1}
     self.B['MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
       self.f_RL['grid_MBAR'][c][-1] for c in range(len(self.f_RL['grid_MBAR']))]
 
-    # BPMFs and Thetas
+    # BPMFs
     for phase in self.params['dock']['phases']:
-      for key in [phase+'_solv',phase+'_solv_c2','Theta_1'+phase,'Theta_RL'+phase]:
+      for key in [phase+'_solv',phase+'_solv_c2']:
         if not key in self.f_RL:
           self.f_RL[key] = []
-      for method in ['min_Psi','mean_Psi','inverse_FEP','BAR','MBAR','MBAR_c2']:
+      for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR','MBAR_c2']:
         if not phase+'_'+method in self.B:
           self.B[phase+'_'+method] = []
       
@@ -1732,16 +1728,16 @@ last modified {1}
       for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
         u_L = np.concatenate([\
-          self.dock_Es[-1][c]['L'+phase][:,-1]/self.RT_TARGET \
+          self.dock_Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
           for c in extractCycles])
         u_RL = np.concatenate([\
           self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_TARGET \
           for c in extractCycles])
-        u_MM = np.concatenate([\
+        u_sampled = np.concatenate([\
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
         
         # From the full grid to the fully bound complex in phase
-        du = u_RL - u_MM
+        du = u_RL - u_sampled
         min_du = min(du)
         #   Exponential average
         f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
@@ -1750,11 +1746,6 @@ last modified {1}
         
         weights = np.exp(-du+min_du)
         weights = weights/sum(weights)
-        
-        # From the full grid to the free ligand in phase
-        du = u_L - u_MM
-        min_du = min(du)
-        weights_2RL = np.exp(-du+min_du)
         
         # Interaction energies
         Psi = np.concatenate([self.stats_RL['Psi_'+phase][c] \
@@ -1766,21 +1757,12 @@ last modified {1}
         self.f_RL[phase+'_solv'].append(f_RL_solv)
         self.f_RL[phase+'_solv_c2'].append(f_RL_solv_c2)
         
-        # To help calculate the mean energy of the fully bound complex in phase
-        Theta_1 = np.sum(np.exp(-Psi+min_Psi)*weights_2RL)/np.sum(weights_2RL)
-        self.f_RL['Theta_1'+phase].append(Theta_1)
-        Theta_RL = np.sum(u_RL*np.exp(-Psi+min_Psi)*weights_2RL)/np.sum(weights_2RL)
-        self.f_RL['Theta_RL'+phase].append(Theta_RL)
-        
         # Various BPMF estimates
         self.B[phase+'_min_Psi'].append(min_Psi)
-        self.B[phase+'_mean_Psi'].append(np.mean(Psi))
+        self.B[phase+'_mean_Psi'].append(np.sum(weights*Psi))
         self.B[phase+'_inverse_FEP'].append(\
           np.log(sum(weights*np.exp(Psi-max_Psi))) + max_Psi)
         
-        self.B[phase+'_BAR'].append(-f_R_solv \
-          - self.f_L[phase+'_solv'][-1] - self.f_L['cool_BAR'][-1][-1] \
-          + self.f_RL['grid_BAR'][-1][-1] + f_RL_solv)
         self.B[phase+'_MBAR'].append(-f_R_solv \
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
           + self.f_RL['grid_MBAR'][-1][-1] + f_RL_solv)
@@ -2057,7 +2039,7 @@ last modified {1}
             if len(confs)>0:
               # Use the center of mass for configurations
               # within 20 RT of the lowest energy
-              cutoffE = Es['total'][-1] + 20*self.RT_TARGET
+              cutoffE = Es['total'][-1] + 20*self.RT_SIMMIN
               coms = []
               for (conf,E) in reversed(zip(confs,Es['total'])):
                 if E<=cutoffE:
@@ -2259,6 +2241,7 @@ last modified {1}
     Initializes a state, returning the configurations and potential energy.
     Attempts simulation with decreasing time steps up to 5 times
     until there is variance in the potential energy.
+    If the time step is below 1 fs, though, also repeats attempt.
     """
     
     attempts_left = 5
@@ -2301,7 +2284,10 @@ last modified {1}
       acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
         np.sum([r['att_Sampler'] for r in results])
 
-      if (np.std(potEs)>1E-7):
+      if (delta_t<1.*MMTK.Units.fs):
+        lambda_k['delta_t'] = 1.*MMTK.Units.fs
+        attempts_left -= 1
+      elif (np.std(potEs)>1E-7):
         attempts_left = 0
       else:
         delta_t = 0.9*delta_t
@@ -2913,7 +2899,7 @@ last modified {1}
       old_eval = None
       if (None,None,None) in self.universe._evaluator.keys():
         old_eval = self.universe._evaluator[(None,None,None)]
-      self._set_universe_evaluator({'site':True,'T':self.T_TARGET})
+      self._set_universe_evaluator({'site':True,'T':self.T_SIMMIN})
       for n in range(len(confs)):
         self.universe.setConfiguration(Configuration(self.universe, confs[n]))
         if self.universe.energy()<1.:
@@ -3014,22 +3000,26 @@ last modified {1}
       f_k_FEPF[k+1] = -np.log(np.mean(np.exp(-w_F+min_w_F))) + min_w_F
       f_k_FEPR[k+1] = np.log(np.mean(np.exp(-w_R+min_w_R))) - min_w_R
       try:
-        f_k_BAR[k+1] = pymbar.BAR(w_F, w_R, relative_tolerance=0.000001, verbose=False, compute_uncertainty=False)
+        f_k_BAR[k+1] = pymbar.BAR(w_F, w_R, \
+                       relative_tolerance=1.0E-5, \
+                       verbose=False, \
+                       compute_uncertainty=False)
       except:
         f_k_BAR[k+1] = f_k_FEPF[k+1]
     f_k_FEPF = np.cumsum(f_k_FEPF)
     f_k_FEPR = np.cumsum(f_k_FEPR)
     f_k_BAR = np.cumsum(f_k_BAR)
     try:
-      f_k_MBAR = pymbar.MBAR(u_kln, N_k,
-        verbose = False,
-        initial_f_k = f_k_BAR,
+      f_k_MBAR = pymbar.MBAR(u_kln, N_k, \
+        relative_tolerance=1.0E-5, \
+        verbose = False, \
+        initial_f_k = f_k_BAR, \
         maximum_iterations = 20).f_k
     except:
       f_k_MBAR = f_k_BAR
     if np.isnan(f_k_MBAR).any():
       f_k_MBAR = f_k_BAR
-    return (f_k_BAR,f_k_MBAR)
+    return f_k_MBAR
 
   def _u_kln(self,eTs,lambdas,noBeta=False):
     """
@@ -3216,7 +3206,7 @@ last modified {1}
             'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_r_da)*U_r.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-               np.abs(self.T_TARGET-self.T_HIGH)*U_RL_g.std()/(R*T*T)
+               np.abs(self.T_SIMMIN-self.T_HIGH)*U_RL_g.std()/(R*T*T)
       else:
         # BPMF
         a_sg = 1.-4.*(a-0.5)**2
@@ -3227,7 +3217,7 @@ last modified {1}
           'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-               np.abs(self.T_TARGET-self.T_HIGH)*U_RL_g.std()/(R*T*T)
+               np.abs(self.T_SIMMIN-self.T_HIGH)*U_RL_g.std()/(R*T*T)
     elif process=='cool':
       return self._u_kln([E],[{'MM':True}], noBeta=True).std()/(R*T*T)
     else:
@@ -3272,10 +3262,10 @@ last modified {1}
         lambda_n['ELE'] = a_g
         if site is not None:
           lambda_n['site'] = site
-      lambda_n['T'] = a*(self.T_TARGET-self.T_HIGH) + self.T_HIGH
+      lambda_n['T'] = a*(self.T_SIMMIN-self.T_HIGH) + self.T_HIGH
     elif process=='cool':
       lambda_n['a'] = a
-      lambda_n['T'] = self.T_HIGH - a*(self.T_HIGH-self.T_TARGET)
+      lambda_n['T'] = self.T_HIGH - a*(self.T_HIGH-self.T_SIMMIN)
     else:
       raise Exception("Unknown process!")
 
@@ -3642,6 +3632,7 @@ last modified {1}
 /
 """)
     elif phase=='sander_PBSA':
+      fillratio = 4.0 if moiety=='L' else 2.0
       script_F.write('''
   ntf=7,     ! No bond, angle, or dihedral forces calculated
   ipb=2,     ! Default PB dielectric model
@@ -3649,12 +3640,12 @@ last modified {1}
 /
 &pb
   radiopt=0, ! Use atomic radii from the prmtop file
-  fillratio=4.0,
+  fillratio=%d,
   sprob=1.4,
   cavity_surften=0.0378, ! (kcal/mol) Default in MMPBSA.py
   cavity_offset=-0.5692, ! (kcal/mol) Default in MMPBSA.py
 /
-''')
+'''%fillratio)
     else:
       if phase.find('ALPB')>-1 and moiety.find('R')>-1:
         script_F.write("\n  alpb=1,")
