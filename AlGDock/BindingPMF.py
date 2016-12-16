@@ -385,7 +385,7 @@ last modified {1}
         ('seeds_per_state',50),
         ('darts_per_seed',0),
         ('repX_cycles',20),
-        ('min_repX_acc',0.3),
+        ('min_repX_acc',0.4),
         ('sweeps_per_cycle',1000),
         ('attempts_per_sweep',25),
         ('steps_per_sweep',50),
@@ -771,8 +771,8 @@ last modified {1}
 
     if self.cool_protocol==[]:
       self.tee("\n>>> Initial %sing of the ligand "%direction_name + \
-        "from %d K to %d K, "%(T_START,T_END) + "starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+        "from %d K to %d K, "%(T_START,T_END) + "\n    starting at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
 
       # Set up the force field
       T = T_START
@@ -807,7 +807,7 @@ last modified {1}
       self.cool_Es = [[{'MM':Es_MM}]]
       tL_tensor = Es_MM.std()/(R*T_START*T_START)
 
-      self.tee("  generated %d configurations "%len(confs) + \
+      self.tee("  drew %d configurations "%len(confs) + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + HMStime(time.time()-state_start_time))
       self.tee(sampler_metrics)
@@ -815,7 +815,7 @@ last modified {1}
         self.cool_protocol[-1]['delta_t']*1000., tL_tensor))
     else:
       self.tee("\n>>> Initial %s of the ligand "%direction_name + \
-        "from %d K to %d K, "%(T_START,T_END) + "continuing at " + \
+        "from %d K to %d K, "%(T_START,T_END) + "\n    continuing at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
       confs = self.confs['cool']['samples'][-1][0]
       Es_MM = self.cool_Es[-1][0]['MM']
@@ -891,7 +891,7 @@ last modified {1}
       acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
       mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
 
-      self.tee("  generated %d configurations "%len(confs) + \
+      self.tee("  drew %d configurations "%len(confs) + \
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + (HMStime(time.time()-state_start_time)))
       self.tee(sampler_metrics)
@@ -906,16 +906,14 @@ last modified {1}
         confs = confs_o
         Es_MM = Es_MM_o
         tL_tensor = tL_tensor_o*1.25 # Use a smaller step
-        self.tee("  rejected new state, as estimated repX" + \
-          " acceptance is too low!")
+        self.tee("  rejected new state")
       elif (mean_acc>0.99) and (not crossed) \
           and (self.params['cool']['protocol'] == 'Adaptive'):
         # If the acceptance probability is too high,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.random.randint(len(confs))]
         self.cool_protocol.pop(-2)
-        self.tee("  rejected previous state, as estimated repX" + \
-          " acceptance is too high!")
+        self.tee("  rejected previous state")
       else:
         self.confs['cool']['replicas'].append(confs[np.random.randint(len(confs))])
         self.confs['cool']['samples'].append([confs])
@@ -978,21 +976,18 @@ last modified {1}
     """
     return self._sim_process('cool')
 
-  def calc_f_L(self, readOnly=False, redo=False):
+  def calc_f_L(self, readOnly=False, do_solvation=True, redo=False):
     """
     Calculates ligand-specific free energies:
-    1. solvation free energy of the ligand using single-step 
+    1. reduced free energy of cooling the ligand
+       from self.T_HIGH to self.T_SIMMIN
+    2. solvation free energy of the ligand using single-step
        free energy perturbation
-    2. reduced free energy of cooling the ligand from self.T_HIGH to self.T_SIMMIN
+    redo does not do anything now; it is an option for debugging
     """
     # Initialize variables as empty lists or by loading data
     f_L_FN = join(self.dir['cool'],'f_L.pkl.gz')
-    if redo:
-      if os.path.isfile(f_L_FN):
-        os.remove(f_L_FN)
-      dat = None
-    else:
-      dat = self._load_pkl_gz(f_L_FN)
+    dat = self._load_pkl_gz(f_L_FN)
     if dat is not None:
       (self.stats_L, self.f_L) = dat
     else:
@@ -1006,19 +1001,14 @@ last modified {1}
 
     K = len(self.cool_protocol)
 
-    # Make sure postprocessing is complete
-    pp_complete = self._postprocess([('cool',-1,-1,'L')])
-    if not pp_complete:
-      return False
-
     # Make sure all the energies are available
     for c in range(self._cool_cycle):
       if len(self.cool_Es[-1][c].keys())==0:
         self.tee("  skipping the cooling free energy calculation")
         return
 
-    start_string = "\n>>> Ligand free energy calculations, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime())
+    start_string = "\n>>> Ligand free energy calculations\n    starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n"
     free_energy_start_time = time.time()
 
     # Store stats_L internal energies
@@ -1029,22 +1019,68 @@ last modified {1}
       [np.sum([self._u_kln([self.cool_Es[k][c]],[self.cool_protocol[k]]) \
         for k in range(len(self.cool_protocol))],0) \
           for c in range(self._cool_cycle)]
+
+    self.stats_L['equilibrated_cycle'] = self._get_equilibrated_cycle('cool')
+    
+    # Calculate cooling free energies that have not already been calculated,
+    # in units of RT
+    updated = False
+    for c in range(len(self.f_L['cool_MBAR']), self._cool_cycle):
+      if not updated:
+        self._set_lock('cool')
+        if do_solvation:
+          self.tee(start_string)
+        updated = True
+      
+      fromCycle = self.stats_L['equilibrated_cycle'][c]
+      toCycle = c + 1
+
+      # Cooling free energy
+      cool_Es = []
+      for cool_Es_state in self.cool_Es:
+        cool_Es.append(cool_Es_state[fromCycle:toCycle])
+      (u_kln,N_k) = self._u_kln(cool_Es,self.cool_protocol)
+      MBAR = self._run_MBAR(u_kln,N_k)[0]
+      self.f_L['cool_MBAR'].append(MBAR)
+
+      # Average acceptance probabilities
+      cool_mean_acc = np.zeros(K-1)
+      for k in range(0, K-1):
+        (u_kln, N_k) = self._u_kln(cool_Es[k:k+2],self.cool_protocol[k:k+2])
+        N = min(N_k)
+        acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
+        cool_mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
+      self.stats_L['mean_acc'].append(cool_mean_acc)
+
+      self.tee("  calculated cooling free energy of %.3f RT "%(\
+                  self.f_L['cool_MBAR'][-1][-1])+\
+               "using cycles %d to %d"%(fromCycle, c))
+
+    if not do_solvation:
+      if updated:
+        self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L), quiet=True)
+        self._clear_lock('cool')
+      return True
+
+    # Make sure postprocessing is complete
+    pp_complete = self._postprocess([('cool',-1,-1,'L')])
+    if not pp_complete:
+      return False
+
+    # Store stats_L internal energies
     for phase in self.params['cool']['phases']:
       self.stats_L['u_K_'+phase] = \
         [self.cool_Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
           for c in range(self._cool_cycle)]
 
-    # Estimate cycle at which simulation has equilibrated and predict native pose
-    self.stats_L['equilibrated_cycle'] = self._get_equilibrated_cycle('cool')
+    # Get predicted pose
     (self.stats_L['predicted_pose_index'], \
      self.stats_L['lowest_energy_pose_index']) = \
       self._get_pose_prediction('cool', self.stats_L['equilibrated_cycle'][-1])
 
     # Calculate solvation free energies that have not already been calculated,
     # in units of RT
-    updated = False
     for phase in self.params['cool']['phases']:
-
       if not phase+'_solv' in self.f_L:
         self.f_L[phase+'_solv'] = []
       if not 'mean_'+phase in self.f_L:
@@ -1077,46 +1113,15 @@ last modified {1}
         self.f_L[phase+'_solv'].append(f_L_solv)
         self.f_L['mean_'+phase].append(mean_u_phase)
         self.tee("  calculated " + phase + " solvation free energy of " + \
-                 "%f RT "%(f_L_solv) + \
+                 "%.5g RT "%(f_L_solv) + \
                  "using cycles %d to %d"%(fromCycle, toCycle-1))
-
-    # Calculate cooling free energies that have not already been calculated,
-    # in units of RT
-    for c in range(len(self.f_L['cool_MBAR']), self._cool_cycle):
-      if not updated:
-        self._set_lock('cool')
-        self.tee(start_string)
-        updated = True
-      
-      fromCycle = self.stats_L['equilibrated_cycle'][c]
-      toCycle = c + 1
-
-      # Cooling free energy
-      cool_Es = []
-      for cool_Es_state in self.cool_Es:
-        cool_Es.append(cool_Es_state[fromCycle:toCycle])
-      (u_kln,N_k) = self._u_kln(cool_Es,self.cool_protocol)
-      MBAR = self._run_MBAR(u_kln,N_k)[0]
-      self.f_L['cool_MBAR'].append(MBAR)
-
-      # Average acceptance probabilities
-      cool_mean_acc = np.zeros(K-1)
-      for k in range(0, K-1):
-        (u_kln, N_k) = self._u_kln(cool_Es[k:k+2],self.cool_protocol[k:k+2])
-        N = min(N_k)
-        acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
-        cool_mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      self.stats_L['mean_acc'].append(cool_mean_acc)
-
-      self.tee("  calculated cooling free energy of %f RT "%(\
-                  self.f_L['cool_MBAR'][-1][-1])+\
-               "using MBAR for cycles %d to %d"%(fromCycle, c))
 
     if updated:
       self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L))
       self.tee("\nElapsed time for free energy calculation: " + \
         HMStime(time.time()-free_energy_start_time))
       self._clear_lock('cool')
+    return True
 
   ###########
   # Docking #
@@ -1209,7 +1214,7 @@ last modified {1}
       converged = f_grid0_std<0.1
       if not converged:
         self.tee("  with %s translations "%n_trans_n + \
-                 "the predicted free energy difference is %f (%f)"%(\
+                 "the predicted free energy difference is %.5g (%.5g)"%(\
                  f_grid0.mean(),f_grid0_std))
         if n_trans_n == self._max_n_trans:
           break
@@ -1229,7 +1234,7 @@ last modified {1}
              "%d translations and %d rotations "%(n_trans_n,self._n_rot))
     self.tee("  the predicted free energy difference between the" + \
              " first and second docking states is " + \
-             "%f (%f)"%(f_grid0.mean(),f_grid0_std))
+             "%.5g (%.5g)"%(f_grid0.mean(),f_grid0_std))
 
     ravel_start_time = time.time()
     for term in E.keys():
@@ -1255,8 +1260,8 @@ last modified {1}
     dock_start_time = time.time()
     
     if self.dock_protocol==[]:
-      self.tee("\n>>> Initial docking, starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+      self.tee("\n>>> Initial docking\n    starting at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
       undock = True if (self.params['dock']['pose'] == -1) else False
       if undock:
         lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
@@ -1292,7 +1297,7 @@ last modified {1}
           self.confs['dock']['samples'] = [[confs]]
           self.dock_Es = [[E]]
 
-          self.tee("  generated %d configurations "%len(confs) + \
+          self.tee("  drew %d configurations "%len(confs) + \
                    "with progress %e "%lambda_o['a'] + \
                    "in " + HMStime(time.time()-sim_start_time))
           self.tee(sampler_metrics)
@@ -1344,8 +1349,8 @@ last modified {1}
     else:
       # Continuing from a previous docking instance
       undock = self.dock_protocol[0]['a']>self.dock_protocol[1]['a']
-      self.tee("\n>>> Initial %sdocking, "%({True:'un',False:''}[undock]) + \
-        "continuing at " + \
+      self.tee("\n>>> Initial %sdocking\n"%({True:'un',False:''}[undock]) + \
+        "    continuing at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
       confs = self.confs['dock']['samples'][-1][0]
       E = self.dock_Es[-1][0]
@@ -1427,8 +1432,8 @@ last modified {1}
       # Get state energies
       E = self._energyTerms(confs)
 
-      self.tee("  generated %d configurations "%len(confs) + \
-               "with progress %f "%lambda_n['a'] + \
+      self.tee("  drew %d configurations "%len(confs) + \
+               "with progress %e "%lambda_n['a'] + \
                "in " + HMStime(time.time()-sim_start_time))
       self.tee(sampler_metrics)
       self.tee("  dt=%.3f fs, tL_tensor=%.3e"%(\
@@ -1452,7 +1457,8 @@ last modified {1}
           confs = confs_o
           E = E_o
           rejectStage += 1
-          self.tee("  rejected new state, as estimated replica exchange acceptance rate of %f is too low"%mean_acc)
+          self.tee("  rejected new state with low estimated acceptance" + \
+            " rate of %.3f"%mean_acc)
         elif (mean_acc>0.99) and (not lambda_n['crossed']) and \
             (self.params['dock']['protocol']=='Adaptive'):
           # If the acceptance probability is too high,
@@ -1462,7 +1468,8 @@ last modified {1}
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage -= 1
           lambda_o = lambda_n
-          self.tee("  rejected previous state, as estimated replica exchange acceptance rate of %f is too high"%mean_acc)
+          self.tee("  rejected previous state with high estimated acceptance" + \
+            " rate of %.3f"%mean_acc)
         else:
           # Store data and continue with initialization
           self.confs['dock']['replicas'].append(confs[np.random.randint(len(confs))])
@@ -1471,7 +1478,7 @@ last modified {1}
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
           lambda_o = lambda_n
-          self.tee("  the estimated replica exchange acceptance rate is %f\n"%mean_acc)
+          self.tee("  the estimated repX acceptance rate is %.3f\n"%mean_acc)
 
           if (not self.params['dock']['keep_intermediate']):
             if len(self.dock_protocol)>(2+(not undock)):
@@ -1545,15 +1552,13 @@ last modified {1}
     """
     return self._sim_process('dock')
 
-  def calc_f_RL(self, readOnly=False, redo=False):
+  def calc_f_RL(self, readOnly=False, do_solvation=True, redo=False):
     """
     Calculates the binding potential of mean force
+    redo does not do anything now; it is an option for debugging
     """
     if self.dock_protocol==[]:
       return # Initial docking is incomplete
-
-    phase_f_RL_keys = \
-      [phase+'_solv' for phase in self.params['dock']['phases']]
 
     # Initialize variables as empty lists or by loading data
     if self.params['dock']['pose']==-1:
@@ -1563,39 +1568,33 @@ last modified {1}
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
     
     dat = self._load_pkl_gz(f_RL_FN)
-    if (dat is not None) and (not redo):
+    if (dat is not None):
       (self.f_L, self.stats_RL, self.f_RL, self.B) = dat
     else:
       self._clear_f_RL()
     if readOnly:
       return True
 
-    # Make sure postprocessing is complete
-    pp_complete = self._postprocess()
-    if not pp_complete:
-      return False
-    self.calc_f_L()
-
     # Make sure all the energies are available
     for c in range(self._dock_cycle):
       if len(self.dock_Es[-1][c].keys())==0:
         self.tee("  skipping the binding PMF calculation")
         return
-      for phase in self.params['dock']['phases']:
-        for prefix in ['L','RL']:
-          if not prefix+phase in self.dock_Es[-1][c].keys():
-            self.tee("  postprocessed energies for %s unavailable"%phase)
-            return
     if not hasattr(self,'f_L'):
       self.tee("  skipping the binding PMF calculation")
       return
 
-    self._set_lock('dock')
-    self.tee("\n>>> Binding PMF estimation, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+    start_string = "\n>>> Complex free energy calculations\n    starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n"
     BPMF_start_time = time.time()
 
     updated = False
+    def set_updated_to_True(updated, quiet=False):
+      if (updated is False) and (not quiet):
+        self.tee(start_string)
+      updated = True
+      return updated
+
     K = len(self.dock_protocol)
     
     # Store stats_RL
@@ -1609,10 +1608,6 @@ last modified {1}
       [np.sum([self._u_kln([self.dock_Es[k][c]],[self.dock_protocol[k]]) \
         for k in range(len(self.dock_protocol))],0) \
           for c in range(self._dock_cycle)]
-    for phase in self.params['dock']['phases']:
-      self.stats_RL['u_K_'+phase] = \
-        [self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_SIMMIN \
-          for c in range(self._dock_cycle)]
 
     # Interaction energies
     for c in range(len(self.stats_RL['Psi_grid']), self._dock_cycle):
@@ -1620,26 +1615,13 @@ last modified {1}
           (self.dock_Es[-1][c]['LJr'] + \
            self.dock_Es[-1][c]['LJa'] + \
            self.dock_Es[-1][c]['ELE'])/self.RT_SIMMIN)
-      updated = True
-    for phase in self.params['dock']['phases']:
-      if (not 'Psi_'+phase in self.stats_RL) or redo:
-        self.stats_RL['Psi_'+phase] = []
-      for c in range(len(self.stats_RL['Psi_'+phase]), self._dock_cycle):
-        self.stats_RL['Psi_'+phase].append(
-          (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
-           self.dock_Es[-1][c]['L'+phase][:,-1] - \
-           self.original_Es[0][0]['R'+phase][:,-1])/self.RT_SIMMIN)
-    
+      updated = set_updated_to_True(updated, quiet=~do_solvation)
+
     # Estimate cycle at which simulation has equilibrated
     eqc_o = self.stats_RL['equilibrated_cycle']
     self.stats_RL['equilibrated_cycle'] = self._get_equilibrated_cycle('dock')
     if self.stats_RL['equilibrated_cycle']!=eqc_o:
-      updated = True
-    
-    # Predict native pose
-    (self.stats_RL['predicted_pose_index'], \
-     self.stats_RL['lowest_energy_pose_index']) = \
-      self._get_pose_prediction('dock', self.stats_RL['equilibrated_cycle'][-1])
+      updated = set_updated_to_True(updated, quiet=~do_solvation)
 
     # Autocorrelation time for all replicas
     if updated:
@@ -1660,17 +1642,22 @@ last modified {1}
 
     # Calculate docking free energies that have not already been calculated
     for c in range(len(self.f_RL['grid_MBAR']), self._dock_cycle):
-      extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
+      fromCycle = self.stats_RL['equilibrated_cycle'][c]
+      extractCycles = range(fromCycle, c+1)
       
       # Extract relevant energies
-      dock_Es = [Es[self.stats_RL['equilibrated_cycle'][c]:c+1] \
+      dock_Es = [Es[fromCycle:c+1] \
         for Es in self.dock_Es]
       
       # Use MBAR for the grid scaling free energy estimate
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
       MBAR = self._run_MBAR(u_kln,N_k)[0]
       self.f_RL['grid_MBAR'].append(MBAR)
-      updated = True
+      updated = set_updated_to_True(updated, quiet=~do_solvation)
+      
+      self.tee("  calculated grid scaling free energy of %.3f RT "%(\
+                  self.f_RL['grid_MBAR'][-1][-1])+\
+               "using cycles %d to %d"%(fromCycle, c))
 
       # Average acceptance probabilities
       mean_acc = np.zeros(K-1)
@@ -1681,8 +1668,50 @@ last modified {1}
         mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
       self.stats_RL['mean_acc'].append(mean_acc)
 
+    if not do_solvation:
+      if updated:
+        self._write_pkl_gz(f_RL_FN, \
+          (self.f_L, self.stats_RL, self.f_RL, self.B))
+        self._clear_lock('dock')
+      return True
+
+    # Make sure postprocessing is complete
+    pp_complete = self._postprocess()
+    if not pp_complete:
+      return False
+    self.calc_f_L()
+
+    # Make sure all the phase energies are available
+    for c in range(self._dock_cycle):
+      for phase in self.params['dock']['phases']:
+        for prefix in ['L','RL']:
+          if not prefix+phase in self.dock_Es[-1][c].keys():
+            self.tee("  postprocessed energies for %s unavailable"%phase)
+            return
+
+    # Store stats_RL internal energies for phases
+    for phase in self.params['dock']['phases']:
+      self.stats_RL['u_K_'+phase] = \
+        [self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_SIMMIN \
+          for c in range(self._dock_cycle)]
+
+    # Interaction energies
+    for phase in self.params['dock']['phases']:
+      if (not 'Psi_'+phase in self.stats_RL):
+        self.stats_RL['Psi_'+phase] = []
+      for c in range(len(self.stats_RL['Psi_'+phase]), self._dock_cycle):
+        self.stats_RL['Psi_'+phase].append(
+          (self.dock_Es[-1][c]['RL'+phase][:,-1] - \
+           self.dock_Es[-1][c]['L'+phase][:,-1] - \
+           self.original_Es[0][0]['R'+phase][:,-1])/self.RT_SIMMIN)
+
+    # Predict native pose
+    (self.stats_RL['predicted_pose_index'], \
+     self.stats_RL['lowest_energy_pose_index']) = \
+      self._get_pose_prediction('dock', self.stats_RL['equilibrated_cycle'][-1])
+
     # BPMF assuming receptor and complex solvation cancel
-    self.B['MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
+    self.B['MMTK_MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
       self.f_RL['grid_MBAR'][c][-1] for c in range(len(self.f_RL['grid_MBAR']))]
 
     # BPMFs
@@ -1698,6 +1727,7 @@ last modified {1}
       f_R_solv = self.original_Es[0][0]['R'+phase][:,-1]/self.RT_TARGET
 
       for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
+        updated = set_updated_to_True(updated)
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
         u_L = np.concatenate([\
           self.dock_Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
@@ -1736,16 +1766,14 @@ last modified {1}
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
           + self.f_RL['grid_MBAR'][-1][-1] + f_RL_solv)
 
-        self.tee("  calculated %s binding PMF of %f RT with cycles %d to %d"%(\
+        self.tee("  calculated %s binding PMF of %.5g RT with cycles %d to %d"%(\
           phase, self.B[phase+'_MBAR'][-1], \
           self.stats_RL['equilibrated_cycle'][c], c))
-        updated = True
 
-    if updated or redo:
+    if updated:
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
-
-    self.tee("\nElapsed time for binding PMF estimation: " + \
-      HMStime(time.time()-BPMF_start_time))
+      self.tee("\nElapsed time for binding PMF estimation: " + \
+        HMStime(time.time()-BPMF_start_time))
     self._clear_lock('dock')
     
   def _store_infinite_f_RL(self):
@@ -1895,7 +1923,7 @@ last modified {1}
           print interpolation_type + ' interpolation of the ' + \
             grid_type + ' grid with a power of 1/%d'%(inv_powers[p])
           FF = InterpolationForceField(self._FNs['grids'][grid_type], \
-            name='%f'%(inv_powers[p]),
+            name='%.5g'%(inv_powers[p]),
             interpolation_type=interpolation_type, strength=1.0,
             scaling_property='scaling_factor_'+grid_type, \
             inv_power=inv_powers[p])
@@ -2087,7 +2115,8 @@ last modified {1}
             strength=lambda_n[scalable], scaling_property=grid_scaling_factor,
             inv_power=4 if scalable=='LJr' else None, \
             grid_thresh=grid_thresh)
-          self.tee('  %s grid loaded from %s in %s'%(scalable, grid_FN, \
+          self.tee('  %s grid loaded from %s in %s'%(scalable, \
+            os.path.basename(grid_FN), \
             HMStime(time.time()-loading_start_time)))
 
         # Set the force field strength to the desired value
@@ -2199,8 +2228,8 @@ last modified {1}
       self.universe.normalizePosition()
     e_f = self.universe.energy()
     
-    self.tee("  ramped temperature from %d to %d K, changing energy from %f to %f kcal/mol\n"%(\
-      T_LOW, T_START, e_o, e_f))
+    self.tee("  ramped temperature from %d to %d K\n"%(T_LOW, T_START) + \
+      "  changing energy from %.3g to %.3g kcal/mol\n"%(e_o, e_f))
 
   def _initial_sim_state(self, seeds, process, lambda_k):
     """
@@ -2267,7 +2296,7 @@ last modified {1}
         att = np.sum([r['att_'+s] for r in results])
         time = np.sum([r['time_'+s] for r in results])
         if att>0:
-          sampler_metrics += '%s acc=%d/%d=%.5f, t=%.3f s; '%(\
+          sampler_metrics += '%s %d/%d=%.2f (%.2f s); '%(\
             s,acc,att,float(acc)/att,time)
     return (seeds, potEs, delta_t, sampler_metrics)
   
@@ -2433,7 +2462,9 @@ last modified {1}
           self.confs[process]['SmartDarting']))
         self.confs[process]['SmartDarting'] = \
           self.sampler[process+'_SmartDarting'].confs
-    
+  
+    # storage[key][sweep_index][state_index] will contain data
+    # from the replica exchange sweeps
     storage = {}
     for var in ['confs','state_inds','energies']:
       storage[var] = []
@@ -2469,7 +2500,8 @@ last modified {1}
     # Do replica exchange
     state_inds = range(K)
     inv_state_inds = range(K)
-    for sweep in range(self.params[process]['sweeps_per_cycle']):
+    nsweeps = self.params[process]['sweeps_per_cycle']
+    for sweep in range(nsweeps):
       E = {}
       for term in terms:
         E[term] = np.zeros(K, dtype=float)
@@ -2556,69 +2588,68 @@ last modified {1}
     # is the maximum stride, which gives per_independent samples if possible.
     per_independent = self.params[process]['snaps_per_independent']
     stride = min(max(int(np.ceil((1+2*tau_ac)/per_independent)),1), \
-                 max(int(np.ceil(self.params[process]['sweeps_per_cycle']/per_independent)),1))
+                 max(int(np.ceil(nsweeps/per_independent)),1))
 
-    store_indicies = np.array(\
-      range(min(stride-1,self.params[process]['sweeps_per_cycle']-1), \
-      self.params[process]['sweeps_per_cycle'], stride), dtype=int)
+    store_indicies = np.array(range(min(stride-1,nsweeps-1), nsweeps, stride), \
+      dtype=int)
     nsaved = len(store_indicies)
 
-    self.tee("  generated %d configurations for %d replicas"%(nsaved, len(confs)) + \
+    self.tee("  drew %d configurations"%(nsaved) + \
       " in cycle %d in %s"%(cycle, HMStime(time.time()-cycle_start_time)) + \
-      " (tau_ac=%f)"%(tau_ac))
+      " (tau_ac=%.5g)"%(tau_ac))
     MC_report = " "
     for move_type in ['ExternalMC','SmartDarting','Sampler']:
       total_acc = np.sum(acc[move_type])
       total_att = np.sum(att[move_type])
       if total_att>0:
-        MC_report += " %s acc=%d/%s=%.5f, t=%.3f;"%(move_type, \
+        MC_report += " %s %d/%d=%.2f (%.2f s);"%(move_type, \
           total_acc, total_att, float(total_acc)/total_att, \
           self.timing[move_type])
-    MC_report += " repX t=%.3f"%self.timing['repX']
+    MC_report += " repX t %.2f s"%self.timing['repX']
     self.tee(MC_report)
 
-    # Get indicies for storing global variables
+    # Get indicies for sorting by state, not replica
     inv_state_inds = np.zeros((nsaved,K),dtype=int)
     for snap in range(nsaved):
       state_inds = storage['state_inds'][store_indicies[snap]]
-      for state in range(K):
-        inv_state_inds[snap][state_inds[state]] = state
+      for k in range(K):
+        inv_state_inds[snap][state_inds[k]] = k
 
     # Reorder energies and replicas for storage
     if process=='dock':
       if self.params['dock']['rmsd'] is not False:
         terms.append('rmsd') # Make sure to save the rmsd
     Es = []
-    for state in range(K):
+    for k in range(K):
       E_state = {}
-      if state==0:
+      if k==0:
         E_state['repXpath'] = storage['state_inds']
         E_state['acc'] = acc
         E_state['att'] = att
       for term in terms:
-        E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][state]] for snap in range(nsaved)])
+        E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][k]] for snap in range(nsaved)])
       Es.append([E_state])
 
     self.confs[process]['replicas'] = \
-      [storage['confs'][store_indicies[-1]][inv_state_inds[-1][state]] \
-       for state in range(K)]
+      [storage['confs'][store_indicies[-1]][inv_state_inds[-1][k]] \
+       for k in range(K)]
 
-    for state in range(K):
-      getattr(self,process+'_Es')[state].append(Es[state][0])
+    for k in range(K):
+      getattr(self,process+'_Es')[k].append(Es[k][0])
 
-    for state in range(K):
+    for k in range(K):
       if self.params[process]['keep_intermediate'] or \
-          ((process=='cool') and (state==0)) or \
-          (state==(K-1)):
-        confs = [storage['confs'][store_indicies[snap]][inv_state_inds[snap][state]] for snap in range(nsaved)]
-        self.confs[process]['samples'][state].append(confs)
+          ((process=='cool') and (k==0)) or \
+          (k==(K-1)):
+        confs = [storage['confs'][store_indicies[snap]][inv_state_inds[snap][k]] for snap in range(nsaved)]
+        self.confs[process]['samples'][k].append(confs)
       else:
-        self.confs[process]['samples'][state].append([])
+        self.confs[process]['samples'][k].append([])
 
     if self.params[process]['darts_per_sweep']>0:
       self._set_universe_evaluator(getattr(self,process+'_protocol')[-1])
       confs_SmartDarting = [np.copy(conf) \
-        for conf in self.confs[process]['samples'][state][-1]]
+        for conf in self.confs[process]['samples'][k][-1]]
       self.tee(self.sampler[process+'_SmartDarting'].set_confs(\
         confs_SmartDarting + self.confs[process]['SmartDarting']))
       self.confs[process]['SmartDarting'] = \
@@ -2628,6 +2659,12 @@ last modified {1}
     self._save(process)
     self.tee("")
     self._clear_lock(process)
+
+    # Calculate appropriate free energy
+    if process=='cool':
+      self.calc_f_L(do_solvation=False)
+    elif process=='dock':
+      self.calc_f_RL(do_solvation=False)
 
   def _sim_one_state_worker(self, input, output):
     """
@@ -2726,15 +2763,15 @@ last modified {1}
          (self._FNs['score'] is not None) and \
          (self._FNs['score']!='default'):
         self._set_lock('dock')
-        self.tee(">>> Reinitializing replica exchange configurations")
+        self.tee("\n>>> Reinitializing replica exchange configurations")
         confs = self._get_confs_to_rescore(\
           nconfs=len(self.dock_protocol), site=True, minimize=True)[0]
         self._clear_lock('dock')
         if len(confs)>0:
           self.confs['dock']['replicas'] = confs
 
-      self.tee("\n>>> Replica exchange for {0}ing, starting at {1} GMT".format(\
-        process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime())), \
+      self.tee("\n>>> Replica exchange for {0}ing\n    starting at {1} GMT".format(\
+        process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))  + "\n", \
         process=process)
       self.timing[process+'_repX_start'] = time.time()
       start_cycle = getattr(self,'_%s_cycle'%process)
@@ -2752,7 +2789,7 @@ last modified {1}
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
           if cycle_time>remaining_time:
             return False
-      self.tee("\nElapsed time for %d cycles of replica exchange was %s"%(\
+      self.tee("Elapsed time for %d cycles of replica exchange was %s"%(\
          (getattr(self,'_%s_cycle'%process) - start_cycle), \
           HMStime(time.time() - self.timing[process+'_repX_start'])), \
           process=process)
@@ -2902,20 +2939,23 @@ last modified {1}
     for k in range(0,len(self.dock_protocol)-1):
       mean_acc = calc_mean_acc(k)
       while mean_acc<0.4:
-        updated = True
+        if not updated:
+          self.tee('\n')
+          updated = True
         a_k = self.dock_protocol[k]['a']
         a_kp = self.dock_protocol[k+1]['a']
         a_n = (a_k+a_kp)/2.
-        report =  '  inserting state'
-        report += ' between %.3g and %.3g at %.3g'%(a_k,a_kp,a_n)
-        report += ' to improve acceptance rate from %.3g '%mean_acc
+        report =  '  inserted state'
+        report += ' between %.5g and %.5g at %.5g\n'%(a_k,a_kp,a_n)
+        report += '  to improve acceptance rate from %.5g '%mean_acc
         self._insert_dock_state(a_n, clear=False)
         mean_acc = calc_mean_acc(k)
-        report += 'to %.3g'%mean_acc
+        report += 'to %.5g'%mean_acc
         self.tee(report)
 
     if updated:
       self._clear_f_RL()
+      self._save('dock')
       self.tee("")
 
   def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True, sort=True):
@@ -3034,9 +3074,9 @@ last modified {1}
       
       confs = minimized_confs
       energies = minimized_energies
-      self.tee("\n  minimized %d configurations in "%len(confs) + \
+      self.tee("  minimized %d configurations in "%len(confs) + \
         HMStime(time.time()-min_start_time) + \
-        "\n  the first %d energies are: "%min(len(confs),10) + \
+        "\n  the first %d energies are:\n  "%min(len(confs),10) + \
         ', '.join(['%.2f'%e for e in energies[:10]]))
     else:
       # Evaluate energies
@@ -3064,7 +3104,7 @@ last modified {1}
     count['minimized'] = {True:' minimized', False:''}[minimize]
     Es['total'] = np.array(energies)
 
-    self.tee("  keeping {nconfs}{minimized} configurations out of {xtal} from xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
+    self.tee("  keeping {nconfs}{minimized} configurations out of\n  {xtal} from xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated".format(**count))
     return (confs, Es)
 
   def _run_MBAR(self,u_kln,N_k,augmented=False):
@@ -3257,7 +3297,7 @@ last modified {1}
         # Repeats the previous stage
         lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
         self.tee('  no variance in previous stage!' + \
-          ' trying time step of %f'%lambda_n['delta_t'])
+          ' trying time step of %.5g'%lambda_n['delta_t'])
         return lambda_n
     elif self.params['dock']['protocol']=='Geometric':
       A_GEOMETRIC = [0.] + list(np.exp(np.linspace(np.log(1E-10),np.log(1.0),
@@ -3426,7 +3466,7 @@ last modified {1}
           label = moiety+phase
           
           # Skip postprocessing
-          # if the function is NOT being rerun in redo mode
+          # if the function is NOT being rerun in redo_dock mode
           # and one of the following:
           # the function is being run in readOnly mode,
           # the energies are already in memory.
@@ -3514,8 +3554,8 @@ last modified {1}
 
     # Start postprocessing
     self._set_lock('dock' if 'dock' in [loc[0] for loc in incomplete] else 'cool')
-    self.tee("\n>>> Postprocessing, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+    self.tee("\n>>> Postprocessing\n    starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
     postprocess_start_time = time.time()
 
     done_queue = m.Queue()
@@ -3566,11 +3606,11 @@ last modified {1}
       if len(time_per_snap[key])>0:
         mean_time_per_snap = np.mean(time_per_snap[key])
         if not np.isnan(mean_time_per_snap):
-          self.tee("  an average of %f s per %s snapshot"%(\
+          self.tee("  an average of %.5g s per %s snapshot"%(\
             mean_time_per_snap, key))
         else:
           self.tee("  time per snapshot in %s: "%(key) + \
-            ', '.join(['%f'%t for t in time_per_snap[key]]))
+            ', '.join(['%.5g'%t for t in time_per_snap[key]]))
       else:
         self.tee("  no snapshots postprocessed in %s"%(key))
 
@@ -4281,12 +4321,12 @@ END
     else:
       return None
 
-  def _write_pkl_gz(self, FN, data):
-
+  def _write_pkl_gz(self, FN, data, quiet=False):
     F = gzip.open(FN,'w')
     pickle.dump(data,F)
     F.close()
-    self.tee("  wrote to "+FN)
+    if not quiet:
+      self.tee("  wrote to "+os.path.basename(FN))
 
   def _load(self, p, pose):
     if p=='dock' and pose>-1:
@@ -4392,7 +4432,7 @@ END
     self.f_RL = dict([(key,[]) \
       for key in ['grid_MBAR'] + phase_f_RL_keys])
     # Binding PMF estimates
-    self.B = {'MBAR':[]}
+    self.B = {'MMTK_MBAR':[]}
     for phase in self.params['dock']['phases']:
       for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR']:
         self.B[phase+'_'+method] = []
