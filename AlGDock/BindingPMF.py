@@ -1096,7 +1096,7 @@ last modified {1}
       for cool_Es_state in self.cool_Es:
         cool_Es.append(cool_Es_state[fromCycle:toCycle])
       (u_kln,N_k) = self._u_kln(cool_Es,self.cool_protocol)
-      MBAR = self._run_MBAR(u_kln,N_k)
+      MBAR = self._run_MBAR(u_kln,N_k)[0]
       self.f_L['cool_MBAR'].append(MBAR)
 
       # Average acceptance probabilities
@@ -1545,6 +1545,92 @@ last modified {1}
     """
     return self._sim_process('dock')
 
+  def _insert_dock_state(self, a):
+    """
+    Inserts a new thermodynamic state into the docking protocol.
+    Samples for previous cycles are added by sampling importance resampling.
+    Recomputes grid_MBAR.
+    """
+    # Defines a new thermodynamic state based on the neighboring state
+    neighbor_ind = [a<p['a'] for p in self.dock_protocol].index(True) - 1
+    lambda_n = self._lambda(a, lambda_o=self.dock_protocol[neighbor_ind])
+
+    # For sampling importance resampling,
+    # prepare an augmented matrix for pymbar calculations
+    # with a new thermodynamic state
+    (u_kln_s,N_k) = self._u_kln(self.dock_Es,self.dock_protocol)
+    (K,L,N) = u_kln_s.shape
+
+    u_kln_n = self._u_kln(self.dock_Es,[lambda_n])[0]
+    L += 1
+    N_k = np.append(N_k,[0])
+
+    u_kln = np.zeros([K,L,N])
+    u_kln[:,:-1,:] = u_kln_s
+    for k in range(K):
+      u_kln[k,-1,:] = u_kln_n[k,0,:]
+
+    # Determine SIR weights
+    weights = self._run_MBAR(u_kln, N_k, augmented=True)[1][:,-1]
+    
+    # Resampling
+    # Convert linear indices to 3 indicies: state, cycle, and snapshot
+    cum_N_state = np.cumsum([0] + list(N_k))
+    cum_N_cycle = np.cumsum([0] + [self.dock_Es[0][c]['MM'].shape[0] \
+      for c in range(len(self.dock_Es[0]))])
+
+    def linear_index_to_snapshot_index(ind):
+      state_index = list(ind<cum_N_state).index(True)-1
+      nis_index = ind-cum_N_state[state_index]
+      cycle_index = list(nis_index<cum_N_cycle).index(True)-1
+      nic_index = nis_index-cum_N_cycle[cycle_index]
+      return (state_index,cycle_index,nic_index)
+
+    def snapshot_index_to_linear_index(state_index,cycle_index,nic_index):
+      return cum_N_state[state_index]+cum_N_cycle[cycle_index]+nic_index
+
+    # Terms to copy
+    if self.params['dock']['pose'] > -1:
+      # Pose BPMF
+      terms = ['MM','misc',\
+        'k_angular_ext','k_spatial_ext','k_angular_int'] + self._scalables
+    else:
+      # BPMF
+      terms = ['MM','site','misc'] + self._scalables
+
+    dock_Es_s = []
+    confs_s = []
+    for c in range(len(self.dock_Es[0])):
+      dock_Es_c = dict([(term,[]) for term in terms])
+      confs_c = []
+      for n_in_c in range(len(self.dock_Es[0][c]['MM'])):
+        if (cum_N_cycle[c]==0):
+          (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
+           np.random.choice(range(len(weights)), size = 1, p = weights)[0])
+        else:
+          snapshot_c = np.inf
+          while (snapshot_c>c):
+            (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
+             np.random.choice(range(len(weights)), size = 1, p = weights)[0])
+        for term in terms:
+          dock_Es_c[term].append(self.dock_Es[snapshot_s][snapshot_c][term][snapshot_n])
+        if self.params['dock']['keep_intermediate']:
+          # Has not been tested:
+          confs_c.append(self.confs['dock']['samples'][snapshot_s][snapshot_c])
+      for term in terms:
+        dock_Es_c[term] = np.array(dock_Es_c[term])
+      dock_Es_s.append(dock_Es_c)
+      confs_s.append(confs_c)
+      
+    # Insert resampled values
+    self.dock_protocol.insert(neighbor_ind+1, lambda_n)
+    self.dock_Es.insert(neighbor_ind+1, dock_Es_s)
+    self.confs['dock']['samples'].insert(neighbor_ind+1, confs_s)
+    self.confs['dock']['replicas'].insert(neighbor_ind+1, \
+    self.confs['dock']['replicas'][neighbor_ind])
+    
+    self._clear_f_RL()
+
   def calc_f_RL(self, readOnly=False, redo=False):
     """
     Calculates the binding potential of mean force
@@ -1563,40 +1649,12 @@ last modified {1}
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
     
     dat = self._load_pkl_gz(f_RL_FN)
-    if (dat is not None):
+    if (dat is not None) and (not redo):
       (self.f_L, self.stats_RL, self.f_RL, self.B) = dat
     else:
-      # stats_RL will include internal energies, interaction energies,
-      # the cycle by which the bound state is equilibrated,
-      # the mean acceptance probability between replica exchange neighbors,
-      # and the rmsd, if applicable
-      stats_RL = [('u_K_'+FF,[]) \
-        for FF in ['ligand','sampled']+self.params['dock']['phases']]
-      stats_RL += [('Psi_'+FF,[]) \
-        for FF in ['grid']+self.params['dock']['phases']]
-      stats_RL += [(item,[]) \
-        for item in ['equilibrated_cycle','cum_Nclusters','mean_acc','rmsd']]
-      self.stats_RL = dict(stats_RL)
-      self.stats_RL['protocol'] = self.dock_protocol
-      # Free energy components
-      self.f_RL = dict([(key,[]) \
-        for key in ['grid_MBAR'] + phase_f_RL_keys])
-      # Binding PMF estimates
-      self.B = {'MBAR':[]}
-      for phase in self.params['dock']['phases']:
-        for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR']:
-          self.B[phase+'_'+method] = []
+      self._clear_f_RL()
     if readOnly:
       return True
-
-    if redo:
-      self.B = {'MBAR':[]}
-      for phase in self.params['dock']['phases']:
-        for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR']:
-          self.B[phase+'_'+method] = []
-      for key in phase_f_RL_keys:
-          if key in self.f_RL.keys():
-              del self.f_RL[key]
 
     # Make sure postprocessing is complete
     pp_complete = self._postprocess()
@@ -1696,7 +1754,7 @@ last modified {1}
       
       # Use MBAR for the grid scaling free energy estimate
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
-      MBAR = self._run_MBAR(u_kln,N_k)
+      MBAR = self._run_MBAR(u_kln,N_k)[0]
       self.f_RL['grid_MBAR'].append(MBAR)
       updated = True
 
@@ -2977,22 +3035,21 @@ last modified {1}
     self.tee("  keeping {nconfs}{minimized} configurations out of {xtal} from xtal, {dock6} from dock6, {initial_dock} from initial docking, and {duplicated} duplicated\n".format(**count))
     return (confs, Es)
 
-  def _run_MBAR(self,u_kln,N_k):
+  def _run_MBAR(self,u_kln,N_k,augmented=False):
     """
     Estimates the free energy of a transition using BAR and MBAR
     """
     import pymbar
-    K = len(N_k)
+    K = len(N_k)-1 if augmented else len(N_k)
     f_k_FEPF = np.zeros(K)
-    f_k_FEPR = np.zeros(K)
     f_k_BAR = np.zeros(K)
+    W_nl = None
     for k in range(K-1):
       w_F = u_kln[k,k+1,:N_k[k]] - u_kln[k,k,:N_k[k]]
       min_w_F = min(w_F)
       w_R = u_kln[k+1,k,:N_k[k+1]] - u_kln[k+1,k+1,:N_k[k+1]]
       min_w_R = min(w_R)
       f_k_FEPF[k+1] = -np.log(np.mean(np.exp(-w_F+min_w_F))) + min_w_F
-      f_k_FEPR[k+1] = np.log(np.mean(np.exp(-w_R+min_w_R))) - min_w_R
       try:
         f_k_BAR[k+1] = pymbar.BAR(w_F, w_R, \
                        relative_tolerance=1.0E-5, \
@@ -3000,20 +3057,27 @@ last modified {1}
                        compute_uncertainty=False)
       except:
         f_k_BAR[k+1] = f_k_FEPF[k+1]
+        print 'Error with BAR. Using FEP.'
     f_k_FEPF = np.cumsum(f_k_FEPF)
-    f_k_FEPR = np.cumsum(f_k_FEPR)
     f_k_BAR = np.cumsum(f_k_BAR)
     try:
-      f_k_MBAR = pymbar.MBAR(u_kln, N_k, \
+      if augmented:
+        f_k_BAR = np.append(f_k_BAR,[0])
+      f_k_pyMBAR = pymbar.MBAR(u_kln, N_k, \
         relative_tolerance=1.0E-5, \
         verbose = False, \
         initial_f_k = f_k_BAR, \
-        maximum_iterations = 20).f_k
+        maximum_iterations = 20)
+      f_k_MBAR = f_k_pyMBAR.f_k
+      W_nl = f_k_pyMBAR.getWeights()
     except:
+      print N_k, f_k_BAR
       f_k_MBAR = f_k_BAR
+      print 'Error with MBAR. Using BAR.'
     if np.isnan(f_k_MBAR).any():
       f_k_MBAR = f_k_BAR
-    return f_k_MBAR
+      print 'Error with MBAR. Using BAR.'
+    return (f_k_MBAR,W_nl)
 
   def _u_kln(self,eTs,lambdas,noBeta=False):
     """
@@ -4274,6 +4338,40 @@ END
     self.confs[p]['SmartDarting'] = []
     self.confs[p]['samples'] = None
     setattr(self,'%s_Es'%p,None)
+  
+  def _clear_f_RL(self):
+    # stats_RL will include internal energies, interaction energies,
+    # the cycle by which the bound state is equilibrated,
+    # the mean acceptance probability between replica exchange neighbors,
+    # and the rmsd, if applicable
+    phase_f_RL_keys = \
+      [phase+'_solv' for phase in self.params['dock']['phases']]
+
+    # Initialize variables as empty lists
+    stats_RL = [('u_K_'+FF,[]) \
+      for FF in ['ligand','sampled']+self.params['dock']['phases']]
+    stats_RL += [('Psi_'+FF,[]) \
+      for FF in ['grid']+self.params['dock']['phases']]
+    stats_RL += [(item,[]) \
+      for item in ['equilibrated_cycle','cum_Nclusters','mean_acc','rmsd']]
+    self.stats_RL = dict(stats_RL)
+    self.stats_RL['protocol'] = self.dock_protocol
+    # Free energy components
+    self.f_RL = dict([(key,[]) \
+      for key in ['grid_MBAR'] + phase_f_RL_keys])
+    # Binding PMF estimates
+    self.B = {'MBAR':[]}
+    for phase in self.params['dock']['phases']:
+      for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR']:
+        self.B[phase+'_'+method] = []
+
+    # Store empty list
+    if self.params['dock']['pose']==-1:
+      f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+    else:
+      f_RL_FN = join(self.dir['dock'], \
+        'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
+    self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
 
   def _save(self, p, keys=['progress','data']):
     """

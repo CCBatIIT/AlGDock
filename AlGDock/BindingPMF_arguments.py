@@ -98,6 +98,8 @@ arguments = {
     'help':'The default time step, in fs'},
   'T_HIGH':{'type':float, 'default':600.0,
     'help':'High temperature'},
+  'T_SIMMIN':{'type':float, 'default':325.0,
+    'help':'Minimum simulation temperature'},
   'T_TARGET':{'type':float, 'default':300.0,
     'help':'Target temperature'},
   'H_mass':{'type':float, 'default':4.0, \
