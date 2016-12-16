@@ -1545,92 +1545,6 @@ last modified {1}
     """
     return self._sim_process('dock')
 
-  def _insert_dock_state(self, a):
-    """
-    Inserts a new thermodynamic state into the docking protocol.
-    Samples for previous cycles are added by sampling importance resampling.
-    Recomputes grid_MBAR.
-    """
-    # Defines a new thermodynamic state based on the neighboring state
-    neighbor_ind = [a<p['a'] for p in self.dock_protocol].index(True) - 1
-    lambda_n = self._lambda(a, lambda_o=self.dock_protocol[neighbor_ind])
-
-    # For sampling importance resampling,
-    # prepare an augmented matrix for pymbar calculations
-    # with a new thermodynamic state
-    (u_kln_s,N_k) = self._u_kln(self.dock_Es,self.dock_protocol)
-    (K,L,N) = u_kln_s.shape
-
-    u_kln_n = self._u_kln(self.dock_Es,[lambda_n])[0]
-    L += 1
-    N_k = np.append(N_k,[0])
-
-    u_kln = np.zeros([K,L,N])
-    u_kln[:,:-1,:] = u_kln_s
-    for k in range(K):
-      u_kln[k,-1,:] = u_kln_n[k,0,:]
-
-    # Determine SIR weights
-    weights = self._run_MBAR(u_kln, N_k, augmented=True)[1][:,-1]
-    
-    # Resampling
-    # Convert linear indices to 3 indicies: state, cycle, and snapshot
-    cum_N_state = np.cumsum([0] + list(N_k))
-    cum_N_cycle = np.cumsum([0] + [self.dock_Es[0][c]['MM'].shape[0] \
-      for c in range(len(self.dock_Es[0]))])
-
-    def linear_index_to_snapshot_index(ind):
-      state_index = list(ind<cum_N_state).index(True)-1
-      nis_index = ind-cum_N_state[state_index]
-      cycle_index = list(nis_index<cum_N_cycle).index(True)-1
-      nic_index = nis_index-cum_N_cycle[cycle_index]
-      return (state_index,cycle_index,nic_index)
-
-    def snapshot_index_to_linear_index(state_index,cycle_index,nic_index):
-      return cum_N_state[state_index]+cum_N_cycle[cycle_index]+nic_index
-
-    # Terms to copy
-    if self.params['dock']['pose'] > -1:
-      # Pose BPMF
-      terms = ['MM','misc',\
-        'k_angular_ext','k_spatial_ext','k_angular_int'] + self._scalables
-    else:
-      # BPMF
-      terms = ['MM','site','misc'] + self._scalables
-
-    dock_Es_s = []
-    confs_s = []
-    for c in range(len(self.dock_Es[0])):
-      dock_Es_c = dict([(term,[]) for term in terms])
-      confs_c = []
-      for n_in_c in range(len(self.dock_Es[0][c]['MM'])):
-        if (cum_N_cycle[c]==0):
-          (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
-           np.random.choice(range(len(weights)), size = 1, p = weights)[0])
-        else:
-          snapshot_c = np.inf
-          while (snapshot_c>c):
-            (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
-             np.random.choice(range(len(weights)), size = 1, p = weights)[0])
-        for term in terms:
-          dock_Es_c[term].append(self.dock_Es[snapshot_s][snapshot_c][term][snapshot_n])
-        if self.params['dock']['keep_intermediate']:
-          # Has not been tested:
-          confs_c.append(self.confs['dock']['samples'][snapshot_s][snapshot_c])
-      for term in terms:
-        dock_Es_c[term] = np.array(dock_Es_c[term])
-      dock_Es_s.append(dock_Es_c)
-      confs_s.append(confs_c)
-      
-    # Insert resampled values
-    self.dock_protocol.insert(neighbor_ind+1, lambda_n)
-    self.dock_Es.insert(neighbor_ind+1, dock_Es_s)
-    self.confs['dock']['samples'].insert(neighbor_ind+1, confs_s)
-    self.confs['dock']['replicas'].insert(neighbor_ind+1, \
-    self.confs['dock']['replicas'][neighbor_ind])
-    
-    self._clear_f_RL()
-
   def calc_f_RL(self, readOnly=False, redo=False):
     """
     Calculates the binding potential of mean force
@@ -2829,6 +2743,8 @@ last modified {1}
         cycle_start_time = time.time()
         self._replica_exchange(process)
         cycle_times.append(time.time()-cycle_start_time)
+        if process=='dock':
+          self._insert_dock_state_between_low_acc()
         if self.run_type=='timed':
           remaining_time = self.timing['max']*60 - (time.time()-self.timing['start'])
           cycle_time = np.mean(cycle_times)
@@ -2885,6 +2801,122 @@ last modified {1}
     mixed_ntrials = mixed_ntrials0 + mixed_ntrials1
 
     return (mixed_confs, mixed_potEs, mixed_accs, mixed_ntrials, delta_t)
+
+  def _insert_dock_state(self, a, clear=True):
+    """
+    Inserts a new thermodynamic state into the docking protocol.
+    Samples for previous cycles are added by sampling importance resampling.
+    Clears grid_MBAR.
+    """
+    # Defines a new thermodynamic state based on the neighboring state
+    neighbor_ind = [a<p['a'] for p in self.dock_protocol].index(True) - 1
+    lambda_n = self._lambda(a, lambda_o=self.dock_protocol[neighbor_ind])
+
+    # For sampling importance resampling,
+    # prepare an augmented matrix for pymbar calculations
+    # with a new thermodynamic state
+    (u_kln_s,N_k) = self._u_kln(self.dock_Es,self.dock_protocol)
+    (K,L,N) = u_kln_s.shape
+
+    u_kln_n = self._u_kln(self.dock_Es,[lambda_n])[0]
+    L += 1
+    N_k = np.append(N_k,[0])
+
+    u_kln = np.zeros([K,L,N])
+    u_kln[:,:-1,:] = u_kln_s
+    for k in range(K):
+      u_kln[k,-1,:] = u_kln_n[k,0,:]
+
+    # Determine SIR weights
+    weights = self._run_MBAR(u_kln, N_k, augmented=True)[1][:,-1]
+    
+    # Resampling
+    # Convert linear indices to 3 indicies: state, cycle, and snapshot
+    cum_N_state = np.cumsum([0] + list(N_k))
+    cum_N_cycle = np.cumsum([0] + [self.dock_Es[0][c]['MM'].shape[0] \
+      for c in range(len(self.dock_Es[0]))])
+
+    def linear_index_to_snapshot_index(ind):
+      state_index = list(ind<cum_N_state).index(True)-1
+      nis_index = ind-cum_N_state[state_index]
+      cycle_index = list(nis_index<cum_N_cycle).index(True)-1
+      nic_index = nis_index-cum_N_cycle[cycle_index]
+      return (state_index,cycle_index,nic_index)
+
+    def snapshot_index_to_linear_index(state_index,cycle_index,nic_index):
+      return cum_N_state[state_index]+cum_N_cycle[cycle_index]+nic_index
+
+    # Terms to copy
+    if self.params['dock']['pose'] > -1:
+      # Pose BPMF
+      terms = ['MM','misc',\
+        'k_angular_ext','k_spatial_ext','k_angular_int'] + self._scalables
+    else:
+      # BPMF
+      terms = ['MM','site','misc'] + self._scalables
+
+    dock_Es_s = []
+    confs_s = []
+    for c in range(len(self.dock_Es[0])):
+      dock_Es_c = dict([(term,[]) for term in terms])
+      confs_c = []
+      for n_in_c in range(len(self.dock_Es[0][c]['MM'])):
+        if (cum_N_cycle[c]==0):
+          (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
+           np.random.choice(range(len(weights)), size = 1, p = weights)[0])
+        else:
+          snapshot_c = np.inf
+          while (snapshot_c>c):
+            (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
+             np.random.choice(range(len(weights)), size = 1, p = weights)[0])
+        for term in terms:
+          dock_Es_c[term].append(self.dock_Es[snapshot_s][snapshot_c][term][snapshot_n])
+        if self.params['dock']['keep_intermediate']:
+          # Has not been tested:
+          confs_c.append(self.confs['dock']['samples'][snapshot_s][snapshot_c])
+      for term in terms:
+        dock_Es_c[term] = np.array(dock_Es_c[term])
+      dock_Es_s.append(dock_Es_c)
+      confs_s.append(confs_c)
+      
+    # Insert resampled values
+    self.dock_protocol.insert(neighbor_ind+1, lambda_n)
+    self.dock_Es.insert(neighbor_ind+1, dock_Es_s)
+    self.confs['dock']['samples'].insert(neighbor_ind+1, confs_s)
+    self.confs['dock']['replicas'].insert(neighbor_ind+1, \
+    self.confs['dock']['replicas'][neighbor_ind])
+    
+    if clear:
+      self._clear_f_RL()
+
+  def _insert_dock_state_between_low_acc(self):
+    # Insert thermodynamic states between those with low acceptance probabilities
+    def calc_mean_acc(k):
+      (u_kln,N_k) = self._u_kln(self.dock_Es[k:k+2][-3:],\
+                                self.dock_protocol[k:k+2])
+      N = min(N_k)
+      acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
+      return np.mean(np.minimum(acc,np.ones(acc.shape)))
+
+    updated = False
+    for k in range(0,len(self.dock_protocol)-1):
+      mean_acc = calc_mean_acc(k)
+      while mean_acc<0.4:
+        updated = True
+        a_k = self.dock_protocol[k]['a']
+        a_kp = self.dock_protocol[k+1]['a']
+        a_n = (a_k+a_kp)/2.
+        report =  '  inserting state'
+        report += ' between %.3g and %.3g at %.3g'%(a_k,a_kp,a_n)
+        report += ' to improve acceptance rate from %.3g '%mean_acc
+        self._insert_dock_state(a_n, clear=False)
+        mean_acc = calc_mean_acc(k)
+        report += 'to %.3g'%mean_acc
+        self.tee(report)
+
+    if updated:
+      self._clear_f_RL()
+      self.tee("")
 
   def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True, sort=True):
     """
