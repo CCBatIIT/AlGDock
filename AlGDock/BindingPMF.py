@@ -78,11 +78,11 @@ def HMStime(s):
   Given the time in seconds, an appropriately formatted string.
   """
   if s<60.:
-    return '%.3f s'%s
+    return '%.2f s'%s
   elif s<3600.:
-    return '%d:%.3f'%(int(s/60%60),s%60)
+    return '%d:%.2f'%(int(s/60%60),s%60)
   else:
-    return '%d:%d:%.3f'%(int(s/3600),int(s/60%60),s%60)
+    return '%d:%d:%.2f'%(int(s/3600),int(s/60%60),s%60)
 
 class NullDevice():
   """
@@ -811,7 +811,7 @@ last modified {1}
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + HMStime(time.time()-state_start_time))
       self.tee(sampler_metrics)
-      self.tee("  dt=%.3f fs; tL_tensor=%.3e"%(\
+      self.tee("  dt=%.2f fs; tL_tensor=%.3e"%(\
         self.cool_protocol[-1]['delta_t']*1000., tL_tensor))
     else:
       self.tee("\n>>> Initial %s of the ligand "%direction_name + \
@@ -895,7 +895,7 @@ last modified {1}
                "at %d K "%self.cool_protocol[-1]['T'] + \
                "in " + (HMStime(time.time()-state_start_time)))
       self.tee(sampler_metrics)
-      self.tee("  dt=%.3f fs; tL_tensor=%.3e; estimated repX acceptance=%0.3f"%(\
+      self.tee("  dt=%.2f fs; tL_tensor=%.3e; estimated repX acceptance=%0.3f"%(\
         self.cool_protocol[-1]['delta_t']*1000., tL_tensor, mean_acc))
 
       if (mean_acc<self.params['cool']['min_repX_acc']) \
@@ -1052,7 +1052,7 @@ last modified {1}
         cool_mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
       self.stats_L['mean_acc'].append(cool_mean_acc)
 
-      self.tee("  calculated cooling free energy of %.3f RT "%(\
+      self.tee("  calculated cooling free energy of %.2f RT "%(\
                   self.f_L['cool_MBAR'][-1][-1])+\
                "using cycles %d to %d"%(fromCycle, c))
 
@@ -1301,7 +1301,7 @@ last modified {1}
                    "with progress %e "%lambda_o['a'] + \
                    "in " + HMStime(time.time()-sim_start_time))
           self.tee(sampler_metrics)
-          self.tee("  dt=%.3f fs, tL_tensor=%.3e"%(\
+          self.tee("  dt=%.2f fs, tL_tensor=%.3e"%(\
             lambda_o['delta_t']*1000., \
             self._tL_tensor(E,lambda_o)))
     
@@ -1436,7 +1436,7 @@ last modified {1}
                "with progress %e "%lambda_n['a'] + \
                "in " + HMStime(time.time()-sim_start_time))
       self.tee(sampler_metrics)
-      self.tee("  dt=%.3f fs, tL_tensor=%.3e"%(\
+      self.tee("  dt=%.2f fs, tL_tensor=%.3e"%(\
         lambda_n['delta_t']*1000.,
         self._tL_tensor(E,lambda_n)))
 
@@ -1458,7 +1458,7 @@ last modified {1}
           E = E_o
           rejectStage += 1
           self.tee("  rejected new state with low estimated acceptance" + \
-            " rate of %.3f"%mean_acc)
+            " rate of %.2e"%mean_acc)
         elif (mean_acc>0.99) and (not lambda_n['crossed']) and \
             (self.params['dock']['protocol']=='Adaptive'):
           # If the acceptance probability is too high,
@@ -1469,7 +1469,7 @@ last modified {1}
           rejectStage -= 1
           lambda_o = lambda_n
           self.tee("  rejected previous state with high estimated acceptance" + \
-            " rate of %.3f"%mean_acc)
+            " rate of %.2f"%mean_acc)
         else:
           # Store data and continue with initialization
           self.confs['dock']['replicas'].append(confs[np.random.randint(len(confs))])
@@ -1478,7 +1478,7 @@ last modified {1}
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
           lambda_o = lambda_n
-          self.tee("  the estimated repX acceptance rate is %.3f\n"%mean_acc)
+          self.tee("  the estimated repX acceptance rate is %.2f\n"%mean_acc)
 
           if (not self.params['dock']['keep_intermediate']):
             if len(self.dock_protocol)>(2+(not undock)):
@@ -1641,7 +1641,19 @@ last modified {1}
           for k in range(len(self.dock_protocol))]
 
     # Calculate docking free energies that have not already been calculated
-    for c in range(len(self.f_RL['grid_MBAR']), self._dock_cycle):
+    while len(self.f_RL['grid_MBAR'])<self._dock_cycle:
+      self.f_RL['grid_MBAR'].append([])
+    while len(self.stats_RL['mean_acc'])<self._dock_cycle:
+      self.stats_RL['mean_acc'].append([])
+    
+    for c in range(self._dock_cycle):
+      # If solvation free energies are not being calculated,
+      # only calculate the grid free energy for the current cycle
+      if (not do_solvation) and c<(self._dock_cycle-1):
+        continue
+      if self.f_RL['grid_MBAR'][c]!=[]:
+        continue
+
       fromCycle = self.stats_RL['equilibrated_cycle'][c]
       extractCycles = range(fromCycle, c+1)
       
@@ -1652,11 +1664,11 @@ last modified {1}
       # Use MBAR for the grid scaling free energy estimate
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
       MBAR = self._run_MBAR(u_kln,N_k)[0]
-      self.f_RL['grid_MBAR'].append(MBAR)
+      self.f_RL['grid_MBAR'][c] = MBAR
       updated = set_updated_to_True(updated, quiet=~do_solvation)
       
-      self.tee("  calculated grid scaling free energy of %.3f RT "%(\
-                  self.f_RL['grid_MBAR'][-1][-1])+\
+      self.tee("  calculated grid scaling free energy of %.2f RT "%(\
+                  self.f_RL['grid_MBAR'][c][-1])+\
                "using cycles %d to %d"%(fromCycle, c))
 
       # Average acceptance probabilities
@@ -1666,7 +1678,7 @@ last modified {1}
         N = min(N_k)
         acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
         mean_acc[k] = np.mean(np.minimum(acc,np.ones(acc.shape)))
-      self.stats_RL['mean_acc'].append(mean_acc)
+      self.stats_RL['mean_acc'][c] = mean_acc
 
     if not do_solvation:
       if updated:
@@ -1719,7 +1731,7 @@ last modified {1}
       for key in [phase+'_solv']:
         if not key in self.f_RL:
           self.f_RL[key] = []
-      for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR']:
+      for method in ['min_Psi','mean_Psi','EXP','MBAR']:
         if not phase+'_'+method in self.B:
           self.B[phase+'_'+method] = []
       
@@ -1759,7 +1771,7 @@ last modified {1}
         # Various BPMF estimates
         self.B[phase+'_min_Psi'].append(min_Psi)
         self.B[phase+'_mean_Psi'].append(np.sum(weights*Psi))
-        self.B[phase+'_inverse_FEP'].append(\
+        self.B[phase+'_EXP'].append(\
           np.log(sum(weights*np.exp(Psi-max_Psi))) + max_Psi)
         
         self.B[phase+'_MBAR'].append(-f_R_solv \
@@ -2296,7 +2308,7 @@ last modified {1}
         att = np.sum([r['att_'+s] for r in results])
         time = np.sum([r['time_'+s] for r in results])
         if att>0:
-          sampler_metrics += '%s %d/%d=%.2f (%.2f s); '%(\
+          sampler_metrics += '%s %d/%d=%.2f (%.1f s); '%(\
             s,acc,att,float(acc)/att,time)
     return (seeds, potEs, delta_t, sampler_metrics)
   
@@ -2602,10 +2614,10 @@ last modified {1}
       total_acc = np.sum(acc[move_type])
       total_att = np.sum(att[move_type])
       if total_att>0:
-        MC_report += " %s %d/%d=%.2f (%.2f s);"%(move_type, \
+        MC_report += " %s %d/%d=%.2f (%.1f s);"%(move_type, \
           total_acc, total_att, float(total_acc)/total_att, \
           self.timing[move_type])
-    MC_report += " repX t %.2f s"%self.timing['repX']
+    MC_report += " repX t %.1f s"%self.timing['repX']
     self.tee(MC_report)
 
     # Get indicies for sorting by state, not replica
@@ -2789,7 +2801,7 @@ last modified {1}
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
           if cycle_time>remaining_time:
             return False
-      self.tee("Elapsed time for %d cycles of replica exchange was %s"%(\
+      self.tee("\nElapsed time for %d cycles of replica exchange was %s"%(\
          (getattr(self,'_%s_cycle'%process) - start_cycle), \
           HMStime(time.time() - self.timing[process+'_repX_start'])), \
           process=process)
@@ -2940,7 +2952,6 @@ last modified {1}
       mean_acc = calc_mean_acc(k)
       while mean_acc<0.4:
         if not updated:
-          self.tee('\n')
           updated = True
         a_k = self.dock_protocol[k]['a']
         a_kp = self.dock_protocol[k+1]['a']
@@ -4434,7 +4445,7 @@ END
     # Binding PMF estimates
     self.B = {'MMTK_MBAR':[]}
     for phase in self.params['dock']['phases']:
-      for method in ['min_Psi','mean_Psi','inverse_FEP','MBAR']:
+      for method in ['min_Psi','mean_Psi','EXP','MBAR']:
         self.B[phase+'_'+method] = []
 
     # Store empty list
