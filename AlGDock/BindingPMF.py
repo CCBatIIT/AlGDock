@@ -392,6 +392,7 @@ last modified {1}
         ('darts_per_sweep',0),
         ('snaps_per_independent',3.0),
         ('phases',['NAMD_Gas','NAMD_OBC']),
+        ('sampling_importance_resampling',False), # TODO: Set default after testing
         ('keep_intermediate',False),
         ('GMC_attempts', 0),
         ('GMC_tors_threshold', 0.0)])
@@ -2679,6 +2680,9 @@ last modified {1}
     self._save(process)
     self.tee("")
     self._clear_lock(process)
+
+    if not self.params[process]['sampling_importance_resampling']:
+      return
 
     # Calculate appropriate free energy
     if process=='cool':

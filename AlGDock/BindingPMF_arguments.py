@@ -124,8 +124,10 @@ arguments = {
     'help':'Number of smart darting attempts per replica exchange sweep'},
   'snaps_per_independent':{'type':int,
     'help':'Number of snapshots per independent sample'},
+  'sampling_importance_resampling':{'action':'store_true',
+    'help':'perfom sampling importance resampling'}, # TODO: Set new default after testing
   'keep_intermediate':{'action':'store_true',
-    'help':'Keep configurations for intermediate states?'},
+    'help':'Keep configurations for intermediate states'},
   'min_repX_acc':{'type':float,
     'help':'Minimum value for replica exchange acceptance rate'},
   # for GMC
