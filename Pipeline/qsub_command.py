@@ -183,7 +183,8 @@ Queue 1
 module load libgfortran
 
 # Download data
-wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
+# wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
+wget --no-verbose --no-check-certificate http://mypages.iit.edu/~dminh/software/algdock.tar.gz
 tar xzf algdock.tar.gz
 
 # Modify paths

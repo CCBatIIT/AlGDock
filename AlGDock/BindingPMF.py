@@ -2593,7 +2593,9 @@ last modified {1}
     # Estimate relaxation time from autocorrelation
     state_inds = np.array(storage['state_inds'])
     tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-    # There will be at least per_independent and up to sweeps_per_cycle saved samples
+
+    # There will be at least per_independent
+    # and up to sweeps_per_cycle saved samples
     # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
     # which is based on per_independent samples per autocorrelation time.
     # max(self.params['dock']['sweeps_per_cycle']/per_independent)
@@ -2602,11 +2604,9 @@ last modified {1}
     stride = min(max(int(np.ceil((1+2*tau_ac)/per_independent)),1), \
                  max(int(np.ceil(nsweeps/per_independent)),1))
 
-    store_indicies = np.array(range(min(stride-1,nsweeps-1), nsweeps, stride), \
-      dtype=int)
-    nsaved = len(store_indicies)
+    store_indicies = np.array(range(min(stride-1,nsweeps-1), nsweeps, stride), dtype=int)
 
-    self.tee("  drew %d configurations"%(nsaved) + \
+    self.tee("  saving %d configurations"%(len(store_indicies)) + \
       " in cycle %d in %s"%(cycle, HMStime(time.time()-cycle_start_time)) + \
       " (tau_ac=%.5g)"%(tau_ac))
     MC_report = " "
@@ -2620,44 +2620,52 @@ last modified {1}
     MC_report += " repX t %.1f s"%self.timing['repX']
     self.tee(MC_report)
 
-    # Get indicies for sorting by state, not replica
-    inv_state_inds = np.zeros((nsaved,K),dtype=int)
-    for snap in range(nsaved):
-      state_inds = storage['state_inds'][store_indicies[snap]]
+    # Get indicies for sorting by thermodynamic state, not replica
+    inv_state_inds = np.zeros((nsweeps,K),dtype=int)
+    for snap in range(nsweeps):
+      state_inds = storage['state_inds'][snap]
       for k in range(K):
         inv_state_inds[snap][state_inds[k]] = k
 
-    # Reorder energies and replicas for storage
+    # Sort energies and conformations by thermodynamic state 
+    # and store in global variables 
+    #   self.process_Es and self.confs[process]['samples']
+    # and also local variables 
+    #   Es_repX and confs_repX
     if process=='dock':
       if self.params['dock']['rmsd'] is not False:
         terms.append('rmsd') # Make sure to save the rmsd
-    Es = []
+    Es_repX = []
     for k in range(K):
-      E_state = {}
+      E_k = {}
+      E_k_repX = {}
       if k==0:
-        E_state['repXpath'] = storage['state_inds']
-        E_state['acc'] = acc
-        E_state['att'] = att
+        E_k['repXpath'] = storage['state_inds']
+        E_k['acc'] = acc
+        E_k['att'] = att
       for term in terms:
-        E_state[term] = np.array([storage['energies'][store_indicies[snap]][term][inv_state_inds[snap][k]] for snap in range(nsaved)])
-      Es.append([E_state])
+        E_term = np.array([storage['energies'][snap][term][\
+          inv_state_inds[snap][k]] for snap in range(nsweeps)])
+        E_k[term] = E_term[store_indicies]
+        E_k_repX[term] = E_term
+      getattr(self,process+'_Es')[k].append(E_k)
+      Es_repX.append([E_k_repX])
 
+    confs_repX = []
+    for k in range(K):
+      confs_k = [storage['confs'][snap][inv_state_inds[snap][k]] \
+        for snap in range(nsweeps)]
+      if self.params[process]['keep_intermediate'] or \
+          ((process=='cool') and (k==0)) or (k==(K-1)):
+        self.confs[process]['samples'][k].append([confs_k[n] \
+          for n in store_indicies])
+      confs_repX.append(confs_k)
+
+    # Store final conformation of each replica
     self.confs[process]['replicas'] = \
       [storage['confs'][store_indicies[-1]][inv_state_inds[-1][k]] \
        for k in range(K)]
-
-    for k in range(K):
-      getattr(self,process+'_Es')[k].append(Es[k][0])
-
-    for k in range(K):
-      if self.params[process]['keep_intermediate'] or \
-          ((process=='cool') and (k==0)) or \
-          (k==(K-1)):
-        confs = [storage['confs'][store_indicies[snap]][inv_state_inds[snap][k]] for snap in range(nsaved)]
-        self.confs[process]['samples'][k].append(confs)
-      else:
-        self.confs[process]['samples'][k].append([])
-
+        
     if self.params[process]['darts_per_sweep']>0:
       self._set_universe_evaluator(getattr(self,process+'_protocol')[-1])
       confs_SmartDarting = [np.copy(conf) \
@@ -2675,8 +2683,40 @@ last modified {1}
     # Calculate appropriate free energy
     if process=='cool':
       self.calc_f_L(do_solvation=False)
+      f_k = self.f_L['cool_MBAR'][-1]
     elif process=='dock':
       self.calc_f_RL(do_solvation=False)
+      f_k = self.f_RL['grid_MBAR'][-1]
+
+    # Get weights for sampling importance resampling
+    # MBAR weights for replica exchange configurations
+    (u_kln,N_k) = self._u_kln(Es_repX,lambdas)
+
+    # This is a more direct way to get the weights
+    from pymbar.utils import kln_to_kn
+    u_kn = kln_to_kn(u_kln, N_k=N_k)
+
+    from pymbar.utils import logsumexp
+    log_denominator_n = logsumexp(f_k - u_kn.T, b=N_k, axis=1)
+    logW = f_k - u_kn.T - log_denominator_n[:, np.newaxis]
+    W_nl = np.exp(logW)
+    for k in range(K):
+      W_nl[:,k] = W_nl[:,k]/np.sum(W_nl[:,k])
+
+    # This is for conversion to 2 indicies: state and snapshot
+    cum_N_state = np.cumsum([0] + list(N_k))
+
+    def linear_index_to_snapshot_index(ind):
+      state_index = list(ind<cum_N_state).index(True)-1
+      nis_index = ind-cum_N_state[state_index]
+      return (state_index,nis_index)
+
+    # Selects new replica exchange snapshots
+    self.confs[process]['replicas'] = []
+    for k in range(K):
+      (s,n) = linear_index_to_snapshot_index(\
+        np.random.choice(range(W_nl.shape[0]), size = 1, p = W_nl[:,k])[0])
+      self.confs[process]['replicas'].append(confs_repX[s][n])
 
   def _sim_one_state_worker(self, input, output):
     """

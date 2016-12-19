@@ -33,7 +33,8 @@ def findPaths(keys):
           import time
           download_start_time = time.time()
           print 'Downloading and installing '+key
-          os.system('wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
+          # os.system('wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
+          os.system('wget --no-verbose --no-check-certificate http://mypages.iit.edu/~dminh/software/%s'%(FN))
           os.system('tar xzf %s'%FN)
           if command != '':
             os.system(command)
