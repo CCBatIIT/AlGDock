@@ -43,7 +43,10 @@ using namespace std;
     
     --------------------------------------------------------------------------------------- */
 
-ReferenceObc::ReferenceObc(ObcParameters* obcParameters) : _obcParameters(obcParameters), _includeAceApproximation(1) {
+ReferenceObc::ReferenceObc(ObcParameters* obcParameters) :
+  _obcParameters(obcParameters),
+  _includeAceApproximation(1)
+{
     _obcChain.resize(_obcParameters->getNumberOfAtoms());
 }
 
@@ -129,7 +132,7 @@ vector<double>& ReferenceObc::getObcChain() {
     --------------------------------------------------------------------------------------- */
 
 //void ReferenceObc::computeBornRadii(const vector<RealVec>& atomCoordinates, vector<double>& bornRadii) {
-void ReferenceObc::computeBornRadii(const vector3* atomCoordinates, vector<double>& bornRadii) {
+void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters, const vector3* atomCoordinates, vector<double>& bornRadii) {
 
     // ---------------------------------------------------------------------------------------
 
@@ -141,8 +144,6 @@ void ReferenceObc::computeBornRadii(const vector3* atomCoordinates, vector<doubl
     static const double fourth  = static_cast<double>(0.25);
 
     // ---------------------------------------------------------------------------------------
-
-    ObcParameters* obcParameters                = getObcParameters();
 
     int numberOfAtoms                           = obcParameters->getNumberOfAtoms();
     const vector<double>& atomicRadii         = obcParameters->getAtomicRadii();
@@ -286,11 +287,10 @@ void ReferenceObc::computeAceNonPolarForce(const ObcParameters* obcParameters,
 
 /**---------------------------------------------------------------------------------------
 
-    Get Obc Born energy and forces
+    Get Obc Born energy (no forces)
 
     @param atomCoordinates     atomic coordinates
     @param partialCharges      partial charges
-    @param forces              forces
 
     The array bornRadii is also updated and the obcEnergy
 
@@ -298,9 +298,9 @@ void ReferenceObc::computeAceNonPolarForce(const ObcParameters* obcParameters,
 
 //double ReferenceObc::computeBornEnergyForces(const vector<RealVec>& atomCoordinates,
 //                                           const vector<double>& partialCharges, vector<RealVec>& inputForces) {
-double ReferenceObc::computeBornEnergyForces(const vector3* atomCoordinates,
-                                                 const vector<double>& partialCharges,
-                                                 vector3* inputForces) {
+double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
+                                       const vector3* atomCoordinates,
+                                       const vector<double>& partialCharges) {
 
     // ---------------------------------------------------------------------------------------
 
@@ -314,29 +314,23 @@ double ReferenceObc::computeBornEnergyForces(const vector3* atomCoordinates,
     static const double eighth  = static_cast<double>(0.125);
 
     // constants
-
-    const int numberOfAtoms = _obcParameters->getNumberOfAtoms();
-    const double dielectricOffset = _obcParameters->getDielectricOffset();
-    const double cutoffDistance = _obcParameters->getCutoffDistance();
-    const double soluteDielectric = _obcParameters->getSoluteDielectric();
-    const double solventDielectric = _obcParameters->getSolventDielectric();
+    const int numberOfAtoms = obcParameters->getNumberOfAtoms();
+    const double dielectricOffset = obcParameters->getDielectricOffset();
+    const double cutoffDistance = obcParameters->getCutoffDistance();
+    const double soluteDielectric = obcParameters->getSoluteDielectric();
+    const double solventDielectric = obcParameters->getSolventDielectric();
     double preFactor;
     if (soluteDielectric != zero && solventDielectric != zero)
-        preFactor = two*_obcParameters->getElectricConstant()*((one/soluteDielectric) - (one/solventDielectric));
+        preFactor = two*obcParameters->getElectricConstant()*((one/soluteDielectric) - (one/solventDielectric));
     else
         preFactor = zero;
 
     // ---------------------------------------------------------------------------------------
 
-//    cout << "Number of atoms: " << numberOfAtoms << endl;
-//    cout << "Atomic coordinates: " << endl;
-//    for (int i = 0; i < numberOfAtoms; ++i)
-//      cout << atomCoordinates[i][0] << ' ' << atomCoordinates[i][1] << ' ' << atomCoordinates[i][2] << endl;
-
     // compute Born radii
 
     vector<double> bornRadii(numberOfAtoms);
-    computeBornRadii(atomCoordinates, bornRadii);
+    computeBornRadii(obcParameters, atomCoordinates, bornRadii);
 
     // set energy/forces to zero
 
@@ -348,7 +342,148 @@ double ReferenceObc::computeBornEnergyForces(const vector3* atomCoordinates,
     // compute the nonpolar solvation via ACE approximation
      
     if (includeAceApproximation()) {
-       computeAceNonPolarForce(_obcParameters, bornRadii, &obcEnergy, bornForces);
+       computeAceNonPolarForce(obcParameters, bornRadii, &obcEnergy, bornForces);
+    }
+ 
+//    cout << "ObcEnergy, after Ace:" << obcEnergy << std::endl;
+ 
+    // ---------------------------------------------------------------------------------------
+
+    // first main loop
+
+    for (int atomI = 0; atomI < numberOfAtoms; atomI++) {
+ 
+       double partialChargeI = preFactor*partialCharges[atomI];
+       for (int atomJ = atomI; atomJ < numberOfAtoms; atomJ++) {
+
+          double deltaR[OpenMM::ReferenceForce::LastDeltaRIndex];
+          OpenMM::ReferenceForce::getDeltaR(atomCoordinates[atomI], atomCoordinates[atomJ], deltaR);
+          if (obcParameters->getUseCutoff() && deltaR[OpenMM::ReferenceForce::RIndex] > cutoffDistance)
+              continue;
+
+          double r2                 = deltaR[OpenMM::ReferenceForce::R2Index];
+//          double deltaX             = deltaR[OpenMM::ReferenceForce::XIndex];
+//          double deltaY             = deltaR[OpenMM::ReferenceForce::YIndex];
+//          double deltaZ             = deltaR[OpenMM::ReferenceForce::ZIndex];
+
+          double alpha2_ij          = bornRadii[atomI]*bornRadii[atomJ];
+          double D_ij               = r2/(four*alpha2_ij);
+
+          double expTerm            = EXP(-D_ij);
+          double denominator2       = r2 + alpha2_ij*expTerm; 
+          double denominator        = SQRT(denominator2); 
+          
+          double Gpol               = (partialChargeI*partialCharges[atomJ])/denominator; 
+//          double dGpol_dr           = -Gpol*(one - fourth*expTerm)/denominator2;  
+//
+//          double dGpol_dalpha2_ij   = -half*Gpol*expTerm*(one + D_ij)/denominator2;
+         
+          double energy = Gpol;
+
+          if (atomI != atomJ) {
+
+              if (obcParameters->getUseCutoff())
+                  energy -= partialChargeI*partialCharges[atomJ]/cutoffDistance;
+              
+//              bornForces[atomJ]        += dGpol_dalpha2_ij*bornRadii[atomI];
+
+//              deltaX                   *= dGpol_dr;
+//              deltaY                   *= dGpol_dr;
+//              deltaZ                   *= dGpol_dr;
+
+//              inputForces[atomI][0]    -= deltaX;
+//              inputForces[atomI][1]    -= deltaY;
+//              inputForces[atomI][2]    -= deltaZ;
+//
+//              inputForces[atomJ][0]    += deltaX;
+//              inputForces[atomJ][1]    += deltaY;
+//              inputForces[atomJ][2]    += deltaZ;
+
+          } else {
+             energy *= half;
+          }
+
+          obcEnergy         += energy;
+//          bornForces[atomI] += dGpol_dalpha2_ij*bornRadii[atomJ];
+
+       }
+    }
+  
+    return obcEnergy;
+}
+
+
+/**---------------------------------------------------------------------------------------
+
+    Get Obc Born energy and forces
+
+    @param atomCoordinates     atomic coordinates
+    @param partialCharges      partial charges
+    @param forces              forces
+
+    The array bornRadii is also updated and the obcEnergy
+
+    --------------------------------------------------------------------------------------- */
+
+//double ReferenceObc::computeBornEnergyForces(const vector<RealVec>& atomCoordinates,
+//                                           const vector<double>& partialCharges, vector<RealVec>& inputForces) {
+double ReferenceObc::computeBornEnergyForces(const ObcParameters* obcParameters,
+                                             const vector3* atomCoordinates,
+                                             const vector<double>& partialCharges,
+                                             vector3* inputForces) {
+
+    // ---------------------------------------------------------------------------------------
+
+    static const double zero    = static_cast<double>(0.0);
+    static const double one     = static_cast<double>(1.0);
+    static const double two     = static_cast<double>(2.0);
+//    static const double three   = static_cast<double>(3.0);
+    static const double four    = static_cast<double>(4.0);
+    static const double half    = static_cast<double>(0.5);
+    static const double fourth  = static_cast<double>(0.25);
+    static const double eighth  = static_cast<double>(0.125);
+
+    // constants
+    const int numberOfAtoms = obcParameters->getNumberOfAtoms();
+    const double dielectricOffset = obcParameters->getDielectricOffset();
+    const double cutoffDistance = obcParameters->getCutoffDistance();
+    const double soluteDielectric = obcParameters->getSoluteDielectric();
+    const double solventDielectric = obcParameters->getSolventDielectric();
+    double preFactor;
+    if (soluteDielectric != zero && solventDielectric != zero)
+        preFactor = two*obcParameters->getElectricConstant()*((one/soluteDielectric) - (one/solventDielectric));
+    else
+        preFactor = zero;
+
+    // ---------------------------------------------------------------------------------------
+
+//    cout << "Number of atoms: " << numberOfAtoms << endl;
+//    cout << "Atomic coordinates: " << endl;
+//    for (int i = 0; i < numberOfAtoms; ++i)
+//      cout << atomCoordinates[i][0] << ' ' << atomCoordinates[i][1] << ' ' << atomCoordinates[i][2] << endl;
+//    cout << "Partial charges: " << endl;
+//    for (int i = 0; i < numberOfAtoms; ++i)
+//      cout << partialCharges[i] << endl;
+//    cout << "Input forces: " << endl;
+//    for (int i = 0; i < numberOfAtoms; ++i)
+//      cout << inputForces[i][0] << ' ' << inputForces[i][1] << ' ' << inputForces[i][2] << endl;
+
+    // compute Born radii
+
+    vector<double> bornRadii(numberOfAtoms);
+    computeBornRadii(obcParameters, atomCoordinates, bornRadii);
+
+    // set energy/forces to zero
+
+    double obcEnergy                 = zero;
+    vector<double> bornForces(numberOfAtoms, 0.0);
+
+    // ---------------------------------------------------------------------------------------
+
+    // compute the nonpolar solvation via ACE approximation
+     
+    if (includeAceApproximation()) {
+       computeAceNonPolarForce(obcParameters, bornRadii, &obcEnergy, bornForces);
     }
  
     // ---------------------------------------------------------------------------------------
@@ -362,7 +497,7 @@ double ReferenceObc::computeBornEnergyForces(const vector3* atomCoordinates,
 
           double deltaR[OpenMM::ReferenceForce::LastDeltaRIndex];
           OpenMM::ReferenceForce::getDeltaR(atomCoordinates[atomI], atomCoordinates[atomJ], deltaR);
-          if (_obcParameters->getUseCutoff() && deltaR[OpenMM::ReferenceForce::RIndex] > cutoffDistance)
+          if (obcParameters->getUseCutoff() && deltaR[OpenMM::ReferenceForce::RIndex] > cutoffDistance)
               continue;
 
           double r2                 = deltaR[OpenMM::ReferenceForce::R2Index];
@@ -386,7 +521,7 @@ double ReferenceObc::computeBornEnergyForces(const vector3* atomCoordinates,
 
           if (atomI != atomJ) {
 
-              if (_obcParameters->getUseCutoff())
+              if (obcParameters->getUseCutoff())
                   energy -= partialChargeI*partialCharges[atomJ]/cutoffDistance;
               
               bornForces[atomJ]        += dGpol_dalpha2_ij*bornRadii[atomI];
@@ -412,18 +547,18 @@ double ReferenceObc::computeBornEnergyForces(const vector3* atomCoordinates,
 
        }
     }
-
+  
     // ---------------------------------------------------------------------------------------
 
     // second main loop
 
     const vector<double>& obcChain            = getObcChain();
-    const vector<double>& atomicRadii         = _obcParameters->getAtomicRadii();
+    const vector<double>& atomicRadii         = obcParameters->getAtomicRadii();
 
-//    const double alphaObc                   = _obcParameters->getAlphaObc();
-//    const double betaObc                    = _obcParameters->getBetaObc();
-//    const double gammaObc                   = _obcParameters->getGammaObc();
-    const vector<double>& scaledRadiusFactor  = _obcParameters->getScaledRadiusFactors();
+//    const double alphaObc                   = obcParameters->getAlphaObc();
+//    const double betaObc                    = obcParameters->getBetaObc();
+//    const double gammaObc                   = obcParameters->getGammaObc();
+    const vector<double>& scaledRadiusFactor  = obcParameters->getScaledRadiusFactors();
 
     // compute factor that depends only on the outer loop index
 
@@ -444,7 +579,7 @@ double ReferenceObc::computeBornEnergyForces(const vector3* atomCoordinates,
 
              double deltaR[OpenMM::ReferenceForce::LastDeltaRIndex];
              OpenMM::ReferenceForce::getDeltaR(atomCoordinates[atomI], atomCoordinates[atomJ], deltaR);
-             if (_obcParameters->getUseCutoff() && deltaR[OpenMM::ReferenceForce::RIndex] > cutoffDistance)
+             if (obcParameters->getUseCutoff() && deltaR[OpenMM::ReferenceForce::RIndex] > cutoffDistance)
                     continue;
     
              double deltaX             = deltaR[OpenMM::ReferenceForce::XIndex];

@@ -50,6 +50,7 @@ term_map = {
   'harmonic bond angle':'MM',
   'Lennard-Jones':'MM',
   'OpenMM':'MM',
+  'OBC':'MM',
   'site':'site',
   'sLJr':'sLJr',
   'sELE':'sELE',
@@ -393,6 +394,7 @@ last modified {1}
         ('snaps_per_independent',3.0),
         ('phases',['NAMD_Gas','NAMD_OBC']),
         ('sampling_importance_resampling',False), # TODO: Set default after testing
+        ('OBC_ligand',False), # TODO: Set default after testing
         ('keep_intermediate',False),
         ('GMC_attempts', 0),
         ('GMC_tors_threshold', 0.0)])
@@ -524,11 +526,9 @@ last modified {1}
     self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self._FNs['forcefield'],mod_files=self._FNs['frcmodList'])
 
-    # This works but is very slow
-#      from AlGDock.ForceFields.OpenMM.OpenMM import OpenMMForceField
-#      self._forceFields['OpenMM'] = OpenMMForceField(self._FNs['prmtop']['L'], \
-#        self.molecule.prmtop_atom_order, self.molecule.inv_prmtop_atom_order, \
-#        implicitSolvent='OpenMM_OBC2')
+    from AlGDock.ForceFields.OBC.OBC import OBCForceField
+    self._forceFields['OBC'] = OBCForceField(self._FNs['prmtop']['L'],
+      self.molecule.prmtop_atom_order,self.molecule.inv_prmtop_atom_order)
 
     # Determine ligand atomic index
     if (self._FNs['prmtop']['R'] is not None) and \
@@ -2029,7 +2029,8 @@ last modified {1}
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
       fflist.append(self._forceFields['gaff'])
-      # fflist.append(self._forceFields['OpenMM']) # This works but is very slow!
+      if self.params[process]['OBC_ligand']:
+        fflist.append(self._forceFields['OBC'])
     if ('site' in lambda_n.keys()) and lambda_n['site']:
       if not 'site' in self._forceFields.keys():
         # Set up the binding site in the force field

@@ -110,6 +110,16 @@ class ObcParameters {
       int getNumberOfAtoms() const;
 
       /**---------------------------------------------------------------------------------------
+
+         Set number of atoms
+
+         @param numberOfAtoms number of atoms
+
+         --------------------------------------------------------------------------------------- */
+
+      void setNumberOfAtoms(int numberOfAtoms);
+
+      /**---------------------------------------------------------------------------------------
       
          Get electric constant
       

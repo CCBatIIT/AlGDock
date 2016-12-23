@@ -126,6 +126,8 @@ arguments = {
     'help':'Number of snapshots per independent sample'},
   'sampling_importance_resampling':{'action':'store_true',
     'help':'perfom sampling importance resampling'}, # TODO: Set new default after testing
+  'OBC_ligand':{'action':'store_true',
+    'help':'use OBC implicit solvent based on the ligand conformation'}, # TODO: Set new default after testing
   'keep_intermediate':{'action':'store_true',
     'help':'Keep configurations for intermediate states'},
   'min_repX_acc':{'type':float,

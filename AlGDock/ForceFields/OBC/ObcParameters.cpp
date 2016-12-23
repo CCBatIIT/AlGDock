@@ -83,6 +83,18 @@ int ObcParameters::getNumberOfAtoms() const {
 
 /**---------------------------------------------------------------------------------------
 
+   Set number of atoms
+
+   @param numberOfAtoms number of atoms
+
+   --------------------------------------------------------------------------------------- */
+
+void ObcParameters::setNumberOfAtoms(int numberOfAtoms) {
+    _numberOfAtoms = numberOfAtoms;
+}
+
+/**---------------------------------------------------------------------------------------
+
     Get OBC type
 
     @return OBC type

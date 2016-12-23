@@ -42,6 +42,7 @@ for run_type in run_types:
     sampler='HMC', fraction_TD=0.5, TD_steps_per_trial=10, \
     MCMC_moves=1, \
     sampling_importance_resampling = True, \
+    OBC_ligand = True, \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
     sweeps_per_cycle=25, attempts_per_sweep=100, \
     steps_per_sweep=100, darts_per_sweep=0, \
@@ -53,6 +54,17 @@ for run_type in run_types:
     cores=-1, \
     random_seed=-1)
   self._run(run_type)
+
+from AlGDock.ForceFields.OBC.OBC import OBCForceField
+
+self._forceFields['OBC'] = OBCForceField(self._FNs['prmtop']['L'],
+                                         self.molecule.prmtop_atom_order,self.molecule.inv_prmtop_atom_order)
+self.universe.setForceField(self._forceFields['OBC'])
+(en_OBC,grad_OBC)=self.universe.energyAndGradients()
+self.universe.energyTerms()
+
+
+#    OBC_ligand = True, \
 
 # To test timed runs:
 #    run_type='timed',

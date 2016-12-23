@@ -130,7 +130,7 @@ class ReferenceObc {
          --------------------------------------------------------------------------------------- */
       
 //      void computeBornRadii(const std::vector<OpenMM::RealVec>& atomCoordinates, std::vector<double>& bornRadii);
-      void computeBornRadii(const vector3* atomCoordinates, std::vector<double>& bornRadii);
+      void computeBornRadii(const ObcParameters* obcParameters, const vector3* atomCoordinates, std::vector<double>& bornRadii);
   
       /**---------------------------------------------------------------------------------------
         
@@ -149,6 +149,20 @@ class ReferenceObc {
       void computeAceNonPolarForce(const ObcParameters* obcParameters,
                                    const std::vector<double>& bornRadii,
                                    double* energy, std::vector<double>& forces) const;
+
+      /**---------------------------------------------------------------------------------------
+      
+         Get Born energy based on OBC
+      
+         @param atomCoordinates   atomic coordinates
+         @param partialCharges    partial charges
+      
+         --------------------------------------------------------------------------------------- */
+      
+        double computeBornEnergy(const ObcParameters* obcParameters,
+                                 const vector3* atomCoordinates,
+                                 const std::vector<double>& partialCharges);
+
   
       /**---------------------------------------------------------------------------------------
       
@@ -163,9 +177,10 @@ class ReferenceObc {
 //      double computeBornEnergyForces(const std::vector<OpenMM::RealVec>& atomCoordinates,
 //                                         const std::vector<double>& partialCharges,
 //                                         std::vector<OpenMM::RealVec>& forces);
-        double computeBornEnergyForces(const vector3* atomCoordinates,
-                                           const std::vector<double>& partialCharges,
-                                           vector3* forces);
+        double computeBornEnergyForces(const ObcParameters* obcParameters,
+                                       const vector3* atomCoordinates,
+                                       const std::vector<double>& partialCharges,
+                                       vector3* forces);
 
 };
 

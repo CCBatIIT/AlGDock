@@ -53,42 +53,45 @@ for run_type in run_types:
 # Good thermodynamic speeds for testing:
 # protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5
 
-self._set_universe_evaluator(self._lambda(1.0,process='cool'))
-(en,grad)=self.universe.energyAndGradients()
+#  self._set_universe_evaluator(self._lambda(1.0,process='cool'))
+#  (en,grad)=self.universe.energyAndGradients()
 
-import time
-t = time.time()
-for r in range(1000):
-  (en,grad)=self.universe.energyAndGradients()
-print en
-print grad
-print 'Time for MMTK:', time.time() - t
-
-from AlGDock.ForceFields.OpenMM.OpenMM import OpenMMForceField
-self._forceFields['OpenMM'] = OpenMMForceField(self._FNs['prmtop']['L'], self.molecule.prmtop_atom_order, self.molecule.inv_prmtop_atom_order, implicitSolvent='OpenMM_Gas')
-self.universe.setForceField(self._forceFields['OpenMM'])
-(en,grad)=self.universe.energyAndGradients()
-
-import time
-t = time.time()
-for r in range(1000):
-  (en,grad)=self.universe.energyAndGradients()
-print en
-print grad
-print 'Time for OpenMM Gas:', time.time() - t
-
+#  import time
+#  t = time.time()
+#  for r in range(1000):
+#    (en,grad)=self.universe.energyAndGradients()
+#  print en
+#  print grad
+#  print 'Time for MMTK:', time.time() - t
+#
+#  from AlGDock.ForceFields.OpenMM.OpenMM import OpenMMForceField
+#  self._forceFields['OpenMM'] = OpenMMForceField(self._FNs['prmtop']['L'], self.molecule.prmtop_atom_order, self.molecule.inv_prmtop_atom_order, implicitSolvent='OpenMM_Gas')
+#  self.universe.setForceField(self._forceFields['OpenMM'])
+#  (en,grad)=self.universe.energyAndGradients()
+#
+#  import time
+#  t = time.time()
+#  for r in range(1000):
+#    (en,grad)=self.universe.energyAndGradients()
+#  print en
+#  print grad
+#  print 'Time for OpenMM Gas:', time.time() - t
+#
 from AlGDock.ForceFields.OpenMM.OpenMM import OpenMMForceField
 self._forceFields['OpenMM'] = OpenMMForceField(self._FNs['prmtop']['L'], self.molecule.prmtop_atom_order, self.molecule.inv_prmtop_atom_order, implicitSolvent='OpenMM_OBC2')
 self.universe.setForceField(self._forceFields['OpenMM'])
 (en,grad)=self.universe.energyAndGradients()
 
-import time
-t = time.time()
-for r in range(1000):
-  (en,grad)=self.universe.energyAndGradients()
 print en
-print grad
-print 'Time for OpenMM GBSA:', time.time() - t
+print grad.array
+#
+#  import time
+#  t = time.time()
+#  for r in range(1000):
+#    (en,grad)=self.universe.energyAndGradients()
+#  print en
+#  print grad
+#  print 'Time for OpenMM GBSA:', time.time() - t
 
 # This works but is much slower.
 # Time for MMTK: 0.0425839424133
