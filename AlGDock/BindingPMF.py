@@ -34,6 +34,8 @@ import pymbar.timeseries
 import multiprocessing
 from multiprocessing import Process
 
+import requests # for downloading additional files
+
 # For profiling. Unnecessary for normal execution.
 # from memory_profiler import profile
 
@@ -4501,7 +4503,7 @@ END
     else:
       f_RL_FN = join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
-    if not self.run_type=='timed':
+    if hasattr(self,'run_type') and (not self.run_type=='timed'):
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
 
   def _save(self, p, keys=['progress','data']):

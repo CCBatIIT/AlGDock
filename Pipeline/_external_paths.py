@@ -2,6 +2,40 @@ import os, inspect
 dir_external_paths = os.path.dirname(os.path.abspath(\
   inspect.getfile(inspect.currentframe())))
 
+### Google drive downloader from
+# http://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive
+import requests
+
+def download_file_from_google_drive(id, destination):
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+
+    response = session.get(URL, params = { 'id' : id }, stream = True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = { 'id' : id, 'confirm' : token }
+        response = session.get(URL, params = params, stream = True)
+
+    save_response_content(response, destination)    
+
+def get_confirm_token(response):
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            return value
+
+    return None
+
+def save_response_content(response, destination):
+    CHUNK_SIZE = 32768
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk: # filter out keep-alive new chunks
+                f.write(chunk)
+###
+
 def findPath(locations):
   """
   Parses a list of locations, returning the first file that exists.
@@ -33,8 +67,10 @@ def findPaths(keys):
           import time
           download_start_time = time.time()
           print 'Downloading and installing '+key
-          # os.system('wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/%s'%(FN))
-          os.system('wget --no-verbose --no-check-certificate http://mypages.iit.edu/~dminh/software/%s'%(FN))
+          os.system('wget --no-verbose --no-check-certificate ' + \
+            'http://stash.osgconnect.net/+daveminh/%s'%(FN))
+          if not os.path.isfile(FN):
+            download_file_from_google_drive(google_drive_hash[FN], FN)
           os.system('tar xzf %s'%FN)
           if command != '':
             os.system(command)
@@ -118,3 +154,17 @@ download_paths = {
   'dock6':('dock6.tar.gz','','dock6/bin/dock6'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs'),
   'algdock':('algdock.tar.gz',algdock_setup,'AlGDock/BindingPMF')}
+
+google_drive_hash = {
+  'namd.tar.gz':'0ByidOA_rkLLSSXZzbURFbWdxNkU', \
+  'sander.tar.gz':'0ByidOA_rkLLSejFDMnh4TFlFNFU', \
+  'elsize.tar.gz':'0ByidOA_rkLLSb0tHZ0w2SFJPSmc', \
+  'gbnsr6.tar.gz':'0ByidOA_rkLLSLWpGb0FUd1J4dms', \
+  'ambpdb.tar.gz':'0ByidOA_rkLLSNklqdFp6cU9rWVE', \
+  'molsurf.tar.gz':'0ByidOA_rkLLSeVhMdlRHN1RqdHc', \
+  'APBS-1.4-linux-static-x86_64.tar.gz':'0ByidOA_rkLLSa3BYcmpOZlNONGM',
+  'balloon.tar.gz':'0ByidOA_rkLLSQjItRzVUQXVXYmc', \
+  'chimera.tar.gz':'0ByidOA_rkLLSbE1oNUFmZll6VEU', \
+  'dock6.tar.gz':'0ByidOA_rkLLScXE0a0w2MXptOGc', \
+  'algdock.tar.gz':'0ByidOA_rkLLSV29xTUtWcUVIVnM'
+}

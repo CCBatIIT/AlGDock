@@ -184,7 +184,9 @@ module load libgfortran
 
 # Download data
 # wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
-wget --no-verbose --no-check-certificate http://mypages.iit.edu/~dminh/software/algdock.tar.gz
+wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=0ByidOA_rkLLSbXl3WnZ3MmtWbnc' -O google_drive_downloader.tar.gz
+tar -xvf google_drive_downloader.tar.gz
+./google_drive_downloader/google_drive_downloader
 tar xzf algdock.tar.gz
 
 # Modify paths
