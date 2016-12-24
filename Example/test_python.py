@@ -1,9 +1,10 @@
 # The example is 1of6
 
 # run_types = [None]
-run_types = ['all']
+# run_types = ['all']
 # run_types = ['cool']
 # run_types = ['cool','dock','postprocess','free_energies']
+run_types = ['timed']
 
 import AlGDock.BindingPMF_plots
 import os, shutil, glob
@@ -52,7 +53,8 @@ for run_type in run_types:
     site_density=10., \
     phases=phases, \
     cores=-1, \
-    random_seed=-1)
+    random_seed=-1, \
+    max_time=240)
   self._run(run_type)
 
 from AlGDock.ForceFields.OBC.OBC import OBCForceField

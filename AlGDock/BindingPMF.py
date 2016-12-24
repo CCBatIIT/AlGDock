@@ -1059,7 +1059,8 @@ last modified {1}
 
     if not do_solvation:
       if updated:
-        self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L), quiet=True)
+        if not self.run_type=='timed':
+          self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L), quiet=True)
         self._clear_lock('cool')
       return True
 
@@ -1683,8 +1684,9 @@ last modified {1}
 
     if not do_solvation:
       if updated:
-        self._write_pkl_gz(f_RL_FN, \
-          (self.f_L, self.stats_RL, self.f_RL, self.B))
+        if not self.run_type=='timed':
+          self._write_pkl_gz(f_RL_FN, \
+            (self.f_L, self.stats_RL, self.f_RL, self.B))
         self._clear_lock('dock')
       return True
 
@@ -4499,7 +4501,8 @@ END
     else:
       f_RL_FN = join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
-    self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
+    if not self.run_type=='timed':
+      self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
 
   def _save(self, p, keys=['progress','data']):
     """
