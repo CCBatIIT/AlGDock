@@ -634,7 +634,6 @@ last modified {1}
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'MixedHMC':
-        # TODO: Test and remove
         from AlGDock.Integrators.TDHMC import TDHMC
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo import HamiltonianMonteCarloIntegrator
         self.mixed_samplers = []
@@ -2237,7 +2236,7 @@ last modified {1}
         (xs, energies, acc, ntrials, delta_t) = \
           sampler(steps = 500, steps_per_trial = 50, T=T,\
                   delta_t=self.delta_t, random_seed=random_seed)
-        if (np.std(energies)>1E-7) and float(acc)/ntrials>0.4:
+        if (np.std(energies)>1E-3) and float(acc)/ntrials>0.4:
           attempts_left = 0
         else:
           self.delta_t *= 0.9
@@ -2259,6 +2258,14 @@ last modified {1}
     
     attempts_left = 5
     while (attempts_left>0):
+      # Get initial potential energy
+      potEs_o = []
+      for seed in seeds:
+        self.universe.setConfiguration(Configuration(self.universe, seed))
+        potEs_o.append(self.universe.energy())
+      potEs_o = np.array(potEs_o)
+    
+      # Perform simulation
       results = []
       if self._cores>1:
         # Multiprocessing code
@@ -2286,8 +2293,9 @@ last modified {1}
       seeds = [result['confs'] for result in results]
       potEs = np.array([result['Etot'] for result in results])
 
+      # Adjust time step
       delta_t = np.array([result['delta_t'] for result in results])
-      if np.std(delta_t)>1E-7:
+      if np.std(delta_t)>1E-3:
         delta_t = min(max(np.mean(delta_t), \
           self.params[process]['delta_t']/5.*MMTK.Units.fs), \
           self.params[process]['delta_t']*2.*MMTK.Units.fs)
@@ -2300,7 +2308,7 @@ last modified {1}
       if (delta_t<1.*MMTK.Units.fs):
         lambda_k['delta_t'] = 1.*MMTK.Units.fs
         attempts_left -= 1
-      elif (np.std(potEs)>1E-7):
+      elif (np.std(potEs)>1E-3) and (np.std(potEs-potEs_o)>1E-3):
         attempts_left = 0
       else:
         delta_t = 0.9*delta_t
@@ -2882,7 +2890,6 @@ last modified {1}
 
     return True # The process has completed
 
-  # TODO: Test and then revise/remove
   def _mixed_sampler2(self, steps, steps_per_trial, T, delta_t, random_seed, normalize=False, adapt=False): # EU
     ntrials = int(steps/steps_per_trial)
 
@@ -2931,18 +2938,18 @@ last modified {1}
     # Resampling
     # Convert linear indices to 3 indicies: state, cycle, and snapshot
     cum_N_state = np.cumsum([0] + list(N_k))
-    cum_N_cycle = np.cumsum([0] + [self.dock_Es[0][c]['MM'].shape[0] \
-      for c in range(len(self.dock_Es[0]))])
-
+    cum_N_cycle = [np.cumsum([0] + [self.dock_Es[k][c]['MM'].shape[0] \
+      for c in range(len(self.dock_Es[k]))]) for k in range(len(self.dock_Es))]
+ 
     def linear_index_to_snapshot_index(ind):
       state_index = list(ind<cum_N_state).index(True)-1
       nis_index = ind-cum_N_state[state_index]
-      cycle_index = list(nis_index<cum_N_cycle).index(True)-1
-      nic_index = nis_index-cum_N_cycle[cycle_index]
+      cycle_index = list(nis_index<cum_N_cycle[state_index]).index(True)-1
+      nic_index = nis_index-cum_N_cycle[state_index][cycle_index]
       return (state_index,cycle_index,nic_index)
 
     def snapshot_index_to_linear_index(state_index,cycle_index,nic_index):
-      return cum_N_state[state_index]+cum_N_cycle[cycle_index]+nic_index
+      return cum_N_state[state_index]+cum_N_cycle[state_index][cycle_index]+nic_index
 
     # Terms to copy
     if self.params['dock']['pose'] > -1:
@@ -2958,8 +2965,8 @@ last modified {1}
     for c in range(len(self.dock_Es[0])):
       dock_Es_c = dict([(term,[]) for term in terms])
       confs_c = []
-      for n_in_c in range(len(self.dock_Es[0][c]['MM'])):
-        if (cum_N_cycle[c]==0):
+      for n_in_c in range(len(self.dock_Es[-1][c]['MM'])):
+        if (cum_N_cycle[-1][c]==0):
           (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
            np.random.choice(range(len(weights)), size = 1, p = weights)[0])
         else:
