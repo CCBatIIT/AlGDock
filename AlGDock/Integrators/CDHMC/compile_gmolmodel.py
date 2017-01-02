@@ -152,7 +152,7 @@ if needs_compiling:
       sproc.call(['ln', '-sf', 'libgmolmodel.so.1', 'libgmolmodel.so'])
 
 
-# Compile TDHMC.so (C++ Python extension)
+# Compile CDHMC.so (C++ Python extension)
 # Boost uses bjam program to build Python extension
 # Bjam requires boost-build.jam & Jamroot files
 # Write boost-build.jam
@@ -198,12 +198,12 @@ lib gmolmodel
 
 # Declare the extension modules.  You can specify multiple
 # source files after the colon separated by spaces.
-python-extension TDHMC : ./gmolmodel/simmain.cpp ./libgmolmodel.so ;
+python-extension CDHMC : ./gmolmodel/simmain.cpp ./libgmolmodel.so ;
 
 # Put the extension and Boost.Python DLL in the current directory, so
 # that running script by hand works.
 install convenient_copy
-  : TDHMC
+  : CDHMC
   : <install-dependencies>on <install-type>SHARED_LIB <install-type>PYTHON_EXTENSION
     <location>.
   ;
@@ -217,7 +217,7 @@ local rule run-test ( test-name : sources + )
 }}
 
 # Declare test targets
-run-test TDHMCIntegrator : TDHMC test_TDHMC.py ;
+run-test CDHMCIntegrator : CDHMC test_CDHMC.py ;
 """.format(BOOSTHOME)
 
 jam_FN = 'Jamroot'
@@ -225,7 +225,7 @@ jam_F = open(jam_FN,'w')
 jam_F.write(jam_script)
 jam_F.close()
 
-# Compile TDHMC.so using bjam
+# Compile CDHMC.so using bjam
 debug_flags = ['-Wall', "-g"]
 optim_flags = ["-O2"]
 add_flags = ['-Xlinker', '-export-dynamic', '-std=gnu++0x']
@@ -260,10 +260,10 @@ with open('compil.log', 'a') as f:
   a = sproc.call(command, stdout=f, stderr=f)
 
 if a != 0:
-  print a, "\n=== TDHMC extension failed to compile or to be tested. ===\n"
+  print a, "\n=== CDHMC extension failed to compile or to be tested. ===\n"
   sys.exit(1)
 else:
-  print "\n=== TDHMC extension compiled and tested successfully. ===\n"
+  print "\n=== CDHMC extension compiled and tested successfully. ===\n"
 
 
 

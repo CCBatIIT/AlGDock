@@ -123,7 +123,7 @@ paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'Integrators', 'MixedHMC'),
          os.path.join('AlGDock', 'Integrators', 'NUTS'),
          os.path.join('AlGDock', 'Integrators', 'SmartDarting'),
-         os.path.join('AlGDock', 'Integrators', 'TDHMC'),
+         os.path.join('AlGDock', 'Integrators', 'CDHMC'),
          os.path.join('AlGDock', 'Integrators', 'VelocityVerlet')]
 
 data_files = []
@@ -212,7 +212,7 @@ class modified_sdist(sdist):
 #          setup_dir = os.path.dirname(os.path.abspath(__file__))
 #          dest_dir = os.path.join(self.install_lib,'AlGDock',sys.platform)
 #          import glob
-#          so_FNs = glob.glob(os.path.join(setup_dir, 'AlGDock', 'Integrators', 'TDHMC','*.so.*'))
+#          so_FNs = glob.glob(os.path.join(setup_dir, 'AlGDock', 'Integrators', 'CDHMC','*.so.*'))
 #          for so_FN in so_FNs:
 #            print 'Copying %s to %s'%(so_FN, dest_dir)
 #            os.system('cp %s %s'%(so_FN, dest_dir))
@@ -406,7 +406,7 @@ rigid receptor.
                    'AlGDock.Integrators.MixedHMC',
                    'AlGDock.Integrators.NUTS',
                    'AlGDock.Integrators.SmartDarting',
-                   'AlGDock.Integrators.TDHMC',
+                   'AlGDock.Integrators.CDHMC',
                    'AlGDock.Integrators.VelocityVerlet'],
        ext_package = 'AlGDock.'+sys.platform,
        ext_modules = [Extension(name, path, \

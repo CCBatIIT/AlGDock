@@ -20,7 +20,7 @@ class InternalRestraintForceField(ForceField):
                hwidth = 0., \
                k = 200.0):
     """
-    Internal torsional dofs:
+    Internal constrained dofs:
     @param input: [4 atom indices, gamma] x internal dofs
     @type atom:   L{MMTK.ChemicalObjects.Atom.index,
                     MMTK.ChemicalObjects.Atom.index,

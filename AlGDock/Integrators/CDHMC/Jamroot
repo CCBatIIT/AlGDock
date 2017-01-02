@@ -31,12 +31,12 @@ lib gmolmodel
 
 # Declare the extension modules.  You can specify multiple
 # source files after the colon separated by spaces.
-python-extension TDHMC : ./gmolmodel/simmain.cpp ./libgmolmodel.so ;
+python-extension CDHMC : ./gmolmodel/simmain.cpp ./libgmolmodel.so ;
 
 # Put the extension and Boost.Python DLL in the current directory, so
 # that running script by hand works.
 install convenient_copy
-  : TDHMC
+  : CDHMC
   : <install-dependencies>on <install-type>SHARED_LIB <install-type>PYTHON_EXTENSION
     <location>.
   ;
@@ -50,4 +50,4 @@ local rule run-test ( test-name : sources + )
 }
 
 # Declare test targets
-run-test TDHMCIntegrator : TDHMC test_TDHMC.py ;
+run-test CDHMCIntegrator : CDHMC test_CDHMC.py ;

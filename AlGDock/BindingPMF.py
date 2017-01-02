@@ -379,8 +379,8 @@ last modified {1}
         ('T_SIMMIN',320.),
         ('T_TARGET',300.),
         ('H_mass',4.0),
-        ('fraction_TD',0.5),
-        ('TD_steps_per_trial',5),
+        ('fraction_CD',0.5),
+        ('CD_steps_per_trial',5),
         ('delta_t_TD',4.0),
         ('delta_t',3.0),
         ('sampler','NUTS'),
@@ -634,22 +634,22 @@ last modified {1}
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'MixedHMC':
-        from AlGDock.Integrators.TDHMC import TDHMC
+        from AlGDock.Integrators.CDHMC import CDHMC
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo import HamiltonianMonteCarloIntegrator
         self.mixed_samplers = []
-        self.mixed_samplers.append(TDHMC.TDHMCIntegrator(self.universe, \
+        self.mixed_samplers.append(CDHMC.CDHMCIntegrator(self.universe, \
           os.path.dirname(self._FNs['ligand_database']), \
           os.path.dirname(self._FNs['forcefield'])))
         self.mixed_samplers.append(HamiltonianMonteCarloIntegrator(self.universe))
         self.sampler[p] = self._mixed_sampler2   #EU END
-#        from AlGDock.Integrators.TDHMC import TDHMC
+#        from AlGDock.Integrators.CDHMC import CDHMC
 #        from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
-#        TDIntegrator = TDHMC.TDHMCIntegrator(self.universe, \
+#        CDIntegrator = CDHMC.CDHMCIntegrator(self.universe, \
 #          os.path.dirname(self._FNs['mol2']['L']), \
 #          os.path.dirname(self._FNs['forcefield']))
-#        self.sampler[p] = MixedHMCIntegrator(self.universe, TDIntegrator, \
-#          fraction_TD=self.params[p]['fraction_TD'], \
-#          TD_steps_per_trial=self.params[p]['TD_steps_per_trial'], \
+#        self.sampler[p] = MixedHMCIntegrator(self.universe, CDIntegrator, \
+#          fraction_CD=self.params[p]['fraction_CD'], \
+#          CD_steps_per_trial=self.params[p]['CD_steps_per_trial'], \
 #          delta_t_TD=self.params[p]['delta_t_TD'])
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \

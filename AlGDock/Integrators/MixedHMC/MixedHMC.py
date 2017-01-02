@@ -1,4 +1,4 @@
-# This module allows one to combine torsional dynamics
+# This module allows one to combine constrained dynamics
 # and Hamiltonian Monte Carlo integrator
 
 # It requires the option 'T' in addition to velocity verlet options.
@@ -57,14 +57,14 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       ncycles = 1
 
     try:
-      fraction_TD = self.getOption('fraction_TD')
+      fraction_CD = self.getOption('fraction_CD')
     except ValueError:
-      fraction_TD = 0.5
+      fraction_CD = 0.5
       
     try:
-      TD_steps_per_trial = self.getOption('TD_steps_per_trial')
+      CD_steps_per_trial = self.getOption('CD_steps_per_trial')
     except ValueError:
-      TD_steps_per_trial = 5
+      CD_steps_per_trial = 5
     
     try:
       delta_t_TD = self.getOption('delta_t_TD')
@@ -72,8 +72,8 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       delta_t_TD = 4.0
 
     # Allocate steps per cycle to TD and MD
-    TD_steps_per_cycle = int(fraction_TD*steps_per_cycle)
-    MD_steps_per_cycle = steps_per_cycle - TD_steps_per_cycle*TD_steps_per_trial
+    CD_steps_per_cycle = int(fraction_CD*steps_per_cycle)
+    MD_steps_per_cycle = steps_per_cycle - CD_steps_per_cycle*CD_steps_per_trial
 
     if 'random_seed' in self.call_options.keys():
       random_seed = self.getOption('random_seed')
@@ -117,18 +117,18 @@ class MixedHMCIntegrator(Dynamics.Integrator):
     xs = []
     energies = []
 
-    TD_acc = 0
-    TD_ntrials = 0
+    CD_acc = 0
+    CD_ntrials = 0
     MD_acc = 0
     for t in range(ncycles):
-      # Do the torsional dynamics steps
-      (TD_xs_c, TD_energies_c, TD_acc_c, TD_ntrials_c, TD_dts) = \
-        self.TDintegrator.Call(TD_steps_per_cycle, TD_steps_per_trial, \
+      # Do the constrained dynamics steps
+      (CD_xs_c, CD_energies_c, CD_acc_c, CD_ntrials_c, CD_dts) = \
+        self.TDintegrator.Call(CD_steps_per_cycle, CD_steps_per_trial, \
           T, delta_t_TD/1000., (random_seed+t)%32767, 1, 1, 0.5)
-      xs.extend(TD_xs_c)
-      energies.extend(TD_energies_c)
-      TD_acc += TD_acc_c
-      TD_ntrials += TD_ntrials_c
+      xs.extend(CD_xs_c)
+      energies.extend(CD_energies_c)
+      CD_acc += CD_acc_c
+      CD_ntrials += CD_ntrials_c
 
       # Store initial configuration and potential energy
       xo = np.copy(self.universe.configuration().array)
@@ -164,5 +164,5 @@ class MixedHMCIntegrator(Dynamics.Integrator):
       xs.append(np.copy(self.universe.configuration().array))
       energies.append(pe_o)
       
-    # print 'TD: %d/%d, MD: %d/%d'%(TD_acc,TD_ntrials,MD_acc,ncycles)
-    return (xs, energies, TD_acc + MD_acc, TD_ntrials + ncycles, delta_t)
+    # print 'TD: %d/%d, MD: %d/%d'%(CD_acc,CD_ntrials,MD_acc,ncycles)
+    return (xs, energies, CD_acc + MD_acc, CD_ntrials + ncycles, delta_t)

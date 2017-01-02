@@ -3,7 +3,7 @@
 # for AMBER and AlGDock
 # Run from the [TARGET]/ directory
 
-# TODO: Identify rigid bodies for TDHMC
+# TODO: Identify rigid bodies for CDHMC
 
 # Constants
 job_block = 10

@@ -9,7 +9,7 @@ In these lists, the atoms are referred to by the element and then by the index i
 
 The two options for dynamics are 
   IC - "Internal Coordinates" and
-  TD -  "Torsional Dynamics" 
+  TD -  "Constrained Dynamics" 
 (TODO: to be passed as an argument to the integrator's constructor)
 
 For ring assessment:

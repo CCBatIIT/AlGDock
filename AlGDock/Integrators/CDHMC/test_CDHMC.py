@@ -18,7 +18,7 @@ from MMTK import Units
 
 R = 8.3144621*Units.J/Units.mol/Units.K
 
-import TDHMC
+import CDHMC
 
 parm_dir = '/share/apps/amber/16/dat/leap/parm/' # Amber parameters directory
 newmol = Molecule(mol_FN)
@@ -30,10 +30,10 @@ universe.addObject(newmol)
 universe.configuration();
 configuration =  universe.configuration().array
 
-TDIntegrator = TDHMC.TDHMCIntegrator(universe, mol_dir, parm_dir)
-(confs, Es_MM, acc, ntrials, dt) = TDIntegrator.Call(10000, 10, 300, 0.0015, random.randint(1,300), 0, 1, 0.5)
+CDIntegrator = CDHMC.CDHMCIntegrator(universe, mol_dir, parm_dir)
+(confs, Es_MM, acc, ntrials, dt) = CDIntegrator.Call(10000, 10, 300, 0.0015, random.randint(1,300), 0, 1, 0.5)
 print "GC: ", Es_MM
-TDIntegrator.Clear()
+CDIntegrator.Clear()
 
 
 

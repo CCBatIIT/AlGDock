@@ -3,7 +3,7 @@
 import os, sys
 pkg_loc = os.path.split(__file__)[0]
 sys.path.append(os.path.join(pkg_loc, sys.platform))
-# sys.path.append(os.path.join(pkg_loc,'Integrators','TDHMC'))
+# sys.path.append(os.path.join(pkg_loc,'Integrators','CDHMC'))
 
 # Load external path search routine
 

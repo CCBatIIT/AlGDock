@@ -9,7 +9,7 @@ import Scientific, MMTK, AlGDock, simtk
 extension_library_files = glob.glob(os.path.join(os.path.dirname(Scientific.__file__), sys.platform, '*'))
 extension_library_files += glob.glob(os.path.join(os.path.dirname(MMTK.__file__), sys.platform, '*'))
 extension_library_files += glob.glob(os.path.join(os.path.dirname(AlGDock.__file__), sys.platform, '*'))
-extension_library_files += glob.glob(os.path.join(os.path.dirname(AlGDock.__file__), 'Integrators', 'TDHMC', '*so*'))
+extension_library_files += glob.glob(os.path.join(os.path.dirname(AlGDock.__file__), 'Integrators', 'CDHMC', '*so*'))
 
 lib_paths = []
 for path in sys.path:

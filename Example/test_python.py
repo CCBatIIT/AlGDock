@@ -40,7 +40,7 @@ for run_type in run_types:
     dir_grid='grids', \
     protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5, \
     T_HIGH=600.0, T_SIMMIN=300.0, T_TARGET=300.0, \
-    sampler='HMC', fraction_TD=0.5, TD_steps_per_trial=10, \
+    sampler='HMC', fraction_CD=0.5, CD_steps_per_trial=10, \
     MCMC_moves=1, \
     sampling_importance_resampling = True, \
     OBC_ligand = True, \
@@ -78,4 +78,4 @@ self.universe.energyTerms()
 
 # Reasonable sampler options:
 # sampler='HMC', \
-# sampler='MixedHMC', fraction_TD=0.75, \
+# sampler='MixedHMC', fraction_CD=0.75, \

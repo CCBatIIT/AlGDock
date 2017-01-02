@@ -3,7 +3,7 @@
 #define bPYCHPRINT(x) assert(x);\
                       std::cout<<#x<<": "<<std::endl;\
                       if(PyObject_Print(x, stdout, Py_PRINT_RAW) == -1){std::cout<<"PyObject_Print("<<#x<<"): error\n"<<std::endl;}
-class TDHMCIntegrator{
+class CDHMCIntegrator{
  public:
   SymSystem *sys;
   TARGET_TYPE *shm;
@@ -24,7 +24,7 @@ class TDHMCIntegrator{
   int SHMSZ;
   TARGET_TYPE **coords;
 
-  TDHMCIntegrator(PyObject *, std::string, std::string);
+  CDHMCIntegrator(PyObject *, std::string, std::string);
   boost::python::object Call(
     int _nosteps,
     int _steps_per_trial,
@@ -36,23 +36,23 @@ class TDHMCIntegrator{
     double _lj14sf //--
   );
   void Clear();
-  ~TDHMCIntegrator();
+  ~CDHMCIntegrator();
 };
 
-TDHMCIntegrator::~TDHMCIntegrator()
+CDHMCIntegrator::~CDHMCIntegrator()
 {
 }
 
-void TDHMCIntegrator::Clear(void)
+void CDHMCIntegrator::Clear(void)
 {
   Py_DECREF(this->gradarr);
 }
 
 
-// * TDHMCIntegrator Constructor * //
-TDHMCIntegrator::TDHMCIntegrator(PyObject *universe, std::string ligdir, std::string gaffdir)
+// * CDHMCIntegrator Constructor * //
+CDHMCIntegrator::CDHMCIntegrator(PyObject *universe, std::string ligdir, std::string gaffdir)
 {
-  std::cout<<"TDHMCIntegrator instance created 20160826"<<std::endl;
+  std::cout<<"CDHMCIntegrator instance created 20160826"<<std::endl;
   import_array();
 
   temperature = 300.0;
@@ -280,7 +280,7 @@ TDHMCIntegrator::TDHMCIntegrator(PyObject *universe, std::string ligdir, std::st
       system_initialized = true;
 }
 
-boost::python::object TDHMCIntegrator::Call(
+boost::python::object CDHMCIntegrator::Call(
   int nosteps_arg,
   int steps_per_trial_arg,
   TARGET_TYPE temp_arg,
@@ -297,7 +297,7 @@ boost::python::object TDHMCIntegrator::Call(
   int ntrials_arg = 0;
   if(nosteps_arg%steps_per_trial_arg){
     fprintf(stderr, 
-      "TDHMCIntegrator::Call(): Incorrect nosteps/steps_per_trial combination: %d/%d\n",
+      "CDHMCIntegrator::Call(): Incorrect nosteps/steps_per_trial combination: %d/%d\n",
        nosteps_arg, steps_per_trial_arg);
     exit(1);
   }
@@ -417,18 +417,18 @@ boost::python::object TDHMCIntegrator::Call(
 }
 
 
-BOOST_PYTHON_MODULE(TDHMC)
+BOOST_PYTHON_MODULE(CDHMC)
 {
-  class_<TDHMCIntegrator>("TDHMCIntegrator", init<PyObject *, std::string, std::string>())
-    .def_readonly("nosteps",     &TDHMCIntegrator::nosteps)
-    .def_readonly("ntrials",     &TDHMCIntegrator::ntrials)
-    .def_readonly("steps_per_trial",     &TDHMCIntegrator::steps_per_trial)
-    .def_readonly("temperature", &TDHMCIntegrator::temperature)
-    .def_readonly("delta_t",     &TDHMCIntegrator::delta_t)
-    .def_readonly("trouble",     &TDHMCIntegrator::trouble)
-    .def_readonly("sweep",       &TDHMCIntegrator::sweep)
-    .def("Call", &TDHMCIntegrator::Call)
-    .def("Clear", &TDHMCIntegrator::Clear)
+  class_<CDHMCIntegrator>("CDHMCIntegrator", init<PyObject *, std::string, std::string>())
+    .def_readonly("nosteps",     &CDHMCIntegrator::nosteps)
+    .def_readonly("ntrials",     &CDHMCIntegrator::ntrials)
+    .def_readonly("steps_per_trial",     &CDHMCIntegrator::steps_per_trial)
+    .def_readonly("temperature", &CDHMCIntegrator::temperature)
+    .def_readonly("delta_t",     &CDHMCIntegrator::delta_t)
+    .def_readonly("trouble",     &CDHMCIntegrator::trouble)
+    .def_readonly("sweep",       &CDHMCIntegrator::sweep)
+    .def("Call", &CDHMCIntegrator::Call)
+    .def("Clear", &CDHMCIntegrator::Clear)
   ;
 }
 

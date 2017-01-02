@@ -88,12 +88,12 @@ arguments = {
     'help':'Sampling method'},
   'MCMC_moves':{'type':int,
     'help':'Types of MCMC moves to use'},
-  'fraction_TD':{'type':float, 'default':0.5, \
-    'help':'For the MixedHMC integrator, the fraction of MD steps spent with torsional MD'},
-  'TD_steps_per_trial':{'type':int, 'default':5, \
-    'help':'The number of steps for torsional dynamics HMC trials'},
+  'fraction_CD':{'type':float, 'default':0.5, \
+    'help':'For the MixedHMC integrator, the fraction of MD steps spent with constrained MD'},
+  'CD_steps_per_trial':{'type':int, 'default':5, \
+    'help':'The number of steps for constrained dynamics HMC trials'},
   'delta_t_TD':{'type':float, 'default':4.0, \
-    'help':'The time step for torsional dynamics HMC trials'},
+    'help':'The time step for constrained dynamics HMC trials'},
   'delta_t':{'type':float, 'default':3.0, \
     'help':'The default time step, in fs'},
   'T_HIGH':{'type':float, 'default':600.0,
