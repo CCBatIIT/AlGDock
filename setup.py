@@ -357,7 +357,6 @@ ext_module_name_and_path = [\
     os.path.join(MMTK_source_path, 'Src', 'ewald.c'), \
     os.path.join(MMTK_source_path, 'Src', 'sparsefc.c')]), \
   ('NUTS', ['AlGDock/Integrators/NUTS/NUTS.pyx']), \
-  ('NUTS_no_stopping', ['AlGDock/Integrators/NUTS/NUTS_no_stopping.pyx']), \
   ('SmartDarting', ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx']), \
   ('BAT', ['Src/BAT.pyx']),
   ('repX', ['Src/repX.pyx'])]
