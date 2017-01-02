@@ -45,7 +45,7 @@ err_FN = os.path.join(curdir,'jobs','%s-%d.err'%(args.name,n))
 # Sets up the submission and execution scripts
 submit_script = ''
 execute_script = ''
-if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
+if os.path.exists('/share'): # CCB Cluster
   cluster = 'CCB'
   
   # Split the command onto multiple lines
@@ -97,8 +97,35 @@ if os.path.exists('/home/dminh/scripts/qsub_command.py'): # CCB Cluster
 # {9}
 '''.format(args.name, args.mem, args.nodes, args.ppn, \
            curdir, out_FN, err_FN, \
-           modules, command, args.comment, email_specified, args.email, args.email_options)
-elif os.path.exists('/stash'):   # Open Science Grid
+           modules, command, args.comment, \
+           email_specified, args.email, args.email_options)
+elif os.path.exists('/pylon1'): # Bridges Cluster
+  cluster = 'Bridges'
+  
+  # Split the command onto multiple lines
+  command_list = args.command.split(';')
+  command = '\n'.join([c.strip() for c in command_list])
+
+  if command.find('cores')>-1:
+    cores = command[command.find('cores')+5:]
+    cores = cores[:cores.find('\n')].strip()
+    cores = cores.split(' ')[0]
+    if cores!='':
+      args.ppn = int(cores)
+
+  email_specified = ''
+  if args.email == '':
+    email_specified = '#'
+  
+  # Write script
+  submit_script = '''#!/bin/bash
+#
+#SBATCH -N {0}
+#SBATCH -p RM-shared
+#SBATCH -t 48:00:00
+#SBATCH --ntasks-per-node {1}
+'''.format(args.nodes, args.ppn)
+elif os.path.exists('/stash'): # Open Science Grid Connect
   cluster = 'OSG'
   
   # Split the command onto multiple lines
@@ -245,16 +272,17 @@ if execute_script!='':
   sh_F.write(execute_script)
   sh_F.close()
 
-if (not args.dry) and cluster in ['OSG','CCB','DSCR']:
+if (not args.dry) and cluster in ['OSG','CCB','Bridges']:
   print 'Submitting job script: ' + submit_FN
 
 print('Job name: ' + args.name)
-# print('Script contents: ' + submit_script)
 
 if not args.dry:
-  if cluster=='OSG':
-    os.system('condor_submit %s'%submit_FN)
-  elif cluster=='CCB' or cluster=='DSCR':
+  if cluster=='CCB':
     os.system('qsub %s'%submit_FN)
+  elif cluster=='Bridges':
+    os.system('sbatch %s'%submit_FN)
+  elif cluster=='OSG':
+    os.system('condor_submit %s'%submit_FN)
   else:
     os.system(args.command)

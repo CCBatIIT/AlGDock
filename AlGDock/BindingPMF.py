@@ -393,7 +393,7 @@ last modified {1}
         ('attempts_per_sweep',25),
         ('steps_per_sweep',50),
         ('darts_per_sweep',0),
-        ('snaps_per_independent',3.0),
+        ('snaps_per_independent',2.0),
         ('phases',['NAMD_Gas','NAMD_OBC']),
         ('sampling_importance_resampling',False), # TODO: Set default after testing
         ('OBC_ligand',False), # TODO: Set default after testing

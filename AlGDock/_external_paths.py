@@ -100,44 +100,52 @@ def loadModules(programs):
 
 # Define search paths for external programs and files
 # Defined for
-# David's IIT MacBook Pro, DSCR cluster, and CCB cluster
+# David's IIT MacBook Pro, CCB cluster, Bridges cluster
 search_paths = {
 # These files/programs are used in BindingPMF.py
              # Generalized AMBER force field
   'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/data/gaff.dat',
-              '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat'],
+              '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
+              '/home/dminh/software/AlGDock/data/gaff.dat'],
              # For postprocessing snapshots with NAMD
       'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
+              '/home/dminh/software/namd2',
               'namd2'],
              # For postprocessing snapshots with sander
     'sander':['/Users/dminh/Installers/amber16/bin/sander',
               '/share/apps/amber/16/bin/sander',
+              '/home/dminh/software/sander',
               'sander'],
     'elsize':['/Users/dminh/Installers/amber16/bin/elsize',
               '/share/apps/amber/16/bin/elsize',
+              '/home/dminh/software/elsize',
               'elsize'],
              # For postprocessing snapshots with gbnsr6
     'gbnsr6':['/Users/dminh/Installers/amber16/bin/gbnsr6',
               '/share/apps/amber/16/bin/gbnsr6',
+              '/home/dminh/software/gbnsr6',
               'gbnsr6'],
              # For postprocessing snapshots with APBS
       'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
               '/share/apps/apbs/1.4/bin/apbs',
+              '/home/dminh/software/APBS-1.4-linux-static-x86_64/bin/apbs',
               'apbs'],
     'ambpdb':['/Users/dminh/Installers/amber16/bin/ambpdb',
               '/share/apps/amber/16/bin/ambpdb',
+              '/home/dminh/software/ambpdb',
               'ambpdb'],
    'molsurf':['/Users/dminh/Installers/amber16/bin/molsurf',
               '/share/apps/amber/16/bin/molsurf',
+              '/home/dminh/software/molsurf',
               'molsurf'],
-             # BindingPMF.py is built on MMTK
+             # BindingPMF.py is built on MMTK (not essential)
       'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],
              # For visualizing (not essential)
        'vmd':['/Applications/VMD.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',
               '/share/apps/vmd/1.9.1/bin/vmd'],
-             # For concatenating and stripping dcd trajectories
+             # For concatenating and stripping dcd trajectories (not essential)
     'catdcd':['/Users/dminh/Applications/catdcd',
               '/share/apps/catdcd/4.0/catdcd'],
              # For making movies (not essential)

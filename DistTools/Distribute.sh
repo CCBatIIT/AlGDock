@@ -20,6 +20,7 @@ tar czf algdock.tar.gz AlGDock/
 # Copy the compressed file to the OSG grid and to CCB
 cp algdock.tar.gz /share/apps/algdock/
 scp algdock.tar.gz daveminh@login.osgconnect.net:~/public/
+scp algdock.tar.gz dminh@bridges.psc.xsede.org:~/software/AlGDock/
 
 echo Remember to go to '/Users/dminh/Google Drive/Software' and execute:
 echo scp dminh@ccb.tbc.iit.edu:/share/apps/algdock/algdock.tar.gz .
