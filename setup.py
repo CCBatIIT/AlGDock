@@ -118,6 +118,7 @@ paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'ForceFields', 'OBC'),
          os.path.join('AlGDock', 'ForceFields', 'OpenMM'),
          os.path.join('AlGDock', 'ForceFields', 'Pose'),
+         os.path.join('AlGDock', 'ForceFields', 'ElectricField'),
          os.path.join('AlGDock', 'Integrators', 'ExternalMC'),
          os.path.join('AlGDock', 'Integrators', 'HamiltonianMonteCarlo'),
          os.path.join('AlGDock', 'Integrators', 'MixedHMC'),
@@ -340,10 +341,13 @@ high_opt.append('-g')
 ext_module_name_and_path = [\
   ('MMTK_sphere', ['AlGDock/ForceFields/Sphere/MMTK_sphere.pyx']), \
   ('MMTK_trilinear_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_grid.pyx']), \
-  ('MMTK_trilinear_transform_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx']), \
-  ('MMTK_trilinear_one_fourth_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid.pyx']), \
+  ('MMTK_trilinear_transform_grid', \
+    ['AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx']), \
+  ('MMTK_trilinear_one_fourth_grid', \
+    ['AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid.pyx']), \
   ('MMTK_BSpline_grid', ['AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx']), \
-  ('MMTK_BSpline_transform_grid', ['AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx']), \
+  ('MMTK_BSpline_transform_grid', \
+    ['AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx']), \
   ('MMTK_OBC', ['AlGDock/ForceFields/OBC/MMTK_OBC.c', \
                 'AlGDock/ForceFields/OBC/ObcParameters.cpp', \
                 'AlGDock/ForceFields/OBC/ObcWrapper.cpp', \
@@ -356,6 +360,10 @@ ext_module_name_and_path = [\
     os.path.join(MMTK_source_path, 'Src', 'nonbonded.c'), \
     os.path.join(MMTK_source_path, 'Src', 'ewald.c'), \
     os.path.join(MMTK_source_path, 'Src', 'sparsefc.c')]), \
+  ('MMTK_electric_field', \
+    ['AlGDock/ForceFields/ElectricField/MMTK_electric_field.c']), \
+  ('MMTK_electric_field_z', \
+    ['AlGDock/ForceFields/ElectricField/MMTK_electric_field_z.c']), \
   ('NUTS', ['AlGDock/Integrators/NUTS/NUTS.pyx']), \
   ('SmartDarting', ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx']), \
   ('BAT', ['Src/BAT.pyx']),
@@ -399,6 +407,7 @@ rigid receptor.
                    'AlGDock.ForceFields.OBC',
                    'AlGDock.ForceFields.OpenMM',
                    'AlGDock.ForceFields.Pose',
+                   'AlGDock.ForceFields.ElectricField',
                    'AlGDock.Integrators',
                    'AlGDock.Integrators.ExternalMC',
                    'AlGDock.Integrators.HamiltonianMonteCarlo',

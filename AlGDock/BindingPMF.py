@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-import os # Miscellaneous operating system interfaces
-from os.path import join
+import os
 import cPickle as pickle
 import gzip
 import copy
@@ -99,7 +98,7 @@ class NullDevice():
 ##############
 
 class BPMF:
-  def __init__(self, **kwargs): # Energy values
+  def __init__(self, **kwargs):
     """Parses the input arguments and runs the requested docking calculation"""
     
     # Set undefined keywords to None
@@ -109,7 +108,7 @@ class BPMF:
     if kwargs['dir_grid'] is None:
       kwargs['dir_grid'] = ''
 
-    mod_path = join(os.path.dirname(a.__file__),'BindingPMF.py')
+    mod_path = os.path.join(os.path.dirname(a.__file__),'BindingPMF.py')
     print """###########
 # AlGDock #
 ###########
@@ -224,7 +223,7 @@ last modified {1}
       import tarfile
 
       print '>>> Decompressing tarballs'
-      print 'looking for:\n  ' + '\n  '.join(seekFNs)
+      print 'looking for:\n  ' + '\n  '.os.path.join(seekFNs)
       if seek_frcmod:
         print '  and frcmod files'
 
@@ -260,7 +259,7 @@ last modified {1}
 
     def cdir_or_dir_dock(FN):
       if FN is not None:
-        return a.findPath([FN,join(self.dir['dock'],FN)])
+        return a.findPath([FN,os.path.join(self.dir['dock'],FN)])
       else:
         return None
 
@@ -297,20 +296,20 @@ last modified {1}
         ('RL',cdir_or_dir_dock(kwargs['complex_fixed_atoms']))])),
       ('grids',OrderedDict([
         ('LJr',a.findPath([kwargs['grid_LJr'],
-          join(kwargs['dir_grid'],'LJr.nc'),
-          join(kwargs['dir_grid'],'LJr.dx'),
-          join(kwargs['dir_grid'],'LJr.dx.gz')])),
+          os.path.join(kwargs['dir_grid'],'LJr.nc'),
+          os.path.join(kwargs['dir_grid'],'LJr.dx'),
+          os.path.join(kwargs['dir_grid'],'LJr.dx.gz')])),
         ('LJa',a.findPath([kwargs['grid_LJa'],
-          join(kwargs['dir_grid'],'LJa.nc'),
-          join(kwargs['dir_grid'],'LJa.dx'),
-          join(kwargs['dir_grid'],'LJa.dx.gz')])),
+          os.path.join(kwargs['dir_grid'],'LJa.nc'),
+          os.path.join(kwargs['dir_grid'],'LJa.dx'),
+          os.path.join(kwargs['dir_grid'],'LJa.dx.gz')])),
         ('ELE',a.findPath([kwargs['grid_ELE'],
-          join(kwargs['dir_grid'],'electrostatic.nc'),
-          join(kwargs['dir_grid'],'electrostatic.dx'),
-          join(kwargs['dir_grid'],'electrostatic.dx.gz'),
-          join(kwargs['dir_grid'],'pbsa.nc'),
-          join(kwargs['dir_grid'],'pbsa.dx'),
-          join(kwargs['dir_grid'],'pbsa.dx.gz')]))])),
+          os.path.join(kwargs['dir_grid'],'electrostatic.nc'),
+          os.path.join(kwargs['dir_grid'],'electrostatic.dx'),
+          os.path.join(kwargs['dir_grid'],'electrostatic.dx.gz'),
+          os.path.join(kwargs['dir_grid'],'pbsa.nc'),
+          os.path.join(kwargs['dir_grid'],'pbsa.dx'),
+          os.path.join(kwargs['dir_grid'],'pbsa.dx.gz')]))])),
       ('score','default' if kwargs['score']=='default' \
                             else a.findPath([kwargs['score']])),
       ('dir_cool',self.dir['cool'])])
@@ -326,14 +325,14 @@ last modified {1}
     if (self._FNs['frcmodList'] is None):
       if self._FNs['prmtop']['L'] is not None:
         dir_lig = os.path.dirname(self._FNs['prmtop']['L'])
-        frcmodpaths = [os.path.abspath(join(dir_lig, \
+        frcmodpaths = [os.path.abspath(os.path.join(dir_lig, \
           os.path.basename(self._FNs['prmtop']['L'])[:-7]+'.frcmod'))]
       else:
         dir_lig = '.'
         frcmodpaths = []
       if kwargs['frcmodList'] is None:
-        frcmodpaths.extend([os.path.abspath(join(dir_lig,'lig.frcmod')),\
-                            os.path.abspath(join(dir_lig,'ligand.frcmod'))])
+        frcmodpaths.extend([os.path.abspath(os.path.join(dir_lig,'lig.frcmod')),\
+                            os.path.abspath(os.path.join(dir_lig,'ligand.frcmod'))])
         frcmod = a.findPath(frcmodpaths)
         self._FNs['frcmodList'] = [frcmod]
     elif not isinstance(self._FNs['frcmodList'],list):
@@ -504,7 +503,9 @@ last modified {1}
         self.params['cool']['H_mass'])
 
     # Helpful variables for referencing and indexing atoms in the molecule
-    self.molecule.heavy_atoms = [ind for (atm,ind) in zip(self.molecule.atoms,range(self.molecule.numberOfAtoms())) if atm.type.name!='hydrogen']
+    self.molecule.heavy_atoms = [ind for (atm,ind) in \
+      zip(self.molecule.atoms,range(self.molecule.numberOfAtoms())) \
+      if atm.type.name!='hydrogen']
     self.molecule.nhatoms = len(self.molecule.heavy_atoms)
 
     self.molecule.prmtop_atom_order = np.array([atom.number \
@@ -545,7 +546,7 @@ last modified {1}
         raise Exception('Ligand not found in complex prmtop')
       elif len(ligand_ind) > 1:
         print '  possible ligand residue labels: '+\
-          ', '.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
+          ', '.os.path.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
       print '  considering a residue named "%s" as the ligand'%\
         prmtop_RL['RESIDUE_LABEL'][ligand_ind[-1]].strip()
       self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[-1]] - 1
@@ -988,7 +989,7 @@ last modified {1}
     redo does not do anything now; it is an option for debugging
     """
     # Initialize variables as empty lists or by loading data
-    f_L_FN = join(self.dir['cool'],'f_L.pkl.gz')
+    f_L_FN = os.path.join(self.dir['cool'],'f_L.pkl.gz')
     dat = self._load_pkl_gz(f_L_FN)
     if dat is not None:
       (self.stats_L, self.f_L) = dat
@@ -1565,9 +1566,9 @@ last modified {1}
 
     # Initialize variables as empty lists or by loading data
     if self.params['dock']['pose']==-1:
-      f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+      f_RL_FN = os.path.join(self.dir['dock'],'f_RL.pkl.gz')
     else:
-      f_RL_FN = join(self.dir['dock'], \
+      f_RL_FN = os.path.join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
     
     dat = self._load_pkl_gz(f_RL_FN)
@@ -1794,9 +1795,9 @@ last modified {1}
     
   def _store_infinite_f_RL(self):
     if self.params['dock']['pose']==-1:
-      f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+      f_RL_FN = os.path.join(self.dir['dock'],'f_RL.pkl.gz')
     else:
-      f_RL_FN = join(self.dir['dock'],\
+      f_RL_FN = os.path.join(self.dir['dock'],\
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
     self._write_pkl_gz(f_RL_FN, (self.f_L, [], np.inf, np.inf))
 
@@ -1906,7 +1907,7 @@ last modified {1}
       os.path.basename(self._FNs['score']).split('.')[0]
     if minimize:
       prefix = 'min_' + prefix
-    energyFN = join(self.dir['dock'],prefix+'.pkl.gz')
+    energyFN = os.path.join(self.dir['dock'],prefix+'.pkl.gz')
 
     # Load the configurations
     if os.path.isfile(energyFN):
@@ -1955,20 +1956,20 @@ last modified {1}
       if not 'R'+phase in Es.keys():
         Es['R'+phase] = self.params['dock']['receptor_'+phase]
         for moiety in ['L','RL']:
-          outputname = join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
+          outputname = os.path.join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
           if phase.startswith('NAMD'):
-            traj_FN = join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
+            traj_FN = os.path.join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
             self._write_traj(traj_FN, confs, moiety)
           elif phase.startswith('sander'):
-            traj_FN = join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety))
+            traj_FN = os.path.join(self.dir['dock'],'%s.%s.mdcrd'%(prefix,moiety))
             self._write_traj(traj_FN, confs, moiety)
           elif phase.startswith('gbnsr6'):
-            traj_FN = join(self.dir['dock'], \
+            traj_FN = os.path.join(self.dir['dock'], \
               '%s.%s%s'%(prefix,moiety,phase),'in.crd')
           elif phase.startswith('OpenMM'):
             traj_FN = None
           elif phase in ['APBS_PBSA']:
-            traj_FN = join(self.dir['dock'],'%s.%s.pqr'%(prefix,moiety))
+            traj_FN = os.path.join(self.dir['dock'],'%s.%s.pqr'%(prefix,moiety))
           else:
             raise Exception('Unknown phase!')
           if not traj_FN in toClear:
@@ -2021,7 +2022,7 @@ last modified {1}
       self.delta_t = self.params['cool']['delta_t']*MMTK.Units.fs
 
     # Reuse evaluators that have been stored
-    evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
+    evaluator_key = ','.os.path.join(['%s:%s'%(k,lambda_n[k]) \
       for k in sorted(lambda_n.keys())])
     if evaluator_key in self._evaluators.keys():
       self.universe._evaluator[(None,None,None)] = \
@@ -2281,7 +2282,7 @@ last modified {1}
         for p in processes:
           p.start()
         for p in processes:
-          p.join()
+          p.os.path.join()
         results = [done_queue.get() for seed in seeds]
         for p in processes:
           p.terminate()
@@ -2542,7 +2543,7 @@ last modified {1}
         for p in processes:
           p.start()
         for p in processes:
-          p.join()
+          p.os.path.join()
         unordered_results = [done_queue.get() for k in range(K)]
         results = sorted(unordered_results, key=lambda d: d['reference'])
         for p in processes:
@@ -3144,7 +3145,7 @@ last modified {1}
       self.tee("  minimized %d configurations in "%len(confs) + \
         HMStime(time.time()-min_start_time) + \
         "\n  the first %d energies are:\n  "%min(len(confs),10) + \
-        ', '.join(['%.2f'%e for e in energies[:10]]))
+        ', '.os.path.join(['%.2f'%e for e in energies[:10]]))
     else:
       # Evaluate energies
       energies = []
@@ -3599,16 +3600,16 @@ last modified {1}
          'dock':self.dir['dock']}[p]
       
       if phase.startswith('NAMD'):
-        traj_FN = join(p_dir,'%s.%s.dcd'%(prefix,moiety))
+        traj_FN = os.path.join(p_dir,'%s.%s.dcd'%(prefix,moiety))
       elif phase.startswith('sander'):
-        traj_FN = join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
+        traj_FN = os.path.join(p_dir,'%s.%s.mdcrd'%(prefix,moiety))
       elif phase.startswith('gbnsr6'):
-        traj_FN = join(p_dir,'%s.%s%s'%(prefix,moiety,phase),'in.crd')
+        traj_FN = os.path.join(p_dir,'%s.%s%s'%(prefix,moiety,phase),'in.crd')
       elif phase.startswith('OpenMM'):
         traj_FN = None
       elif phase in ['APBS_PBSA']:
-        traj_FN = join(p_dir,'%s.%s.pqr'%(prefix,moiety))
-      outputname = join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
+        traj_FN = os.path.join(p_dir,'%s.%s.pqr'%(prefix,moiety))
+      outputname = os.path.join(p_dir,'%s.%s%s'%(prefix,moiety,phase))
 
       # Writes trajectory
       self._write_traj(traj_FN, confs, moiety)
@@ -3634,7 +3635,7 @@ last modified {1}
     for p in processes:
       p.start()
     for p in processes:
-      p.join()
+      p.os.path.join()
     results = []
     while not done_queue.empty():
       results.append(done_queue.get())
@@ -3677,7 +3678,7 @@ last modified {1}
             mean_time_per_snap, key))
         else:
           self.tee("  time per snapshot in %s: "%(key) + \
-            ', '.join(['%.5g'%t for t in time_per_snap[key]]))
+            ', '.os.path.join(['%.5g'%t for t in time_per_snap[key]]))
       else:
         self.tee("  no snapshots postprocessed in %s"%(key))
 
@@ -3810,8 +3811,8 @@ last modified {1}
   def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN, \
       outputname=None, debug=DEBUG, reference=None):
     self.dir['out'] = os.path.dirname(os.path.abspath(AMBER_mdcrd_FN))
-    script_FN = '%s%s.in'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
-    out_FN = '%s%s.out'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
+    script_FN = '%s%s.in'%('.'.os.path.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
+    out_FN = '%s%s.out'%('.'.os.path.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
 
     script_F = open(script_FN,'w')
     script_F.write('''Calculating energies with sander
@@ -3863,7 +3864,7 @@ last modified {1}
       '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
       '-y', AMBER_mdcrd_FN, '-r',script_FN+'.restrt']
     if debug:
-      print ' '.join(args_list)
+      print ' '.os.path.join(args_list)
     p = subprocess.Popen(args_list)
     p.wait()
     
@@ -3933,7 +3934,7 @@ last modified {1}
       p.wait()
     except OSError:
       os.system('ls -ltr')
-      print 'Command: ' + ' '.join([os.path.relpath(self._FNs['ambpdb'], cdir), \
+      print 'Command: ' + ' '.os.path.join([os.path.relpath(self._FNs['ambpdb'], cdir), \
          '-p', os.path.relpath(self._FNs['prmtop']['R'], cdir), \
          '-pqr'])
       print 'stdout:\n' + stdoutdata_ambpdb
@@ -3957,7 +3958,7 @@ last modified {1}
     try:
       elsize = float(stdoutdata_elsize.strip())
     except ValueError:
-      print 'Command: ' + ' '.join([os.path.relpath(self._FNs['elsize'], cdir), \
+      print 'Command: ' + ' '.os.path.join([os.path.relpath(self._FNs['elsize'], cdir), \
        os.path.relpath(pqr_FN, cdir)])
       print stdoutdata_elsize
       print 'Error with elsize'
@@ -4018,7 +4019,7 @@ last modified {1}
       '-p', os.path.relpath(self._FNs['prmtop'][moiety], cdir), \
       '-c', os.path.relpath(inpcrd_FN, cdir)]
     if debug:
-      print ' '.join(args_list)
+      print ' '.os.path.join(args_list)
 
     # Write coordinates, run gbnsr6, and store energies
     import subprocess
@@ -4397,11 +4398,11 @@ END
 
   def _load(self, p, pose):
     if p=='dock' and pose>-1:
-      progress_FN = join(self.dir[p],'%s_progress_pose%03d.pkl.gz'%(p, pose))
-      data_FN = join(self.dir[p],'%s_data_pose%03d.pkl.gz'%(p, pose))
+      progress_FN = os.path.join(self.dir[p],'%s_progress_pose%03d.pkl.gz'%(p, pose))
+      data_FN = os.path.join(self.dir[p],'%s_data_pose%03d.pkl.gz'%(p, pose))
     else:
-      progress_FN = join(self.dir[p],'%s_progress.pkl.gz'%(p))
-      data_FN = join(self.dir[p],'%s_data.pkl.gz'%(p))
+      progress_FN = os.path.join(self.dir[p],'%s_progress.pkl.gz'%(p))
+      data_FN = os.path.join(self.dir[p],'%s_data.pkl.gz'%(p))
 
     saved = {'progress':self._load_pkl_gz(progress_FN),
              'data':self._load_pkl_gz(data_FN)}
@@ -4411,11 +4412,11 @@ END
       if os.path.isfile(data_FN):
         os.remove(data_FN)
       if p=='dock' and pose>-1:
-        progress_FN = join(self.dir[p],'%s_progress_pose%03d.pkl.gz.BAK'%(p, pose))
-        data_FN = join(self.dir[p],'%s_data_pose%03d.pkl.gz.BAK'%(p, pose))
+        progress_FN = os.path.join(self.dir[p],'%s_progress_pose%03d.pkl.gz.BAK'%(p, pose))
+        data_FN = os.path.join(self.dir[p],'%s_data_pose%03d.pkl.gz.BAK'%(p, pose))
       else:
-        progress_FN = join(self.dir[p],'%s_progress.pkl.gz.BAK'%(p))
-        data_FN = join(self.dir[p],'%s_data.pkl.gz.BAK'%(p))
+        progress_FN = os.path.join(self.dir[p],'%s_progress.pkl.gz.BAK'%(p))
+        data_FN = os.path.join(self.dir[p],'%s_data.pkl.gz.BAK'%(p))
 
       saved = {'progress':self._load_pkl_gz(progress_FN),
                'data':self._load_pkl_gz(data_FN)}
@@ -4506,9 +4507,9 @@ END
 
     # Store empty list
     if self.params['dock']['pose']==-1:
-      f_RL_FN = join(self.dir['dock'],'f_RL.pkl.gz')
+      f_RL_FN = os.path.join(self.dir['dock'],'f_RL.pkl.gz')
     else:
-      f_RL_FN = join(self.dir['dock'], \
+      f_RL_FN = os.path.join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
     if hasattr(self,'run_type') and (not self.run_type=='timed'):
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
@@ -4557,10 +4558,10 @@ END
     
     for key in keys:
       if p=='dock' and self.params['dock']['pose']>-1:
-        saved_FN = join(self.dir[p],'%s_%s_pose%03d.pkl.gz'%(\
+        saved_FN = os.path.join(self.dir[p],'%s_%s_pose%03d.pkl.gz'%(\
           p, key, self.params['dock']['pose']))
       else:
-        saved_FN = join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
+        saved_FN = os.path.join(self.dir[p],'%s_%s.pkl.gz'%(p,key))
       if not os.path.isdir(self.dir[p]):
         os.system('mkdir -p '+self.dir[p])
       if os.path.isfile(saved_FN):
@@ -4570,21 +4571,21 @@ END
   def _set_lock(self, p):
     if not os.path.isdir(self.dir[p]):
       os.system('mkdir -p '+self.dir[p])
-    lockFN = join(self.dir[p],'.lock')
+    lockFN = os.path.join(self.dir[p],'.lock')
     if os.path.isfile(lockFN):
       raise Exception(p + ' is locked')
     else:
       lockF = open(lockFN,'w')
       lockF.close()
     if p=='dock' and self.params['dock']['pose']>-1:
-      logFN = join(self.dir[p],'%s_pose%03d_log.txt'%(\
+      logFN = os.path.join(self.dir[p],'%s_pose%03d_log.txt'%(\
         p, self.params['dock']['pose']))
     else:
-      logFN = join(self.dir[p],p+'_log.txt')
+      logFN = os.path.join(self.dir[p],p+'_log.txt')
     self.log = open(logFN,'a')
 
   def _clear_lock(self, p):
-    lockFN = join(self.dir[p],'.lock')
+    lockFN = os.path.join(self.dir[p],'.lock')
     if os.path.isfile(lockFN):
       os.remove(lockFN)
     if hasattr(self,'log'):
