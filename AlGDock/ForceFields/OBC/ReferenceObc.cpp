@@ -355,6 +355,8 @@ double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
  
        double partialChargeI = preFactor*partialCharges[atomI];
        for (int atomJ = atomI; atomJ < numberOfAtoms; atomJ++) {
+       
+          // TODO: The energy of each atom J can be scaled by a fractional desolvation.
 
           double deltaR[OpenMM::ReferenceForce::LastDeltaRIndex];
           OpenMM::ReferenceForce::getDeltaR(atomCoordinates[atomI], atomCoordinates[atomJ], deltaR);

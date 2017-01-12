@@ -223,7 +223,7 @@ last modified {1}
       import tarfile
 
       print '>>> Decompressing tarballs'
-      print 'looking for:\n  ' + '\n  '.os.path.join(seekFNs)
+      print 'looking for:\n  ' + '\n  '.join(seekFNs)
       if seek_frcmod:
         print '  and frcmod files'
 
@@ -546,7 +546,7 @@ last modified {1}
         raise Exception('Ligand not found in complex prmtop')
       elif len(ligand_ind) > 1:
         print '  possible ligand residue labels: '+\
-          ', '.os.path.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
+          ', '.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
       print '  considering a residue named "%s" as the ligand'%\
         prmtop_RL['RESIDUE_LABEL'][ligand_ind[-1]].strip()
       self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[-1]] - 1
@@ -2022,7 +2022,7 @@ last modified {1}
       self.delta_t = self.params['cool']['delta_t']*MMTK.Units.fs
 
     # Reuse evaluators that have been stored
-    evaluator_key = ','.os.path.join(['%s:%s'%(k,lambda_n[k]) \
+    evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
       for k in sorted(lambda_n.keys())])
     if evaluator_key in self._evaluators.keys():
       self.universe._evaluator[(None,None,None)] = \
@@ -2282,7 +2282,7 @@ last modified {1}
         for p in processes:
           p.start()
         for p in processes:
-          p.os.path.join()
+          p.join()
         results = [done_queue.get() for seed in seeds]
         for p in processes:
           p.terminate()
@@ -2543,7 +2543,7 @@ last modified {1}
         for p in processes:
           p.start()
         for p in processes:
-          p.os.path.join()
+          p.join()
         unordered_results = [done_queue.get() for k in range(K)]
         results = sorted(unordered_results, key=lambda d: d['reference'])
         for p in processes:
@@ -2997,8 +2997,11 @@ last modified {1}
 
   def _insert_dock_state_between_low_acc(self):
     # Insert thermodynamic states between those with low acceptance probabilities
+    dock_Es = [Es[self._get_equilibrated_cycle()[-1]:self._dock_cycle] \
+      for Es in self.dock_Es]
+        
     def calc_mean_acc(k):
-      (u_kln,N_k) = self._u_kln(self.dock_Es[k:k+2][-3:],\
+      (u_kln,N_k) = self._u_kln(dock_Es[k:k+2],\
                                 self.dock_protocol[k:k+2])
       N = min(N_k)
       acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
@@ -3145,7 +3148,7 @@ last modified {1}
       self.tee("  minimized %d configurations in "%len(confs) + \
         HMStime(time.time()-min_start_time) + \
         "\n  the first %d energies are:\n  "%min(len(confs),10) + \
-        ', '.os.path.join(['%.2f'%e for e in energies[:10]]))
+        ', '.join(['%.2f'%e for e in energies[:10]]))
     else:
       # Evaluate energies
       energies = []
@@ -3635,7 +3638,7 @@ last modified {1}
     for p in processes:
       p.start()
     for p in processes:
-      p.os.path.join()
+      p.join()
     results = []
     while not done_queue.empty():
       results.append(done_queue.get())
@@ -3678,7 +3681,7 @@ last modified {1}
             mean_time_per_snap, key))
         else:
           self.tee("  time per snapshot in %s: "%(key) + \
-            ', '.os.path.join(['%.5g'%t for t in time_per_snap[key]]))
+            ', '.join(['%.5g'%t for t in time_per_snap[key]]))
       else:
         self.tee("  no snapshots postprocessed in %s"%(key))
 
@@ -3811,8 +3814,8 @@ last modified {1}
   def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN, \
       outputname=None, debug=DEBUG, reference=None):
     self.dir['out'] = os.path.dirname(os.path.abspath(AMBER_mdcrd_FN))
-    script_FN = '%s%s.in'%('.'.os.path.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
-    out_FN = '%s%s.out'%('.'.os.path.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
+    script_FN = '%s%s.in'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
+    out_FN = '%s%s.out'%('.'.join(AMBER_mdcrd_FN.split('.')[:-1]),phase)
 
     script_F = open(script_FN,'w')
     script_F.write('''Calculating energies with sander
@@ -3864,7 +3867,7 @@ last modified {1}
       '-p',self._FNs['prmtop'][moiety],'-c',self._FNs['inpcrd'][moiety], \
       '-y', AMBER_mdcrd_FN, '-r',script_FN+'.restrt']
     if debug:
-      print ' '.os.path.join(args_list)
+      print ' '.join(args_list)
     p = subprocess.Popen(args_list)
     p.wait()
     
@@ -3934,7 +3937,7 @@ last modified {1}
       p.wait()
     except OSError:
       os.system('ls -ltr')
-      print 'Command: ' + ' '.os.path.join([os.path.relpath(self._FNs['ambpdb'], cdir), \
+      print 'Command: ' + ' '.join([os.path.relpath(self._FNs['ambpdb'], cdir), \
          '-p', os.path.relpath(self._FNs['prmtop']['R'], cdir), \
          '-pqr'])
       print 'stdout:\n' + stdoutdata_ambpdb
@@ -3958,7 +3961,7 @@ last modified {1}
     try:
       elsize = float(stdoutdata_elsize.strip())
     except ValueError:
-      print 'Command: ' + ' '.os.path.join([os.path.relpath(self._FNs['elsize'], cdir), \
+      print 'Command: ' + ' '.join([os.path.relpath(self._FNs['elsize'], cdir), \
        os.path.relpath(pqr_FN, cdir)])
       print stdoutdata_elsize
       print 'Error with elsize'
@@ -4019,7 +4022,7 @@ last modified {1}
       '-p', os.path.relpath(self._FNs['prmtop'][moiety], cdir), \
       '-c', os.path.relpath(inpcrd_FN, cdir)]
     if debug:
-      print ' '.os.path.join(args_list)
+      print ' '.join(args_list)
 
     # Write coordinates, run gbnsr6, and store energies
     import subprocess
