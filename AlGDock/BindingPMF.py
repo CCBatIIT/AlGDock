@@ -2997,7 +2997,7 @@ last modified {1}
 
   def _insert_dock_state_between_low_acc(self):
     # Insert thermodynamic states between those with low acceptance probabilities
-    dock_Es = [Es[self._get_equilibrated_cycle()[-1]:self._dock_cycle] \
+    dock_Es = [Es[self._get_equilibrated_cycle('dock')[-1]:self._dock_cycle] \
       for Es in self.dock_Es]
         
     def calc_mean_acc(k):
