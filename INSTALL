@@ -65,6 +65,8 @@ https://github.com/choderalab/pymbar
 
 pyrmsd
 
+OpenMM (tested with version 7.0)
+
 Finally, AlGDock requires the following external programs:
 Not Another Molecular Dynamics (NAMD), tested with version 2.9
 http://www.ks.uiuc.edu/Research/namd/
@@ -85,7 +87,11 @@ To install AlGDock with conda, follow these steps:
 conda create --name algdock numpy=1.8.1 netcdf4 six cython scipy
 source activate algdock
 
-2. Install Scientific python
+2. Install OpenMM. This can be done with conda.
+
+conda install -c omnia openmm
+
+3. Install Scientific python
 
 Identify the NETCDF_PREFIX.
 (algdock) Minh-IIT-MBP:ScientificPython-2.9.4 dminh$ which python
@@ -103,7 +109,7 @@ If not, you might need a symbolic link to the netcdf dynamic library. Here is an
 sudo mkdir -p /opt/anaconda1anaconda2anaconda3/lib/
 sudo ln -s /Users/dminh/Applications/miniconda2/envs/algdock/lib/libnetcdf.7.dylib /opt/anaconda1anaconda2anaconda3/lib/libnetcdf.7.dylib
 
-3. Install MMTK, pyRMSD, and pymbar.
+4. Install MMTK, pyRMSD, and pymbar
 
 Download, extract, and change to the MMTK directory. Then enter:
 python setup.py install
@@ -114,19 +120,18 @@ python setup.py install
 pyrmsd can be installed with:
 pip install pyrmsd
 
-4. Install AlGDock
+5. Install AlGDock
 
 Download, extract, and change to the AlGDock directory. Then enter:
 python setup.py install
 
-5. (Optional) Install packages for analysis tools. 
+6. (Optional) Install packages for analysis tools. 
 
 conda install matplotlib PIL numpy=1.8
 
-6. (Optional) To prepare a binary with DistTools/Distribute.sh, you will need
-pyinstaller, setuptools, and openmm. Fortunately they can all be installed with conda.
+7. (Optional) To prepare a binary with DistTools/Distribute.sh, you will need
+pyinstaller, setuptools. Fortunately they can all be installed with conda.
 
-conda install -c omnia openmm
 conda install pyinstaller
 conda install setuptools=19.2
 

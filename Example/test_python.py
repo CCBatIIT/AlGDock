@@ -57,17 +57,6 @@ for run_type in run_types:
     max_time=240)
   self._run(run_type)
 
-from AlGDock.ForceFields.OBC.OBC import OBCForceField
-
-self._forceFields['OBC'] = OBCForceField(self._FNs['prmtop']['L'],
-                                         self.molecule.prmtop_atom_order,self.molecule.inv_prmtop_atom_order)
-self.universe.setForceField(self._forceFields['OBC'])
-(en_OBC,grad_OBC)=self.universe.energyAndGradients()
-self.universe.energyTerms()
-
-
-#    OBC_ligand = True, \
-
 # To test timed runs:
 #    run_type='timed',
 #    max_time=0.25)
@@ -78,4 +67,3 @@ self.universe.energyTerms()
 
 # Reasonable sampler options:
 # sampler='HMC', \
-# sampler='MixedHMC', fraction_CD=0.75, \

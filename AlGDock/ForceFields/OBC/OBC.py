@@ -12,7 +12,8 @@ class OBCForceField(ForceField):
     """
 
     def __init__(self, prmtopFN,
-          prmtop_atom_order, inv_prmtop_atom_order):
+          prmtop_atom_order, inv_prmtop_atom_order,
+          strength=1.0):
         """
         @param prmtopFN: an AMBER parameter and topology file
         @type strength:  C{str}
@@ -22,11 +23,16 @@ class OBCForceField(ForceField):
 
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
-        self.arguments = (prmtopFN, prmtop_atom_order, inv_prmtop_atom_order)
+        self.arguments = (prmtopFN, prmtop_atom_order, inv_prmtop_atom_order, \
+          strength)
     
         self.prmtopFN = prmtopFN
         self.prmtop_atom_order = prmtop_atom_order
         self.inv_prmtop_atom_order = inv_prmtop_atom_order
+        self.strength = strength
+
+    def set_strength(self, strength):
+      self.strength = strength
 
     # The following method is called by the energy evaluation engine
     # to inquire if this force field term has all the parameters it
@@ -84,5 +90,6 @@ class OBCForceField(ForceField):
 
         # Here we pass all the parameters as "simple" data types to
         # the C code that handles energy calculations.
+        # TODO: Use strength
         return [OBCTerm(universe._spec, numParticles, \
           charges, atomicRadii, scaleFactors)]

@@ -33,7 +33,10 @@ import pymbar.timeseries
 import multiprocessing
 from multiprocessing import Process
 
-import requests # for downloading additional files
+try:
+  import requests # for downloading additional files
+except:
+  print '  no requests module for downloading additional files'
 
 # For profiling. Unnecessary for normal execution.
 # from memory_profiler import profile
@@ -51,7 +54,7 @@ term_map = {
   'harmonic bond angle':'MM',
   'Lennard-Jones':'MM',
   'OpenMM':'MM',
-  'OBC':'MM',
+  'OBC':'OBC',
   'site':'site',
   'sLJr':'sLJr',
   'sELE':'sELE',
@@ -62,8 +65,7 @@ term_map = {
   'pose dihedral angle':'k_angular_int',
   'pose external dihedral':'k_angular_ext',
   'pose external distance':'k_spatial_ext',
-  'pose external angle':'k_angular_ext',
-  'electrostatic':'misc'}
+  'pose external angle':'k_angular_ext'}
 
 # In APBS, minimum ratio of PB grid length to maximum dimension of solute
 LFILLRATIO = 4.0 # For the ligand
@@ -392,7 +394,7 @@ last modified {1}
         ('attempts_per_sweep',25),
         ('steps_per_sweep',50),
         ('darts_per_sweep',0),
-        ('snaps_per_independent',2.0),
+        ('snaps_per_independent',3.0),
         ('phases',['NAMD_Gas','NAMD_OBC']),
         ('sampling_importance_resampling',False), # TODO: Set default after testing
         ('OBC_ligand',False), # TODO: Set default after testing
@@ -455,7 +457,7 @@ last modified {1}
       if (not 'NAMD_Gas' in phase_list) and ('APBS_PBSA' in phase_list):
         phase_list.append('NAMD_Gas')
   
-    self._scalables = ['sLJr','sELE','LJr','LJa','ELE']
+    self._scalables = ['OBC','sLJr','sELE','LJr','LJa','ELE']
 
     # Variables dependent on the parameters
     self.original_Es = [[{}]]
@@ -528,10 +530,6 @@ last modified {1}
     from MMTK.ForceFields import Amber12SBForceField
     self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self._FNs['forcefield'],mod_files=self._FNs['frcmodList'])
-
-    from AlGDock.ForceFields.OBC.OBC import OBCForceField
-    self._forceFields['OBC'] = OBCForceField(self._FNs['prmtop']['L'],
-      self.molecule.prmtop_atom_order,self.molecule.inv_prmtop_atom_order)
 
     # Determine ligand atomic index
     if (self._FNs['prmtop']['R'] is not None) and \
@@ -686,20 +684,20 @@ last modified {1}
     elif run_type=='initial_cool':
       self.initial_cool()
     elif run_type=='cool': # Sample the cooling process
-      self.cool()
+      self.sim_process('cool')
       self._postprocess([('cool',-1,-1,'L')])
       self.calc_f_L()
     elif run_type=='dock': # Sample the docking process
-      self.dock()
+      self.sim_process('dock')
       self._postprocess()
       self.calc_f_RL()
     elif run_type=='timed': # Timed replica exchange sampling
-      cool_complete = self.cool()
+      cool_complete = self.sim_process('cool')
       if cool_complete:
         pp_complete = self._postprocess([('cool',-1,-1,'L')])
         if pp_complete:
           self.calc_f_L()
-          dock_complete = self.dock()
+          dock_complete = self.sim_process('dock')
           if dock_complete:
             pp_complete = self._postprocess()
             if pp_complete:
@@ -712,10 +710,10 @@ last modified {1}
       self.calc_f_L(redo=(run_type=='redo_free_energies'))
       self.calc_f_RL(redo=(run_type=='redo_free_energies'))
     elif run_type=='all':
-      self.cool()
+      self.sim_process('cool')
       self._postprocess([('cool',-1,-1,'L')])
       self.calc_f_L()
-      self.dock()
+      self.sim_process('dock')
       self._postprocess()
       self.calc_f_RL()
     elif run_type=='render_docked':
@@ -762,27 +760,15 @@ last modified {1}
     self._set_lock('cool')
     cool_start_time = time.time()
 
-    T_GEOMETRIC = np.exp(np.linspace(np.log(self.T_SIMMIN),np.log(self.T_HIGH),
-      int(1/self.params['cool']['therm_speed'])))
-    if warm:
-      T_START, T_END = self.T_SIMMIN, self.T_HIGH
-      direction_name = 'warm'
-    else:
-      T_START, T_END = self.T_HIGH, self.T_SIMMIN
-      direction_name = 'cool'
-      T_GEOMETRIC = T_GEOMETRIC[::-1]
-
+    direction_name = 'warm' if warm else 'cool'
     if self.cool_protocol==[]:
-      self.tee("\n>>> Initial %sing of the ligand "%direction_name + \
-        "from %d K to %d K, "%(T_START,T_END) + "\n    starting at " + \
+      self.tee("\n>>> Initial %sing\n    starting at "%direction_name + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
 
       # Set up the force field
-      T = T_START
-      self.cool_protocol = [{'MM':True, 'T':T, \
-                            'delta_t':self.params['cool']['delta_t']*MMTK.Units.fs,
-                            'a':0.0, 'crossed':False}]
-      self._set_universe_evaluator(self.cool_protocol[-1])
+      lambda_o = self._lambda(1.0 if warm else 0., 'cool', site=False)
+      self.cool_protocol = [lambda_o]
+      self._set_universe_evaluator(lambda_o)
       
       # Get starting configurations
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
@@ -796,34 +782,32 @@ last modified {1}
       self.confs['cool']['starting_poses'] = seeds
       
       # Ramp the temperature from 0 to the desired starting temperature using HMC
-      self._ramp_T(T_START, normalize=True)
+      self._ramp_T(lambda_o['T'], normalize=True)
 
       # Run at starting temperature
       state_start_time = time.time()
       conf = self.universe.configuration().array
-      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], sampler_metrics) = \
+      (confs, Es_tot, lambda_o['delta_t'], sampler_metrics) = \
         self._initial_sim_state(\
         [self.universe.configuration().array]*self.params['cool']['seeds_per_state'], \
-        'cool', self.cool_protocol[-1])
+        'cool', lambda_o)
+      E = self._energyTerms(confs, process='cool')
       self.confs['cool']['replicas'] = [confs[np.random.randint(len(confs))]]
       self.confs['cool']['samples'] = [[confs]]
-      self.cool_Es = [[{'MM':Es_MM}]]
-      tL_tensor = Es_MM.std()/(R*T_START*T_START)
+      self.cool_Es = [[E]]
 
       self.tee("  drew %d configurations "%len(confs) + \
-               "at %d K "%self.cool_protocol[-1]['T'] + \
+               "at %d K "%lambda_o['T'] + \
                "in " + HMStime(time.time()-state_start_time))
       self.tee(sampler_metrics)
       self.tee("  dt=%.2f fs; tL_tensor=%.3e"%(\
-        self.cool_protocol[-1]['delta_t']*1000., tL_tensor))
+        lambda_o['delta_t']*1000., self._tL_tensor(E,lambda_o,process='cool')))
     else:
-      self.tee("\n>>> Initial %s of the ligand "%direction_name + \
-        "from %d K to %d K, "%(T_START,T_END) + "\n    continuing at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+      self.tee("\n>>> Initial %sing\n    continuing at "%direction_name + \
+        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
+      lambda_o = self.cool_protocol[-1]
       confs = self.confs['cool']['samples'][-1][0]
-      Es_MM = self.cool_Es[-1][0]['MM']
-      T = self.cool_protocol[-1]['T']
-      tL_tensor = Es_MM.std()/(R*T*T)
+      E = self.cool_Es[-1][0]
 
     if self.params['cool']['darts_per_seed']>0:
       self.confs['cool']['SmartDarting'] += confs
@@ -832,74 +816,56 @@ last modified {1}
     
     # Main loop for initial cooling:
     # choose new temperature, randomly select seeds, simulate
+    rejectStage = 0
     while (not self.cool_protocol[-1]['crossed']):
       # Choose new temperature
-      To = self.cool_protocol[-1]['T']
-      crossed = self.cool_protocol[-1]['crossed']
-      
-      if self.params['cool']['protocol'] == 'Adaptive':
-        if tL_tensor>1E-7:
-          dL = self.params['cool']['therm_speed']/tL_tensor
-          if warm:
-            T = To + dL
-            if T > self.T_HIGH:
-              T = self.T_HIGH
-              crossed = True
-          else:
-            T = To - dL
-            if T < self.T_SIMMIN:
-              T = self.T_SIMMIN
-              crossed = True
-        else:
-          raise Exception('No variance in configuration energies')
-      elif self.params['cool']['protocol'] == 'Geometric':
-        T = T_GEOMETRIC[len(self.cool_protocol)]
-        crossed = (len(self.cool_protocol)==(len(T_GEOMETRIC)-1))
-
-      self.cool_protocol.append(\
-        {'T':T, 'a':(self.T_HIGH-T)/(self.T_HIGH-self.T_SIMMIN), 'MM':True, 'crossed':crossed})
+      lambda_n = self._next_cool_state(E = E, lambda_o = lambda_o, \
+        pow = rejectStage, warm = warm)
+      self.cool_protocol.append(lambda_n)
 
       # Randomly select seeds for new trajectory
-      logweight = Es_MM/R*(1/T-1/To)
-      weights = np.exp(-logweight+min(logweight))
-      seedIndicies = np.random.choice(len(Es_MM), \
-        size = self.params['cool']['seeds_per_state'], p = weights/sum(weights))
+      u_o = self._u_kln([E],[lambda_o])
+      u_n = self._u_kln([E],[lambda_n])
+      du = u_n-u_o
+      weights = np.exp(-du+min(du))
+      seedIndicies = np.random.choice(len(u_o), \
+        size = self.params['cool']['seeds_per_state'], \
+        p = weights/sum(weights))
       seeds = [np.copy(confs[s]) for s in seedIndicies]
       
-      # Simulate and store data
+      # Store old data
       confs_o = confs
-      Es_MM_o = Es_MM
+      E_o = E
       
-      self._set_universe_evaluator(self.cool_protocol[-1])
+      # Simulate
+      state_start_time = time.time()
+      self._set_universe_evaluator(lambda_n)
       if self.params['cool']['darts_per_seed']>0:
         self.tee(self.sampler['cool_SmartDarting'].set_confs(\
           self.confs['cool']['SmartDarting']))
         self.confs['cool']['SmartDarting'] = self.sampler['cool_SmartDarting'].confs
-      
-      state_start_time = time.time()
-      (confs, Es_MM, self.cool_protocol[-1]['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(seeds, 'cool', self.cool_protocol[-1])
+      (confs, Es_tot, lambda_n['delta_t'], sampler_metrics) = \
+        self._initial_sim_state(seeds, 'cool', lambda_n)
 
       if self.params['cool']['darts_per_seed']>0:
         self.confs['cool']['SmartDarting'] += confs
 
-      tL_tensor_o = 1.*tL_tensor
-      tL_tensor = Es_MM.std()/(R*T*T) # Metric tensor for the thermodynamic length
+      # Get state energies
+      E = self._energyTerms(confs, process='cool')
+
+      self.tee("  drew %d configurations "%len(confs) + \
+               "at %d K "%lambda_n['T'] + \
+               "in " + (HMStime(time.time()-state_start_time)))
+      self.tee(sampler_metrics)
+      self.tee("  dt=%.2f fs; tL_tensor=%.3e"%(\
+        lambda_n['delta_t']*1000., self._tL_tensor(E,lambda_o,process='cool')))
 
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
-      (u_kln,N_k) = self._u_kln([[{'MM':Es_MM_o}],[{'MM':Es_MM}]], \
-                                self.cool_protocol[-2:])
+      (u_kln,N_k) = self._u_kln([[E_o],[E]], self.cool_protocol[-2:])
       N = min(N_k)
       acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
       mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
-
-      self.tee("  drew %d configurations "%len(confs) + \
-               "at %d K "%self.cool_protocol[-1]['T'] + \
-               "in " + (HMStime(time.time()-state_start_time)))
-      self.tee(sampler_metrics)
-      self.tee("  dt=%.2f fs; tL_tensor=%.3e; estimated repX acceptance=%0.3f"%(\
-        self.cool_protocol[-1]['delta_t']*1000., tL_tensor, mean_acc))
 
       if (mean_acc<self.params['cool']['min_repX_acc']) \
           and (self.params['cool']['protocol']=='Adaptive'):
@@ -907,28 +873,33 @@ last modified {1}
         # reject the state and restart
         self.cool_protocol.pop()
         confs = confs_o
-        Es_MM = Es_MM_o
-        tL_tensor = tL_tensor_o*1.25 # Use a smaller step
-        self.tee("  rejected new state")
+        E = E_o
+        rejectStage += 1
+        self.tee("  rejected new state with low estimated acceptance" + \
+            " rate of %.2e"%mean_acc)
       elif (mean_acc>0.99) and (not crossed) \
           and (self.params['cool']['protocol'] == 'Adaptive'):
         # If the acceptance probability is too high,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.random.randint(len(confs))]
-        self.cool_protocol.pop(-2)
-        self.tee("  rejected previous state")
+        self.cool_protocol.pop()
+        self.cool_protocol[-1] = copy.deepcopy(lambda_n)
+        rejectStage -= 1
+        lambda_o = lambda_n
+        self.tee("  rejected previous state with high estimated acceptance" + \
+            " rate of %.2f"%mean_acc)
       else:
+        # Store data and continue with initialization
         self.confs['cool']['replicas'].append(confs[np.random.randint(len(confs))])
         self.confs['cool']['samples'].append([confs])
-        if len(self.confs['cool']['samples'])>2 and \
-            (not self.params['cool']['keep_intermediate']):
-          self.confs['cool']['samples'][-2] = []
-        self.cool_Es.append([{'MM':Es_MM}])
-        self.tee("")
+        self.cool_Es.append([E])
+        self.cool_protocol[-1] = copy.deepcopy(lambda_n)
+        rejectStage = 0
+        lambda_o = lambda_n
+        self.tee("  the estimated repX acceptance rate is %.2f\n"%mean_acc)
 
       # Special tasks after the last stage
       if self.cool_protocol[-1]['crossed']:
-        self._cool_cycle += 1
         # For warming, reverse protocol and energies
         if warm:
           self.tee("  reversing replicas, samples, and protocol")
@@ -938,6 +909,12 @@ last modified {1}
           self.cool_protocol.reverse()
           self.cool_protocol[0]['crossed'] = False
           self.cool_protocol[-1]['crossed'] = True
+
+        if (not self.params['cool']['keep_intermediate']):
+          for k in range(1,len(self.cool_protocol)-1):
+            self.confs['cool']['samples'][k] = []
+            
+        self._cool_cycle += 1
 
       # Save progress every 5 minutes
       if ('last_cool_save' not in self.timing) or \
@@ -971,13 +948,6 @@ last modified {1}
     self._clear_lock('cool')
     self.sampler['cool_SmartDarting'].confs = []
     return True
-
-  def cool(self):
-    """
-    Samples different ligand configurations 
-    at thermodynamic states between self.T_HIGH and self.T_SIMMIN
-    """
-    return self._sim_process('cool')
 
   def calc_f_L(self, readOnly=False, do_solvation=True, redo=False):
     """
@@ -1106,8 +1076,9 @@ last modified {1}
         # 'forward' direction and desolvation the 'reverse'
         u_L = np.concatenate([self.cool_Es[-1][n]['L'+phase] \
           for n in range(fromCycle,toCycle)])/self.RT_TARGET
-        u_sampled = np.concatenate([self.cool_Es[-1][n]['MM'] \
-          for n in range(fromCycle,toCycle)])/self.RT_SIMMIN
+        u_sampled = np.concatenate(\
+          [self._u_kln([self.cool_Es[-1][c]],[self.cool_protocol[-1]]) \
+            for c in range(fromCycle,toCycle)])
         du_F = (u_L[:,-1] - u_sampled)
         min_du_F = min(du_F)
         w_L = np.exp(-du_F+min_du_F)
@@ -1137,20 +1108,26 @@ last modified {1}
       The first state of docking is sampled by randomly placing configurations
       from the high temperature ligand simulation into the binding site.
     """
-    # Select samples from the high T unbound state and ensure there are enough
+    # Select samples from the high T unbound state
     E_MM = []
+    E_OBC = []
     confs = []
     for k in range(1,len(self.cool_Es[0])):
       E_MM += list(self.cool_Es[0][k]['MM'])
+      if 'OBC' in self.cool_Es[0][k].keys():
+        E_OBC += list(self.cool_Es[0][k]['OBC'])
       confs += list(self.confs['cool']['samples'][0][k])
 
     random_dock_inds = np.array(np.linspace(0,len(E_MM), \
       self.params['dock']['seeds_per_state'],endpoint=False),dtype=int)
-    cool0_Es_MM = [E_MM[ind]  for ind in random_dock_inds]
+    cool0_Es_MM = [E_MM[ind] for ind in random_dock_inds]
+    cool0_Es_OBC = []
+    if E_OBC!=[]:
+      cool0_Es_OBC = [E_OBC[ind] for ind in random_dock_inds]
     cool0_confs = [confs[ind] for ind in random_dock_inds]
 
     # Do the random docking
-    lambda_o = self._lambda(0.0,'dock',MM=True,site=True,crossed=False)
+    lambda_o = self._lambda(0.0, 'dock')
     self.dock_protocol = [lambda_o]
 
     # Set up the force field with full interaction grids
@@ -1192,6 +1169,8 @@ last modified {1}
     while not converged:
       for c in range(self.params['dock']['seeds_per_state']):
         E['MM'][c,:,:] = cool0_Es_MM[c]
+        if cool0_Es_OBC!=[]:
+          E['OBC'][c,:,:] = cool0_Es_OBC[c]
         for i_rot in range(self._n_rot):
           conf_rot = Configuration(self.universe,\
             np.dot(cool0_confs[c], self._random_rotT[i_rot,:,:]))
@@ -1268,7 +1247,7 @@ last modified {1}
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
       undock = True if (self.params['dock']['pose'] == -1) else False
       if undock:
-        lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
+        lambda_o = self._lambda(1.0, 'dock')
         self.dock_protocol = [lambda_o]
         self._set_universe_evaluator(lambda_o)
         seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
@@ -1325,7 +1304,7 @@ last modified {1}
         confs_HT = confs_HT[:self.params['dock']['seeds_per_state']]
         
         if (self.params['dock']['pose'] > -1):
-          lambda_o = self._lambda(0.0, 'dock', MM=True, site=True, crossed=False)
+          lambda_o = self._lambda(0.0, 'dock')
           self.dock_protocol = [lambda_o]
           self._set_universe_evaluator(lambda_o)
 
@@ -1483,10 +1462,6 @@ last modified {1}
           rejectStage = 0
           lambda_o = lambda_n
           self.tee("  the estimated repX acceptance rate is %.2f\n"%mean_acc)
-
-          if (not self.params['dock']['keep_intermediate']):
-            if len(self.dock_protocol)>(2+(not undock)):
-              self.confs['dock']['samples'][-2] = []
       else:
         # Store data and continue with initialization (first time)
         self.confs['dock']['replicas'].append(confs[np.random.randint(len(confs))])
@@ -1510,7 +1485,7 @@ last modified {1}
           self.dock_protocol[-1]['crossed'] = True
 
         if (not self.params['dock']['keep_intermediate']):
-          for k in range(len(self.dock_protocol)-1):
+          for k in range(1,len(self.dock_protocol)-1):
             self.confs['dock']['samples'][k] = []
 
         self._dock_cycle += 1
@@ -1546,15 +1521,6 @@ last modified {1}
     self._clear_lock('dock')
     self.sampler['dock_SmartDarting'].confs = []
     return True
-
-  def dock(self):
-    """
-    Docks the ligand into the binding site
-    by simulating at thermodynamic states
-    between decoupled and fully interacting and
-    between self.T_HIGH and self.T_SIMMIN
-    """
-    return self._sim_process('dock')
 
   def calc_f_RL(self, readOnly=False, do_solvation=True, redo=False):
     """
@@ -1603,8 +1569,6 @@ last modified {1}
     
     # Store stats_RL
     # Internal energies
-    self.stats_RL['u_K_ligand'] = \
-      [self.dock_Es[-1][c]['MM']/self.RT_SIMMIN for c in range(self._dock_cycle)]
     self.stats_RL['u_K_sampled'] = \
       [self._u_kln([self.dock_Es[-1][c]],[self.dock_protocol[-1]]) \
         for c in range(self._dock_cycle)]
@@ -1915,10 +1879,11 @@ last modified {1}
     else:
       (confs, Es) = self._get_confs_to_rescore(site=False, \
         minimize=minimize, sort=False)
+      # TODO: Set the force field if necessary
 
     # Calculate MM energies
     if not 'MM' in Es.keys():
-      lambda_o = self._lambda(1.0, 'dock', MM=True, site=True, crossed=False)
+      lambda_o = self._lambda(1.0, 'dock')
       self._set_universe_evaluator(lambda_o)
       Es = self._energyTerms(confs, Es)
 
@@ -2033,8 +1998,6 @@ last modified {1}
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
       fflist.append(self._forceFields['gaff'])
-      if self.params[process]['OBC_ligand']:
-        fflist.append(self._forceFields['OBC'])
     if ('site' in lambda_n.keys()) and lambda_n['site']:
       if not 'site' in self._forceFields.keys():
         # Set up the binding site in the force field
@@ -2045,8 +2008,7 @@ last modified {1}
               self.params['dock']['site_measured']
           else:
             print '\n*** Measuring the binding site ***'
-            self._set_universe_evaluator(\
-              self._lambda(1.0, 'dock', MM=True, site=False, crossed=False))
+            self._set_universe_evaluator(self._lambda(1.0, 'dock', site=False))
             (confs, Es) = self._get_confs_to_rescore(site=False, minimize=True)
             if len(confs)>0:
               # Use the center of mass for configurations
@@ -2094,48 +2056,53 @@ last modified {1}
           raise Exception('Binding site type not recognized!')
       fflist.append(self._forceFields['site'])
 
-    # Add grid terms
+    # Add scalable terms
     for scalable in self._scalables:
       if (scalable in lambda_n.keys()) and lambda_n[scalable]>0:
         # Load the force field if it has not been loaded
         if not scalable in self._forceFields.keys():
-          loading_start_time = time.time()
-          grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
-            'LJr':'LJr','LJa':'LJa','ELE':'ELE'}[scalable]]
-          grid_scaling_factor = 'scaling_factor_' + \
-            {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
-             'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
+          if scalable=='OBC':
+            from AlGDock.ForceFields.OBC.OBC import OBCForceField
+            self._forceFields['OBC'] = OBCForceField(self._FNs['prmtop']['L'],
+              self.molecule.prmtop_atom_order,self.molecule.inv_prmtop_atom_order)
+          else: # Grid
+            loading_start_time = time.time()
+            grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
+              'LJr':'LJr','LJa':'LJa','ELE':'ELE'}[scalable]]
+            grid_scaling_factor = 'scaling_factor_' + \
+              {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
+               'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
 
-          # Determine the grid threshold
-          if scalable=='sLJr':
-            grid_thresh = 10.0
-          elif scalable=='sELE':
-            # The maximum value is set so that the electrostatic energy
-            # less than or equal to the Lennard-Jones repulsive energy
-            # for every heavy atom at every grid point
-            scaling_factors_ELE = np.array([ \
-              self.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
-                for a in self.molecule.atomList()],dtype=float)
-            scaling_factors_LJr = np.array([ \
-              self.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
-                for a in self.molecule.atomList()],dtype=float)
-            toKeep = np.logical_and(scaling_factors_LJr>10., abs(scaling_factors_ELE)>0.1)
-            scaling_factors_ELE = scaling_factors_ELE[toKeep]
-            scaling_factors_LJr = scaling_factors_LJr[toKeep]
-            grid_thresh = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
-          else:
-            grid_thresh = -1 # There is no threshold for grid points
+            # Determine the grid threshold
+            if scalable=='sLJr':
+              grid_thresh = 10.0
+            elif scalable=='sELE':
+              # The maximum value is set so that the electrostatic energy
+              # less than or equal to the Lennard-Jones repulsive energy
+              # for every heavy atom at every grid point
+              scaling_factors_ELE = np.array([ \
+                self.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
+                  for a in self.molecule.atomList()],dtype=float)
+              scaling_factors_LJr = np.array([ \
+                self.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
+                  for a in self.molecule.atomList()],dtype=float)
+              toKeep = np.logical_and(scaling_factors_LJr>10., abs(scaling_factors_ELE)>0.1)
+              scaling_factors_ELE = scaling_factors_ELE[toKeep]
+              scaling_factors_LJr = scaling_factors_LJr[toKeep]
+              grid_thresh = min(abs(scaling_factors_LJr*10.0/scaling_factors_ELE))
+            else:
+              grid_thresh = -1 # There is no threshold for grid points
 
-          from AlGDock.ForceFields.Grid.Interpolation \
-            import InterpolationForceField
-          self._forceFields[scalable] = InterpolationForceField(grid_FN, \
-            name=scalable, interpolation_type='Trilinear', \
-            strength=lambda_n[scalable], scaling_property=grid_scaling_factor,
-            inv_power=4 if scalable=='LJr' else None, \
-            grid_thresh=grid_thresh)
-          self.tee('  %s grid loaded from %s in %s'%(scalable, \
-            os.path.basename(grid_FN), \
-            HMStime(time.time()-loading_start_time)))
+            from AlGDock.ForceFields.Grid.Interpolation \
+              import InterpolationForceField
+            self._forceFields[scalable] = InterpolationForceField(grid_FN, \
+              name=scalable, interpolation_type='Trilinear', \
+              strength=lambda_n[scalable], scaling_property=grid_scaling_factor,
+              inv_power=4 if scalable=='LJr' else None, \
+              grid_thresh=grid_thresh)
+            self.tee('  %s grid loaded from %s in %s'%(scalable, \
+              os.path.basename(grid_FN), \
+              HMStime(time.time()-loading_start_time)))
 
         # Set the force field strength to the desired value
         self._forceFields[scalable].set_strength(lambda_n[scalable])
@@ -2215,7 +2182,7 @@ last modified {1}
     """
     self._evaluators = {}
     for scalable in self._scalables:
-      if scalable in self._forceFields.keys():
+      if (scalable in self._forceFields.keys()) and (scalable!='OBC'):
         del self._forceFields[scalable]
 
   def _ramp_T(self, T_START, T_LOW = 20., normalize=False):
@@ -2451,20 +2418,22 @@ last modified {1}
     #
     self._set_lock(process)
 
-    if process=='cool':
-      terms = ['MM']
-    elif self.params['dock']['pose'] > -1:
-      # Pose BPMF
-      terms = ['MM','misc',\
-        'k_angular_ext','k_spatial_ext','k_angular_int'] + self._scalables
-    else:
-      # BPMF
-      terms = ['MM','site','misc'] + self._scalables
-
     cycle = getattr(self,'_%s_cycle'%process)
     confs = self.confs[process]['replicas']
     lambdas = getattr(self,process+'_protocol')
-    
+
+    terms = ['MM']
+    if process=='cool':
+      if self.params[process]['OBC_ligand']:
+        terms += ['OBC']
+    elif process=='dock':
+      if self.params['dock']['pose'] > -1:
+        # Pose BPMF
+        terms += ['k_angular_ext','k_spatial_ext','k_angular_int']
+      else:
+        terms += ['site']
+      terms += self._scalables
+
     # A list of pairs of replica indicies
     K = len(lambdas)
     pairs_to_swap = []
@@ -2564,14 +2533,10 @@ last modified {1}
       # Store energies
       for k in range(K):
         confs[k] = results[k]['confs']
-        if process=='cool':
-            E['MM'][k] = results[k]['Etot']
-      if process=='dock':
-        E = self._energyTerms(confs, E) # Get energies for scalables
-        # Get rmsd values
-        if self.params['dock']['rmsd'] is not False:
-          E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
-            self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
+      E = self._energyTerms(confs, E, process=process)
+      if (process=='dock') and (self.params['dock']['rmsd'] is not False):
+        E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
+          self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
 
       # Store MC move statistics
       for k in range(K):
@@ -2647,8 +2612,7 @@ last modified {1}
     #   self.process_Es and self.confs[process]['samples']
     # and also local variables 
     #   Es_repX and confs_repX
-    if process=='dock':
-      if self.params['dock']['rmsd'] is not False:
+    if (process=='dock') and (self.params['dock']['rmsd'] is not False):
         terms.append('rmsd') # Make sure to save the rmsd
     Es_repX = []
     for k in range(K):
@@ -2809,7 +2773,7 @@ last modified {1}
 
     return results
 
-  def _sim_process(self, process):
+  def sim_process(self, process):
     """
     Simulate and analyze a cooling or docking process.
     
@@ -2834,6 +2798,7 @@ last modified {1}
          (self._FNs['score']!='default'):
         self._set_lock('dock')
         self.tee("\n>>> Reinitializing replica exchange configurations")
+        self._set_universe_evaluator(self._lambda(1.0, 'dock'))
         confs = self._get_confs_to_rescore(\
           nconfs=len(self.dock_protocol), site=True, minimize=True)[0]
         self._clear_lock('dock')
@@ -2955,11 +2920,11 @@ last modified {1}
     # Terms to copy
     if self.params['dock']['pose'] > -1:
       # Pose BPMF
-      terms = ['MM','misc',\
+      terms = ['MM',\
         'k_angular_ext','k_spatial_ext','k_angular_int'] + self._scalables
     else:
       # BPMF
-      terms = ['MM','site','misc'] + self._scalables
+      terms = ['MM','site'] + self._scalables
 
     dock_Es_s = []
     confs_s = []
@@ -3327,6 +3292,43 @@ last modified {1}
     else:
       return (u_kln,N_k)
 
+  def _next_cool_state(self, E=None, lambda_o=None, pow=None, warm=True):
+    To = lambda_o['T']
+    crossed = lambda_o['crossed']
+    
+    if self.params['cool']['protocol'] == 'Adaptive':
+      tL_tensor = self._tL_tensor(E,lambda_o,process='cool')
+      if pow is not None:
+        tL_tensor = tL_tensor*(1.25**pow)
+      if tL_tensor>1E-7:
+        dL = self.params['cool']['therm_speed']/tL_tensor
+        if warm:
+          T = To + dL
+          if T > self.T_HIGH:
+            T = self.T_HIGH
+            crossed = True
+        else:
+          T = To - dL
+          if T < self.T_SIMMIN:
+            T = self.T_SIMMIN
+            crossed = True
+      else:
+        raise Exception('No variance in configuration energies')
+    elif self.params['cool']['protocol'] == 'Geometric':
+      T_GEOMETRIC = np.exp(np.linspace(np.log(self.T_SIMMIN),np.log(self.T_HIGH),
+        int(1/self.params['cool']['therm_speed'])))
+      if warm:
+        T_START, T_END = self.T_SIMMIN, self.T_HIGH
+      else:
+        T_START, T_END = self.T_HIGH, self.T_SIMMIN
+        T_GEOMETRIC = T_GEOMETRIC[::-1]
+      T = T_GEOMETRIC[len(self.cool_protocol)]
+      crossed = (len(self.cool_protocol)==(len(T_GEOMETRIC)-1))
+
+    a = (self.T_HIGH-T)/(self.T_HIGH-self.T_SIMMIN)
+    # TODO: Scale OBC
+    return {'T':T, 'a':a, 'MM':True, 'OBC':lambda_o['OBC'], 'crossed':crossed}
+
   def _next_dock_state(self, E=None, lambda_o=None, pow=None, undock=False):
     """
     Determines the parameters for the next docking state
@@ -3382,6 +3384,8 @@ last modified {1}
   def _tL_tensor(self, E, lambda_c, process='dock'):
     # Metric tensor for the thermodynamic length
     T = lambda_c['T']
+    # TODO: Scale OBC
+    OBC = 1.0 if self.params[process]['OBC_ligand'] else 0
     if process=='dock':
       a = lambda_c['a']
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
@@ -3400,7 +3404,7 @@ last modified {1}
           'k_spatial_ext':self.params['dock']['k_pose'], \
           'k_angular_int':self.params['dock']['k_pose']}], noBeta=True)
         U_RL_g = self._u_kln([E],
-          [{'MM':True, 'T':T, \
+          [{'MM':True, 'OBC':OBC, 'T':T, \
             'k_angular_ext':lambda_c['k_angular_ext'], \
             'k_spatial_ext':lambda_c['k_spatial_ext'], \
             'k_angular_int':lambda_c['k_angular_int'], \
@@ -3414,29 +3418,32 @@ last modified {1}
         da_sg_da = -8*(a-0.5)
         Psi_sg = self._u_kln([E], [{'sLJr':1,'sELE':1}], noBeta=True)
         U_RL_g = self._u_kln([E],
-          [{'MM':True, 'site':True, 'T':T,\
+          [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
           'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
                np.abs(self.T_SIMMIN-self.T_HIGH)*U_RL_g.std()/(R*T*T)
     elif process=='cool':
-      return self._u_kln([E],[{'MM':True}], noBeta=True).std()/(R*T*T)
+      # TODO: Include OBC
+      return self._u_kln([E],[{'MM':True, 'OBC':OBC}], noBeta=True).std()/(R*T*T)
     else:
       raise Exception("Unknown process!")
 
-  def _lambda(self, a, process='dock', lambda_o=None, \
-      MM=None, site=None, crossed=None):
-    
+  def _lambda(self, a, process='dock', lambda_o=None, site=True, crossed=False):
     if (lambda_o is None) and len(getattr(self,process+'_protocol'))>0:
       lambda_o = copy.deepcopy(getattr(self,process+'_protocol')[-1])
     if (lambda_o is not None):
       lambda_n = copy.deepcopy(lambda_o)
     else:
       lambda_n = {}
-    if MM is not None:
-      lambda_n['MM'] = MM
+    lambda_n['MM'] = True
     if crossed is not None:
       lambda_n['crossed'] = crossed
+    # TODO: Scale the OBC term
+    if self.params[process]['OBC_ligand']:
+      lambda_n['OBC'] = 1.0
+    else:
+      lambda_n['OBC'] = 0
 
     if process=='dock':
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
@@ -3748,7 +3755,7 @@ last modified {1}
           p,state,c,label,HMStime(wall_time)))
         return
 
-  def _energyTerms(self, confs, E=None, debug=DEBUG):
+  def _energyTerms(self, confs, E=None, process='dock', debug=DEBUG):
     """
     Calculates MMTK energy terms for a series of configurations
     Units are the MMTK standard, kJ/mol
@@ -3756,29 +3763,38 @@ last modified {1}
     if E is None:
       E = {}
 
-    lambda_full = self._lambda(a=1.0)
-    for scalable in self._scalables:
-      lambda_full[scalable] = 1
+    lambda_full = self._lambda(a=1.0, process=process, site=(process=='dock'))
+    if process=='dock':
+      for scalable in self._scalables:
+        lambda_full[scalable] = 1
     self._set_universe_evaluator(lambda_full)
+
     # Molecular mechanics and grid interaction energies
-    for term in (['MM','misc'] + self._scalables):
-      E[term] = np.zeros(len(confs), dtype=float)
-    if 'site' in self._forceFields.keys():
-      E['site'] = np.zeros(len(confs), dtype=float)
-    if 'InternalRestraint' in self._forceFields.keys():
-      E['k_angular_int'] = np.zeros(len(confs), dtype=float)
-    if 'ExternalRestraint' in self._forceFields.keys():
-      E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
-      E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
+    E['MM'] = np.zeros(len(confs), dtype=float)
+    if process=='cool':
+      if 'OBC' in lambda_full.keys():
+        E['OBC'] = np.zeros(len(confs), dtype=float)
+    if process=='dock':
+      for term in (self._scalables):
+        E[term] = np.zeros(len(confs), dtype=float)
+      if 'site' in self._forceFields.keys():
+        E['site'] = np.zeros(len(confs), dtype=float)
+      if 'InternalRestraint' in self._forceFields.keys():
+        E['k_angular_int'] = np.zeros(len(confs), dtype=float)
+      if 'ExternalRestraint' in self._forceFields.keys():
+        E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
+        E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
     for c in range(len(confs)):
       self.universe.setConfiguration(Configuration(self.universe,confs[c]))
       eT = self.universe.energyTerms()
       for (key,value) in eT.iteritems():
-        if not key.startswith('pose'):
-          E[term_map[key]][c] += value
-        else:
+        if key=='electrostatic':
+          pass # For some reason, MMTK double-counts electrostatic energies
+        elif key.startswith('pose'):
           # For pose restraints, the energy is per spring constant unit
           E[term_map[key]][c] += value/lambda_full[term_map[key]]
+        else:
+          E[term_map[key]][c] += value
     return E
   
   def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,
