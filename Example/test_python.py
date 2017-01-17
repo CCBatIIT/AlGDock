@@ -43,7 +43,7 @@ for run_type in run_types:
     sampler='HMC', fraction_CD=0.5, CD_steps_per_trial=10, \
     MCMC_moves=1, \
     sampling_importance_resampling = True, \
-    OBC_ligand = True, \
+    solvation = 'Desolvated', \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
     sweeps_per_cycle=25, attempts_per_sweep=100, \
     steps_per_sweep=100, darts_per_sweep=0, \

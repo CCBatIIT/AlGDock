@@ -397,7 +397,7 @@ last modified {1}
         ('snaps_per_independent',3.0),
         ('phases',['NAMD_Gas','NAMD_OBC']),
         ('sampling_importance_resampling',False), # TODO: Set default after testing
-        ('OBC_ligand',False), # TODO: Set default after testing
+        ('solvation','Desolvated'), # TODO: Set default after testing
         ('keep_intermediate',False),
         ('GMC_attempts', 0),
         ('GMC_tors_threshold', 0.0)])
@@ -877,7 +877,7 @@ last modified {1}
         rejectStage += 1
         self.tee("  rejected new state with low estimated acceptance" + \
             " rate of %.2e"%mean_acc)
-      elif (mean_acc>0.99) and (not crossed) \
+      elif (mean_acc>0.99) and (not lambda_n['crossed']) \
           and (self.params['cool']['protocol'] == 'Adaptive'):
         # If the acceptance probability is too high,
         # reject the previous state and restart
@@ -1873,18 +1873,19 @@ last modified {1}
       prefix = 'min_' + prefix
     energyFN = os.path.join(self.dir['dock'],prefix+'.pkl.gz')
 
+    # Set the force field to fully interacting
+    lambda_o = self._lambda(1.0, 'dock')
+    self._set_universe_evaluator(lambda_o)
+
     # Load the configurations
     if os.path.isfile(energyFN):
       (confs, Es) = self._load_pkl_gz(energyFN)
     else:
       (confs, Es) = self._get_confs_to_rescore(site=False, \
         minimize=minimize, sort=False)
-      # TODO: Set the force field if necessary
 
     # Calculate MM energies
     if not 'MM' in Es.keys():
-      lambda_o = self._lambda(1.0, 'dock')
-      self._set_universe_evaluator(lambda_o)
       Es = self._energyTerms(confs, Es)
 
     # Calculate RMSD
@@ -2424,8 +2425,7 @@ last modified {1}
 
     terms = ['MM']
     if process=='cool':
-      if self.params[process]['OBC_ligand']:
-        terms += ['OBC']
+      terms += ['OBC']
     elif process=='dock':
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
@@ -3293,22 +3293,26 @@ last modified {1}
       return (u_kln,N_k)
 
   def _next_cool_state(self, E=None, lambda_o=None, pow=None, warm=True):
-    To = lambda_o['T']
-    crossed = lambda_o['crossed']
-    
+    if E is None:
+      E = self.cool_Es[-1]
+
+    if lambda_o is None:
+      lambda_o = self.cool_protocol[-1]
+
     if self.params['cool']['protocol'] == 'Adaptive':
       tL_tensor = self._tL_tensor(E,lambda_o,process='cool')
+      crossed = lambda_o['crossed']
       if pow is not None:
         tL_tensor = tL_tensor*(1.25**pow)
       if tL_tensor>1E-7:
         dL = self.params['cool']['therm_speed']/tL_tensor
         if warm:
-          T = To + dL
+          T = lambda_o['T'] + dL
           if T > self.T_HIGH:
             T = self.T_HIGH
             crossed = True
         else:
-          T = To - dL
+          T = lambda_o['T'] - dL
           if T < self.T_SIMMIN:
             T = self.T_SIMMIN
             crossed = True
@@ -3324,10 +3328,8 @@ last modified {1}
         T_GEOMETRIC = T_GEOMETRIC[::-1]
       T = T_GEOMETRIC[len(self.cool_protocol)]
       crossed = (len(self.cool_protocol)==(len(T_GEOMETRIC)-1))
-
     a = (self.T_HIGH-T)/(self.T_HIGH-self.T_SIMMIN)
-    # TODO: Scale OBC
-    return {'T':T, 'a':a, 'MM':True, 'OBC':lambda_o['OBC'], 'crossed':crossed}
+    return self._lambda(a, process='cool', lambda_o=lambda_o, crossed=crossed)
 
   def _next_dock_state(self, E=None, lambda_o=None, pow=None, undock=False):
     """
@@ -3339,7 +3341,6 @@ last modified {1}
 
     if lambda_o is None:
       lambda_o = self.dock_protocol[-1]
-    lambda_n = copy.deepcopy(lambda_o)
     
     if self.params['dock']['protocol']=='Adaptive':
       # Change grid scaling and temperature simultaneously
@@ -3368,6 +3369,7 @@ last modified {1}
         return self._lambda(a, process='dock', lambda_o=lambda_o, crossed=crossed)
       else:
         # Repeats the previous stage
+        lambda_n = copy.deepcopy(lambda_o)
         lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
         self.tee('  no variance in previous stage!' + \
           ' trying time step of %.5g'%lambda_n['delta_t'])
@@ -3384,8 +3386,6 @@ last modified {1}
   def _tL_tensor(self, E, lambda_c, process='dock'):
     # Metric tensor for the thermodynamic length
     T = lambda_c['T']
-    # TODO: Scale OBC
-    OBC = 1.0 if self.params[process]['OBC_ligand'] else 0
     if process=='dock':
       a = lambda_c['a']
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
@@ -3394,8 +3394,17 @@ last modified {1}
       da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(\
         1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
-      Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
-
+      
+      if self.params['dock']['solvation']=='Desolvated':
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
+        OBC = 0
+      elif self.params['dock']['solvation']=='Full':
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
+        OBC = 1.0
+      elif self.params['dock']['solvation']=='Fractional':
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
+        OBC = a_g
+      
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
         a_r = np.tanh(16*a*a)
@@ -3424,8 +3433,14 @@ last modified {1}
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
                np.abs(self.T_SIMMIN-self.T_HIGH)*U_RL_g.std()/(R*T*T)
     elif process=='cool':
-      # TODO: Include OBC
-      return self._u_kln([E],[{'MM':True, 'OBC':OBC}], noBeta=True).std()/(R*T*T)
+      if self.params['cool']['solvation']=='Full':
+        # OBC is always on
+        return self._u_kln([E],[{'MM':True, 'OBC':1.0}], noBeta=True).std()/(R*T*T)
+      else:
+        # OBC is scaled with the progress variable
+        a = lambda_c['a']
+        return self._u_kln([E],[{'OBC':1.0}], noBeta=True).std()/(R*T) + \
+          self._u_kln([E],[{'MM':True, 'OBC':a}], noBeta=True).std()/(R*T*T)
     else:
       raise Exception("Unknown process!")
 
@@ -3439,16 +3454,17 @@ last modified {1}
     lambda_n['MM'] = True
     if crossed is not None:
       lambda_n['crossed'] = crossed
-    # TODO: Scale the OBC term
-    if self.params[process]['OBC_ligand']:
-      lambda_n['OBC'] = 1.0
-    else:
-      lambda_n['OBC'] = 0
 
     if process=='dock':
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
       if a_g<1E-10:
         a_g=0
+      if self.params['dock']['solvation']=='Desolvated':
+        lambda_n['OBC'] = 0
+      elif self.params['dock']['solvation']=='Full':
+        lambda_n['OBC'] = 1.0
+      elif self.params['dock']['solvation']=='Fractional':
+        lambda_n['OBC'] = a_g # Scales the solvent with the grid
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
         a_r = np.tanh(16*a*a)
@@ -3474,6 +3490,12 @@ last modified {1}
     elif process=='cool':
       lambda_n['a'] = a
       lambda_n['T'] = self.T_HIGH - a*(self.T_HIGH-self.T_SIMMIN)
+      if self.params['cool']['solvation']=='Desolvated':
+        lambda_n['OBC'] = a
+      elif self.params['cool']['solvation']=='Full':
+        lambda_n['OBC'] = 1.0
+      elif self.params['cool']['solvation']=='Fractional':
+        lambda_n['OBC'] = a
     else:
       raise Exception("Unknown process!")
 

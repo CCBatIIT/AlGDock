@@ -44,6 +44,7 @@ class ObcParameters {
    
       int _numberOfAtoms;
 
+      double _strength;
       double _solventDielectric;
       double _soluteDielectric;
       double _electricConstant;
@@ -118,6 +119,26 @@ class ObcParameters {
          --------------------------------------------------------------------------------------- */
 
       void setNumberOfAtoms(int numberOfAtoms);
+
+      /**---------------------------------------------------------------------------------------
+      
+         Get strength
+      
+         @return strength
+      
+         --------------------------------------------------------------------------------------- */
+
+      double getStrength() const;
+
+      /**---------------------------------------------------------------------------------------
+      
+         Set strength
+      
+         @param strength   strength
+      
+         --------------------------------------------------------------------------------------- */
+
+      void setStrength(double strength);
 
       /**---------------------------------------------------------------------------------------
       

@@ -95,6 +95,31 @@ void ObcParameters::setNumberOfAtoms(int numberOfAtoms) {
 
 /**---------------------------------------------------------------------------------------
 
+   Get strength
+
+   @return strength
+
+   --------------------------------------------------------------------------------------- */
+
+double ObcParameters::getStrength() const {
+    return _strength;
+}
+
+/**---------------------------------------------------------------------------------------
+
+   Set number of atoms
+
+   @param numberOfAtoms number of atoms
+
+   --------------------------------------------------------------------------------------- */
+
+void ObcParameters::setStrength(double strength) {
+    _strength = strength;
+}
+
+
+/**---------------------------------------------------------------------------------------
+
     Get OBC type
 
     @return OBC type

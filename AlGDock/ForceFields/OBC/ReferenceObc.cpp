@@ -209,7 +209,11 @@ void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters, const ve
           }
        }
  
-       // OBC-specific code (Eqs. 6-8 in paper)
+       // OBC-specific code (Eqs. 6-8 in
+       // Onufriev, A., Bashford, D., & Case, D. A. (2004).
+       // Exploring Protein Native States and Large-Scale Conformational
+       // Changes With a Modified Generalized Born Model.
+       // Proteins: Structure, Function, and Bioinformatics, 55(2), 383–394.)
 
        sum                  *= half*offsetRadiusI;
        double sum2       = sum*sum;
@@ -253,7 +257,7 @@ void ReferenceObc::computeAceNonPolarForce(const ObcParameters* obcParameters,
     // ---------------------------------------------------------------------------------------
 
     // compute the nonpolar solvation via ACE approximation
-
+    const double strength             = obcParameters->getStrength();
     const double probeRadius          = obcParameters->getProbeRadius();
     const double surfaceAreaFactor    = obcParameters->getPi4Asolv();
 
@@ -279,8 +283,8 @@ void ReferenceObc::computeAceNonPolarForce(const ObcParameters* obcParameters,
             double r            = atomicRadii[atomI] + probeRadius;
             double ratio6       = POW(atomicRadii[atomI]/bornRadii[atomI], six);
             double saTerm       = surfaceAreaFactor*r*r*ratio6;
-            *energy                += saTerm;
-            forces[atomI]          += minusSix*saTerm/bornRadii[atomI]; 
+            *energy                += strength*saTerm;
+            forces[atomI]          += strength*minusSix*saTerm/bornRadii[atomI];
         }
     }
 }
@@ -315,6 +319,7 @@ double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
 
     // constants
     const int numberOfAtoms = obcParameters->getNumberOfAtoms();
+    const double strength = obcParameters->getStrength();
     const double dielectricOffset = obcParameters->getDielectricOffset();
     const double cutoffDistance = obcParameters->getCutoffDistance();
     const double soluteDielectric = obcParameters->getSoluteDielectric();
@@ -405,7 +410,7 @@ double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
              energy *= half;
           }
 
-          obcEnergy         += energy;
+          obcEnergy         += strength*energy;
 //          bornForces[atomI] += dGpol_dalpha2_ij*bornRadii[atomJ];
 
        }
@@ -447,6 +452,7 @@ double ReferenceObc::computeBornEnergyForces(const ObcParameters* obcParameters,
 
     // constants
     const int numberOfAtoms = obcParameters->getNumberOfAtoms();
+    const double strength = obcParameters->getStrength();
     const double dielectricOffset = obcParameters->getDielectricOffset();
     const double cutoffDistance = obcParameters->getCutoffDistance();
     const double soluteDielectric = obcParameters->getSoluteDielectric();
@@ -456,6 +462,7 @@ double ReferenceObc::computeBornEnergyForces(const ObcParameters* obcParameters,
         preFactor = two*obcParameters->getElectricConstant()*((one/soluteDielectric) - (one/solventDielectric));
     else
         preFactor = zero;
+    preFactor *= strength; // Should adjust strength in first main loop
 
     // ---------------------------------------------------------------------------------------
 
@@ -553,7 +560,7 @@ double ReferenceObc::computeBornEnergyForces(const ObcParameters* obcParameters,
     // ---------------------------------------------------------------------------------------
 
     // second main loop
-
+  
     const vector<double>& obcChain            = getObcChain();
     const vector<double>& atomicRadii         = obcParameters->getAtomicRadii();
 

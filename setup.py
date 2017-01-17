@@ -65,7 +65,7 @@ if not mmtk_ok:
 MMTK_source_path = findPath(search_paths['MMTK'])
 
 # Configure compile arguments and include directories 
-compile_args = []
+compile_args = ['-fdiagnostics-color=always']
 include_dirs = ['Include',
                 os.path.join(MMTK_source_path,'Include'),
                 os.path.join(MMTK_source_path,'include', \

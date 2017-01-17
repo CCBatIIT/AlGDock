@@ -28,7 +28,7 @@ ef_evaluator(PyFFEnergyTermObject *self,
   vector3* coordinates = (vector3 *)input->coordinates->data;
   vector3* g;
   
-  int numParticles = input->coordinates->dimensions[0];
+//  int numParticles = input->coordinates->dimensions[0];
 
   struct ObcParameters* obcParameters = (struct ObcParameters*)self->data[3];
   struct ReferenceObc* obc = (struct ReferenceObc*)self->data[4];
@@ -92,15 +92,16 @@ OBCTerm(PyObject *dummy, PyObject *args)
   PyArrayObject *charges;
   PyArrayObject *atomicRadii;
   PyArrayObject *scaleFactors;
+  double strength;
 
   /* Create a new energy term object and return if the creation fails. */
   self = PyFFEnergyTerm_New();
   if (self == NULL)
     return NULL;
   /* Convert the parameters to C data types. */
-  if (!PyArg_ParseTuple(args, "O!iO!O!O!",
+  if (!PyArg_ParseTuple(args, "O!idO!O!O!",
 			&PyUniverseSpec_Type, &self->universe_spec,
-      &numParticles,
+      &numParticles, &strength,
 			&PyArray_Type, &charges,
       &PyArray_Type, &atomicRadii,
       &PyArray_Type, &scaleFactors))
@@ -119,13 +120,14 @@ OBCTerm(PyObject *dummy, PyObject *args)
   self->nterms = 1;
   
   struct ObcParameters* obcParameters = newObcParameters(
-    numParticles, (double *)charges->data,
+    numParticles, strength, (double *)charges->data,
     (double *)atomicRadii->data, (double *)scaleFactors->data);
   struct ReferenceObc* obc = newReferenceObc(obcParameters);
 
   /* self->param is a storage area for parameters. Note that there
      are only 40 slots (double) there. */
   self->param[0] = (double) numParticles;
+  self->param[1] = strength;
   
   /* self->data is the other storage area for parameters. There are
      40 Python object slots there */

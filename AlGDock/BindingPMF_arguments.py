@@ -126,8 +126,11 @@ arguments = {
     'help':'Number of snapshots per independent sample'},
   'sampling_importance_resampling':{'action':'store_true',
     'help':'perfom sampling importance resampling'}, # TODO: Set new default after testing
-  'OBC_ligand':{'action':'store_true',
-    'help':'use OBC implicit solvent based on the ligand conformation'}, # TODO: Set new default after testing
+  'solvation':{'choices':['Desolvated','Full','Fractional'], 'default':'None',
+    'help':'Specify how OBC implicit solvent is used during sampling.\n' + \
+    '\tWith Desolvated, OBC is scaled out during cooling.\t' + \
+    '\tWith Full, OBC is at full strength.\n' + \
+    '\tWith Fractional, OBC is scaled out during cooling and scaled in during docking.'},
   'keep_intermediate':{'action':'store_true',
     'help':'Keep configurations for intermediate states'},
   'min_repX_acc':{'type':float,

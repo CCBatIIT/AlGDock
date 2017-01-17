@@ -90,6 +90,5 @@ class OBCForceField(ForceField):
 
         # Here we pass all the parameters as "simple" data types to
         # the C code that handles energy calculations.
-        # TODO: Use strength
-        return [OBCTerm(universe._spec, numParticles, \
+        return [OBCTerm(universe._spec, numParticles, self.strength, \
           charges, atomicRadii, scaleFactors)]

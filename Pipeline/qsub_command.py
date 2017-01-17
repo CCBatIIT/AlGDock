@@ -55,6 +55,7 @@ if os.path.exists('/share'): # CCB Cluster
   # By default, use miniconda
   if command.find('python')>-1:
     modules = 'module load miniconda/2\n'
+    modules += 'module load gcc/6.2\n'
   else:
     modules = ''
 

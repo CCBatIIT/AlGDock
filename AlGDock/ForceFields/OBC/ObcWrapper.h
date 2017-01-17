@@ -11,6 +11,7 @@ typedef struct ReferenceObc ReferenceObc;
 // typedef double vector3[3];
 
 ObcParameters* newObcParameters(int numParticles,
+                                double strength,
                                 const double* charges,
                                 const double* atomicRadii,
                                 const double* scaleFactors);

@@ -6,6 +6,7 @@
 extern "C" {
 
 ObcParameters* newObcParameters(int numAtoms,
+                                double strength,
                                 const double* charges,
                                 const double* atomicRadii,
                                 const double* scaleFactors) {
@@ -16,6 +17,9 @@ ObcParameters* newObcParameters(int numAtoms,
 
   ObcParameters* obcParameters = new ObcParameters(numAtoms,
     ObcParameters::ObcTypeII);
+  
+  obcParameters->setStrength(strength);
+    
   obcParameters->setPartialCharges(charges_v);
   obcParameters->setAtomicRadii(atomicRadii_v);
   obcParameters->setScaledRadiusFactors(scaleFactors_v);
@@ -38,11 +42,13 @@ void obcParameterReport(ObcParameters* obcParameters) {
   const double cutoffDistance = obcParameters->getCutoffDistance();
   const double soluteDielectric = obcParameters->getSoluteDielectric();
   const double solventDielectric = obcParameters->getSolventDielectric();
+  const double strength = obcParameters->getStrength();
   std::cout << "numberOfAtoms = " << numberOfAtoms << std::endl;
   std::cout << "dielectricOffset = " << dielectricOffset << std::endl;
   std::cout << "cutoffDistance = " << cutoffDistance << std::endl;
   std::cout << "soluteDielectric = " << soluteDielectric << std::endl;
   std::cout << "solventDielectric = " << solventDielectric << std::endl;
+  std::cout << "strength = " << strength << std::endl;
 }
 
 ReferenceObc* newReferenceObc(ObcParameters* obcParameters) {
