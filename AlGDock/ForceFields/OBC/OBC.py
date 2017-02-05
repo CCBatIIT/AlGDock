@@ -1,6 +1,8 @@
 # Onufriev-Bashford-Case Generalized Born term
 # can be added to any other force field
 
+import numpy as np
+
 from MMTK import ParticleScalar
 from MMTK.ForceFields.ForceField import ForceField
 from MMTK_OBC import OBCTerm
@@ -13,6 +15,7 @@ class OBCForceField(ForceField):
 
     def __init__(self, prmtopFN,
           prmtop_atom_order, inv_prmtop_atom_order,
+          desolvationGridFN=None,
           strength=1.0):
         """
         @param prmtopFN: an AMBER parameter and topology file
@@ -24,11 +27,25 @@ class OBCForceField(ForceField):
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
         self.arguments = (prmtopFN, prmtop_atom_order, inv_prmtop_atom_order, \
-          strength)
-    
+          desolvationGridFN, strength)
+
+        # Load the desolvation grid
+        if desolvationGridFN is not None:
+          import AlGDock.IO
+          IO_Grid = AlGDock.IO.Grid()
+          self.grid_data = IO_Grid.read(desolvationGridFN, multiplier=0.1)
+          if not (self.grid_data['origin']==0.0).all():
+            raise Exception('Trilinear grid origin in %s not at (0, 0, 0)!'%FN)
+        else:
+          self.grid_data = {'spacing':np.array([0., 0., 0.]), \
+                            'counts':np.array([0, 0, 0]), \
+                            'vals':np.array([])}
+        
+        # Store arguments as class variables
         self.prmtopFN = prmtopFN
         self.prmtop_atom_order = prmtop_atom_order
         self.inv_prmtop_atom_order = inv_prmtop_atom_order
+        self.desolvationGridFN = desolvationGridFN
         self.strength = strength
 
     def set_strength(self, strength):
@@ -91,4 +108,6 @@ class OBCForceField(ForceField):
         # Here we pass all the parameters as "simple" data types to
         # the C code that handles energy calculations.
         return [OBCTerm(universe._spec, numParticles, self.strength, \
-          charges, atomicRadii, scaleFactors)]
+          charges, atomicRadii, scaleFactors, \
+          self.grid_data['spacing'], self.grid_data['counts'], \
+          self.grid_data['vals'])]

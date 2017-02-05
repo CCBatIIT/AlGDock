@@ -14,7 +14,7 @@ ObcParameters* newObcParameters(int numAtoms,
   std::vector<double> charges_v(charges, charges + numAtoms);
   std::vector<double> atomicRadii_v(atomicRadii, atomicRadii + numAtoms);
   std::vector<double> scaleFactors_v(scaleFactors, scaleFactors + numAtoms);
-
+  
   ObcParameters* obcParameters = new ObcParameters(numAtoms,
     ObcParameters::ObcTypeII);
   
@@ -28,7 +28,7 @@ ObcParameters* newObcParameters(int numAtoms,
   obcParameters->setSoluteDielectric(static_cast<double>(1.0));
   obcParameters->setPi4Asolv(4*M_PI*2.25936);
   obcParameters->setUseCutoff(static_cast<double>(1.5));
-
+  
   return obcParameters;
 }
 

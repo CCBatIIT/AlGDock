@@ -28,11 +28,17 @@ ef_evaluator(PyFFEnergyTermObject *self,
   vector3* coordinates = (vector3 *)input->coordinates->data;
   vector3* g;
   
-//  int numParticles = input->coordinates->dimensions[0];
-
-  struct ObcParameters* obcParameters = (struct ObcParameters*)self->data[3];
-  struct ReferenceObc* obc = (struct ReferenceObc*)self->data[4];
+  PyArrayObject *spacing_array = (PyArrayObject *)self->data[3];
+  double* spacing = (double *)spacing_array->data;
+  PyArrayObject *counts_array = (PyArrayObject *)self->data[4];
+  int* counts = (int *)counts_array->data;
+  PyArrayObject *vals_array = (PyArrayObject *)self->data[5];
+  double* vals = (double *)vals_array->data;
   
+  struct ObcParameters* obcParameters = (struct ObcParameters*)self->data[6];
+  struct ReferenceObc* obc = (struct ReferenceObc*)self->data[7];
+  
+  // TODO: Modify computeBornEnergyForces to accept grids
   if (energy->gradients != NULL) {
     g = (vector3 *)((PyArrayObject*)energy->gradients)->data;
     energy->energy_terms[self->index] =
@@ -42,31 +48,6 @@ ef_evaluator(PyFFEnergyTermObject *self,
     energy->energy_terms[self->index] =
       computeBornEnergy(obc, obcParameters, coordinates);
   }
-  
-  // This works but unnecessarily creates two variables each time.
-//  struct ReferenceObc* obc_n = newReferenceObc(obcParameters);
-//  energy->energy_terms[self->index] = computeBornEnergyForces(obc_n, obcParameters, coordinates, g);
-  
-  /* energy_terms is an array because each routine could compute
-     several terms that should logically be kept apart. For example,
-     a single routine calculates Lennard-Jones and electrostatic interactions
-     in a single iteration over the nonbonded list. The separation of
-     terms is only done for the benefit of user code (universe.energyTerms())
-     returns the value of each term separately), the total energy is
-     always the sum of all terms. Here we have only one energy term,
-     which is initialized to zero.
-     Note that the virial is also stored in the array energy_terms,
-     at the index self->virial_index. However, there is only one virial
-     term for the whole system, it is not added up term by term. Therefore
-     we don't set it to zero, we just add to it in the loop. */
-//  energy->energy_terms[self->index] = computeBornEnergyForces(obc, obcParameters, coordinates, g);
-
-  /* Add the gradient contribution to the global gradient array.
-     It would be a serious error to use '=' instead of '+=' here,
-     in that case all previously calculated forces would be erased.
-     If energy_gradients is NULL, then the calling routine does not
-     want gradients, and didn't provide storage for them.
-     Second derivatives are not calculated because they are zero. */
 }
 
 /* A utility function that allocates memory for a copy of a string */
@@ -92,6 +73,9 @@ OBCTerm(PyObject *dummy, PyObject *args)
   PyArrayObject *charges;
   PyArrayObject *atomicRadii;
   PyArrayObject *scaleFactors;
+  PyArrayObject *spacing;
+  PyArrayObject *counts;
+  PyArrayObject *vals;
   double strength;
 
   /* Create a new energy term object and return if the creation fails. */
@@ -99,12 +83,15 @@ OBCTerm(PyObject *dummy, PyObject *args)
   if (self == NULL)
     return NULL;
   /* Convert the parameters to C data types. */
-  if (!PyArg_ParseTuple(args, "O!idO!O!O!",
+  if (!PyArg_ParseTuple(args, "O!idO!O!O!O!O!O!",
 			&PyUniverseSpec_Type, &self->universe_spec,
       &numParticles, &strength,
 			&PyArray_Type, &charges,
       &PyArray_Type, &atomicRadii,
-      &PyArray_Type, &scaleFactors))
+      &PyArray_Type, &scaleFactors,
+      &PyArray_Type, &spacing,
+      &PyArray_Type, &counts,
+      &PyArray_Type, &vals))
     return NULL;
   /* We keep a reference to the universe_spec in the newly created
      energy term object, so we have to increase the reference count. */
@@ -137,10 +124,16 @@ OBCTerm(PyObject *dummy, PyObject *args)
   Py_INCREF(atomicRadii);
   self->data[2] = (PyObject *)scaleFactors;
   Py_INCREF(scaleFactors);
-  self->data[3] = (PyObject *)obcParameters;
+  self->data[3] = (PyObject *)spacing;
+  Py_INCREF(spacing);
+  self->data[4] = (PyObject *)counts;
+  Py_INCREF(counts);
+  self->data[5] = (PyObject *)vals;
+  Py_INCREF(vals);
+  self->data[6] = (PyObject *)obcParameters;
   Py_INCREF(obcParameters); // Seems to increment the number of particles
   setNumberOfAtoms(obcParameters, numParticles);
-  self->data[4] = (PyObject *)obc;
+  self->data[7] = (PyObject *)obc;
   Py_INCREF(obc);
   
   /* Return the energy term object. */

@@ -5,6 +5,8 @@ from MMTK.ForceFields.ForceField import ForceField, EnergyTerm
 from MMTK import ParticleScalar, ParticleVector, SymmetricPairTensor
 from collections import OrderedDict
 
+import numpy as np
+
 try:
   from Scientific._vector import Vector
 except:
@@ -65,7 +67,7 @@ class InterpolationForceField(ForceField):
     self.grid_data = IO_Grid.read(FN, multiplier=0.1)
     if not (self.grid_data['origin']==0.0).all():
       raise Exception('Trilinear grid origin in %s not at (0, 0, 0)!'%FN)
-
+    
     # Transform the grid
     neg_vals = False
     if inv_power is not None:
@@ -81,7 +83,6 @@ class InterpolationForceField(ForceField):
       nonzero = self.grid_data['vals']!=0
       self.grid_data['vals'][nonzero] = self.grid_data['vals'][nonzero]**(1./inv_power)
 
-    import numpy as np
     # "Cap" the grid values
     if grid_thresh>0.0:
       self.grid_data['vals'] = grid_thresh*np.tanh(self.grid_data['vals']/grid_thresh)
@@ -90,6 +91,8 @@ class InterpolationForceField(ForceField):
       self.params['scaling_prefactor'] = scaling_prefactor
     else:
       self.params['scaling_prefactor'] = -1. if neg_vals else 1.
+
+    self.use_C = True # A flag for debugging
 
   def set_strength(self, strength):
     self.params['strength'] = strength
@@ -137,10 +140,20 @@ class InterpolationForceField(ForceField):
             self.params['name'], self.params['energy_thresh'])]
       elif self.params['inv_power'] is not None:
         if self.params['inv_power']==4:
+#          import time
+#          import os.path
+#          import MMTK_trilinear_one_fourth_grid
+#          trilinear_grid_path = MMTK_trilinear_one_fourth_grid.__file__
+#          print """
+#          in {0}
+#          last modified {1}
+#              """.format(trilinear_grid_path, \
+#              time.ctime(os.path.getmtime(trilinear_grid_path)))
           from MMTK_trilinear_one_fourth_grid import TrilinearOneFourthGridTerm
-          return [TrilinearOneFourthGridTerm(universe, \
+          return [TrilinearOneFourthGridTerm(universe._spec, \
             self.grid_data['spacing'], self.grid_data['counts'], \
-            self.grid_data['vals'], self.params['strength'], scaling_factor, \
+            self.grid_data['vals'], self.params['strength'], \
+            scaling_factor.array, \
             self.params['name'])]
         else:
           from MMTK_trilinear_transform_grid import TrilinearTransformGridTerm
@@ -149,11 +162,31 @@ class InterpolationForceField(ForceField):
             self.grid_data['vals'], self.params['strength'], scaling_factor,
             self.params['name'], self.params['inv_power'])]
       else:
-        from MMTK_trilinear_grid import TrilinearGridTerm
-        return [TrilinearGridTerm(universe, \
-          self.grid_data['spacing'], self.grid_data['counts'], \
-          self.grid_data['vals'], self.params['strength'], scaling_factor, \
-          self.params['name'])]
+        # print "self.params['name']", self.params['name']
+        if self.use_C:
+#          import time
+#          import os.path
+#          import MMTK_trilinear_grid
+#          trilinear_grid_path = MMTK_trilinear_grid.__file__
+#          print """
+#          in {0}
+#          last modified {1}
+#              """.format(trilinear_grid_path, \
+#              time.ctime(os.path.getmtime(trilinear_grid_path)))
+          from MMTK_trilinear_grid import TrilinearGridTerm
+          return [TrilinearGridTerm(universe._spec, \
+            self.grid_data['spacing'], self.grid_data['counts'], \
+            self.grid_data['vals'], self.params['strength'], \
+            scaling_factor.array, \
+            self.params['name'])]
+        else:
+          # This is for debugging
+          from MMTK_trilinear_grid_cython import TrilinearGridTerm as TrilinearGridTerm_cython
+          return [TrilinearGridTerm_cython(universe, \
+            self.grid_data['spacing'], self.grid_data['counts'], \
+            self.grid_data['vals'], self.params['strength'], \
+            scaling_factor, \
+            self.params['name'])]
     elif self.params['interpolation_type']=='BSpline':
       if self.params['inv_power'] is not None:
         from MMTK_BSpline_transform_grid import BSplineTransformGridTerm

@@ -407,7 +407,6 @@ void ObcParameters::setPartialCharges(const vector<double>& partialCharges) {
 
 }
 
-
 /**---------------------------------------------------------------------------------------
 
       Set the force to use a cutoff.

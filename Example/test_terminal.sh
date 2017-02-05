@@ -28,7 +28,6 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --dir_grid grids \
   --protocol Adaptive --cool_therm_speed 0.5 --dock_therm_speed 0.5 \
   --sampler HMC \
-  --sampling_importance_resampling \
   --solvation Desolvated \
   --MCMC_moves 1 \
   --seeds_per_state 10 --steps_per_seed 200 --darts_per_seed 0 \
@@ -40,10 +39,9 @@ $ALGDOCK --dir_dock dock --dir_cool cool \
   --site_density 10. \
   --phases NAMD_Gas NAMD_OBC \
   --cores -1 \
-  --rmsd \
+  --random_seed -1
   --run_type timed \
   --max_time 240 \
-  --random_seed -1
 
 # Good thermodynamic speeds for testing:
 # --protocol Adaptive --cool_therm_speed 0.5 --dock_therm_speed 0.5

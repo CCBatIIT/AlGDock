@@ -50,10 +50,12 @@ class gridCalculation:
       headerF.close()
       
       headerLines = headerData.split('\n')
-      counts = np.array([int(x) for x in headerLines.pop(0).split(' ')[-3:]])
+      if counts is None:
+        counts = np.array([int(x) for x in headerLines.pop(0).split(' ')[-3:]])
       for name in ['origin','d0','d1','d2']:
         header[name] = [float(x) for x in headerLines.pop(0).split(' ')[-3:]]
-      spacing = np.array([header['d0'][0], header['d1'][1], header['d2'][2]])
+      if spacing is None:
+        spacing = np.array([header['d0'][0], header['d1'][1], header['d2'][2]])
       del headerF, headerLines
 
     # Read binding site parameters
@@ -114,42 +116,12 @@ class gridCalculation:
     Calculates direct grids (Lennard Jones and electrostatic)
     """
     
-    # Loads a record from AMBER parameter file
-    def _loadRecord(record):
-      items = []
-      lines = record.split('\n')
-      lines.pop(0) # Name
-      FORMAT = lines.pop(0).strip()[8:-1] # Format
-      if FORMAT.find('a')>-1: # Text
-        w = int(FORMAT[FORMAT.find('a')+1:])
-        for line in lines:
-          items = items + [line[x:x+w] for x in range(0,len(line),w)]
-      elif FORMAT.find('I')>-1: # Integer
-        w = int(FORMAT[FORMAT.find('I')+1:])
-        for line in lines:
-          items = items + [int(line[x:x+w]) for x in range(0,len(line),w)]
-      elif FORMAT.find('E')>-1: # Scientific
-        w = int(FORMAT[FORMAT.find('E')+1:FORMAT.find('.')])
-        for line in lines:
-          items = items + [float(line[x:x+w]) for x in range(0,len(line),w)]
-      return np.array(items)
-      
-    ### Loads AMBER parameter file
-    prmtopF = open(self.FNs['prmtop'],'r')
-    prmtopData = prmtopF.read().split('%FLAG ')
-    prmtopF.close()
-    del prmtopF
-
-    varnames = ['POINTERS','CHARGE','NONBONDED_PARM_INDEX',
-      'LENNARD_JONES_ACOEF','LENNARD_JONES_BCOEF','ATOM_TYPE_INDEX']
-
-    prmtop = {}
-    for record in prmtopData:
-      name = record[:record.find('\n')].strip()
-      if name in varnames:
-        prmtop[name] = _loadRecord(record)
-    del name, record, varnames, prmtopData
-
+    import AlGDock.IO
+    IO_prmtop = AlGDock.IO.prmtop()
+    prmtop = IO_prmtop.read(self.FNs['prmtop'], \
+      varnames=['POINTERS','CHARGE','ATOM_TYPE_INDEX','NONBONDED_PARM_INDEX',\
+                'LENNARD_JONES_ACOEF','LENNARD_JONES_BCOEF'])
+                
     prmtop['CHARGE'] = prmtop['CHARGE']/18.2223 # Convert to units of electric charge
 
     NATOM = prmtop['POINTERS'][0]
@@ -165,8 +137,8 @@ class gridCalculation:
         LJ_depth[i] = 0
       else:
         factor = 2 * prmtop['LENNARD_JONES_ACOEF'][LJ_index] / prmtop['LENNARD_JONES_BCOEF'][LJ_index]
-        LJ_radius[i] = pow(factor, 1.0/6.0) * 0.5
-        LJ_depth[i] = prmtop['LENNARD_JONES_BCOEF'][LJ_index] / 2 / factor
+        LJ_radius[i] = pow(factor, 1.0/6.0) * 0.5 # R_min/2
+        LJ_depth[i] = prmtop['LENNARD_JONES_BCOEF'][LJ_index] / 2 / factor # epsilon
     # More useful for later calculations
     root_LJ_depth = np.sqrt(LJ_depth)
     LJ_diameter = LJ_radius*2

@@ -121,11 +121,22 @@ elif os.path.exists('/pylon1'): # Bridges Cluster
   # Write script
   submit_script = '''#!/bin/bash
 #
-#SBATCH -N {0}
-#SBATCH -p RM-shared
+#SBATCH --job-name={0}
+#SBATCH --mem={1}
+#SBATCH --nodes={2}
+#SBATCH --ntasks-per-node={3}
 #SBATCH -t 48:00:00
-#SBATCH --ntasks-per-node {1}
-'''.format(args.nodes, args.ppn)
+#SBATCH --partition=RM-shared
+#SBATCH --workdir={4}
+#SBATCH -o {5}
+#SBATCH -e {6}
+
+{7}
+
+# {8}
+'''.format(args.name, args.mem*1000, args.nodes, args.ppn, \
+  curdir, out_FN, err_FN, \
+  command, args.comment)
 elif os.path.exists('/stash'): # Open Science Grid Connect
   cluster = 'OSG'
   

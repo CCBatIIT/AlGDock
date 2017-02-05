@@ -186,15 +186,18 @@ void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters, const ve
              if (offsetRadiusI < rScaledRadiusJ) {
                 double rInverse = one/r;
                 double l_ij     = offsetRadiusI > FABS(r - scaledRadiusJ) ? offsetRadiusI : FABS(r - scaledRadiusJ);
-                           l_ij     = one/l_ij;
+                l_ij     = one/l_ij; // the inverse of Eq. 10
 
-                double u_ij     = one/rScaledRadiusJ;
+                double u_ij     = one/rScaledRadiusJ; // the inverse of Eq. 11
 
                 double l_ij2    = l_ij*l_ij;
                 double u_ij2    = u_ij*u_ij;
  
                 double ratio    = LN((u_ij/l_ij));
-                double term     = l_ij - u_ij + fourth*r*(u_ij2 - l_ij2)  + (half*rInverse*ratio) + (fourth*scaledRadiusJ*scaledRadiusJ*rInverse)*(l_ij2 - u_ij2);
+                // the summand in Eq. 9
+                double term     = l_ij - u_ij + fourth*r*(u_ij2 - l_ij2)
+                  + (half*rInverse*ratio)
+                  + (fourth*scaledRadiusJ*scaledRadiusJ*rInverse)*(l_ij2 - u_ij2);
 
                 // this case (atom i completely inside atom j) is not considered in the original paper
                 // Jay Ponder and the authors of Tinker recognized this and
@@ -209,13 +212,14 @@ void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters, const ve
           }
        }
  
-       // OBC-specific code (Eqs. 6-8 in
-       // Onufriev, A., Bashford, D., & Case, D. A. (2004).
-       // Exploring Protein Native States and Large-Scale Conformational
-       // Changes With a Modified Generalized Born Model.
-       // Proteins: Structure, Function, and Bioinformatics, 55(2), 383–394.)
+       // OBC-specific code (Eqs. 6-8 in OBC paper)
 
-       sum                  *= half*offsetRadiusI;
+       sum              *= half; // Now sum becomes I in OBC paper
+      
+       // TODO: Add numerical integral of Coulomb field to sum
+       // TODO: Determine if derivatives are still correct after adding numerical integral. (Likely).
+      
+       sum              *= offsetRadiusI; // Now sum becomes \Psi in OBC paper
        double sum2       = sum*sum;
        double sum3       = sum*sum2;
        double tanhSum    = TANH(alphaObc*sum - betaObc*sum2 + gammaObc*sum3);
@@ -361,8 +365,6 @@ double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
        double partialChargeI = preFactor*partialCharges[atomI];
        for (int atomJ = atomI; atomJ < numberOfAtoms; atomJ++) {
        
-          // TODO: The energy of each atom J can be scaled by a fractional desolvation.
-
           double deltaR[OpenMM::ReferenceForce::LastDeltaRIndex];
           OpenMM::ReferenceForce::getDeltaR(atomCoordinates[atomI], atomCoordinates[atomJ], deltaR);
           if (obcParameters->getUseCutoff() && deltaR[OpenMM::ReferenceForce::RIndex] > cutoffDistance)

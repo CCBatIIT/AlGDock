@@ -1899,7 +1899,7 @@ last modified {1}
     n_powers = len(inv_powers)
     from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
     for grid_type in ['LJa','LJr']:
-      for interpolation_type in ['Trilinear','BSpline']: # ,'Tricubic']:
+      for interpolation_type in ['Trilinear']: # ,'BSpline']: # ,'Tricubic']:
         key = '%s_%sTransform'%(grid_type,interpolation_type)
         Es[key] = np.zeros((n_powers,len(confs)),dtype=np.float)
         for p in range(n_powers):
@@ -3816,7 +3816,14 @@ last modified {1}
           # For pose restraints, the energy is per spring constant unit
           E[term_map[key]][c] += value/lambda_full[term_map[key]]
         else:
-          E[term_map[key]][c] += value
+          try:
+            E[term_map[key]][c] += value
+          except KeyError:
+            print key
+            print 'Keys in eT', eT.keys()
+            print 'Keys in term map', term_map.keys()
+            print 'Keys in E', E.keys()
+            raise Exception('key not found in term map or E')
     return E
   
   def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,

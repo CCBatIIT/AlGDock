@@ -38,9 +38,9 @@ for run_type in run_types:
     pose=-1, \
     rmsd=True, \
     dir_grid='grids', \
-    protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5, \
+    protocol='Adaptive', cool_therm_speed=5.0, dock_therm_speed=0.5, \
     T_HIGH=600.0, T_SIMMIN=300.0, T_TARGET=300.0, \
-    sampler='HMC', fraction_CD=0.5, CD_steps_per_trial=10, \
+    sampler='HMC', \
     MCMC_moves=1, \
     sampling_importance_resampling = True, \
     solvation = 'Desolvated', \
