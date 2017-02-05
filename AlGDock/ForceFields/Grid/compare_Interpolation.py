@@ -12,7 +12,7 @@ universe.atom2 = Atom('C', position=Vector(1.553, 1.724, 1.464))
 universe.atom2.test_charge = -0.2
 
 param_sets = [\
-  {'interpolation_type':'Trilinear', 'inv_power':None, 'energy_thresh':-1.0}]
+  {'interpolation_type':'Trilinear', 'inv_power':4, 'energy_thresh':-1.0}]
 
 steps = 100000
 import numpy as np

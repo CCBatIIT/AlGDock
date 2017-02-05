@@ -134,7 +134,7 @@ ef_evaluator(PyFFEnergyTermObject *self,
         dvdz = ((-vmmm + vmmp)*ay + (-vmpm + vmpp)*fy)*ax +
                ((-vpmm + vpmp)*ay + (-vppm + vppp)*fy)*fx;
       
-        prefactor = strength*scaling_factor[ind]*interpolated*interpolated*interpolated*interpolated;
+        prefactor = strength*scaling_factor[ind]*4.*interpolated*interpolated*interpolated;
         g[ind][0] += prefactor*dvdx/spacing[0];
         g[ind][1] += prefactor*dvdy/spacing[1];
         g[ind][2] += prefactor*dvdz/spacing[2];

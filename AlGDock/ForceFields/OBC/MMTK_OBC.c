@@ -38,7 +38,9 @@ ef_evaluator(PyFFEnergyTermObject *self,
   struct ObcParameters* obcParameters = (struct ObcParameters*)self->data[6];
   struct ReferenceObc* obc = (struct ReferenceObc*)self->data[7];
   
-  // TODO: Modify computeBornEnergyForces to accept grids
+  // TODO: Compute fractional desolvation by trilinear interpolation
+  
+  // TODO: Modify computeBornEnergyForces to accept fractional desolvation
   if (energy->gradients != NULL) {
     g = (vector3 *)((PyArrayObject*)energy->gradients)->data;
     energy->energy_terms[self->index] =
