@@ -22,7 +22,7 @@ Simulation_arguments = {
 
 necessary_FN_keys = [\
   'ligand_database','forcefield','ligand_prmtop',\
-  'grid_LJr','starting_conf']
+  'grid_LJr', 'starting_conf']
 
 # 'grid_LJa','grid_ELE'
 
@@ -125,8 +125,8 @@ class Simulation:
         net_charge += float(o.getAtomProperty(a, 'scaling_factor_electrostatic'))
     net_charge = net_charge/4.184
     if abs(net_charge)<0.1:
-      raise Exception('The net charge on the ligand is too low' + \
-        ' for the electric field to have an effect')
+      print 'The net charge on the ligand is too low' + \
+        ' for the electric field to have an effect'
     
     # Force fields
     self._forceFields = {}
@@ -135,8 +135,7 @@ class Simulation:
       parameter_file=self.args['forcefield'],mod_files=self.args['frcmodList'])
 
     from AlGDock.ForceFields.OBC.OBC import OBCForceField
-    self._forceFields['OBC'] = OBCForceField(self.args['ligand_prmtop'],
-      self.molecule.prmtop_atom_order,self.molecule.inv_prmtop_atom_order)
+    self._forceFields['OBC'] = OBCForceField()
 
     from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
     for grid_type in ['LJa','LJr','ELE']:
@@ -164,18 +163,11 @@ class Simulation:
     # converting kcal/mol (AMBER units) to kJ/mol (MMTK Units).
     # 1 V m−1 = 1 kg m s−3 A−1.      
     
-    FFkeys = self._forceFields.keys()
-    compoundFF = self._forceFields[FFkeys[0]]
-    for FFkey in FFkeys:
-      compoundFF += self._forceFields[FFkey]
-    self.universe.setForceField(compoundFF)
-    
-    # Set the ligand starting coordinates
     # Load the file
     import AlGDock.IO
     if self.args['starting_conf'].endswith('.inpcrd'):
       reader = AlGDock.IO.crd()
-      lig_crd = IO_crd.read(self.args['starting_conf'], multiplier=0.1)
+      lig_crd = reader.read(self.args['starting_conf'], multiplier=0.1)
     elif self.args['starting_conf'].endswith('.mol2') or \
        self.args['starting_conf'].endswith('.mol2.gz'):
       reader = AlGDock.IO.dock6_mol2()
@@ -184,12 +176,60 @@ class Simulation:
       raise Exception('Unknown file extension')
     lig_crd = lig_crd[self.molecule.inv_prmtop_atom_order,:]
     
+  def prep_ligand(self):
     # Randomly rotate the ligand
     from AlGDock.Integrators.ExternalMC.ExternalMC import random_rotate
     lig_crd = np.dot(lig_crd, np.transpose(random_rotate()))
     self.universe.setConfiguration(Configuration(self.universe,lig_crd))
     
-    # Translate the ligand to the middle of the grid on the x and y axes 
+    # Minimize the ligand internal energy
+    print 'Minimizing the internal energy'
+    self.universe.setForceField(self._forceFields['gaff'] + \
+      self._forceFields['OBC'])
+    from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
+    minimizer = SteepestDescentMinimizer(self.universe)
+
+    # Increase the temperature from 20 to 300 K
+    print 'Ramping the temperature to 300 K'
+    from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+      import HamiltonianMonteCarloIntegrator
+    sampler = HamiltonianMonteCarloIntegrator(self.universe)
+    
+    e_o = self.universe.energy()
+    T_LOW = 20.
+    T_START = 300.
+    delta_t = 1.5*MMTK.Units.fs
+    T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
+    for T in T_SERIES:
+      attempts_left = 5
+      while attempts_left>0:
+        random_seed = int(T*10000) + attempts_left + \
+          int(self.universe.configuration().array[0][0]*10000) + \
+          int(time.time())
+        random_seed = random_seed%32767
+        (xs, energies, acc, ntrials, delta_t) = \
+          sampler(steps = 500, steps_per_trial = 50, T=T,\
+                  delta_t=delta_t, random_seed=random_seed)
+        if (np.std(energies)>1E-3) and float(acc)/ntrials>0.4:
+          attempts_left = 0
+        else:
+          delta_t *= 0.9
+          attempts_left -= 1
+    self.universe.normalizePosition()
+
+  def run(self):
+    """
+    Performs a molecular dynamics until the system crosses 
+    the desired position on the z axis.
+    """
+    # Set the force field to include everything
+    FFkeys = self._forceFields.keys()
+    compoundFF = self._forceFields[FFkeys[0]]
+    for FFkey in FFkeys:
+      compoundFF += self._forceFields[FFkey]
+    self.universe.setForceField(compoundFF)
+
+    # Translate the ligand to the middle of the grid on the x and y axes
     # and 10% of the distance on the z axis
     gd = None
     for grid_type in ['ELE','LJr','LJa']:
@@ -203,19 +243,15 @@ class Simulation:
     self.universe.translateTo(MMTK.Vector(starting_position))
     self.z_i = starting_position[-1]
     self.z_f = gd['origin'][-1] + (gd['counts'][-1]*gd['spacing'][-1]*9./10.)
-  
-  def run(self):
-    """
-    Performs a molecular dynamics until the system crosses 
-    the desired position on the z axis.
-    """
+
     print 'Simulating motion from %.5f to %.5f'%(self.z_i, self.z_f)
+
+    from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+      import HamiltonianMonteCarloIntegrator
+    sampler = HamiltonianMonteCarloIntegrator(self.universe)
 
     confs = []
     for n in range(self.args['max_trials']):
-      from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-        import HamiltonianMonteCarloIntegrator
-      sampler = HamiltonianMonteCarloIntegrator(self.universe)
       sampler(T=300.0*MMTK.Units.K, steps=100)
       if (n%100==0):
         print 'Trial %6d, COM:'%n, self.universe.centerOfMass()
@@ -225,8 +261,6 @@ class Simulation:
     print 'Number of trials before pore crossing: ', n
     print 'Number of configurations: ', len(confs)
     
-    dcdFN = 'test.dcd'
-
     import AlGDock.IO
     IO_dcd = AlGDock.IO.dcd(self.molecule,
       ligand_atom_order = self.molecule.prmtop_atom_order)

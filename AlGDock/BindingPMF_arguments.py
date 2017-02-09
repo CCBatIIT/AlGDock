@@ -56,9 +56,10 @@ arguments = {
   'complex_inpcrd':{'help':'AMBER coordinates for the complex'},
   'complex_fixed_atoms':{'help':'PDB file with fixed atoms labeled by 1 in the occupancy column'},
   'dir_grid':{'help':'Directory containing potential energy grids'},
-  'grid_LJr':{'help':'DX file for Lennard-Jones repulsive grid'},
-  'grid_LJa':{'help':'DX file for Lennard-Jones attractive grid'},
-  'grid_ELE':{'help':'DX file for electrostatic grid'},
+  'grid_LJr':{'help':'file for Lennard-Jones repulsive grid'},
+  'grid_LJa':{'help':'file for Lennard-Jones attractive grid'},
+  'grid_ELE':{'help':'file for electrostatic grid'},
+  'grid_desolv':{'help':'file for fractional desolvation grid'},
   'score':{'help':"Starting configuration(s) for replica exchange. Can be a mol2 file, .pkl.gz file, or 'default'"},
   # Simulation settings and constants
   #   Run-dependent 

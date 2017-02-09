@@ -39,7 +39,7 @@ ef_evaluator(PyFFEnergyTermObject *self,
   PyArrayObject *spacing_array = (PyArrayObject *)self->data[3];
   double* spacing = (double *)spacing_array->data;
   PyArrayObject *counts_array = (PyArrayObject *)self->data[4];
-  int* counts = (int *)counts_array->data;
+  long* counts = (long *)counts_array->data;
   PyArrayObject *vals_array = (PyArrayObject *)self->data[5];
   double* vals = (double *)vals_array->data;
   PyArrayObject *scaling_factor_array = (PyArrayObject *)self->data[6];

@@ -348,6 +348,11 @@ ext_module_name_and_path = [\
                 'AlGDock/ForceFields/OBC/ObcWrapper.cpp', \
                 'AlGDock/ForceFields/OBC/ReferenceForce.cpp', \
                 'AlGDock/ForceFields/OBC/ReferenceObc.cpp']), \
+  ('MMTK_OBC_desolv', ['AlGDock/ForceFields/OBC/MMTK_OBC_desolv.c', \
+                'AlGDock/ForceFields/OBC/ObcParameters.cpp', \
+                'AlGDock/ForceFields/OBC/ObcWrapper.cpp', \
+                'AlGDock/ForceFields/OBC/ReferenceForce.cpp', \
+                'AlGDock/ForceFields/OBC/ReferenceObc.cpp']), \
   ('MMTK_pose', ['AlGDock/ForceFields/Pose/MMTK_pose.c', \
     'AlGDock/ForceFields/Pose/pose.c', \
     os.path.join(MMTK_source_path, 'Src', 'bonded.c'), \

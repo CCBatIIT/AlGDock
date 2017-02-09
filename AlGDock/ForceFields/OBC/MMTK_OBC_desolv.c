@@ -1,6 +1,9 @@
+/* C routines for OBC.py */
+
 #include "MMTK/universe.h"
 #include "MMTK/forcefield.h"
 #include "MMTK/forcefield_private.h"
+#include "ObcWrapper.h"
 
 /* This function does the actual energy (and gradient) calculation.
    Everything else is just bookkeeping. */
@@ -22,13 +25,12 @@ ef_evaluator(PyFFEnergyTermObject *self,
                               gradients, second derivatives).
      */
 {
-  // Input variables
-  vector3 *coordinates = (vector3 *)input->coordinates->data;
+  vector3* coordinates = (vector3 *)input->coordinates->data;
   int natoms = input->coordinates->dimensions[0];
-  vector3 *g;
-  
-  double strength = self->param[0];
-  double k = self->param[1];
+  vector3* g;
+  double fractionalDesolvation[natoms];
+
+  /* Interpolate the fractional desolvation grid */
   int nyz = (int) self->param[2];
   
   vector3 hCorner;
@@ -42,43 +44,13 @@ ef_evaluator(PyFFEnergyTermObject *self,
   long* counts = (long *)counts_array->data;
   PyArrayObject *vals_array = (PyArrayObject *)self->data[5];
   double* vals = (double *)vals_array->data;
-  PyArrayObject *scaling_factor_array = (PyArrayObject *)self->data[6];
-  double* scaling_factor = (double *)scaling_factor_array->data;
-  
-  /* energy_terms is an array because each routine could compute
-     several terms that should logically be kept apart. For example,
-     a single routine calculates Lennard-Jones and electrostatic interactions
-     in a single iteration over the nonbonded list. The separation of
-     terms is only done for the benefit of user code (universe.energyTerms())
-     returns the value of each term separately), the total energy is
-     always the sum of all terms. Here we have only one energy term,
-     which is initialized to zero.
-     Note that the virial is also stored in the array energy_terms,
-     at the index self->virial_index. However, there is only one virial
-     term for the whole system, it is not added up term by term. Therefore
-     we don't set it to zero, we just add to it in the loop. */
-  // energy->energy_terms[self->index] = 0.;
 
-  // Variables for output
-  double gridEnergy = 0.;
-
-  /* Add the gradient contribution to the global gradient array.
-     It would be a serious error to use '=' instead of '+=' here,
-     in that case all previously calculated forces would be erased.
-     If energy_gradients is NULL, then the calling routine does not
-     want gradients, and didn't provide storage for them.
-     Second derivatives are not calculated because they are zero. */
-  if (energy->gradients != NULL)
-    g = (vector3 *)((PyArrayObject*)energy->gradients)->data;
-  
   // Variables for processing
   int i, ix, iy, iz, ind;
   double vmmm, vmmp, vmpm, vmpp, vpmm, vpmp, vppm, vppp;
   double vmm, vmp, vpm, vpp, vm, vp;
   double fx, fy, fz, ax, ay, az;
-  double dvdx, dvdy, dvdz;
-  double dev;
-  
+
   for (ind = 0; ind < natoms; ind++) {
     if ((coordinates[ind][0]>0.) && (coordinates[ind][1]>0.)
         && (coordinates[ind][2]>0.) &&
@@ -122,39 +94,26 @@ ef_evaluator(PyFFEnergyTermObject *self,
       vm = ay*vmm + fy*vmp;
       vp = ay*vpm + fy*vpp;
       
-      gridEnergy += scaling_factor[ind]*(ax*vm + fx*vp);
-      if (energy->gradients != NULL) {
-        // x coordinate
-        dvdx = -vm + vp;
-        // y coordinate
-        dvdy = (-vmm + vmp)*ax + (-vpm + vpp)*fx;
-        // z coordinate
-        dvdz = ((-vmmm + vmmp)*ay + (-vmpm + vmpp)*fy)*ax +
-               ((-vpmm + vpmp)*ay + (-vppm + vppp)*fy)*fx;
-      
-        g[ind][0] += strength*scaling_factor[ind]*dvdx/spacing[0];
-        g[ind][1] += strength*scaling_factor[ind]*dvdy/spacing[1];
-        g[ind][2] += strength*scaling_factor[ind]*dvdz/spacing[2];
-      }
+      fractionalDesolvation[ind] = (ax*vm + fx*vp);
     }
-    else {
-      for (i = 0; i<3; i++) {
-        if (coordinates[ind][i]<i) {
-          gridEnergy += k*coordinates[ind][i]*coordinates[ind][i]/2.;
-          if (energy->gradients != NULL)
-            g[ind][i] += k*coordinates[ind][i];
-        }
-        else {
-          if (coordinates[ind][i]>hCorner[i]) {
-            dev = (coordinates[ind][i]-hCorner[i]);
-            gridEnergy += k*dev*dev/2.;
-            if (energy->gradients != NULL)
-              g[ind][i] += k*dev;
-          }
-        }
-      }
-    }
-    energy->energy_terms[self->index] = gridEnergy*strength;
+  }
+  
+//  for (ind = 0; ind < natoms; ind++)
+//    printf("Fractional desolvation on atom %d is %f\n", ind, fractionalDesolvation[ind]);
+  
+  struct ObcParameters* obcParameters = (struct ObcParameters*)self->data[6];
+  struct ReferenceObc* obc = (struct ReferenceObc*)self->data[7];
+  
+  // TODO: Modify computeBornEnergyForces to accept fractional desolvation
+  // If there is no fractional desolvation, pass NULL
+  if (energy->gradients != NULL) {
+    g = (vector3 *)((PyArrayObject*)energy->gradients)->data;
+    energy->energy_terms[self->index] =
+      computeBornEnergyForces(obc, obcParameters, coordinates, g);
+  }
+  else {
+    energy->energy_terms[self->index] =
+      computeBornEnergy(obc, obcParameters, coordinates);
   }
 }
 
@@ -172,92 +131,84 @@ allocstring(char *string)
    energy term object at the C level and stores all the parameters in
    there in a form that is convient to access for the C routine above.
    This is the routine that is imported into and called by the Python
-   module. */
+   module, OBC.py. */
 static PyObject *
-TrilinearGridTerm(PyObject *dummy, PyObject *args)
+OBCDesolvTerm(PyObject *dummy, PyObject *args)
 {
   PyFFEnergyTermObject *self;
+  int numParticles;
+  PyArrayObject *charges;
+  PyArrayObject *atomicRadii;
+  PyArrayObject *scaleFactors;
   PyArrayObject *spacing;
   PyArrayObject *counts;
   PyArrayObject *vals;
   double strength;
-  PyArrayObject *scaling_factor;
-  char *name;
 
   /* Create a new energy term object and return if the creation fails. */
   self = PyFFEnergyTerm_New();
   if (self == NULL)
     return NULL;
   /* Convert the parameters to C data types. */
-  if (!PyArg_ParseTuple(args, "O!O!O!O!dO!s",
+  if (!PyArg_ParseTuple(args, "O!idO!O!O!O!O!O!",
 			&PyUniverseSpec_Type, &self->universe_spec,
+      &numParticles, &strength,
+			&PyArray_Type, &charges,
+      &PyArray_Type, &atomicRadii,
+      &PyArray_Type, &scaleFactors,
       &PyArray_Type, &spacing,
       &PyArray_Type, &counts,
-      &PyArray_Type, &vals,
-      &strength,
-      &PyArray_Type, &scaling_factor,
-			&name))
+      &PyArray_Type, &vals))
     return NULL;
-  
   /* We keep a reference to the universe_spec in the newly created
      energy term object, so we have to increase the reference count. */
   Py_INCREF(self->universe_spec);
   /* A pointer to the evaluation routine. */
   self->eval_func = ef_evaluator;
   /* The name of the energy term object. */
-  self->evaluator_name = "trilinear_grid";
+  self->evaluator_name = "OBC_desolv";
   /* The names of the individual energy terms - just one here. */
-  self->term_names[0] = allocstring(name);
+  self->term_names[0] = allocstring("OBC_desolv");
   if (self->term_names[0] == NULL)
     return PyErr_NoMemory();
   self->nterms = 1;
+  
+  struct ObcParameters* obcParameters = newObcParameters(
+    numParticles, strength, (double *)charges->data,
+    (double *)atomicRadii->data, (double *)scaleFactors->data);
+  struct ReferenceObc* obc = newReferenceObc(obcParameters);
 
   long* counts_v = (long* )counts->data;
   double* spacing_v = (double* )spacing->data;
 
-//  int ind;
-//
-//  double* vals_v = (double *)vals->data;
-//
-//  printf("Counts:\n");
-//  for (ind = 0; ind < 3; ind ++)
-//    printf("count %d = %d\n", ind, counts_v[ind]);
-//  fflush(stdout);
-//
-//  printf("Spacing:\n");
-//  for (ind = 0; ind < 3; ind ++)
-//    printf("spacing %d = %f\n", ind, spacing_v[ind]);
-//  fflush(stdout);
-//
-//  printf("Values:\n");
-//  for (ind = 0; ind < 10; ind ++)
-//    printf("vals %d = %f\n", ind, vals_v[ind]);
-//  fflush(stdout);
-  
   /* self->param is a storage area for parameters. Note that there
      are only 40 slots (double) there. */
   self->param[0] = strength;
-  self->param[1] = 10000.; // k, the spring constant in kJ/mol nm**2
+  self->param[1] = (double) numParticles;
   self->param[2] = counts_v[1]*counts_v[2]; // nyz
   self->param[3] = spacing_v[0]*(counts_v[0]-1); // hCorner in x
   self->param[4] = spacing_v[1]*(counts_v[1]-1); // hCorner in y
   self->param[5] = spacing_v[2]*(counts_v[2]-1); // hCorner in z
   
-//  printf("Params:\n");
-//  for (ind = 0; ind < 6; ind ++)
-//    printf("param %d = %f\n", ind, self->param[ind]);
-//  fflush(stdout);
-  
   /* self->data is the other storage area for parameters. There are
      40 Python object slots there */
+  self->data[0] = (PyObject *)charges;
+  Py_INCREF(charges);
+  self->data[1] = (PyObject *)atomicRadii;
+  Py_INCREF(atomicRadii);
+  self->data[2] = (PyObject *)scaleFactors;
+  Py_INCREF(scaleFactors);
   self->data[3] = (PyObject *)spacing;
   Py_INCREF(spacing);
   self->data[4] = (PyObject *)counts;
   Py_INCREF(counts);
   self->data[5] = (PyObject *)vals;
   Py_INCREF(vals);
-  self->data[6] = (PyObject *)scaling_factor;
-  Py_INCREF(scaling_factor);
+  self->data[6] = (PyObject *)obcParameters;
+  Py_INCREF(obcParameters); // Seems to increment the number of particles
+  setNumberOfAtoms(obcParameters, numParticles);
+  self->data[7] = (PyObject *)obc;
+  Py_INCREF(obc);
   
   /* Return the energy term object. */
   return (PyObject *)self;
@@ -269,7 +220,7 @@ TrilinearGridTerm(PyObject *dummy, PyObject *args)
    new-style parameter passing conventions (only veterans care about the
    alternatives). The list is terminated by a NULL entry. */
 static PyMethodDef functions[] = {
-  {"TrilinearGridTerm", TrilinearGridTerm, 1},
+  {"OBCDesolvTerm", OBCDesolvTerm, 1},
   {NULL, NULL}		/* sentinel */
 };
 
@@ -279,12 +230,12 @@ static PyMethodDef functions[] = {
    static to prevent name clashes with other modules. The name of this
    function must be "init" followed by the module name. */
 DL_EXPORT(void)
-initMMTK_trilinear_grid(void)
+initMMTK_OBC_desolv(void)
 {
   PyObject *m;
 
   /* Create the module and add the functions. */
-  m = Py_InitModule("MMTK_trilinear_grid", functions);
+  m = Py_InitModule("MMTK_OBC_desolv", functions);
 
   /* Import the array module. */
 #ifdef import_array
@@ -297,5 +248,5 @@ initMMTK_trilinear_grid(void)
 
   /* Check for errors. */
   if (PyErr_Occurred())
-    Py_FatalError("can't initialize module MMTK_trilinear_grid");
+    Py_FatalError("can't initialize module MMTK_OBC_desolv");
 }

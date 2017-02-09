@@ -1,4 +1,5 @@
 # TODO: Procedure for dimers and other multimers, e.g. HIV protease
+# TODO: Use gaff2 and mbondi2 radii for GB.
 
 To go through this pipeline, it is helpful to define the environment variable ALGDOCKHOME.
 

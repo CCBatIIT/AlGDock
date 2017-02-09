@@ -5,7 +5,6 @@ import numpy as np
 
 from MMTK import ParticleScalar
 from MMTK.ForceFields.ForceField import ForceField
-from MMTK_OBC import OBCTerm
 
 class OBCForceField(ForceField):
 
@@ -13,8 +12,9 @@ class OBCForceField(ForceField):
     Onufriev-Bashford-Case Generalized Born
     """
 
-    def __init__(self, prmtopFN,
-          prmtop_atom_order, inv_prmtop_atom_order,
+    def __init__(self,
+          prmtopFN=None,
+          inv_prmtop_atom_order=None,
           desolvationGridFN=None,
           strength=1.0):
         """
@@ -26,7 +26,7 @@ class OBCForceField(ForceField):
 
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
-        self.arguments = (prmtopFN, prmtop_atom_order, inv_prmtop_atom_order, \
+        self.arguments = (prmtopFN, inv_prmtop_atom_order, \
           desolvationGridFN, strength)
 
         # Load the desolvation grid
@@ -36,14 +36,15 @@ class OBCForceField(ForceField):
           self.grid_data = IO_Grid.read(desolvationGridFN, multiplier=0.1)
           if not (self.grid_data['origin']==0.0).all():
             raise Exception('Trilinear grid origin in %s not at (0, 0, 0)!'%FN)
+          self.useDesolvationGrid = True
         else:
           self.grid_data = {'spacing':np.array([0., 0., 0.]), \
                             'counts':np.array([0, 0, 0]), \
                             'vals':np.array([])}
+          self.useDesolvationGrid = False
         
         # Store arguments as class variables
         self.prmtopFN = prmtopFN
-        self.prmtop_atom_order = prmtop_atom_order
         self.inv_prmtop_atom_order = inv_prmtop_atom_order
         self.desolvationGridFN = desolvationGridFN
         self.strength = strength
@@ -69,33 +70,49 @@ class OBCForceField(ForceField):
         if subset1 is not None or subset2 is not None:
             return []
 
-        # Get charges, radii, and scale factors from OpenMM
-        import simtk.openmm
-        import simtk.openmm.app as OpenMM_app
-        
-        prmtop = OpenMM_app.AmberPrmtopFile(self.prmtopFN)
-        OMM_system = prmtop.createSystem(\
-        	nonbondedMethod=OpenMM_app.CutoffNonPeriodic, \
-          nonbondedCutoff=1.5, \
-          constraints=None, \
-          implicitSolvent=OpenMM_app.OBC2)
-        f = OMM_system.getForces()[-2]
-
         import numpy as np
-        numParticles = f.getNumParticles()
-        charges = np.zeros(numParticles)
-        atomicRadii = np.zeros(numParticles)
-        scaleFactors = np.zeros(numParticles)
-        for n in range(numParticles):
+        if (self.prmtopFN is not None) and \
+           (self.inv_prmtop_atom_order is not None):
+          # Get charges, radii, and scale factors from OpenMM
+          import simtk.openmm
+          import simtk.openmm.app as OpenMM_app
+          
+          prmtop = OpenMM_app.AmberPrmtopFile(self.prmtopFN)
+          OMM_system = prmtop.createSystem(\
+            nonbondedMethod=OpenMM_app.CutoffNonPeriodic, \
+            nonbondedCutoff=1.5, \
+            constraints=None, \
+            implicitSolvent=OpenMM_app.OBC2)
+          f = OMM_system.getForces()[-2]
+
+          numParticles = f.getNumParticles()
+          charges = np.zeros(numParticles)
+          atomicRadii = np.zeros(numParticles)
+          scaleFactors = np.zeros(numParticles)
+          for n in range(numParticles):
             (charge, radius, scaleFactor) = f.getParticleParameters(n)
             charges[n] = charge/simtk.unit.elementary_charge
             atomicRadii[n] = radius/simtk.unit.nanometer
             scaleFactors[n] = scaleFactor
 
-        charges = charges[self.inv_prmtop_atom_order]
-        atomicRadii = atomicRadii[self.inv_prmtop_atom_order]
-        scaleFactors = scaleFactors[self.inv_prmtop_atom_order]
-
+          charges = charges[self.inv_prmtop_atom_order]
+          atomicRadii = atomicRadii[self.inv_prmtop_atom_order]
+          scaleFactors = scaleFactors[self.inv_prmtop_atom_order]
+        else:
+          # Get charges, radii, and scale factors from the ligand database (preferred)
+          charges_ps = ParticleScalar(universe)
+          atomicRadii_ps = ParticleScalar(universe)
+          scaleFactors_ps = ParticleScalar(universe)
+          for o in universe:
+            for a in o.atomList():
+              charges_ps[a] = o.getAtomProperty(a, 'amber_charge')
+              atomicRadii_ps[a] = o.getAtomProperty(a, 'scaling_factor_BornRadii')
+              scaleFactors_ps[a] = o.getAtomProperty(a, 'scaling_factor_BornScreening')
+          charges = charges_ps.array
+          atomicRadii = atomicRadii_ps.array
+          scaleFactors = scaleFactors_ps.array
+          numParticles = charges.shape[0]
+          
 #        import time
 #        import os.path
 #        import MMTK_OBC
@@ -107,7 +124,15 @@ class OBCForceField(ForceField):
 
         # Here we pass all the parameters as "simple" data types to
         # the C code that handles energy calculations.
-        return [OBCTerm(universe._spec, numParticles, self.strength, \
-          charges, atomicRadii, scaleFactors, \
-          self.grid_data['spacing'], self.grid_data['counts'], \
-          self.grid_data['vals'])]
+        if self.useDesolvationGrid:
+          # With desolvation grid
+          from MMTK_OBC_desolv import OBCDesolvTerm
+          return [OBCDesolvTerm(universe._spec, numParticles, self.strength, \
+            charges, atomicRadii, scaleFactors, \
+            self.grid_data['spacing'], self.grid_data['counts'], \
+            self.grid_data['vals'])]
+        else:
+          # No desolvation grid
+          from MMTK_OBC import OBCTerm
+          return [OBCTerm(universe._spec, numParticles, self.strength, \
+            charges, atomicRadii, scaleFactors)]

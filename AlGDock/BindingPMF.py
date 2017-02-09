@@ -55,6 +55,7 @@ term_map = {
   'Lennard-Jones':'MM',
   'OpenMM':'MM',
   'OBC':'OBC',
+  'OBC_desolv':'OBC',
   'site':'site',
   'sLJr':'sLJr',
   'sELE':'sELE',
@@ -311,7 +312,11 @@ last modified {1}
           os.path.join(kwargs['dir_grid'],'electrostatic.dx.gz'),
           os.path.join(kwargs['dir_grid'],'pbsa.nc'),
           os.path.join(kwargs['dir_grid'],'pbsa.dx'),
-          os.path.join(kwargs['dir_grid'],'pbsa.dx.gz')]))])),
+          os.path.join(kwargs['dir_grid'],'pbsa.dx.gz')])),
+        ('desolv',a.findPath([kwargs['grid_desolv'],
+          os.path.join(kwargs['dir_grid'],'desolv.nc'),
+          os.path.join(kwargs['dir_grid'],'desolv.dx'),
+          os.path.join(kwargs['dir_grid'],'desolv.dx.gz')]))])),
       ('score','default' if kwargs['score']=='default' \
                             else a.findPath([kwargs['score']])),
       ('dir_cool',self.dir['cool'])])
@@ -2063,9 +2068,17 @@ last modified {1}
         # Load the force field if it has not been loaded
         if not scalable in self._forceFields.keys():
           if scalable=='OBC':
+            isDocking = False
+            for scalable_c in ['sLJr','sELE','LJr','LJa','ELE']:
+              if (scalable_c in lambda_n.keys()):
+                isDocking = True
+                break
             from AlGDock.ForceFields.OBC.OBC import OBCForceField
-            self._forceFields['OBC'] = OBCForceField(self._FNs['prmtop']['L'],
-              self.molecule.prmtop_atom_order,self.molecule.inv_prmtop_atom_order)
+            if isDocking and self.params['dock']['solvation']=='Fractional':
+              self._forceFields['OBC'] = OBCForceField(\
+                desolvationGridFN=self._FNs['grids']['desolv'])
+            else:
+              self._forceFields['OBC'] = OBCForceField()
           else: # Grid
             loading_start_time = time.time()
             grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
