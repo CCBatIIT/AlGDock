@@ -34,11 +34,11 @@ ef_evaluator(PyFFEnergyTermObject *self,
   if (energy->gradients != NULL) {
     g = (vector3 *)((PyArrayObject*)energy->gradients)->data;
     energy->energy_terms[self->index] =
-      computeBornEnergyForces(obc, obcParameters, coordinates, g);
+      computeBornEnergyForces(obc, obcParameters, NULL, coordinates, g);
   }
   else {
     energy->energy_terms[self->index] =
-      computeBornEnergy(obc, obcParameters, coordinates);
+      computeBornEnergy(obc, obcParameters, NULL, coordinates);
   }
 }
 

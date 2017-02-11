@@ -16,6 +16,8 @@ class OBCForceField(ForceField):
           prmtopFN=None,
           inv_prmtop_atom_order=None,
           desolvationGridFN=None,
+          r_min = 0.14,
+          r_max = 1.0,
           strength=1.0):
         """
         @param prmtopFN: an AMBER parameter and topology file
@@ -27,7 +29,7 @@ class OBCForceField(ForceField):
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
         self.arguments = (prmtopFN, inv_prmtop_atom_order, \
-          desolvationGridFN, strength)
+          desolvationGridFN, r_min, r_max, strength)
 
         # Load the desolvation grid
         if desolvationGridFN is not None:
@@ -47,6 +49,8 @@ class OBCForceField(ForceField):
         self.prmtopFN = prmtopFN
         self.inv_prmtop_atom_order = inv_prmtop_atom_order
         self.desolvationGridFN = desolvationGridFN
+        self.r_min = r_min
+        self.r_max = r_max
         self.strength = strength
 
     def set_strength(self, strength):
@@ -130,7 +134,7 @@ class OBCForceField(ForceField):
           return [OBCDesolvTerm(universe._spec, numParticles, self.strength, \
             charges, atomicRadii, scaleFactors, \
             self.grid_data['spacing'], self.grid_data['counts'], \
-            self.grid_data['vals'])]
+            self.grid_data['vals'], self.r_min, self.r_max)]
         else:
           # No desolvation grid
           from MMTK_OBC import OBCTerm

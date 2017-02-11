@@ -132,7 +132,10 @@ vector<double>& ReferenceObc::getObcChain() {
     --------------------------------------------------------------------------------------- */
 
 //void ReferenceObc::computeBornRadii(const vector<RealVec>& atomCoordinates, vector<double>& bornRadii) {
-void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters, const vector3* atomCoordinates, vector<double>& bornRadii) {
+void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters,
+  const vector3* atomCoordinates,
+  const double* Igrid,
+  vector<double>& bornRadii) {
 
     // ---------------------------------------------------------------------------------------
 
@@ -215,10 +218,14 @@ void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters, const ve
        // OBC-specific code (Eqs. 6-8 in OBC paper)
 
        sum              *= half; // Now sum becomes I in OBC paper
+       if (Igrid!=NULL) {
+         // printf("Atom %d, Born radius = %f, I_HCT = %f, I_grid = %f\n", atomI, radiusI, sum, Igrid[atomI]);
+         sum += Igrid[atomI];
+       }
       
-       // TODO: Add numerical integral of Coulomb field to sum
-       // TODO: Determine if derivatives are still correct after adding numerical integral. (Likely).
-      
+       // TODO: Derivatives not correct after adding numerical integral.
+
+       // OBC-specific code (Eqs. 6-8 in OBC paper)
        sum              *= offsetRadiusI; // Now sum becomes \Psi in OBC paper
        double sum2       = sum*sum;
        double sum3       = sum*sum2;
@@ -226,9 +233,10 @@ void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters, const ve
        
        bornRadii[atomI]      = one/(one/offsetRadiusI - tanhSum/radiusI); 
  
+       // This is the derivative of the Born radius with respect to Psi,
+       // multiplied by offsetRadiusI and divided by BornRadii[atomI]**2
        obcChain[atomI]       = offsetRadiusI*(alphaObc - two*betaObc*sum + three*gammaObc*sum2);
        obcChain[atomI]       = (one - tanhSum*tanhSum)*obcChain[atomI]/radiusI;
-
     }
 }
 
@@ -308,7 +316,8 @@ void ReferenceObc::computeAceNonPolarForce(const ObcParameters* obcParameters,
 //                                           const vector<double>& partialCharges, vector<RealVec>& inputForces) {
 double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
                                        const vector3* atomCoordinates,
-                                       const vector<double>& partialCharges) {
+                                       const vector<double>& partialCharges,
+                                       const double* Igrid) {
 
     // ---------------------------------------------------------------------------------------
 
@@ -339,7 +348,7 @@ double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
     // compute Born radii
 
     vector<double> bornRadii(numberOfAtoms);
-    computeBornRadii(obcParameters, atomCoordinates, bornRadii);
+    computeBornRadii(obcParameters, atomCoordinates, Igrid, bornRadii);
 
     // set energy/forces to zero
 
@@ -439,6 +448,7 @@ double ReferenceObc::computeBornEnergy(const ObcParameters* obcParameters,
 double ReferenceObc::computeBornEnergyForces(const ObcParameters* obcParameters,
                                              const vector3* atomCoordinates,
                                              const vector<double>& partialCharges,
+                                             const double* Igrid,
                                              vector3* inputForces) {
 
     // ---------------------------------------------------------------------------------------
@@ -482,7 +492,7 @@ double ReferenceObc::computeBornEnergyForces(const ObcParameters* obcParameters,
     // compute Born radii
 
     vector<double> bornRadii(numberOfAtoms);
-    computeBornRadii(obcParameters, atomCoordinates, bornRadii);
+    computeBornRadii(obcParameters, atomCoordinates, Igrid, bornRadii);
 
     // set energy/forces to zero
 

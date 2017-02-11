@@ -24,10 +24,12 @@ ReferenceObc* newReferenceObc(ObcParameters* obcParameters);
 
 double computeBornEnergy(ReferenceObc* self,
                          ObcParameters* obcParameters,
+                         const double* Igrid,
                          vector3* atomCoordinates);
 
 double computeBornEnergyForces(ReferenceObc* self,
                                ObcParameters* obcParameters,
+                               const double* Igrid,
                                vector3* atomCoordinates,
                                vector3* forces);
 

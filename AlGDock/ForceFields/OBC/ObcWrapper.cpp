@@ -59,12 +59,12 @@ ReferenceObc* newReferenceObc(ObcParameters* obcParameters) {
   return obc;
 }
 
-double computeBornEnergy(ReferenceObc* self, ObcParameters* obcParameters, vector3* atomCoordinates) {
-  return self->computeBornEnergy(obcParameters, atomCoordinates, obcParameters->getPartialCharges());
+double computeBornEnergy(ReferenceObc* self, ObcParameters* obcParameters, const double* Igrid,vector3* atomCoordinates) {
+  return self->computeBornEnergy(obcParameters, atomCoordinates, obcParameters->getPartialCharges(), Igrid);
 }
 
-double computeBornEnergyForces(ReferenceObc* self, ObcParameters* obcParameters, vector3* atomCoordinates, vector3* forces) {
-  return self->computeBornEnergyForces(obcParameters, atomCoordinates, obcParameters->getPartialCharges(), forces);
+double computeBornEnergyForces(ReferenceObc* self, ObcParameters* obcParameters, const double* Igrid, vector3* atomCoordinates, vector3* forces) {
+  return self->computeBornEnergyForces(obcParameters, atomCoordinates, obcParameters->getPartialCharges(), Igrid, forces);
 }
 
 void deleteReferenceObc(ReferenceObc* self) {

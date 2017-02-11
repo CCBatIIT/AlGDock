@@ -462,7 +462,7 @@ last modified {1}
       if (not 'NAMD_Gas' in phase_list) and ('APBS_PBSA' in phase_list):
         phase_list.append('NAMD_Gas')
   
-    self._scalables = ['OBC','sLJr','sELE','LJr','LJa','ELE']
+    self._scalables = ['OBC','OBC_desolv','sLJr','sELE','LJr','LJa','ELE']
 
     # Variables dependent on the parameters
     self.original_Es = [[{}]]
@@ -1136,10 +1136,7 @@ last modified {1}
     self.dock_protocol = [lambda_o]
 
     # Set up the force field with full interaction grids
-    lambda_scalables = dict(zip(\
-      self._scalables,np.ones(len(self._scalables),dtype=int)) + \
-      [('T',self.T_HIGH),('site',True)])
-    self._set_universe_evaluator(lambda_scalables)
+    self._set_universe_evaluator(self._lambda(1.0, 'dock'))
 
     # Either loads or generates the random translations and rotations for the first state of docking
     if not (hasattr(self,'_random_trans') and hasattr(self,'_random_rotT')):
@@ -2068,18 +2065,13 @@ last modified {1}
         # Load the force field if it has not been loaded
         if not scalable in self._forceFields.keys():
           if scalable=='OBC':
-            isDocking = False
-            for scalable_c in ['sLJr','sELE','LJr','LJa','ELE']:
-              if (scalable_c in lambda_n.keys()):
-                isDocking = True
-                break
             from AlGDock.ForceFields.OBC.OBC import OBCForceField
-            if isDocking and self.params['dock']['solvation']=='Fractional':
-              self._forceFields['OBC'] = OBCForceField(\
-                desolvationGridFN=self._FNs['grids']['desolv'])
-            else:
-              self._forceFields['OBC'] = OBCForceField()
-          else: # Grid
+            self._forceFields['OBC'] = OBCForceField()
+          elif scalable=='OBC_desolv':
+            from AlGDock.ForceFields.OBC.OBC import OBCForceField
+            self._forceFields['OBC_desolv'] = OBCForceField(\
+              desolvationGridFN=self._FNs['grids']['desolv'])
+          else: # Grids
             loading_start_time = time.time()
             grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
               'LJr':'LJr','LJa':'LJa','ELE':'ELE'}[scalable]]
@@ -2196,7 +2188,8 @@ last modified {1}
     """
     self._evaluators = {}
     for scalable in self._scalables:
-      if (scalable in self._forceFields.keys()) and (scalable!='OBC'):
+      if (scalable in self._forceFields.keys()) \
+          and (scalable!='OBC') and (scalable!='OBC_desolv'):
         del self._forceFields[scalable]
 
   def _ramp_T(self, T_START, T_LOW = 20., normalize=False):
@@ -3415,7 +3408,7 @@ last modified {1}
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
         OBC = 1.0
       elif self.params['dock']['solvation']=='Fractional':
-        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC_desolv':1}], noBeta=True)
         OBC = a_g
       
       if self.params['dock']['pose'] > -1:
@@ -3477,7 +3470,7 @@ last modified {1}
       elif self.params['dock']['solvation']=='Full':
         lambda_n['OBC'] = 1.0
       elif self.params['dock']['solvation']=='Fractional':
-        lambda_n['OBC'] = a_g # Scales the solvent with the grid
+        lambda_n['OBC_desolv'] = a_g # Scales the solvent with the grid
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
         a_r = np.tanh(16*a*a)

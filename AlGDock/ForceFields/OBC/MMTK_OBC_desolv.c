@@ -26,9 +26,11 @@ ef_evaluator(PyFFEnergyTermObject *self,
      */
 {
   vector3* coordinates = (vector3 *)input->coordinates->data;
-  int natoms = input->coordinates->dimensions[0];
   vector3* g;
-  double fractionalDesolvation[natoms];
+
+  int natoms = input->coordinates->dimensions[0];
+  double Igrid[natoms];
+  double fractionalDesolvationToIgrid = self->param[6];
 
   /* Interpolate the fractional desolvation grid */
   int nyz = (int) self->param[2];
@@ -94,26 +96,23 @@ ef_evaluator(PyFFEnergyTermObject *self,
       vm = ay*vmm + fy*vmp;
       vp = ay*vpm + fy*vpp;
       
-      fractionalDesolvation[ind] = (ax*vm + fx*vp);
+      // (ax*vm + fx*vp) is the interpolation of fractional desolvation
+      // fractionalDesolvationToIgrid converts it to Igrid
+      Igrid[ind] = fractionalDesolvationToIgrid*(ax*vm + fx*vp);
     }
   }
-  
-//  for (ind = 0; ind < natoms; ind++)
-//    printf("Fractional desolvation on atom %d is %f\n", ind, fractionalDesolvation[ind]);
   
   struct ObcParameters* obcParameters = (struct ObcParameters*)self->data[6];
   struct ReferenceObc* obc = (struct ReferenceObc*)self->data[7];
   
-  // TODO: Modify computeBornEnergyForces to accept fractional desolvation
-  // If there is no fractional desolvation, pass NULL
   if (energy->gradients != NULL) {
     g = (vector3 *)((PyArrayObject*)energy->gradients)->data;
     energy->energy_terms[self->index] =
-      computeBornEnergyForces(obc, obcParameters, coordinates, g);
+      computeBornEnergyForces(obc, obcParameters, Igrid, coordinates, g);
   }
   else {
     energy->energy_terms[self->index] =
-      computeBornEnergy(obc, obcParameters, coordinates);
+      computeBornEnergy(obc, obcParameters, &Igrid, coordinates);
   }
 }
 
@@ -144,13 +143,16 @@ OBCDesolvTerm(PyObject *dummy, PyObject *args)
   PyArrayObject *counts;
   PyArrayObject *vals;
   double strength;
+  // Integration range for the Coulomb integral
+  double r_min;
+  double r_max;
 
   /* Create a new energy term object and return if the creation fails. */
   self = PyFFEnergyTerm_New();
   if (self == NULL)
     return NULL;
   /* Convert the parameters to C data types. */
-  if (!PyArg_ParseTuple(args, "O!idO!O!O!O!O!O!",
+  if (!PyArg_ParseTuple(args, "O!idO!O!O!O!O!O!dd",
 			&PyUniverseSpec_Type, &self->universe_spec,
       &numParticles, &strength,
 			&PyArray_Type, &charges,
@@ -158,7 +160,8 @@ OBCDesolvTerm(PyObject *dummy, PyObject *args)
       &PyArray_Type, &scaleFactors,
       &PyArray_Type, &spacing,
       &PyArray_Type, &counts,
-      &PyArray_Type, &vals))
+      &PyArray_Type, &vals,
+      &r_min, &r_max))
     return NULL;
   /* We keep a reference to the universe_spec in the newly created
      energy term object, so we have to increase the reference count. */
@@ -189,6 +192,8 @@ OBCDesolvTerm(PyObject *dummy, PyObject *args)
   self->param[3] = spacing_v[0]*(counts_v[0]-1); // hCorner in x
   self->param[4] = spacing_v[1]*(counts_v[1]-1); // hCorner in y
   self->param[5] = spacing_v[2]*(counts_v[2]-1); // hCorner in z
+  // Multiplicative factor for fractional desolvation to get Igrid
+  self->param[6] = 1/r_min - 1/r_max;
   
   /* self->data is the other storage area for parameters. There are
      40 Python object slots there */

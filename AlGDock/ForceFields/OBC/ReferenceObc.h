@@ -130,7 +130,7 @@ class ReferenceObc {
          --------------------------------------------------------------------------------------- */
       
 //      void computeBornRadii(const std::vector<OpenMM::RealVec>& atomCoordinates, std::vector<double>& bornRadii);
-      void computeBornRadii(const ObcParameters* obcParameters, const vector3* atomCoordinates, std::vector<double>& bornRadii);
+      void computeBornRadii(const ObcParameters* obcParameters, const vector3* atomCoordinates, const double* Igrid, std::vector<double>& bornRadii);
   
       /**---------------------------------------------------------------------------------------
         
@@ -161,7 +161,8 @@ class ReferenceObc {
       
         double computeBornEnergy(const ObcParameters* obcParameters,
                                  const vector3* atomCoordinates,
-                                 const std::vector<double>& partialCharges);
+                                 const std::vector<double>& partialCharges,
+                                 const double* Igrid);
 
   
       /**---------------------------------------------------------------------------------------
@@ -180,6 +181,7 @@ class ReferenceObc {
         double computeBornEnergyForces(const ObcParameters* obcParameters,
                                        const vector3* atomCoordinates,
                                        const std::vector<double>& partialCharges,
+                                       const double* Igrid,
                                        vector3* forces);
 
 };
