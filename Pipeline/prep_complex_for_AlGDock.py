@@ -67,13 +67,13 @@ if not (os.path.isfile(os.path.join(complex_prefix+'.prmtop')) and \
   tleap_F = open(complex_prefix+'.tleap','w')
   tleap_F.write("""
 source leaprc.ff14SB
-set default PBRadii bondi
+set default PBRadii mbondi2
 
 # Receptor
 receptor = loadpdb {0}
 
 # Ligand
-source leaprc.gaff
+source leaprc.gaff2
 loadamberparams {1}.frcmod
 ligand = loadmol2 {1}.mol2
 saveoff ligand {1}.lib

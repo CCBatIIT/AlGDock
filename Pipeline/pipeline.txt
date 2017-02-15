@@ -1,5 +1,4 @@
 # TODO: Procedure for dimers and other multimers, e.g. HIV protease
-# TODO: Use gaff2 and mbondi2 radii for GB.
 
 To go through this pipeline, it is helpful to define the environment variable ALGDOCKHOME.
 
@@ -188,10 +187,14 @@ BindingDB.inactive.ism
 BindingDB.DUD-E.decoys.ism
 xtal_ligands.ism
 
-To create 3D models with balloon and parameterize the ligands using chimera and antechamber, start in 
+To create 3D models and parameterize the ligands, start in
 [TARGET]/ligand/
 on the group cluster or on the open science grid submit node and run
-python $ALGDOCKHOME/Pipeline/run_prep_ligand_for_dock.py [library].ism
+python $ALGDOCKHOME/Pipeline/run_prep_ligand_for_dock.py [library].ism [UseOpenEye]
+
+If [UseOpenEye] is 'N', the script will use balloon for conformer generation and chimera and antechamber for charges. Chimera may assign too many protons to the ligands, so be careful.
+
+If [UseOpenEye] is 'Y', the script will use the OpenEye toolkit. The Minh group has a free academic license, so only use this option for academic projects without commercial implications. Ask David if you are unsure.
 
 *** ANCHOR AND GROW ***
 

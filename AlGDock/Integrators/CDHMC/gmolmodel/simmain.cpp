@@ -116,7 +116,7 @@ CDHMCIntegrator::CDHMCIntegrator(PyObject *universe, std::string ligdir, std::st
   int argc = 6;
   ligdir += '/';
   gaffdir += '/';
-  string gaff_fn = gaffdir + "gaff.dat";
+  string gaff_fn = gaffdir + "gaff2.dat";
   const char *argv[6] = {
   "-ligdir", ligdir.c_str(),
   "-gaff",  gaff_fn.c_str(),

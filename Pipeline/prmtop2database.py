@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # Converts AMBER prmtop (and inpcrd) files to a MMTK database,
 # which is basically a python script defining a molecule's
 # atoms, bonds, and default coordinates
@@ -35,6 +33,7 @@ args = parser.parse_args()
 print "Creating database "+args.db_FN
 
 ### Loads AMBER parameter file
+import AlGDock
 import AlGDock.IO
 prmtop_IO = AlGDock.IO.prmtop()
 prmtop = prmtop_IO.read(args.prmtop_FN, varnames)

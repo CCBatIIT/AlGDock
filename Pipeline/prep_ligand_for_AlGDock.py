@@ -54,10 +54,10 @@ if not (os.path.isfile(os.path.join(prefix+'.prmtop')) and \
   print '\n*** Generating prmtop and inpcrd files ***'
   tleap_F = open(prefix+'.tleap','w')
   tleap_F.write("""
-source leaprc.gaff
+source leaprc.gaff2
 loadamberparams {0}.frcmod
 
-set default PBRadii bondi
+set default PBRadii mbondi2
 
 ligand = loadmol2 {0}.mol2
 saveoff ligand {0}.lib
@@ -88,7 +88,7 @@ db_FN = prefix.lower()+'.db'
 if not os.path.isfile((db_FN)):
   print '\n*** Generating MMTK database ***'
   command = 'python '+dirs['script']+'/prmtop2database.py' + \
-    ' {0}.prmtop {0}.inpcrd {1}.db'.format(prefix,prefix.lower())
+    ' {0}.prmtop {1}.db --inpcrd_FN {0}.inpcrd'.format(prefix,prefix.lower())
   os.system(command)
   if not os.path.isfile(db_FN):
     raise Exception('Unable to create db for '+prefix)

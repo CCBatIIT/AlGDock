@@ -9,7 +9,7 @@
 $ALGDOCK --dir_dock dock --dir_cool cool \
   --ligand_tarball prmtopcrd/ligand.tar.gz \
   --ligand_database ligand.db \
-  --forcefield prmtopcrd/gaff.dat \
+  --forcefield prmtopcrd/gaff2.dat \
   --ligand_prmtop ligand.prmtop \
   --ligand_inpcrd ligand.trans.inpcrd \
   --ligand_mol2 ligand.mol2 \

@@ -23,7 +23,7 @@ import CDHMC
 parm_dir = '/share/apps/amber/16/dat/leap/parm/' # Amber parameters directory
 newmol = Molecule(mol_FN)
 mol_frcmod = os.path.join(mol_dir, 'ligand.frcmod')
-gaff_FN = os.path.join(mol_dir,'gaff.dat')
+gaff_FN = os.path.join(mol_dir,'gaff2.dat')
 universe = InfiniteUniverse(Amber12SBForceField(parameter_file=gaff_FN, mod_files=['frcmod.ff12SB', mol_frcmod]))
 universe.addObject(newmol)
 

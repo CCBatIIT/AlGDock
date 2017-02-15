@@ -12,14 +12,6 @@ def code(val):
 def base10val(code):
     return key.find(code[0])*36*36 + key.find(code[1])*36 + key.find(code[2])
 
-import inspect
-dirs = {}
-dirs['script'] = os.path.dirname(os.path.abspath(\
-  inspect.getfile(inspect.currentframe())))
-execfile(os.path.join(dirs['script'],'_external_paths.py'))
-prep_script = os.path.join(dirs['script'], '_prep_ligand.chimera.py')
-command_paths = findPaths(['qsub_command'])
-
 import sys
 if len(sys.argv)==1:
   sys.argv.append('DUD-E.active.ism')
@@ -28,6 +20,8 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('library', default=None, \
   help='ISM or mol2 file of the library')
+parser.add_argument('UseOpenEye', choices=['Y','N'], \
+  help='Use OpenEye toolkit?')
 parser.add_argument('--count', default=None, type=int, \
   help='Number of ligands to process')
 parser.add_argument('--job_block', default=job_block, type=int, \
@@ -39,6 +33,14 @@ parser.add_argument('--max_jobs', default=None, type=int)
 parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')
 args = parser.parse_args()
+
+import inspect
+dirs = {}
+dirs['script'] = os.path.dirname(os.path.abspath(\
+  inspect.getfile(inspect.currentframe())))
+execfile(os.path.join(dirs['script'],'_external_paths.py'))
+prep_script = os.path.join(dirs['script'], '_prep_ligand.chimera.py')
+command_paths = findPaths(['qsub_command'])
 
 # Load the library
 if not os.path.isfile(args.library):
@@ -97,7 +99,7 @@ for ind in inds:
       F.close()
     command = 'python {0} {1} "{2}"'.format(\
       os.path.join(dirs['script'],'prep_ligand_for_dock.py'), \
-      out_FN, ligands[ind].split()[0])
+      out_FN, ligands[ind].split()[0], args.UseOpenEye)
     command_list.append(command)
     out_FNs.append(out_FN)
     out_remaps.append(os.path.basename(out_FN))

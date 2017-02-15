@@ -18,7 +18,7 @@ import AlGDock.RigidBodies
 import random
 
 amberFF = MMTK.ForceFields.Amber12SBForceField(\
-  parameter_file='../../../Example/prmtopcrd/gaff.dat', mod_files=['1s3v.frcmod'])
+  parameter_file='../../../Example/prmtopcrd/gaff2.dat', mod_files=['1s3v.frcmod'])
 universe = MMTK.InfiniteUniverse()
 
 molecule = MMTK.Molecule('1s3v.db')

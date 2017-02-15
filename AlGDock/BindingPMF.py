@@ -272,11 +272,11 @@ last modified {1}
       kwargs['frcmodList'] = [cdir_or_dir_dock(FN) \
         for FN in kwargs['frcmodList']]
   
-    FFpath = a.search_paths['gaff.dat'] \
-      if 'gaff.dat' in a.search_paths.keys() else []
+    FFpath = a.search_paths['gaff'] \
+      if 'gaff' in a.search_paths.keys() else []
     FNs['new'] = OrderedDict([
       ('ligand_database',cdir_or_dir_dock(kwargs['ligand_database'])),
-      ('forcefield',a.findPath([kwargs['forcefield'],'../Data/gaff.dat'] + FFpath)),
+      ('forcefield',a.findPath([kwargs['forcefield'],'../Data/gaff2.dat'] + FFpath)),
       ('frcmodList',kwargs['frcmodList']),
       ('tarball',OrderedDict([
         ('L',a.findPath([kwargs['ligand_tarball']])),
@@ -2979,6 +2979,7 @@ last modified {1}
       return np.mean(np.minimum(acc,np.ones(acc.shape)))
 
     updated = False
+    # TODO: Fix this loop
     for k in range(0,len(self.dock_protocol)-1):
       mean_acc = calc_mean_acc(k)
       while mean_acc<0.4:

@@ -1,0 +1,4 @@
+set ligand [mol new /Users/dminh/Installers/AlGDock-0.0.1/Nanopore_Example/prmtopcrd/YFF_14.prmtop]
+mol addfile output.dcd type dcd waitfor all
+mol new {/Users/dminh/Installers/AlGDock-0.0.1/Nanopore_Example/grids/LJr.dx} type {dx} first 0 last -1 step 1 waitfor 1
+mol modstyle 0 1 Isosurface 10.000000 0 2 0 1 1

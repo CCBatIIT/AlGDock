@@ -200,7 +200,7 @@ args_in = parser.parse_args()
 # Check for the existence of input files
 import os, glob
 
-# Look for gaff.dat, AlGDock, and qsub_command.py
+# Look for gaff, AlGDock, and qsub_command.py
 import inspect
 dirs = {}
 dirs['current'] = os.getcwd()
@@ -217,7 +217,7 @@ if not args_in.skip_onq:
   onq = jobs_on_queue()
 else:
   onq = []
-command_paths = findPaths(['qsub_command','gaff.dat'])
+command_paths = findPaths(['qsub_command','gaff'])
 algdock_path = findPath(search_paths['algdock'])
 
 import numpy as np
@@ -369,7 +369,7 @@ for rep in range(args_in.reps[0],args_in.reps[1]):
     labels['ligand'] = labels['library']+'.'+labels['key']
     paths = {'dir_cool':os.path.join(args_in.tree_cool, \
                 labels['lib_subdir'], '%s-%d'%(labels['key'],rep)),
-             'forcefield':command_paths['gaff.dat'],
+             'forcefield':command_paths['gaff'],
              'ligand_tarball':ligand_FN}
 
     # Define and check files within the ligand tarball

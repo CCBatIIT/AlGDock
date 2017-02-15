@@ -43,7 +43,6 @@ dirs = {'target':os.getcwd()}
 dirs['script'] = os.path.dirname(os.path.abspath(\
   inspect.getfile(inspect.currentframe())))
 execfile(os.path.join(dirs['script'],'_external_paths.py'))
-prep_script = os.path.join(dirs['script'], '_prep_ligand.chimera.py')
 command_paths = findPaths(['qsub_command'])
 
 for path in ['ligand_in','ligand_out','receptor','complex_out']:

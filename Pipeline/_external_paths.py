@@ -123,9 +123,9 @@ search_paths = {
         'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
                 '/share/apps/apbs/1.4/bin/apbs'],
                # Generalized AMBER force field
-    'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
-                '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
-                '/home/daveminh/algdock_data/gaff.dat'],
+        'gaff':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+                '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+                '/home/daveminh/algdock_data/gaff2.dat'],
                # AlGDock
      'algdock':['/Users/dminh/Library/Enthought/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
                 '/share/apps/canopy/1.5.0/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py']}
@@ -134,7 +134,7 @@ algdock_setup = '''
 # Modify paths
 echo "
 search_paths = {
-  'gaff.dat':[None],
+  'gaff2.dat':[None],
   'catdcd':[None],
   'namd':[None],
   'sander':[None],

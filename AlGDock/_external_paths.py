@@ -104,9 +104,9 @@ def loadModules(programs):
 search_paths = {
 # These files/programs are used in BindingPMF.py
              # Generalized AMBER force field
-  'gaff.dat':['/Users/dminh/Installers/AlGDock-0.0.1/data/gaff.dat',
-              '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff.dat',
-              '/home/dminh/software/AlGDock/data/gaff.dat'],
+      'gaff':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+              '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+              '/home/daveminh/algdock_data/gaff2.dat'],
              # For postprocessing snapshots with NAMD
       'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',

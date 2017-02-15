@@ -6,7 +6,7 @@ simmain.hpp
 bSystem.cpp - include SimBody subsystems (which are parts of systems)
 bSystem.hpp
 
-bAddParams.cpp - reads gaff.dat to create new atom types for molmodel
+bAddParams.cpp - reads gaff2.dat to create new atom types for molmodel
 bAddParams.hpp
 
 bMoleculeReader.cpp - reads a mol2 file

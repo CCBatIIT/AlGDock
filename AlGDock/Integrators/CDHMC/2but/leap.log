@@ -85,8 +85,8 @@ Log file: ./leap.log
 >> #
 >> #	Load the general force field parameter set.
 >> #
->> gaff = loadamberparams gaff.dat
-Loading parameters: /export/apps/amber/14/dat/leap/parm/gaff.dat
+>> gaff = loadamberparams gaff2.dat
+Loading parameters: /export/apps/amber/14/dat/leap/parm/gaff2.dat
 Reading title:
 AMBER General Force Field for organic molecules (Version 1.7, Nov 2013)
 > 

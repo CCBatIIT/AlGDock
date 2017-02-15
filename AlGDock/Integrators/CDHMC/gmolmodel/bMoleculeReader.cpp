@@ -684,7 +684,7 @@ bMoleculeReader::bMoleculeReader(DuMMForceFieldSubsystem& dumm,
   FILE *rfpo;
   rfpo = fopen(rbfilename, "r");
   if(rfpo == NULL){
-    printf("Usage:\n<program> -mol2 <mol2_file> -rb <rb_file> -gaff  gaff.dat -frcmod <frcmod_file>\n");
+    printf("Usage:\n<program> -mol2 <mol2_file> -rb <rb_file> -gaff  gaff2.dat -frcmod <frcmod_file>\n");
     printf("rb_file not provided. Exiting...\n");
     exit(1);
   }

@@ -107,10 +107,10 @@ os.system(command)
 
 tleapF = open('{0}.tleap'.format(args.prefix),'w')
 tleapF.write('''
-source leaprc.gaff
+source leaprc.gaff2
 loadamberparams {0}.frcmod
 
-set default PBRadii bondi
+set default PBRadii mbondi2
 
 ligand = loadmol2 {0}.mol2
 saveoff ligand {0}.lib

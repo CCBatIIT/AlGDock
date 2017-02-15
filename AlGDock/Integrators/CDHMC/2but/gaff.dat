@@ -5799,7 +5799,7 @@ atom_type  force_constant   equ. angle   source_ID   occurrence   rmsd
 xx-yy-zz      35.450          103.620     SOURCE3         3      0.7078
 
 ---------------------------------------------------------------------------
-Major changes from gaff.dat version 1.0
+Major changes from gaff2.dat version 1.0
 
 1. All the sp2 carbon in a AR2 ring (such as pyrrole, furan, pyrazole)
 only have cc or cd atom types (no c2). This is suggested by Gabriel
