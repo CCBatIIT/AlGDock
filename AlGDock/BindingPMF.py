@@ -462,7 +462,7 @@ last modified {1}
       if (not 'NAMD_Gas' in phase_list) and ('APBS_PBSA' in phase_list):
         phase_list.append('NAMD_Gas')
   
-    self._scalables = ['OBC','OBC_desolv','sLJr','sELE','LJr','LJa','ELE']
+    self._scalables = ['OBC','sLJr','sELE','LJr','LJa','ELE']
 
     # Variables dependent on the parameters
     self.original_Es = [[{}]]
@@ -1119,7 +1119,7 @@ last modified {1}
     confs = []
     for k in range(1,len(self.cool_Es[0])):
       E_MM += list(self.cool_Es[0][k]['MM'])
-      if 'OBC' in self.cool_Es[0][k].keys():
+      if ('OBC' in self.cool_Es[0][k].keys()):
         E_OBC += list(self.cool_Es[0][k]['OBC'])
       confs += list(self.confs['cool']['samples'][0][k])
 
@@ -1181,7 +1181,8 @@ last modified {1}
             self.universe.translateTo(self._random_trans[i_trans])
             eT = self.universe.energyTerms()
             for (key,value) in eT.iteritems():
-              E[term_map[key]][c,i_rot,i_trans] += value
+              if key!='electrostatic': # For some reason, MMTK double-counts electrostatic energies
+                E[term_map[key]][c,i_rot,i_trans] += value
       E_c = {}
       for term in E.keys():
         # Large array creation may cause MemoryError
@@ -2066,11 +2067,12 @@ last modified {1}
         if not scalable in self._forceFields.keys():
           if scalable=='OBC':
             from AlGDock.ForceFields.OBC.OBC import OBCForceField
-            self._forceFields['OBC'] = OBCForceField()
-          elif scalable=='OBC_desolv':
-            from AlGDock.ForceFields.OBC.OBC import OBCForceField
-            self._forceFields['OBC_desolv'] = OBCForceField(\
-              desolvationGridFN=self._FNs['grids']['desolv'])
+            if self.params['dock']['solvation']=='Fractional' and \
+                ('ELE' in lambda_n.keys()):
+              self._forceFields['OBC'] = OBCForceField(\
+                desolvationGridFN=self._FNs['grids']['desolv'])
+            else:
+              self._forceFields['OBC'] = OBCForceField()
           else: # Grids
             loading_start_time = time.time()
             grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
@@ -2188,8 +2190,7 @@ last modified {1}
     """
     self._evaluators = {}
     for scalable in self._scalables:
-      if (scalable in self._forceFields.keys()) \
-          and (scalable!='OBC') and (scalable!='OBC_desolv'):
+      if (scalable in self._forceFields.keys()):
         del self._forceFields[scalable]
 
   def _ramp_T(self, T_START, T_LOW = 20., normalize=False):
@@ -2979,8 +2980,9 @@ last modified {1}
       return np.mean(np.minimum(acc,np.ones(acc.shape)))
 
     updated = False
-    # TODO: Fix this loop
-    for k in range(0,len(self.dock_protocol)-1):
+    # TODO: Check that this loops works
+    k = 0
+    while k<len(self.dock_protocol)-1:
       mean_acc = calc_mean_acc(k)
       while mean_acc<0.4:
         if not updated:
@@ -2995,6 +2997,7 @@ last modified {1}
         mean_acc = calc_mean_acc(k)
         report += 'to %.5g'%mean_acc
         self.tee(report)
+      k += 1
 
     if updated:
       self._clear_f_RL()
@@ -3401,17 +3404,18 @@ last modified {1}
       da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(\
         1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
-      
+    
+      # The OBC term is added because it also scales with a
       if self.params['dock']['solvation']=='Desolvated':
-        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
-        OBC = 0
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
+        OBC = a_g # This is the scaling of OBC in the current state
       elif self.params['dock']['solvation']=='Full':
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
         OBC = 1.0
       elif self.params['dock']['solvation']=='Fractional':
-        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC_desolv':1}], noBeta=True)
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
         OBC = a_g
-      
+
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
         a_r = np.tanh(16*a*a)
@@ -3471,7 +3475,7 @@ last modified {1}
       elif self.params['dock']['solvation']=='Full':
         lambda_n['OBC'] = 1.0
       elif self.params['dock']['solvation']=='Fractional':
-        lambda_n['OBC_desolv'] = a_g # Scales the solvent with the grid
+        lambda_n['OBC'] = a_g # Scales the solvent with the grid
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
         a_r = np.tanh(16*a*a)
