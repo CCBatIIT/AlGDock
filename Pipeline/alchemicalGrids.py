@@ -76,6 +76,9 @@ class gridCalculation:
           2.*half_edge_length/spacing[1], \
           2.*half_edge_length/spacing[2]])),dtype=int)
 
+    spacing = np.array(spacing)
+    counts = np.array(counts)
+
     # Loads coordinates
     import AlGDock.IO
     IO_crd = AlGDock.IO.crd()

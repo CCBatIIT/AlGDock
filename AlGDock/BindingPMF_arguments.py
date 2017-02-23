@@ -126,8 +126,9 @@ arguments = {
   'snaps_per_independent':{'type':int,
     'help':'Number of snapshots per independent sample'},
   'sampling_importance_resampling':{'action':'store_true',
-    'help':'perfom sampling importance resampling'}, # TODO: Set new default after testing
-  'solvation':{'choices':['Desolvated','Full','Fractional'], 'default':'None',
+    'help':'perfom sampling importance resampling'},
+  'solvation':{'choices':['Desolvated','Full','Fractional'], \
+    'default':'Desolvated',
     'help':'Specify how OBC implicit solvent is used during sampling.\n' + \
     '\tWith Desolvated, OBC is scaled out during cooling.\t' + \
     '\tWith Full, OBC is at full strength.\n' + \

@@ -401,8 +401,8 @@ last modified {1}
         ('darts_per_sweep',0),
         ('snaps_per_independent',3.0),
         ('phases',['NAMD_Gas','NAMD_OBC']),
-        ('sampling_importance_resampling',False), # TODO: Set default after testing
-        ('solvation','Desolvated'), # TODO: Set default after testing
+        ('sampling_importance_resampling',False),
+        ('solvation','Desolvated'),
         ('keep_intermediate',False),
         ('GMC_attempts', 0),
         ('GMC_tors_threshold', 0.0)])
@@ -3406,15 +3406,16 @@ last modified {1}
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
     
       # The OBC term is added because it also scales with a
-      if self.params['dock']['solvation']=='Desolvated':
-        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
-        OBC = a_g # This is the scaling of OBC in the current state
-      elif self.params['dock']['solvation']=='Full':
+      if self.params['dock']['solvation']=='Full':
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
         OBC = 1.0
       elif self.params['dock']['solvation']=='Fractional':
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
         OBC = a_g
+      else:
+        # By default, the fully bound state is desolvated
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
+        OBC = a_g # This is the scaling of OBC in the current state
 
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
