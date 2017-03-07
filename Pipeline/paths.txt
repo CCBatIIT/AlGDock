@@ -2,7 +2,7 @@ These are tools to prepare a target and receptor for use with AlGDock.
 
 By default, files should be organized in the following directory tree:
 
-[TARGET]/
+$TARGET/
 	receptor/
 		search_options.py			Options for MODELLER and ProDy
 		ligand_selection.py			Describes ligands to exclude or include in binding site 
@@ -43,16 +43,19 @@ By default, files should be organized in the following directory tree:
 			LJa.nc				Lennard-Jones attractive grid
 			LJr.nc				Lennard-Jones repulsive grid
 			pbsa.nc				PBSA grid
-	ligand/
-		[LIBARY_NAME_1].ism			Chemical libraries, containing STRINGS in the first column
-		...
-		[LIBARY_NAME_N].ism
-		dock_in/[LIBARY_NAME_N].[KEY_PREFIX]__/[KEY_M].mol2
-		AlGDock_in/[LIBARY_NAME_N].[KEY_PREFIX]__/[KEY_M].tar.gz
 	dock6/
-		[LIBRARY_NAME_N].[KEY_PREFIX]__/[KEY]/[RECEPTOR].nc
+		$LIBRARY_NAME_N.$KEY_PREFIX__/$KEY/$RECEPTOR.nc
 	AlGDock/
 		saved_arguments.py			Arguments to AlGDock
-		cool/[LIBRARY_NAME_N].[KEY_PREFIX]__/[KEY]-[REP]/		Files from cooling the ligand
-		dock/[LIBRARY_NAME_N].[KEY_PREFIX]__/[KEY]/[RECEPTOR]-[REP]/	Files from docking the ligand 
+		cool/$LIBRARY_NAME_N.$KEY_PREFIX__/$KEY-$REP/		Files from cooling the ligand
+		dock/$LIBRARY_NAME_N.$KEY_PREFIX__/$KEY/$RECEPTOR$-$REP/	Files from docking the ligand 
 										to the receptor
+There should be another directory for the ligands with the following contents.
+
+$LIGANDS/
+	$LIBARY_NAME_1.ism			Chemical libraries, containing STRINGS in the first column
+	...
+	$LIBARY_NAME_N.ism
+	dock_in/$LIBARY_NAME_N.$KEY_PREFIX__/$KEY_M.mol2
+	AlGDock_in/$LIBARY_NAME_N.$KEY_PREFIX__/$KEY_M.tar.gz
+

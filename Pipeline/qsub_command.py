@@ -63,7 +63,7 @@ if os.path.exists('/share'): # CCB Cluster
     modules += 'module load chimera/1.11\n'
 
   if command.find('modeller')>-1:
-    modules += 'module load modeller/9.14\n'
+    modules += 'module load anaconda/2\n'
 
   if command.find('cores')>-1:
     cores = command[command.find('cores')+5:]

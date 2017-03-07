@@ -16,11 +16,14 @@ from AlGDock.Nanopore import *
 
 # This will run a peptide
 self = AlGDock.Nanopore.Simulation(\
-  ligand_database='prmtopcrd/YFF_14.db', \
+  # These will stay the same
   forcefield='prmtopcrd/parm10.dat', \
   frcmodList=['prmtopcrd/frcmod.ff14SB'], \
+  # These will change from peptide to peptide
+  ligand_database='prmtopcrd/YFF_14.db', \
   ligand_prmtop='prmtopcrd/YFF_14.prmtop', \
   starting_conf='prmtopcrd/YFF_14.inpcrd', \
+  # The grids will stay the same for the same protein
   grid_LJr='grids/LJr.nc', \
   ef=1.0E8, \
   max_trials=10000, \

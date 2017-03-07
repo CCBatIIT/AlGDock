@@ -387,7 +387,7 @@ last modified {1}
         ('H_mass',4.0),
         ('fraction_CD',0.5),
         ('CD_steps_per_trial',5),
-        ('delta_t_TD',4.0),
+        ('delta_t_CD',4.0),
         ('delta_t',3.0),
         ('sampler','NUTS'),
         ('steps_per_seed',1000),
@@ -654,7 +654,7 @@ last modified {1}
 #        self.sampler[p] = MixedHMCIntegrator(self.universe, CDIntegrator, \
 #          fraction_CD=self.params[p]['fraction_CD'], \
 #          CD_steps_per_trial=self.params[p]['CD_steps_per_trial'], \
-#          delta_t_TD=self.params[p]['delta_t_TD'])
+#          delta_t_CD=self.params[p]['delta_t_CD'])
       elif self.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
@@ -2963,16 +2963,16 @@ last modified {1}
     self.confs['dock']['samples'].insert(neighbor_ind+1, confs_s)
     self.confs['dock']['replicas'].insert(neighbor_ind+1, \
     self.confs['dock']['replicas'][neighbor_ind])
-    
+
     if clear:
       self._clear_f_RL()
 
   def _insert_dock_state_between_low_acc(self):
     # Insert thermodynamic states between those with low acceptance probabilities
-    dock_Es = [Es[self._get_equilibrated_cycle('dock')[-1]:self._dock_cycle] \
-      for Es in self.dock_Es]
+    eq_c = self._get_equilibrated_cycle('dock')[-1]
         
     def calc_mean_acc(k):
+      dock_Es = [Es[eq_c:self._dock_cycle] for Es in self.dock_Es]
       (u_kln,N_k) = self._u_kln(dock_Es[k:k+2],\
                                 self.dock_protocol[k:k+2])
       N = min(N_k)
@@ -2980,10 +2980,10 @@ last modified {1}
       return np.mean(np.minimum(acc,np.ones(acc.shape)))
 
     updated = False
-    # TODO: Check that this loops works
     k = 0
     while k<len(self.dock_protocol)-1:
       mean_acc = calc_mean_acc(k)
+      print k, self.dock_protocol[k]['a'], self.dock_protocol[k+1]['a'], mean_acc
       while mean_acc<0.4:
         if not updated:
           updated = True
@@ -2996,9 +2996,9 @@ last modified {1}
         self._insert_dock_state(a_n, clear=False)
         mean_acc = calc_mean_acc(k)
         report += 'to %.5g'%mean_acc
+        print k, self.dock_protocol[k]['a'], self.dock_protocol[k+1]['a'], mean_acc
         self.tee(report)
       k += 1
-
     if updated:
       self._clear_f_RL()
       self._save('dock')

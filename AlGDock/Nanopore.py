@@ -161,7 +161,6 @@ class Simulation:
       self.args['ef']*(MMTK.Units.V/MMTK.Units.m), 'scaling_factor_electrostatic')
     # scaling_factor_electrostatic is amber_charge multiplied by 4.184, 
     # converting kcal/mol (AMBER units) to kJ/mol (MMTK Units).
-    # 1 V m−1 = 1 kg m s−3 A−1.      
     
     # Load the file
     import AlGDock.IO
@@ -174,13 +173,13 @@ class Simulation:
       lig_crd = reader.read(self.args['starting_conf'])[0][0]
     else:
       raise Exception('Unknown file extension')
-    lig_crd = lig_crd[self.molecule.inv_prmtop_atom_order,:]
+    self.lig_crd = lig_crd[self.molecule.inv_prmtop_atom_order,:]
     
   def prep_ligand(self):
     # Randomly rotate the ligand
     from AlGDock.Integrators.ExternalMC.ExternalMC import random_rotate
-    lig_crd = np.dot(lig_crd, np.transpose(random_rotate()))
-    self.universe.setConfiguration(Configuration(self.universe,lig_crd))
+    self.lig_crd = np.dot(self.lig_crd, np.transpose(random_rotate()))
+    self.universe.setConfiguration(Configuration(self.universe,self.lig_crd))
     
     # Minimize the ligand internal energy
     print 'Minimizing the internal energy'
@@ -301,13 +300,13 @@ class Simulation:
     # (vmd_stdout, vmd_stderr) = p.communicate()
     # p.wait()
 
-  def __del__(self):
-    if len(self._toClear)>0:
-      print '\n>>> Clearing files'
-      for FN in self._toClear:
-        if os.path.isfile(FN):
-          os.remove(FN)
-          print '  removed '+FN
+#  def __del__(self):
+#    if len(self._toClear)>0:
+#      print '\n>>> Clearing files'
+#      for FN in self._toClear:
+#        if os.path.isfile(FN):
+#          os.remove(FN)
+#          print '  removed '+FN
 
 if __name__ == '__main__':
   import argparse

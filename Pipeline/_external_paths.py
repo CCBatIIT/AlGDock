@@ -103,9 +103,6 @@ search_paths = {
        'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
                 '/Applications/dock6/dock6',
                 '/share/apps/dock/6/bin/dock6'],
-               # For homology modelling
-    'modeller':['/Library/modeller-9.15/bin/mod9.15', # same in WH210
-                '/share/apps/modeller/9.13/bin/mod9.14'],
                # Submits a command to the queue
 'qsub_command':['/Users/dminh/scripts/qsub_command.py',
                 '~/scripts/qsub_command.py',
