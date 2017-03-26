@@ -59,6 +59,11 @@ ReferenceObc* newReferenceObc(ObcParameters* obcParameters) {
   return obc;
 }
 
+// TODO: Test and wrap
+//void computeBornRadii(ReferenceObc* self, ObcParameters* obcParameters, const double* Igrid, vector3* atomCoordinates, double* bornRadii) {
+//  self->computeBornRadii(obcParameters, atomCoordinates, Igrid, bornRadii);
+//}
+
 double computeBornEnergy(ReferenceObc* self, ObcParameters* obcParameters, const double* Igrid,vector3* atomCoordinates) {
   return self->computeBornEnergy(obcParameters, atomCoordinates, obcParameters->getPartialCharges(), Igrid);
 }

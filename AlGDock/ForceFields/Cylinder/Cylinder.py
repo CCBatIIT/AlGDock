@@ -1,6 +1,6 @@
 # A flat-bottom harmonic potential on the center of mass
 # that keeps the system within a cylinder
-# with principal axis along the direction (1,0,0).
+# with principal axis along the direction (0,0,1).
 
 from MMTK.ForceFields.ForceField import ForceField
 from MMTK_cylinder import CylinderTerm
@@ -14,34 +14,34 @@ class CylinderForceField(ForceField):
     Flat-bottom harmonic potential for a cylinder
     """
 
-    def __init__(self, origin, direction, max_X, max_R, name='cylinder'):
+    def __init__(self, origin, direction, max_Z, max_R, name='cylinder'):
         """
         @param origin: the origin of the principal axis of the cylinder
         @type origin: {numpy.array}
         @param direction: the direction of the principal axis of the cylinder
         @type direction: {numpy.array}
-        @param max_X: the maximal value of the projection along the principal axis
-        @type max_X: C{float}
+        @param max_Z: the maximal value of the projection along the principal axis
+        @type max_Z: C{float}
         @param max_R: the maximal value orthogonal to the principal axis
         @type max_R: C{float}
         """
         # Store arguments that recreate the force field from a pickled
         # universe or from a trajectory.
-        self.arguments = (origin, direction, max_X, max_R)
+        self.arguments = (origin, direction, max_Z, max_R)
         # Initialize the ForceField class, giving a name to this one.
         ForceField.__init__(self, name)
         # Store the parameters for later use.
         self.origin = origin
         self.direction = direction
-        self.max_X = max_X
+        self.max_Z = max_Z
         self.max_R = max_R
         self.name = name
-        if not ((self.direction[0] == 1.0) and
+        if not ((self.direction[0] == 0.0) and
                 (self.direction[1] == 0.0) and
-                (self.direction[2] == 0.0)):
-          raise Exception("For efficiency, principal axis must be along (1,0,0)")
+                (self.direction[2] == 1.0)):
+          raise Exception("For efficiency, principal axis must be along (0,0,1)")
         # Calculate the cylinder volume
-        self.volume = N.pi*(self.max_R*self.max_R)*self.max_X
+        self.volume = N.pi*(self.max_R*self.max_R)*(self.max_Z - self.origin[2])
 
     # The following method is called by the energy evaluation engine
     # to inquire if this force field term has all the parameters it
@@ -54,7 +54,7 @@ class CylinderForceField(ForceField):
     # the force field
     def evaluatorParameters(self, universe, subset1, subset2, global_data):
         return {self.name+' origin': self.center,
-                self.name+' max X': self.max_X,
+                self.name+' max Z': self.max_Z,
                 self.name+' max R': self.max_R}
 
     # The following method is called by the energy evaluation engine
@@ -69,18 +69,18 @@ class CylinderForceField(ForceField):
         # Here we pass all the parameters to the code
         # that handles energy calculations.
         return [CylinderTerm(universe,
-                  self.origin, self.direction, self.max_X, self.max_R,
+                  self.origin, self.direction, self.max_Z, self.max_R,
                   self.name)]
 
     def randomPoint(self):
       """
       Returns a random point within the cylinder
       """
-      x = N.random.uniform()
-      (y,z) = self._randomPointInCircle()
-      return (x*self.max_X + self.origin[0],
+      z = N.random.uniform()
+      (x,y) = self._randomPointInCircle()
+      return (x*self.max_R + self.origin[0],
               y*self.max_R + self.origin[1],
-              z*self.max_R + self.origin[2])
+              z*(self.max_Z - self.origin[2]) + self.origin[2])
     
     def _randomPointInCircle(self):
       """

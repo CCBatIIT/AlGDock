@@ -10,8 +10,8 @@ include 'MMTK/forcefield.pxi'
 cdef extern from "math.h":
     double sqrt(double)
     
-import numpy as N
-cimport numpy as N
+import numpy as np
+cimport numpy as np
 
 #
 # The force field term implementation.
@@ -34,17 +34,17 @@ cdef class CylinderTerm(EnergyTerm):
     # Parameters
     cdef vector3 origin
     cdef vector3 direction
-    cdef double max_X, max_R
+    cdef double max_Z, max_R
     cdef char* name
     # Useful variables
     cdef double k
-    cdef N.ndarray masses
+    cdef np.ndarray masses
     cdef double totalMass, max_R2
     cdef int natoms
 
     def __init__(self, universe, 
-                 N.ndarray[N.float64_t] origin, 
-                 N.ndarray[N.float64_t] direction, max_X, max_R, 
+                 np.ndarray[np.float64_t] origin, 
+                 np.ndarray[np.float64_t] direction, max_Z, max_R, 
                  name):
                  
         EnergyTerm.__init__(self, universe,
@@ -53,15 +53,15 @@ cdef class CylinderTerm(EnergyTerm):
         self.eval_func = <void *>CylinderTerm.evaluate
 
         # Parameters
-        cdef N.ndarray[N.float64_t] origin_array
-        cdef N.ndarray[N.float64_t] direction_array
+        cdef np.ndarray[np.float64_t] origin_array
+        cdef np.ndarray[np.float64_t] direction_array
         origin_array = origin
         direction_array = direction
         for i in range(3):
           self.origin[i] = (<double *>origin_array.data)[i]
           self.direction[i] = (<double *>direction_array.data)[i]
 
-        self.max_X = max_X
+        self.max_Z = max_Z
         self.max_R = max_R
         
         # Useful variables
@@ -84,7 +84,7 @@ cdef class CylinderTerm(EnergyTerm):
                        energy_spec *input, energy_data *energy):
         # Input
         cdef vector3 *coordinates
-        cdef N.float_t *masses
+        cdef np.float_t *masses
         # Output
         cdef vector3 *gradients
         # Processing
@@ -93,7 +93,7 @@ cdef class CylinderTerm(EnergyTerm):
         cdef int atom_index, i, j # Loop variables
         
         coordinates = <vector3 *>input.coordinates.data
-        masses = <N.float_t *>self.masses.data
+        masses = <np.float_t *>self.masses.data
 
         # Initialize variables
         energy.energy_terms[self.index] = 0
@@ -113,30 +113,30 @@ cdef class CylinderTerm(EnergyTerm):
           p[i] = com[i] - self.origin[i]
 
         # Energy and gradients along the principal axis
-        if (p[0]<0):
-          energy.energy_terms[self.index] = self.k*p[0]**2/2
+        if (p[2]<0.):
+          energy.energy_terms[self.index] = self.k*p[2]*p[2]/2
           if energy.gradients != NULL:
-            kw = self.k*p[0]/self.totalMass
+            kw = self.k*p[2]/self.totalMass
             for atom_index in range(self.natoms):
-              gradients[atom_index][0] += kw*masses[atom_index]
-        elif (p[0]>self.max_X):
-          overMax = p[0]-self.max_X
-          energy.energy_terms[self.index] = self.k*overMax**2/2
+              gradients[atom_index][2] += kw*masses[atom_index]
+        elif (com[2]>self.max_Z):
+          overMax = com[2]-self.max_Z
+          energy.energy_terms[self.index] = self.k*overMax*overMax/2
           if energy.gradients != NULL:
             kw = self.k*overMax/self.totalMass
             for atom_index in range(self.natoms):
-              gradients[atom_index][0] += kw*masses[atom_index]
+              gradients[atom_index][2] += kw*masses[atom_index]
               
         # Energy and gradients orthogonal to the principal axis
-        r2 = p[1]**2 + p[2]**2
+        r2 = p[0]*p[0] + p[1]*p[1]
         if (r2>self.max_R2):
           r = sqrt(r2)
           overMax = (r-self.max_R)
-          energy.energy_terms[self.index] += self.k*overMax**2/2
+          energy.energy_terms[self.index] += self.k*overMax*overMax/2
           if energy.gradients != NULL:
             kw = self.k*overMax/r/self.totalMass
-            kw1 = kw*p[1]
-            kw2 = kw*p[2]
+            kw1 = kw*p[0]
+            kw2 = kw*p[1]
             for atom_index in range(self.natoms):
-              gradients[atom_index][1] += kw1*masses[atom_index]
-              gradients[atom_index][2] += kw2*masses[atom_index]
+              gradients[atom_index][0] += kw1*masses[atom_index]
+              gradients[atom_index][1] += kw2*masses[atom_index]

@@ -154,7 +154,7 @@ arguments = {
     'help':'Position of binding site center'},
   'site_direction':{'nargs':3, 'type':float,
     'help':'Principal axis of a cylindrical binding site'},
-  'site_max_X':{'type':float,
+  'site_max_Z':{'type':float,
     'help':'Maximum position along principal axis in a cylindrical binding site'},
   'site_max_R':{'type':float,
     'help':'Maximum radial position for a spherical or cylindrical binding site'},

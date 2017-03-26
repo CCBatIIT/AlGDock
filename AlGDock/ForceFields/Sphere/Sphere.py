@@ -1,6 +1,7 @@
 # A flat-bottom harmonic potential on the center of mass
 # that keeps the system within a sphere
 
+import AlGDock
 from MMTK.ForceFields.ForceField import ForceField
 from MMTK_sphere import SphereTerm
 

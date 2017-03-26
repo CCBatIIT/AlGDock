@@ -56,6 +56,7 @@ if os.path.exists('/share'): # CCB Cluster
   if command.find('python')>-1:
     modules = 'module load miniconda/2\n'
     modules += 'module load gcc/6.2\n'
+    modules += 'module load openeye/2016\n'
   else:
     modules = ''
 

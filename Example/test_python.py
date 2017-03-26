@@ -48,18 +48,31 @@ for run_type in run_types:
     sweeps_per_cycle=25, attempts_per_sweep=100, \
     steps_per_sweep=100, darts_per_sweep=0, \
     cool_repX_cycles=3, dock_repX_cycles=4, \
-    site='Sphere', site_center=[1.74395, 1.74395, 1.74395], \
+    site='Cylinder', site_center=[1.74395, 1.74395, 1.44395], \
+    site_direction=[0, 0, 1.0], \
+    site_max_Z=2.04395, \
     site_max_R=0.6, \
-    site_density=10., \
     phases=phases, \
     cores=-1, \
     random_seed=-1, \
-    max_time=240)
+    max_time=240, \
+    keep_intermediate=True)
   self._run(run_type)
 
 # To test timed runs:
 #    run_type='timed',
 #    max_time=0.25)
+
+# To use spherical binding site
+#    site='Sphere', site_center=[1.74395, 1.74395, 1.74395], \
+#    site_max_R=0.6, \
+#    site_density=10., \
+
+# To use cylindrical binding site
+#    site='Cylinder', site_center=[1.74395, 1.74395, 1.44395], \
+#    site_direction=[0, 0, 1.0], \
+#    site_max_Z=2.04395, \
+#    site_max_R=0.6, \
 
 # Reasonable testing protocols:
 # protocol='Geometric', cool_therm_speed=0.05, dock_therm_speed=0.013,\

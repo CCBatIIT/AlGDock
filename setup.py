@@ -340,6 +340,8 @@ high_opt.append('-g')
 
 ext_module_name_and_path = [\
   ('MMTK_sphere', ['AlGDock/ForceFields/Sphere/MMTK_sphere.pyx']), \
+  ('MMTK_cylinder', \
+        ['AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx']), \
   ('MMTK_trilinear_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_grid.c']), \
   ('MMTK_trilinear_one_fourth_grid', \
     ['AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid.c']), \
@@ -372,9 +374,7 @@ if False:
   # These extension modules are not used in the current code,
   # but may be used in the future.
   ext_module_name_and_path.extend(\
-    [('MMTK_cylinder', \
-        ['AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx']), \
-     ('MMTK_trilinear_thresh_grid', \
+    [('MMTK_trilinear_thresh_grid', \
         ['AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx']), \
      ('MMTK_trilinear_transform_grid', \
         ['AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx']), \

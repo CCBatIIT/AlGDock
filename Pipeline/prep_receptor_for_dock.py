@@ -48,7 +48,7 @@ if not (os.path.isfile('../amber_in/{0}.prmtop'.format(name)) and \
   tleap_F = open('amber_prep/{0}.tleap'.format(name),'w')
   tleap_F.write('''
 source leaprc.ff14SB
-set default PBRadii bondi
+set default PBRadii mbondi2
 
 # Receptor
 protein = loadpdb pqr/{0}.pdb2pqr_amber.pqr

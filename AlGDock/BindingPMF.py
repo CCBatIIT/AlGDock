@@ -411,7 +411,7 @@ last modified {1}
       ('site',None),
       ('site_center',None),
       ('site_direction',None),
-      ('site_max_X',None),
+      ('site_max_Z',None),
       ('site_max_R',None),
       ('site_density',50.),
       ('site_measured',None),
@@ -2054,7 +2054,7 @@ last modified {1}
           self._forceFields['site'] = CylinderForceField(
             origin=self.params['dock']['site_center'],
             direction=self.params['dock']['site_direction'],
-            max_X=self.params['dock']['site_max_X'],
+            max_Z=self.params['dock']['site_max_Z'],
             max_R=self.params['dock']['site_max_R'], name='site')
         else:
           raise Exception('Binding site type not recognized!')
