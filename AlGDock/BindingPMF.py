@@ -2907,6 +2907,7 @@ last modified {1}
 
     # Determine SIR weights
     weights = self._run_MBAR(u_kln, N_k, augmented=True)[1][:,-1]
+    weights = weights/sum(weights)
     
     # Resampling
     # Convert linear indices to 3 indicies: state, cycle, and snapshot

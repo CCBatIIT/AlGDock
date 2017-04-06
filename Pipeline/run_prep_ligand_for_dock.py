@@ -97,7 +97,7 @@ for ind in inds:
       F = open(threeD_FN,'w')
       F.write("@<TRIPOS>MOLECULE"+ligands[ind])
       F.close()
-    command = 'python {0} {1} "{2}"'.format(\
+    command = 'python {0} {1} "{2}" {3}'.format(\
       os.path.join(dirs['script'],'prep_ligand_for_dock.py'), \
       out_FN, ligands[ind].split()[0], args.UseOpenEye)
     command_list.append(command)

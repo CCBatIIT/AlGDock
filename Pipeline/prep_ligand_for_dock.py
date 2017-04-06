@@ -87,7 +87,7 @@ if args.UseOpenEye=='Y':
                            % (mol_multiconf.GetTitle(), absFCharge, sumFCharge, sumPCharge))
 
   # Output file
-  ofs = oechem.oemolostream(threeD_FN)
+  ofs = oechem.oemolostream(args.out_FN)
   ofs.SetFormat(oechem.OEFormat_MOL2H)
   oechem.OEWriteMolecule(ofs, conf)
 
