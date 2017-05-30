@@ -2194,6 +2194,30 @@ last modified {1}
         del self._forceFields[scalable]
 
   def _ramp_T(self, T_START, T_LOW = 20., normalize=False):
+    # First minimize the energy
+    from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
+    minimizer = SteepestDescentMinimizer(self.universe)
+
+    original_stderr = sys.stderr
+    sys.stderr = NullDevice() # Suppresses warnings for minimization
+
+    x_o = np.copy(self.universe.configuration().array)
+    e_o = self.universe.energy()
+    for rep in range(50):
+      minimizer(steps = 25)
+      x_n = np.copy(self.universe.configuration().array)
+      e_n = self.universe.energy()
+      diff = abs(e_o-e_n)
+      if np.isnan(e_n) or diff<0.05 or diff>1000.:
+        self.universe.setConfiguration(Configuration(self.universe, x_o))
+        break
+      else:
+        x_o = x_n
+        e_o = e_n
+  
+    sys.stderr = original_stderr
+  
+    # Then ramp the energy to the starting temperature
     from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
       import HamiltonianMonteCarloIntegrator
     sampler = HamiltonianMonteCarloIntegrator(self.universe)

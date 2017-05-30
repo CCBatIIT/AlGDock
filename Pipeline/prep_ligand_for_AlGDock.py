@@ -5,19 +5,21 @@ try:
   parser = argparse.ArgumentParser()
   parser.add_argument('in_FN', default=None,
     help='Input mol2 with sybyl atom types')
-  parser.add_argument('out_FN', default=None,
-    help='Output tarball that includes prmtop and inpcrd files')
+  parser.add_argument('out_prefix', default=None,
+    help='Prefix for all output files')
+  parser.add_argument('--tar', action='store_true')
   parser.add_argument('--debug', action='store_true')
   args = parser.parse_args()
 except:
   import sys
   class args:
     in_FN = sys.argv[1]
-    out_FN = sys.argv[2]
+    out_prefix = sys.argv[2]
+    tar = False
 
 import os
 args.in_FN = os.path.abspath(args.in_FN)
-args.out_FN = os.path.abspath(args.out_FN)
+args.out_prefix = os.path.abspath(args.out_prefix)
 
 if not os.path.isfile(args.in_FN):
   raise Exception('Input file not found!')
@@ -28,10 +30,10 @@ dirs = {'script':os.path.dirname(os.path.abspath(\
 execfile(os.path.join(dirs['script'],'_external_paths.py'))
 command_paths = findPaths(['sander'])
 dirs['amber'] = os.path.abspath(os.path.dirname(command_paths['sander'])[:-4])
-dirs['temp'] = args.out_FN + '.tmp'
+dirs['temp'] = args.out_prefix + '.tmp'
 
-prefix = '.'.join(os.path.dirname(args.out_FN).split('/')[-1].split('.')[:-1]) \
-  + '.' + os.path.basename(args.out_FN[:-7])
+prefix = '.'.join(os.path.dirname(args.out_prefix).split('/')[-1].split('.')[:-1]) \
+  + os.path.basename(args.out_prefix)
 if not os.path.isdir(dirs['temp']):
   os.system('mkdir -p '+dirs['temp'])
 os.chdir(dirs['temp'])
@@ -42,6 +44,7 @@ if not os.path.isfile(prefix+'.mol2'):
     ' -i {0} -fi mol2 -o {1}.mol2 -fo mol2 -rn {1}'.format(\
       args.in_FN, prefix)
   os.system(command)
+  print 'Wrote {0}.mol2'.format(prefix)
 
 if not os.path.isfile(prefix+'.frcmod'):
   print '\n*** Generating frcmod file ***'
@@ -78,7 +81,7 @@ if args.debug:
   if os.path.isfile('leap.log'):
     os.rename('leap.log',prefix+'.leaplog')
 else:
-  for FN in [prefix+'.tleap',prefix+'.mol2',prefix+'.lib','leap.log', \
+  for FN in [prefix+'.tleap',prefix+'.lib','leap.log', \
     'ANTECHAMBER_AC.AC', 'ANTECHAMBER_AC.AC0', \
     'ANTECHAMBER_BOND_TYPE.AC', 'ANTECHAMBER_BOND_TYPE.AC0', 'ATOMTYPE.INF']:
     if os.path.isfile(FN):
@@ -106,15 +109,19 @@ universe.addObject(molecule)
 universe.setForceField(ff)
 print 'MMTK Energy: %f'%universe.energy()
 
-# Compresses the ligand files in a tarball
-import tarfile
-tarF = tarfile.open(args.out_FN,'w:gz')
-tarF_contents = [prefix+'.prmtop', prefix+'.inpcrd', \
+toKeep = [prefix+'.mol2', prefix+'.prmtop', prefix+'.inpcrd', \
   prefix+'.frcmod', prefix.lower()+'.db']
-for FN in tarF_contents:
-  tarF.add(FN)
-  os.remove(FN)
-tarF.close()
+if args.tar:
+  # Compresses the ligand files in a tarball
+  import tarfile
+  tarF = tarfile.open(args.out_prefix+'.tar.gz','w:gz')
+  for FN in toKeep:
+    tarF.add(FN)
+    os.remove(FN)
+  tarF.close()
+else:
+  for FN in toKeep:
+    os.system('cp %s ../%s'%(FN,os.path.basename(FN)))
 
 os.chdir('..')
 if not args.debug:

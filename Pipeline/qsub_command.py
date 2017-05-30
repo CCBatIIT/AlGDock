@@ -25,7 +25,7 @@ parser.add_argument('--max_job_time', default=12, type=int, \
 parser.add_argument('--nodes', type=int, default=1, help='Number of nodes to run the job on')
 parser.add_argument('--ppn', type=int, default=1, help='Number of processors per node to run the job on')
 parser.add_argument('--ambertools', action='store_true', default=False, \
-  help='Load the ambertools/14 module')
+  help='Load the ambertools/16 module')
 parser.add_argument('--email', default='', help='Adds email to job')
 parser.add_argument('--email_options', default='abe', help='Options for email notifications. When job begins (b), job ends (e), and/or aborted (a)')
 args = parser.parse_args()
@@ -74,7 +74,7 @@ if os.path.exists('/share'): # CCB Cluster
       args.ppn = int(cores)
 
   if args.ambertools:
-    modules += 'module load ambertools/14\n'
+    modules += 'module load ambertools/16\n'
   
   email_specified = ''
   if args.email == '':

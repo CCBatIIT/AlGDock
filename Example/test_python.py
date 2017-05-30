@@ -1,10 +1,10 @@
 # The example is 1of6
 
 # run_types = [None]
-# run_types = ['all']
+run_types = ['all']
 # run_types = ['cool']
 # run_types = ['cool','dock','postprocess','free_energies']
-run_types = ['timed']
+# run_types = ['timed']
 
 import AlGDock.BindingPMF_plots
 import os, shutil, glob
