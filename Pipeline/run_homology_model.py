@@ -58,7 +58,7 @@ for templateFN in templateFNs:
   jobname = pdb_chain_id
   command = '{0} {1}/homology_model.modeller.py ' + \
             '--sequence_ali ../{2} --template_pdb ../{3}'
-  command = command.format('mod9.15', dirs['script'], \
+  command = command.format('mod9.18', dirs['script'], \
                            args.sequence_ali, templateFN)
   print command
 

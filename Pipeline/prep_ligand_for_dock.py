@@ -67,12 +67,17 @@ if args.UseOpenEye=='Y' and not step_complete(charged_FN):
   oechem.OECanonicalOrderBonds(mol)
 
   # Assign a reasonable protomer
-  if not args.RetainProtonation:
+  if args.RetainProtonation:
+    for atom in mol.GetAtoms():
+      atom.SetImplicitHCount(0)
+  else:
     if not oequacpac.OEGetReasonableProtomer(mol):
       print 'Failed to get a reasonable protomer at pH 7.4'
 
   oechem.OEAssignAromaticFlags(mol, oechem.OEAroModelOpenEye)
-  oechem.OEAddExplicitHydrogens(mol)
+
+  if not args.RetainProtonation:
+    oechem.OEAddExplicitHydrogens(mol)
 
   smi = oechem.OECreateSmiString(mol, oechem.OESMILESFlag_Canonical)
   print 'The canonical SMILES for a reasonably protonated state is', smi
@@ -194,6 +199,10 @@ if not step_complete(sybyl_FN):
     ifs = oechem.oemolistream(charged_FN)
     oechem.OEReadMolecule(ifs, mol_out)
     ifs.close()
+    
+    if mol_in.GetMaxAtomIdx() != mol_out.GetMaxAtomIdx():
+      raise Exception('Number of atoms in input, %d, not equal to number in output, %d'%(\
+        mol_in.GetMaxAtomIdx(), mol_out.GetMaxAtomIdx()))
     
     import numpy as np
     coords = np.zeros((mol_in.GetMaxAtomIdx(),3))

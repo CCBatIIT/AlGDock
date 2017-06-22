@@ -35,7 +35,7 @@ LKKDPKQRLGGGSEDAKEIMQHRFFAGIVWQHVYEKKLSPPFKPQVTSETDTRYFDEEFT
 AQMITITPPDQDDSMECVDSERRPHFPQFSYSASGTA*
 
 From $TARGET/receptor/1-search/, you should run,
-mod9.15 $PIPELINE/profile.modeller.py $PDBALL_BIN
+mod9.18 $PIPELINE/profile.modeller.py $PDBALL_BIN
 which will give you 
 $TARGET/receptor/1-search/profile.prf
 $TARGET/receptor/1-search/profile.ali
@@ -43,7 +43,7 @@ $TARGET/receptor/1-search/profile.ali
 $PDBALL_BIN refers to the path of pdball.bin.
 pdball.pir is a database that can be downloaded from the modeller web site.
 It can be converted to pdball.bin going to the directory with pdball.pir and running,
-mod9.15 $PIPELINE/pdball_pir2bin.modeller.py
+mod9.18 $PIPELINE/pdball_pir2bin.modeller.py
 
 From $TARGET/receptor/1-search/, you should run,
 python $PIPELINE/analyze_profile.py
