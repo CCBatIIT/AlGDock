@@ -137,6 +137,9 @@ arguments = {
     'help':'Keep configurations for intermediate states'},
   'min_repX_acc':{'type':float,
     'help':'Minimum value for replica exchange acceptance rate'},
+  'temperature_scaling':{'choices':['Linear','Quadratic'], \
+    'default':'Linear', \
+    'help':'Determines whether the temperature changes linearly with the docking progress variable or quadratically with the grid scaling progress variable. (only for docking)'},
   # for GMC
   'GMC_attempts':{'type':int, 'default': 0,
     'help': 'Number of attempts is K * GMC_attempts. Zero means not to do GMC' },

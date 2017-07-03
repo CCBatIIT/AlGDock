@@ -1,1 +1,0 @@
-The desolvation grid is actually for 1hww instead of 1of6 because the grid didn't finish calculating yet.

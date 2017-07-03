@@ -45,7 +45,7 @@ err_FN = os.path.join(curdir,'jobs','%s-%d.err'%(args.name,n))
 # Sets up the submission and execution scripts
 submit_script = ''
 execute_script = ''
-if os.path.exists('/share'): # CCB Cluster
+if os.path.exists('/share/apps/algdock'): # CCB Cluster
   cluster = 'CCB'
   
   # Split the command onto multiple lines
@@ -101,8 +101,11 @@ if os.path.exists('/share'): # CCB Cluster
            curdir, out_FN, err_FN, \
            modules, command, args.comment, \
            email_specified, args.email, args.email_options)
-elif os.path.exists('/pylon1'): # Bridges Cluster
-  cluster = 'Bridges'
+elif os.path.exists('/pylon2') or os.path.exists('/oasis/projects/nsf'): # Bridges Cluster
+  if os.path.exists('/pylon2'):
+    cluster = 'Bridges'
+  else:
+    cluster = 'Comet'
   
   # Split the command onto multiple lines
   command_list = args.command.split(';')
@@ -127,17 +130,17 @@ elif os.path.exists('/pylon1'): # Bridges Cluster
 #SBATCH --nodes={2}
 #SBATCH --ntasks-per-node={3}
 #SBATCH -t 48:00:00
-#SBATCH --partition=RM-shared
-#SBATCH --workdir={4}
-#SBATCH -o {5}
-#SBATCH -e {6}
+#SBATCH --partition={4}
+#SBATCH --workdir={5}
+#SBATCH -o {6}
+#SBATCH -e {7}
 
-{7}
+{8}
 
-# {8}
+# {9}
 '''.format(args.name, args.mem*1000, args.nodes, args.ppn, \
-  curdir, out_FN, err_FN, \
-  command, args.comment)
+  {'Bridges':'RM-shared', 'Comet':'shared'}[cluster], \
+  curdir, out_FN, err_FN, command, args.comment)
 elif os.path.exists('/stash'): # Open Science Grid Connect
   cluster = 'OSG'
   
@@ -293,7 +296,7 @@ print('Job name: ' + args.name)
 if not args.dry:
   if cluster=='CCB':
     os.system('qsub %s'%submit_FN)
-  elif cluster=='Bridges':
+  elif cluster=='Bridges' or cluster=='Comet':
     os.system('sbatch %s'%submit_FN)
   elif cluster=='OSG':
     os.system('condor_submit %s'%submit_FN)

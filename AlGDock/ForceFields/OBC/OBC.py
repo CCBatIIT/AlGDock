@@ -22,6 +22,7 @@ class OBCForceField(ForceField):
         """
         @param prmtopFN: an AMBER parameter and topology file
         @type strength:  C{str}
+        r_min and r_max should be in units of nanometers
         """
         # Initialize the ForceField class, giving a name to this one.
         ForceField.__init__(self, 'OBC')

@@ -1751,9 +1751,8 @@ static void __pyx_memoryview_refcount_objects_in_slice_with_gil(char *, Py_ssize
 static void __pyx_memoryview_refcount_objects_in_slice(char *, Py_ssize_t *, Py_ssize_t *, int, int); /*proto*/
 static void __pyx_memoryview_slice_assign_scalar(__Pyx_memviewslice *, int, size_t, void *, int); /*proto*/
 static void __pyx_memoryview__slice_assign_scalar(char *, Py_ssize_t *, Py_ssize_t *, int, size_t, void *); /*proto*/
-static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_5numpy_double_t = { "double_t", NULL, sizeof(__pyx_t_5numpy_double_t), { 0 }, 0, 'R', 0, 0 };
-static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_20desolvationGrid_util_int_t = { "int_t", NULL, sizeof(__pyx_t_20desolvationGrid_util_int_t), { 0 }, 0, IS_UNSIGNED(__pyx_t_20desolvationGrid_util_int_t) ? 'U' : 'I', IS_UNSIGNED(__pyx_t_20desolvationGrid_util_int_t), 0 };
 static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_20desolvationGrid_util_float_t = { "float_t", NULL, sizeof(__pyx_t_20desolvationGrid_util_float_t), { 0 }, 0, 'R', 0, 0 };
+static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_20desolvationGrid_util_int_t = { "int_t", NULL, sizeof(__pyx_t_20desolvationGrid_util_int_t), { 0 }, 0, IS_UNSIGNED(__pyx_t_20desolvationGrid_util_int_t) ? 'U' : 'I', IS_UNSIGNED(__pyx_t_20desolvationGrid_util_int_t), 0 };
 #define __Pyx_MODULE_NAME "desolvationGrid_util"
 int __pyx_module_is_main_desolvationGrid_util = 0;
 
@@ -5283,8 +5282,8 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
   PyObject *__pyx_v_receptor_SAS_points_ij = NULL;
   PyObject *__pyx_v_receptor_coordinates_ij = NULL;
   PyObject *__pyx_v_receptor_SAS_points_ijk = NULL;
-  PyObject *__pyx_v_receptor_coordinates_ijk = NULL;
   PyObject *__pyx_v_newly_inaccessible_SAS_points = NULL;
+  PyObject *__pyx_v_receptor_coordinates_ijk = NULL;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_desolvationGrid;
   __Pyx_Buffer __pyx_pybuffer_desolvationGrid;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_grid_c;
@@ -5341,18 +5340,18 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
   Py_ssize_t __pyx_t_48;
   size_t __pyx_t_49;
   Py_ssize_t __pyx_t_50;
-  size_t __pyx_t_51;
-  Py_ssize_t __pyx_t_52;
-  size_t __pyx_t_53;
-  Py_ssize_t __pyx_t_54;
-  __Pyx_memviewslice __pyx_t_55 = { 0, 0, { 0 }, { 0 }, { 0 } };
-  PyObject *__pyx_t_56 = NULL;
-  PyObject *__pyx_t_57 = NULL;
-  int __pyx_t_58;
-  __pyx_t_5numpy_double_t __pyx_t_59;
-  size_t __pyx_t_60;
+  __Pyx_memviewslice __pyx_t_51 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  PyObject *__pyx_t_52 = NULL;
+  PyObject *__pyx_t_53 = NULL;
+  int __pyx_t_54;
+  __pyx_t_20desolvationGrid_util_float_t __pyx_t_55;
+  size_t __pyx_t_56;
+  size_t __pyx_t_57;
+  size_t __pyx_t_58;
+  size_t __pyx_t_59;
+  Py_ssize_t __pyx_t_60;
   size_t __pyx_t_61;
-  size_t __pyx_t_62;
+  Py_ssize_t __pyx_t_62;
   PyArrayObject *__pyx_t_63 = NULL;
   size_t __pyx_t_64;
   Py_ssize_t __pyx_t_65;
@@ -5370,10 +5369,9 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
   __Pyx_memviewslice __pyx_t_77 = { 0, 0, { 0 }, { 0 }, { 0 } };
   __pyx_t_20desolvationGrid_util_float_t __pyx_t_78;
   __pyx_t_20desolvationGrid_util_float_t __pyx_t_79;
-  __pyx_t_20desolvationGrid_util_float_t __pyx_t_80;
+  size_t __pyx_t_80;
   size_t __pyx_t_81;
   size_t __pyx_t_82;
-  size_t __pyx_t_83;
   __Pyx_RefNannySetupContext("calc_desolvationGrid", 0);
   __pyx_pybuffer_desolvationGrid.pybuffer.buf = NULL;
   __pyx_pybuffer_desolvationGrid.refcount = 0;
@@ -5474,10 +5472,10 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer);
-    __pyx_t_7 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer, (PyObject*)__pyx_t_6, &__Pyx_TypeInfo_nn___pyx_t_5numpy_double_t, PyBUF_FORMAT| PyBUF_STRIDES| PyBUF_WRITABLE, 3, 0, __pyx_stack);
+    __pyx_t_7 = __Pyx_GetBufferAndValidate(&__pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer, (PyObject*)__pyx_t_6, &__Pyx_TypeInfo_nn___pyx_t_20desolvationGrid_util_float_t, PyBUF_FORMAT| PyBUF_STRIDES| PyBUF_WRITABLE, 3, 0, __pyx_stack);
     if (unlikely(__pyx_t_7 < 0)) {
       PyErr_Fetch(&__pyx_t_8, &__pyx_t_9, &__pyx_t_10);
-      if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer, (PyObject*)__pyx_v_desolvationGrid, &__Pyx_TypeInfo_nn___pyx_t_5numpy_double_t, PyBUF_FORMAT| PyBUF_STRIDES| PyBUF_WRITABLE, 3, 0, __pyx_stack) == -1)) {
+      if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer, (PyObject*)__pyx_v_desolvationGrid, &__Pyx_TypeInfo_nn___pyx_t_20desolvationGrid_util_float_t, PyBUF_FORMAT| PyBUF_STRIDES| PyBUF_WRITABLE, 3, 0, __pyx_stack) == -1)) {
         Py_XDECREF(__pyx_t_8); Py_XDECREF(__pyx_t_9); Py_XDECREF(__pyx_t_10);
         __Pyx_RaiseBufferFallbackError();
       } else {
@@ -6030,7 +6028,7 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
  *         receptor_SAS_points_ijk = [n for n in receptor_SAS_points_ij \
  *           if (receptor_SAS_points[n,2]>SAS_z_min) and \             # <<<<<<<<<<<<<<
  *              (receptor_SAS_points[n,2]<SAS_z_max)]
- *         rec_z_min = grid_point_z - clash_filter_r
+ * 
  */
         __pyx_t_1 = __pyx_v_receptor_SAS_points_ij; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
         for (;;) {
@@ -6058,7 +6056,7 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
  *         receptor_SAS_points_ijk = [n for n in receptor_SAS_points_ij \
  *           if (receptor_SAS_points[n,2]>SAS_z_min) and \             # <<<<<<<<<<<<<<
  *              (receptor_SAS_points[n,2]<SAS_z_max)]
- *         rec_z_min = grid_point_z - clash_filter_r
+ * 
  */
           __pyx_t_41 = __pyx_v_n;
           __pyx_t_42 = 2;
@@ -6073,8 +6071,8 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
  *         receptor_SAS_points_ijk = [n for n in receptor_SAS_points_ij \
  *           if (receptor_SAS_points[n,2]>SAS_z_min) and \
  *              (receptor_SAS_points[n,2]<SAS_z_max)]             # <<<<<<<<<<<<<<
- *         rec_z_min = grid_point_z - clash_filter_r
- *         rec_z_max = grid_point_z + clash_filter_r
+ * 
+ *         # Find SAS points that are made solvent inaccessible by the ligand atom
  */
           __pyx_t_43 = __pyx_v_n;
           __pyx_t_44 = 2;
@@ -6087,7 +6085,7 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
  *         receptor_SAS_points_ijk = [n for n in receptor_SAS_points_ij \
  *           if (receptor_SAS_points[n,2]>SAS_z_min) and \             # <<<<<<<<<<<<<<
  *              (receptor_SAS_points[n,2]<SAS_z_max)]
- *         rec_z_min = grid_point_z - clash_filter_r
+ * 
  */
           if (__pyx_t_17) {
 
@@ -6108,7 +6106,7 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
  *         receptor_SAS_points_ijk = [n for n in receptor_SAS_points_ij \
  *           if (receptor_SAS_points[n,2]>SAS_z_min) and \             # <<<<<<<<<<<<<<
  *              (receptor_SAS_points[n,2]<SAS_z_max)]
- *         rec_z_min = grid_point_z - clash_filter_r
+ * 
  */
           }
 
@@ -6124,146 +6122,19 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
         __Pyx_XDECREF_SET(__pyx_v_receptor_SAS_points_ijk, ((PyObject*)__pyx_t_4));
         __pyx_t_4 = 0;
 
-        /* "desolvationGrid_util.pyx":358
- *           if (receptor_SAS_points[n,2]>SAS_z_min) and \
- *              (receptor_SAS_points[n,2]<SAS_z_max)]
- *         rec_z_min = grid_point_z - clash_filter_r             # <<<<<<<<<<<<<<
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
- */
-        __pyx_v_rec_z_min = (__pyx_v_grid_point_z - __pyx_v_clash_filter_r);
-
-        /* "desolvationGrid_util.pyx":359
- *              (receptor_SAS_points[n,2]<SAS_z_max)]
- *         rec_z_min = grid_point_z - clash_filter_r
- *         rec_z_max = grid_point_z + clash_filter_r             # <<<<<<<<<<<<<<
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
- *           if (receptor_coordinates[n,2]>rec_z_min) and \
- */
-        __pyx_v_rec_z_max = (__pyx_v_grid_point_z + __pyx_v_clash_filter_r);
-
         /* "desolvationGrid_util.pyx":360
- *         rec_z_min = grid_point_z - clash_filter_r
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
- *           if (receptor_coordinates[n,2]>rec_z_min) and \
- *              (receptor_coordinates[n,2]<rec_z_max)]
- */
-        __pyx_t_4 = PyList_New(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 360, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_4);
-
-        /* "desolvationGrid_util.pyx":361
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
- *           if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
- *              (receptor_coordinates[n,2]<rec_z_max)]
- * 
- */
-        __pyx_t_1 = __pyx_v_receptor_coordinates_ij; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
-        for (;;) {
-
-          /* "desolvationGrid_util.pyx":360
- *         rec_z_min = grid_point_z - clash_filter_r
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
- *           if (receptor_coordinates[n,2]>rec_z_min) and \
- *              (receptor_coordinates[n,2]<rec_z_max)]
- */
-          if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
-          #if CYTHON_COMPILING_IN_CPYTHON
-          __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 360, __pyx_L1_error)
-          #else
-          __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 360, __pyx_L1_error)
-          __Pyx_GOTREF(__pyx_t_3);
-          #endif
-          __pyx_t_45 = __Pyx_PyInt_As_size_t(__pyx_t_3); if (unlikely((__pyx_t_45 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 360, __pyx_L1_error)
-          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-          __pyx_v_n = __pyx_t_45;
-
-          /* "desolvationGrid_util.pyx":361
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
- *           if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
- *              (receptor_coordinates[n,2]<rec_z_max)]
- * 
- */
-          __pyx_t_45 = __pyx_v_n;
-          __pyx_t_46 = 2;
-          __pyx_t_20 = (((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_coordinates.data + __pyx_t_45 * __pyx_v_receptor_coordinates.strides[0]) ) + __pyx_t_46 * __pyx_v_receptor_coordinates.strides[1]) ))) > __pyx_v_rec_z_min) != 0);
-          if (__pyx_t_20) {
-          } else {
-            __pyx_t_17 = __pyx_t_20;
-            goto __pyx_L37_bool_binop_done;
-          }
-
-          /* "desolvationGrid_util.pyx":362
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
- *           if (receptor_coordinates[n,2]>rec_z_min) and \
- *              (receptor_coordinates[n,2]<rec_z_max)]             # <<<<<<<<<<<<<<
- * 
- *         # Find SAS points that are made solvent inaccessible by the ligand atom
- */
-          __pyx_t_47 = __pyx_v_n;
-          __pyx_t_48 = 2;
-          __pyx_t_20 = (((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_coordinates.data + __pyx_t_47 * __pyx_v_receptor_coordinates.strides[0]) ) + __pyx_t_48 * __pyx_v_receptor_coordinates.strides[1]) ))) < __pyx_v_rec_z_max) != 0);
-          __pyx_t_17 = __pyx_t_20;
-          __pyx_L37_bool_binop_done:;
-
-          /* "desolvationGrid_util.pyx":361
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
- *           if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
- *              (receptor_coordinates[n,2]<rec_z_max)]
- * 
- */
-          if (__pyx_t_17) {
-
-            /* "desolvationGrid_util.pyx":360
- *         rec_z_min = grid_point_z - clash_filter_r
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
- *           if (receptor_coordinates[n,2]>rec_z_min) and \
- *              (receptor_coordinates[n,2]<rec_z_max)]
- */
-            __pyx_t_3 = __Pyx_PyInt_FromSize_t(__pyx_v_n); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 360, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_3);
-            if (unlikely(__Pyx_ListComp_Append(__pyx_t_4, (PyObject*)__pyx_t_3))) __PYX_ERR(0, 360, __pyx_L1_error)
-            __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-            /* "desolvationGrid_util.pyx":361
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
- *           if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
- *              (receptor_coordinates[n,2]<rec_z_max)]
- * 
- */
-          }
-
-          /* "desolvationGrid_util.pyx":360
- *         rec_z_min = grid_point_z - clash_filter_r
- *         rec_z_max = grid_point_z + clash_filter_r
- *         receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
- *           if (receptor_coordinates[n,2]>rec_z_min) and \
- *              (receptor_coordinates[n,2]<rec_z_max)]
- */
-        }
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __Pyx_XDECREF_SET(__pyx_v_receptor_coordinates_ijk, ((PyObject*)__pyx_t_4));
-        __pyx_t_4 = 0;
-
-        /* "desolvationGrid_util.pyx":365
  * 
  *         # Find SAS points that are made solvent inaccessible by the ligand atom
  *         newly_inaccessible_SAS_points = []             # <<<<<<<<<<<<<<
  *         for n in receptor_SAS_points_ijk:
  *           dx = receptor_SAS_points[n,0]-grid_point_x
  */
-        __pyx_t_4 = PyList_New(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 365, __pyx_L1_error)
+        __pyx_t_4 = PyList_New(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 360, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         __Pyx_XDECREF_SET(__pyx_v_newly_inaccessible_SAS_points, ((PyObject*)__pyx_t_4));
         __pyx_t_4 = 0;
 
-        /* "desolvationGrid_util.pyx":366
+        /* "desolvationGrid_util.pyx":361
  *         # Find SAS points that are made solvent inaccessible by the ligand atom
  *         newly_inaccessible_SAS_points = []
  *         for n in receptor_SAS_points_ijk:             # <<<<<<<<<<<<<<
@@ -6274,49 +6145,49 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
         for (;;) {
           if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_4)) break;
           #if CYTHON_COMPILING_IN_CPYTHON
-          __pyx_t_1 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_2); __Pyx_INCREF(__pyx_t_1); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 366, __pyx_L1_error)
+          __pyx_t_1 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_2); __Pyx_INCREF(__pyx_t_1); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 361, __pyx_L1_error)
           #else
-          __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 366, __pyx_L1_error)
+          __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 361, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           #endif
-          __pyx_t_49 = __Pyx_PyInt_As_size_t(__pyx_t_1); if (unlikely((__pyx_t_49 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 366, __pyx_L1_error)
+          __pyx_t_45 = __Pyx_PyInt_As_size_t(__pyx_t_1); if (unlikely((__pyx_t_45 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 361, __pyx_L1_error)
           __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-          __pyx_v_n = __pyx_t_49;
+          __pyx_v_n = __pyx_t_45;
 
-          /* "desolvationGrid_util.pyx":367
+          /* "desolvationGrid_util.pyx":362
  *         newly_inaccessible_SAS_points = []
  *         for n in receptor_SAS_points_ijk:
  *           dx = receptor_SAS_points[n,0]-grid_point_x             # <<<<<<<<<<<<<<
  *           dy = receptor_SAS_points[n,1]-grid_point_y
  *           dz = receptor_SAS_points[n,2]-grid_point_z
  */
-          __pyx_t_49 = __pyx_v_n;
-          __pyx_t_50 = 0;
-          __pyx_v_dx = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_SAS_points.data + __pyx_t_49 * __pyx_v_receptor_SAS_points.strides[0]) ) + __pyx_t_50 * __pyx_v_receptor_SAS_points.strides[1]) ))) - __pyx_v_grid_point_x);
+          __pyx_t_45 = __pyx_v_n;
+          __pyx_t_46 = 0;
+          __pyx_v_dx = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_SAS_points.data + __pyx_t_45 * __pyx_v_receptor_SAS_points.strides[0]) ) + __pyx_t_46 * __pyx_v_receptor_SAS_points.strides[1]) ))) - __pyx_v_grid_point_x);
 
-          /* "desolvationGrid_util.pyx":368
+          /* "desolvationGrid_util.pyx":363
  *         for n in receptor_SAS_points_ijk:
  *           dx = receptor_SAS_points[n,0]-grid_point_x
  *           dy = receptor_SAS_points[n,1]-grid_point_y             # <<<<<<<<<<<<<<
  *           dz = receptor_SAS_points[n,2]-grid_point_z
  *           if (dx*dx + dy*dy + dz*dz)<ligand_atom_radius2:
  */
-          __pyx_t_51 = __pyx_v_n;
-          __pyx_t_52 = 1;
-          __pyx_v_dy = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_SAS_points.data + __pyx_t_51 * __pyx_v_receptor_SAS_points.strides[0]) ) + __pyx_t_52 * __pyx_v_receptor_SAS_points.strides[1]) ))) - __pyx_v_grid_point_y);
+          __pyx_t_47 = __pyx_v_n;
+          __pyx_t_48 = 1;
+          __pyx_v_dy = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_SAS_points.data + __pyx_t_47 * __pyx_v_receptor_SAS_points.strides[0]) ) + __pyx_t_48 * __pyx_v_receptor_SAS_points.strides[1]) ))) - __pyx_v_grid_point_y);
 
-          /* "desolvationGrid_util.pyx":369
+          /* "desolvationGrid_util.pyx":364
  *           dx = receptor_SAS_points[n,0]-grid_point_x
  *           dy = receptor_SAS_points[n,1]-grid_point_y
  *           dz = receptor_SAS_points[n,2]-grid_point_z             # <<<<<<<<<<<<<<
  *           if (dx*dx + dy*dy + dz*dz)<ligand_atom_radius2:
  *             newly_inaccessible_SAS_points.append(\
  */
-          __pyx_t_53 = __pyx_v_n;
-          __pyx_t_54 = 2;
-          __pyx_v_dz = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_SAS_points.data + __pyx_t_53 * __pyx_v_receptor_SAS_points.strides[0]) ) + __pyx_t_54 * __pyx_v_receptor_SAS_points.strides[1]) ))) - __pyx_v_grid_point_z);
+          __pyx_t_49 = __pyx_v_n;
+          __pyx_t_50 = 2;
+          __pyx_v_dz = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_SAS_points.data + __pyx_t_49 * __pyx_v_receptor_SAS_points.strides[0]) ) + __pyx_t_50 * __pyx_v_receptor_SAS_points.strides[1]) ))) - __pyx_v_grid_point_z);
 
-          /* "desolvationGrid_util.pyx":370
+          /* "desolvationGrid_util.pyx":365
  *           dy = receptor_SAS_points[n,1]-grid_point_y
  *           dz = receptor_SAS_points[n,2]-grid_point_z
  *           if (dx*dx + dy*dy + dz*dz)<ligand_atom_radius2:             # <<<<<<<<<<<<<<
@@ -6326,21 +6197,21 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
           __pyx_t_17 = (((((__pyx_v_dx * __pyx_v_dx) + (__pyx_v_dy * __pyx_v_dy)) + (__pyx_v_dz * __pyx_v_dz)) < __pyx_v_ligand_atom_radius2) != 0);
           if (__pyx_t_17) {
 
-            /* "desolvationGrid_util.pyx":372
+            /* "desolvationGrid_util.pyx":367
  *           if (dx*dx + dy*dy + dz*dz)<ligand_atom_radius2:
  *             newly_inaccessible_SAS_points.append(\
  *               np.copy(receptor_SAS_points[n,:]))             # <<<<<<<<<<<<<<
  * 
  *         n_newly_inaccessible_SAS_points = len(newly_inaccessible_SAS_points)
  */
-            __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 372, __pyx_L1_error)
+            __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 367, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
-            __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_copy); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 372, __pyx_L1_error)
+            __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_copy); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 367, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_5);
             __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-            __pyx_t_55.data = __pyx_v_receptor_SAS_points.data;
-            __pyx_t_55.memview = __pyx_v_receptor_SAS_points.memview;
-            __PYX_INC_MEMVIEW(&__pyx_t_55, 0);
+            __pyx_t_51.data = __pyx_v_receptor_SAS_points.data;
+            __pyx_t_51.memview = __pyx_v_receptor_SAS_points.memview;
+            __PYX_INC_MEMVIEW(&__pyx_t_51, 0);
             {
     Py_ssize_t __pyx_tmp_idx = __pyx_v_n;
     Py_ssize_t __pyx_tmp_shape = __pyx_v_receptor_SAS_points.shape[0];
@@ -6349,56 +6220,56 @@ static PyObject *__pyx_f_20desolvationGrid_util_calc_desolvationGrid(__Pyx_memvi
         __pyx_tmp_idx += __pyx_tmp_shape;
     if (0 && (__pyx_tmp_idx < 0 || __pyx_tmp_idx >= __pyx_tmp_shape)) {
         PyErr_SetString(PyExc_IndexError, "Index out of bounds (axis 0)");
-        __PYX_ERR(0, 372, __pyx_L1_error)
+        __PYX_ERR(0, 367, __pyx_L1_error)
     }
-        __pyx_t_55.data += __pyx_tmp_idx * __pyx_tmp_stride;
+        __pyx_t_51.data += __pyx_tmp_idx * __pyx_tmp_stride;
 }
 
-__pyx_t_55.shape[0] = __pyx_v_receptor_SAS_points.shape[1];
-__pyx_t_55.strides[0] = __pyx_v_receptor_SAS_points.strides[1];
-    __pyx_t_55.suboffsets[0] = -1;
+__pyx_t_51.shape[0] = __pyx_v_receptor_SAS_points.shape[1];
+__pyx_t_51.strides[0] = __pyx_v_receptor_SAS_points.strides[1];
+    __pyx_t_51.suboffsets[0] = -1;
 
-__pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __pyx_memview_get_nn___pyx_t_20desolvationGrid_util_float_t, (int (*)(char *, PyObject *)) __pyx_memview_set_nn___pyx_t_20desolvationGrid_util_float_t, 0);; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 372, __pyx_L1_error)
+__pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_51, 1, (PyObject *(*)(char *)) __pyx_memview_get_nn___pyx_t_20desolvationGrid_util_float_t, (int (*)(char *, PyObject *)) __pyx_memview_set_nn___pyx_t_20desolvationGrid_util_float_t, 0);; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 367, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
-            __PYX_XDEC_MEMVIEW(&__pyx_t_55, 1);
-            __pyx_t_56 = NULL;
+            __PYX_XDEC_MEMVIEW(&__pyx_t_51, 1);
+            __pyx_t_52 = NULL;
             if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_5))) {
-              __pyx_t_56 = PyMethod_GET_SELF(__pyx_t_5);
-              if (likely(__pyx_t_56)) {
+              __pyx_t_52 = PyMethod_GET_SELF(__pyx_t_5);
+              if (likely(__pyx_t_52)) {
                 PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
-                __Pyx_INCREF(__pyx_t_56);
+                __Pyx_INCREF(__pyx_t_52);
                 __Pyx_INCREF(function);
                 __Pyx_DECREF_SET(__pyx_t_5, function);
               }
             }
-            if (!__pyx_t_56) {
-              __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 372, __pyx_L1_error)
+            if (!__pyx_t_52) {
+              __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 367, __pyx_L1_error)
               __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
               __Pyx_GOTREF(__pyx_t_1);
             } else {
-              __pyx_t_57 = PyTuple_New(1+1); if (unlikely(!__pyx_t_57)) __PYX_ERR(0, 372, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_57);
-              __Pyx_GIVEREF(__pyx_t_56); PyTuple_SET_ITEM(__pyx_t_57, 0, __pyx_t_56); __pyx_t_56 = NULL;
+              __pyx_t_53 = PyTuple_New(1+1); if (unlikely(!__pyx_t_53)) __PYX_ERR(0, 367, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_53);
+              __Pyx_GIVEREF(__pyx_t_52); PyTuple_SET_ITEM(__pyx_t_53, 0, __pyx_t_52); __pyx_t_52 = NULL;
               __Pyx_GIVEREF(__pyx_t_3);
-              PyTuple_SET_ITEM(__pyx_t_57, 0+1, __pyx_t_3);
+              PyTuple_SET_ITEM(__pyx_t_53, 0+1, __pyx_t_3);
               __pyx_t_3 = 0;
-              __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_57, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 372, __pyx_L1_error)
+              __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_53, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 367, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_1);
-              __Pyx_DECREF(__pyx_t_57); __pyx_t_57 = 0;
+              __Pyx_DECREF(__pyx_t_53); __pyx_t_53 = 0;
             }
             __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-            /* "desolvationGrid_util.pyx":371
+            /* "desolvationGrid_util.pyx":366
  *           dz = receptor_SAS_points[n,2]-grid_point_z
  *           if (dx*dx + dy*dy + dz*dz)<ligand_atom_radius2:
  *             newly_inaccessible_SAS_points.append(\             # <<<<<<<<<<<<<<
  *               np.copy(receptor_SAS_points[n,:]))
  * 
  */
-            __pyx_t_58 = __Pyx_PyList_Append(__pyx_v_newly_inaccessible_SAS_points, __pyx_t_1); if (unlikely(__pyx_t_58 == -1)) __PYX_ERR(0, 371, __pyx_L1_error)
+            __pyx_t_54 = __Pyx_PyList_Append(__pyx_v_newly_inaccessible_SAS_points, __pyx_t_1); if (unlikely(__pyx_t_54 == -1)) __PYX_ERR(0, 366, __pyx_L1_error)
             __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-            /* "desolvationGrid_util.pyx":370
+            /* "desolvationGrid_util.pyx":365
  *           dy = receptor_SAS_points[n,1]-grid_point_y
  *           dz = receptor_SAS_points[n,2]-grid_point_z
  *           if (dx*dx + dy*dy + dz*dz)<ligand_atom_radius2:             # <<<<<<<<<<<<<<
@@ -6407,7 +6278,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
           }
 
-          /* "desolvationGrid_util.pyx":366
+          /* "desolvationGrid_util.pyx":361
  *         # Find SAS points that are made solvent inaccessible by the ligand atom
  *         newly_inaccessible_SAS_points = []
  *         for n in receptor_SAS_points_ijk:             # <<<<<<<<<<<<<<
@@ -6417,17 +6288,17 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
         }
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-        /* "desolvationGrid_util.pyx":374
+        /* "desolvationGrid_util.pyx":369
  *               np.copy(receptor_SAS_points[n,:]))
  * 
  *         n_newly_inaccessible_SAS_points = len(newly_inaccessible_SAS_points)             # <<<<<<<<<<<<<<
  *         if n_newly_inaccessible_SAS_points==0:
  *           # If there are no newly inaccessible SAS points,
  */
-        __pyx_t_2 = PyList_GET_SIZE(__pyx_v_newly_inaccessible_SAS_points); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 374, __pyx_L1_error)
+        __pyx_t_2 = PyList_GET_SIZE(__pyx_v_newly_inaccessible_SAS_points); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 369, __pyx_L1_error)
         __pyx_v_n_newly_inaccessible_SAS_points = __pyx_t_2;
 
-        /* "desolvationGrid_util.pyx":375
+        /* "desolvationGrid_util.pyx":370
  * 
  *         n_newly_inaccessible_SAS_points = len(newly_inaccessible_SAS_points)
  *         if n_newly_inaccessible_SAS_points==0:             # <<<<<<<<<<<<<<
@@ -6437,74 +6308,201 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
         __pyx_t_17 = ((__pyx_v_n_newly_inaccessible_SAS_points == 0) != 0);
         if (__pyx_t_17) {
 
-          /* "desolvationGrid_util.pyx":378
+          /* "desolvationGrid_util.pyx":373
  *           # If there are no newly inaccessible SAS points,
  *           # perform the numerical integrals over the receptor MS grid.
  *           desolvationGrid[i,j,k] = fraction_r4inv_low_dielectric(\             # <<<<<<<<<<<<<<
  *               receptor_MS_grid, spacing, counts, \
  *               grid_point_x, grid_point_y, grid_point_z, \
  */
-          __pyx_t_4 = __pyx_f_20desolvationGrid_util_fraction_r4inv_low_dielectric(__pyx_v_receptor_MS_grid, __pyx_v_spacing, __pyx_v_counts, __pyx_v_grid_point_x, __pyx_v_grid_point_y, __pyx_v_grid_point_z, __pyx_v_ligand_atom_radius, __pyx_v_integration_cutoff, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 378, __pyx_L1_error)
+          __pyx_t_4 = __pyx_f_20desolvationGrid_util_fraction_r4inv_low_dielectric(__pyx_v_receptor_MS_grid, __pyx_v_spacing, __pyx_v_counts, __pyx_v_grid_point_x, __pyx_v_grid_point_y, __pyx_v_grid_point_z, __pyx_v_ligand_atom_radius, __pyx_v_integration_cutoff, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 373, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
-          __pyx_t_59 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_59 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 378, __pyx_L1_error)
+          __pyx_t_55 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_55 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 373, __pyx_L1_error)
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-          __pyx_t_60 = __pyx_v_i;
-          __pyx_t_61 = __pyx_v_j;
-          __pyx_t_62 = __pyx_v_k;
-          *__Pyx_BufPtrStrided3d(__pyx_t_5numpy_double_t *, __pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer.buf, __pyx_t_60, __pyx_pybuffernd_desolvationGrid.diminfo[0].strides, __pyx_t_61, __pyx_pybuffernd_desolvationGrid.diminfo[1].strides, __pyx_t_62, __pyx_pybuffernd_desolvationGrid.diminfo[2].strides) = __pyx_t_59;
+          __pyx_t_56 = __pyx_v_i;
+          __pyx_t_57 = __pyx_v_j;
+          __pyx_t_58 = __pyx_v_k;
+          *__Pyx_BufPtrStrided3d(__pyx_t_20desolvationGrid_util_float_t *, __pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer.buf, __pyx_t_56, __pyx_pybuffernd_desolvationGrid.diminfo[0].strides, __pyx_t_57, __pyx_pybuffernd_desolvationGrid.diminfo[1].strides, __pyx_t_58, __pyx_pybuffernd_desolvationGrid.diminfo[2].strides) = __pyx_t_55;
 
-          /* "desolvationGrid_util.pyx":375
+          /* "desolvationGrid_util.pyx":370
  * 
  *         n_newly_inaccessible_SAS_points = len(newly_inaccessible_SAS_points)
  *         if n_newly_inaccessible_SAS_points==0:             # <<<<<<<<<<<<<<
  *           # If there are no newly inaccessible SAS points,
  *           # perform the numerical integrals over the receptor MS grid.
  */
-          goto __pyx_L42;
+          goto __pyx_L37;
         }
 
-        /* "desolvationGrid_util.pyx":383
+        /* "desolvationGrid_util.pyx":378
  *               ligand_atom_radius, integration_cutoff)
  *         else:
+ *           rec_z_min = grid_point_z - clash_filter_r             # <<<<<<<<<<<<<<
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
+ */
+        /*else*/ {
+          __pyx_v_rec_z_min = (__pyx_v_grid_point_z - __pyx_v_clash_filter_r);
+
+          /* "desolvationGrid_util.pyx":379
+ *         else:
+ *           rec_z_min = grid_point_z - clash_filter_r
+ *           rec_z_max = grid_point_z + clash_filter_r             # <<<<<<<<<<<<<<
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \
+ */
+          __pyx_v_rec_z_max = (__pyx_v_grid_point_z + __pyx_v_clash_filter_r);
+
+          /* "desolvationGrid_util.pyx":380
+ *           rec_z_min = grid_point_z - clash_filter_r
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ */
+          __pyx_t_4 = PyList_New(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 380, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_4);
+
+          /* "desolvationGrid_util.pyx":381
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ * 
+ */
+          __pyx_t_1 = __pyx_v_receptor_coordinates_ij; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
+          for (;;) {
+
+            /* "desolvationGrid_util.pyx":380
+ *           rec_z_min = grid_point_z - clash_filter_r
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ */
+            if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
+            #if CYTHON_COMPILING_IN_CPYTHON
+            __pyx_t_5 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_5); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 380, __pyx_L1_error)
+            #else
+            __pyx_t_5 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 380, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_5);
+            #endif
+            __pyx_t_59 = __Pyx_PyInt_As_size_t(__pyx_t_5); if (unlikely((__pyx_t_59 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 380, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+            __pyx_v_n = __pyx_t_59;
+
+            /* "desolvationGrid_util.pyx":381
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ * 
+ */
+            __pyx_t_59 = __pyx_v_n;
+            __pyx_t_60 = 2;
+            __pyx_t_20 = (((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_coordinates.data + __pyx_t_59 * __pyx_v_receptor_coordinates.strides[0]) ) + __pyx_t_60 * __pyx_v_receptor_coordinates.strides[1]) ))) > __pyx_v_rec_z_min) != 0);
+            if (__pyx_t_20) {
+            } else {
+              __pyx_t_17 = __pyx_t_20;
+              goto __pyx_L41_bool_binop_done;
+            }
+
+            /* "desolvationGrid_util.pyx":382
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \
+ *                (receptor_coordinates[n,2]<rec_z_max)]             # <<<<<<<<<<<<<<
+ * 
+ *           grid_c = np.copy(receptor_MS_grid)
+ */
+            __pyx_t_61 = __pyx_v_n;
+            __pyx_t_62 = 2;
+            __pyx_t_20 = (((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_coordinates.data + __pyx_t_61 * __pyx_v_receptor_coordinates.strides[0]) ) + __pyx_t_62 * __pyx_v_receptor_coordinates.strides[1]) ))) < __pyx_v_rec_z_max) != 0);
+            __pyx_t_17 = __pyx_t_20;
+            __pyx_L41_bool_binop_done:;
+
+            /* "desolvationGrid_util.pyx":381
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ * 
+ */
+            if (__pyx_t_17) {
+
+              /* "desolvationGrid_util.pyx":380
+ *           rec_z_min = grid_point_z - clash_filter_r
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ */
+              __pyx_t_5 = __Pyx_PyInt_FromSize_t(__pyx_v_n); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 380, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_5);
+              if (unlikely(__Pyx_ListComp_Append(__pyx_t_4, (PyObject*)__pyx_t_5))) __PYX_ERR(0, 380, __pyx_L1_error)
+              __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+
+              /* "desolvationGrid_util.pyx":381
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \             # <<<<<<<<<<<<<<
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ * 
+ */
+            }
+
+            /* "desolvationGrid_util.pyx":380
+ *           rec_z_min = grid_point_z - clash_filter_r
+ *           rec_z_max = grid_point_z + clash_filter_r
+ *           receptor_coordinates_ijk = [n for n in receptor_coordinates_ij \             # <<<<<<<<<<<<<<
+ *             if (receptor_coordinates[n,2]>rec_z_min) and \
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ */
+          }
+          __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+          __Pyx_XDECREF_SET(__pyx_v_receptor_coordinates_ijk, ((PyObject*)__pyx_t_4));
+          __pyx_t_4 = 0;
+
+          /* "desolvationGrid_util.pyx":384
+ *                (receptor_coordinates[n,2]<rec_z_max)]
+ * 
  *           grid_c = np.copy(receptor_MS_grid)             # <<<<<<<<<<<<<<
  * 
  *           # Find new SAS points around the ligand atom and
  */
-        /*else*/ {
-          __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 383, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 384, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
-          __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_copy); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 383, __pyx_L1_error)
+          __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_copy); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 384, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_5);
           __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-          __pyx_t_1 = __pyx_memoryview_fromslice(__pyx_v_receptor_MS_grid, 3, (PyObject *(*)(char *)) __pyx_memview_get_nn___pyx_t_20desolvationGrid_util_int_t, (int (*)(char *, PyObject *)) __pyx_memview_set_nn___pyx_t_20desolvationGrid_util_int_t, 0);; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 383, __pyx_L1_error)
+          __pyx_t_1 = __pyx_memoryview_fromslice(__pyx_v_receptor_MS_grid, 3, (PyObject *(*)(char *)) __pyx_memview_get_nn___pyx_t_20desolvationGrid_util_int_t, (int (*)(char *, PyObject *)) __pyx_memview_set_nn___pyx_t_20desolvationGrid_util_int_t, 0);; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 384, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
-          __pyx_t_57 = NULL;
+          __pyx_t_53 = NULL;
           if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_5))) {
-            __pyx_t_57 = PyMethod_GET_SELF(__pyx_t_5);
-            if (likely(__pyx_t_57)) {
+            __pyx_t_53 = PyMethod_GET_SELF(__pyx_t_5);
+            if (likely(__pyx_t_53)) {
               PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
-              __Pyx_INCREF(__pyx_t_57);
+              __Pyx_INCREF(__pyx_t_53);
               __Pyx_INCREF(function);
               __Pyx_DECREF_SET(__pyx_t_5, function);
             }
           }
-          if (!__pyx_t_57) {
-            __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 383, __pyx_L1_error)
+          if (!__pyx_t_53) {
+            __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 384, __pyx_L1_error)
             __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
             __Pyx_GOTREF(__pyx_t_4);
           } else {
-            __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 383, __pyx_L1_error)
+            __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 384, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
-            __Pyx_GIVEREF(__pyx_t_57); PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_57); __pyx_t_57 = NULL;
+            __Pyx_GIVEREF(__pyx_t_53); PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_53); __pyx_t_53 = NULL;
             __Pyx_GIVEREF(__pyx_t_1);
             PyTuple_SET_ITEM(__pyx_t_3, 0+1, __pyx_t_1);
             __pyx_t_1 = 0;
-            __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 383, __pyx_L1_error)
+            __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 384, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
             __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
           }
           __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-          if (!(likely(((__pyx_t_4) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_4, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 383, __pyx_L1_error)
+          if (!(likely(((__pyx_t_4) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_4, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 384, __pyx_L1_error)
           __pyx_t_63 = ((PyArrayObject *)__pyx_t_4);
           {
             __Pyx_BufFmt_StackElem __pyx_stack[1];
@@ -6520,13 +6518,13 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
               }
             }
             __pyx_pybuffernd_grid_c.diminfo[0].strides = __pyx_pybuffernd_grid_c.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_grid_c.diminfo[0].shape = __pyx_pybuffernd_grid_c.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_grid_c.diminfo[1].strides = __pyx_pybuffernd_grid_c.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_grid_c.diminfo[1].shape = __pyx_pybuffernd_grid_c.rcbuffer->pybuffer.shape[1]; __pyx_pybuffernd_grid_c.diminfo[2].strides = __pyx_pybuffernd_grid_c.rcbuffer->pybuffer.strides[2]; __pyx_pybuffernd_grid_c.diminfo[2].shape = __pyx_pybuffernd_grid_c.rcbuffer->pybuffer.shape[2];
-            if (unlikely(__pyx_t_7 < 0)) __PYX_ERR(0, 383, __pyx_L1_error)
+            if (unlikely(__pyx_t_7 < 0)) __PYX_ERR(0, 384, __pyx_L1_error)
           }
           __pyx_t_63 = 0;
           __Pyx_XDECREF_SET(__pyx_v_grid_c, ((PyArrayObject *)__pyx_t_4));
           __pyx_t_4 = 0;
 
-          /* "desolvationGrid_util.pyx":387
+          /* "desolvationGrid_util.pyx":388
  *           # Find new SAS points around the ligand atom and
  *           # increment the marks of the grid points within a probe radius
  *           sphere_i = 0             # <<<<<<<<<<<<<<
@@ -6535,7 +6533,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
           __pyx_v_sphere_i = 0;
 
-          /* "desolvationGrid_util.pyx":388
+          /* "desolvationGrid_util.pyx":389
  *           # increment the marks of the grid points within a probe radius
  *           sphere_i = 0
  *           while sphere_i < nsphere_points:             # <<<<<<<<<<<<<<
@@ -6546,7 +6544,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_t_17 = ((__pyx_v_sphere_i < __pyx_v_nsphere_points) != 0);
             if (!__pyx_t_17) break;
 
-            /* "desolvationGrid_util.pyx":390
+            /* "desolvationGrid_util.pyx":391
  *           while sphere_i < nsphere_points:
  *             # Propose a point at the SAS of the atom
  *             SAS_point_x = SAS_sphere_pts[sphere_i,0] + grid_point_x             # <<<<<<<<<<<<<<
@@ -6557,7 +6555,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_t_65 = 0;
             __pyx_v_SAS_point_x = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_SAS_sphere_pts.data + __pyx_t_64 * __pyx_v_SAS_sphere_pts.strides[0]) ) + __pyx_t_65 * __pyx_v_SAS_sphere_pts.strides[1]) ))) + __pyx_v_grid_point_x);
 
-            /* "desolvationGrid_util.pyx":391
+            /* "desolvationGrid_util.pyx":392
  *             # Propose a point at the SAS of the atom
  *             SAS_point_x = SAS_sphere_pts[sphere_i,0] + grid_point_x
  *             SAS_point_y = SAS_sphere_pts[sphere_i,1] + grid_point_y             # <<<<<<<<<<<<<<
@@ -6568,7 +6566,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_t_67 = 1;
             __pyx_v_SAS_point_y = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_SAS_sphere_pts.data + __pyx_t_66 * __pyx_v_SAS_sphere_pts.strides[0]) ) + __pyx_t_67 * __pyx_v_SAS_sphere_pts.strides[1]) ))) + __pyx_v_grid_point_y);
 
-            /* "desolvationGrid_util.pyx":392
+            /* "desolvationGrid_util.pyx":393
  *             SAS_point_x = SAS_sphere_pts[sphere_i,0] + grid_point_x
  *             SAS_point_y = SAS_sphere_pts[sphere_i,1] + grid_point_y
  *             SAS_point_z = SAS_sphere_pts[sphere_i,2] + grid_point_z             # <<<<<<<<<<<<<<
@@ -6579,7 +6577,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_t_69 = 2;
             __pyx_v_SAS_point_z = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_SAS_sphere_pts.data + __pyx_t_68 * __pyx_v_SAS_sphere_pts.strides[0]) ) + __pyx_t_69 * __pyx_v_SAS_sphere_pts.strides[1]) ))) + __pyx_v_grid_point_z);
 
-            /* "desolvationGrid_util.pyx":395
+            /* "desolvationGrid_util.pyx":396
  * 
  *             # Check if the point clashes with a receptor atom
  *             clash = 0             # <<<<<<<<<<<<<<
@@ -6588,7 +6586,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
             __pyx_v_clash = 0;
 
-            /* "desolvationGrid_util.pyx":396
+            /* "desolvationGrid_util.pyx":397
  *             # Check if the point clashes with a receptor atom
  *             clash = 0
  *             for atom_j in receptor_coordinates_ijk:             # <<<<<<<<<<<<<<
@@ -6599,16 +6597,16 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             for (;;) {
               if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_4)) break;
               #if CYTHON_COMPILING_IN_CPYTHON
-              __pyx_t_5 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_2); __Pyx_INCREF(__pyx_t_5); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 396, __pyx_L1_error)
+              __pyx_t_5 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_2); __Pyx_INCREF(__pyx_t_5); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 397, __pyx_L1_error)
               #else
-              __pyx_t_5 = PySequence_ITEM(__pyx_t_4, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 396, __pyx_L1_error)
+              __pyx_t_5 = PySequence_ITEM(__pyx_t_4, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 397, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_5);
               #endif
-              __pyx_t_70 = __Pyx_PyInt_As_size_t(__pyx_t_5); if (unlikely((__pyx_t_70 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 396, __pyx_L1_error)
+              __pyx_t_70 = __Pyx_PyInt_As_size_t(__pyx_t_5); if (unlikely((__pyx_t_70 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 397, __pyx_L1_error)
               __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
               __pyx_v_atom_j = __pyx_t_70;
 
-              /* "desolvationGrid_util.pyx":397
+              /* "desolvationGrid_util.pyx":398
  *             clash = 0
  *             for atom_j in receptor_coordinates_ijk:
  *               dx = receptor_coordinates[atom_j,0] - SAS_point_x             # <<<<<<<<<<<<<<
@@ -6619,7 +6617,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
               __pyx_t_71 = 0;
               __pyx_v_dx = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_coordinates.data + __pyx_t_70 * __pyx_v_receptor_coordinates.strides[0]) ) + __pyx_t_71 * __pyx_v_receptor_coordinates.strides[1]) ))) - __pyx_v_SAS_point_x);
 
-              /* "desolvationGrid_util.pyx":398
+              /* "desolvationGrid_util.pyx":399
  *             for atom_j in receptor_coordinates_ijk:
  *               dx = receptor_coordinates[atom_j,0] - SAS_point_x
  *               dy = receptor_coordinates[atom_j,1] - SAS_point_y             # <<<<<<<<<<<<<<
@@ -6630,7 +6628,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
               __pyx_t_73 = 1;
               __pyx_v_dy = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_coordinates.data + __pyx_t_72 * __pyx_v_receptor_coordinates.strides[0]) ) + __pyx_t_73 * __pyx_v_receptor_coordinates.strides[1]) ))) - __pyx_v_SAS_point_y);
 
-              /* "desolvationGrid_util.pyx":399
+              /* "desolvationGrid_util.pyx":400
  *               dx = receptor_coordinates[atom_j,0] - SAS_point_x
  *               dy = receptor_coordinates[atom_j,1] - SAS_point_y
  *               dz = receptor_coordinates[atom_j,2] - SAS_point_z             # <<<<<<<<<<<<<<
@@ -6641,7 +6639,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
               __pyx_t_75 = 2;
               __pyx_v_dz = ((*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_receptor_coordinates.data + __pyx_t_74 * __pyx_v_receptor_coordinates.strides[0]) ) + __pyx_t_75 * __pyx_v_receptor_coordinates.strides[1]) ))) - __pyx_v_SAS_point_z);
 
-              /* "desolvationGrid_util.pyx":400
+              /* "desolvationGrid_util.pyx":401
  *               dy = receptor_coordinates[atom_j,1] - SAS_point_y
  *               dz = receptor_coordinates[atom_j,2] - SAS_point_z
  *               if (dx*dx + dy*dy + dz*dz) < LJ_r2[atom_j]:             # <<<<<<<<<<<<<<
@@ -6652,7 +6650,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
               __pyx_t_17 = (((((__pyx_v_dx * __pyx_v_dx) + (__pyx_v_dy * __pyx_v_dy)) + (__pyx_v_dz * __pyx_v_dz)) < (*((__pyx_t_20desolvationGrid_util_float_t *) ( /* dim=0 */ (__pyx_v_LJ_r2.data + __pyx_t_76 * __pyx_v_LJ_r2.strides[0]) )))) != 0);
               if (__pyx_t_17) {
 
-                /* "desolvationGrid_util.pyx":401
+                /* "desolvationGrid_util.pyx":402
  *               dz = receptor_coordinates[atom_j,2] - SAS_point_z
  *               if (dx*dx + dy*dy + dz*dz) < LJ_r2[atom_j]:
  *                 clash = 1             # <<<<<<<<<<<<<<
@@ -6661,7 +6659,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
                 __pyx_v_clash = 1;
 
-                /* "desolvationGrid_util.pyx":402
+                /* "desolvationGrid_util.pyx":403
  *               if (dx*dx + dy*dy + dz*dz) < LJ_r2[atom_j]:
  *                 clash = 1
  *                 break             # <<<<<<<<<<<<<<
@@ -6670,7 +6668,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
                 goto __pyx_L46_break;
 
-                /* "desolvationGrid_util.pyx":400
+                /* "desolvationGrid_util.pyx":401
  *               dy = receptor_coordinates[atom_j,1] - SAS_point_y
  *               dz = receptor_coordinates[atom_j,2] - SAS_point_z
  *               if (dx*dx + dy*dy + dz*dz) < LJ_r2[atom_j]:             # <<<<<<<<<<<<<<
@@ -6679,7 +6677,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
               }
 
-              /* "desolvationGrid_util.pyx":396
+              /* "desolvationGrid_util.pyx":397
  *             # Check if the point clashes with a receptor atom
  *             clash = 0
  *             for atom_j in receptor_coordinates_ijk:             # <<<<<<<<<<<<<<
@@ -6690,7 +6688,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_L46_break:;
             __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-            /* "desolvationGrid_util.pyx":403
+            /* "desolvationGrid_util.pyx":404
  *                 clash = 1
  *                 break
  *             if clash==0:             # <<<<<<<<<<<<<<
@@ -6700,7 +6698,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_t_17 = ((__pyx_v_clash == 0) != 0);
             if (__pyx_t_17) {
 
-              /* "desolvationGrid_util.pyx":406
+              /* "desolvationGrid_util.pyx":407
  *               # If there are no clashes,
  *               # increment the marks of the grid points within a probe radius
  *               increment_inside_sphere(grid_c, spacing, counts, \             # <<<<<<<<<<<<<<
@@ -6708,21 +6706,21 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  *             sphere_i += 1
  */
               __pyx_t_77 = __Pyx_PyObject_to_MemoryviewSlice_dsdsds_nn___pyx_t_20desolvationGrid_util_int_t(((PyObject *)__pyx_v_grid_c));
-              if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 406, __pyx_L1_error)
+              if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 407, __pyx_L1_error)
 
-              /* "desolvationGrid_util.pyx":407
+              /* "desolvationGrid_util.pyx":408
  *               # increment the marks of the grid points within a probe radius
  *               increment_inside_sphere(grid_c, spacing, counts, \
  *                 SAS_point_x, SAS_point_y, SAS_point_z, probe_radius)             # <<<<<<<<<<<<<<
  *             sphere_i += 1
  * 
  */
-              __pyx_t_4 = __pyx_f_20desolvationGrid_util_increment_inside_sphere(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_v_SAS_point_x, __pyx_v_SAS_point_y, __pyx_v_SAS_point_z, __pyx_v_probe_radius, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 406, __pyx_L1_error)
+              __pyx_t_4 = __pyx_f_20desolvationGrid_util_increment_inside_sphere(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_v_SAS_point_x, __pyx_v_SAS_point_y, __pyx_v_SAS_point_z, __pyx_v_probe_radius, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 407, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_4);
               __PYX_XDEC_MEMVIEW(&__pyx_t_77, 1);
               __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-              /* "desolvationGrid_util.pyx":403
+              /* "desolvationGrid_util.pyx":404
  *                 clash = 1
  *                 break
  *             if clash==0:             # <<<<<<<<<<<<<<
@@ -6731,7 +6729,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
             }
 
-            /* "desolvationGrid_util.pyx":408
+            /* "desolvationGrid_util.pyx":409
  *               increment_inside_sphere(grid_c, spacing, counts, \
  *                 SAS_point_x, SAS_point_y, SAS_point_z, probe_radius)
  *             sphere_i += 1             # <<<<<<<<<<<<<<
@@ -6741,7 +6739,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_v_sphere_i = (__pyx_v_sphere_i + 1);
           }
 
-          /* "desolvationGrid_util.pyx":411
+          /* "desolvationGrid_util.pyx":412
  * 
  *           # Decrement of the marks of newly inaccessible grid points
  *           n = 0             # <<<<<<<<<<<<<<
@@ -6750,7 +6748,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  */
           __pyx_v_n = 0;
 
-          /* "desolvationGrid_util.pyx":412
+          /* "desolvationGrid_util.pyx":413
  *           # Decrement of the marks of newly inaccessible grid points
  *           n = 0
  *           while n < n_newly_inaccessible_SAS_points:             # <<<<<<<<<<<<<<
@@ -6761,7 +6759,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_t_17 = ((__pyx_v_n < __pyx_v_n_newly_inaccessible_SAS_points) != 0);
             if (!__pyx_t_17) break;
 
-            /* "desolvationGrid_util.pyx":413
+            /* "desolvationGrid_util.pyx":414
  *           n = 0
  *           while n < n_newly_inaccessible_SAS_points:
  *             decrement_inside_sphere(grid_c, spacing, counts, \             # <<<<<<<<<<<<<<
@@ -6769,57 +6767,57 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  *               newly_inaccessible_SAS_points[n][1], \
  */
             __pyx_t_77 = __Pyx_PyObject_to_MemoryviewSlice_dsdsds_nn___pyx_t_20desolvationGrid_util_int_t(((PyObject *)__pyx_v_grid_c));
-            if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 413, __pyx_L1_error)
+            if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 414, __pyx_L1_error)
 
-            /* "desolvationGrid_util.pyx":414
+            /* "desolvationGrid_util.pyx":415
  *           while n < n_newly_inaccessible_SAS_points:
  *             decrement_inside_sphere(grid_c, spacing, counts, \
  *               newly_inaccessible_SAS_points[n][0], \             # <<<<<<<<<<<<<<
  *               newly_inaccessible_SAS_points[n][1], \
  *               newly_inaccessible_SAS_points[n][2], probe_radius)
  */
-            __pyx_t_4 = __Pyx_GetItemInt(PyList_GET_ITEM(__pyx_v_newly_inaccessible_SAS_points, __pyx_v_n), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 414, __pyx_L1_error)
+            __pyx_t_4 = __Pyx_GetItemInt(PyList_GET_ITEM(__pyx_v_newly_inaccessible_SAS_points, __pyx_v_n), 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 415, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
-            __pyx_t_78 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_78 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 414, __pyx_L1_error)
+            __pyx_t_55 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_55 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 415, __pyx_L1_error)
             __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-            /* "desolvationGrid_util.pyx":415
+            /* "desolvationGrid_util.pyx":416
  *             decrement_inside_sphere(grid_c, spacing, counts, \
  *               newly_inaccessible_SAS_points[n][0], \
  *               newly_inaccessible_SAS_points[n][1], \             # <<<<<<<<<<<<<<
  *               newly_inaccessible_SAS_points[n][2], probe_radius)
  *             n += 1
  */
-            __pyx_t_4 = __Pyx_GetItemInt(PyList_GET_ITEM(__pyx_v_newly_inaccessible_SAS_points, __pyx_v_n), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 415, __pyx_L1_error)
+            __pyx_t_4 = __Pyx_GetItemInt(PyList_GET_ITEM(__pyx_v_newly_inaccessible_SAS_points, __pyx_v_n), 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 416, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
-            __pyx_t_79 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_79 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 415, __pyx_L1_error)
+            __pyx_t_78 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_78 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 416, __pyx_L1_error)
             __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-            /* "desolvationGrid_util.pyx":416
+            /* "desolvationGrid_util.pyx":417
  *               newly_inaccessible_SAS_points[n][0], \
  *               newly_inaccessible_SAS_points[n][1], \
  *               newly_inaccessible_SAS_points[n][2], probe_radius)             # <<<<<<<<<<<<<<
  *             n += 1
  * 
  */
-            __pyx_t_4 = __Pyx_GetItemInt(PyList_GET_ITEM(__pyx_v_newly_inaccessible_SAS_points, __pyx_v_n), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 416, __pyx_L1_error)
+            __pyx_t_4 = __Pyx_GetItemInt(PyList_GET_ITEM(__pyx_v_newly_inaccessible_SAS_points, __pyx_v_n), 2, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 417, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
-            __pyx_t_80 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_80 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 416, __pyx_L1_error)
+            __pyx_t_79 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_79 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 417, __pyx_L1_error)
             __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-            /* "desolvationGrid_util.pyx":413
+            /* "desolvationGrid_util.pyx":414
  *           n = 0
  *           while n < n_newly_inaccessible_SAS_points:
  *             decrement_inside_sphere(grid_c, spacing, counts, \             # <<<<<<<<<<<<<<
  *               newly_inaccessible_SAS_points[n][0], \
  *               newly_inaccessible_SAS_points[n][1], \
  */
-            __pyx_t_4 = __pyx_f_20desolvationGrid_util_decrement_inside_sphere(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_t_78, __pyx_t_79, __pyx_t_80, __pyx_v_probe_radius, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 413, __pyx_L1_error)
+            __pyx_t_4 = __pyx_f_20desolvationGrid_util_decrement_inside_sphere(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_t_55, __pyx_t_78, __pyx_t_79, __pyx_v_probe_radius, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 414, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
             __PYX_XDEC_MEMVIEW(&__pyx_t_77, 1);
             __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-            /* "desolvationGrid_util.pyx":417
+            /* "desolvationGrid_util.pyx":418
  *               newly_inaccessible_SAS_points[n][1], \
  *               newly_inaccessible_SAS_points[n][2], probe_radius)
  *             n += 1             # <<<<<<<<<<<<<<
@@ -6829,7 +6827,7 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
             __pyx_v_n = (__pyx_v_n + 1);
           }
 
-          /* "desolvationGrid_util.pyx":420
+          /* "desolvationGrid_util.pyx":421
  * 
  *           # Blot the region inside the ligand vdW as low dielectric
  *           set_inside_sphere_to(grid_c, spacing, counts, \             # <<<<<<<<<<<<<<
@@ -6837,21 +6835,21 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  *             ligand_atom_radius, 0)
  */
           __pyx_t_77 = __Pyx_PyObject_to_MemoryviewSlice_dsdsds_nn___pyx_t_20desolvationGrid_util_int_t(((PyObject *)__pyx_v_grid_c));
-          if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 420, __pyx_L1_error)
+          if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 421, __pyx_L1_error)
 
-          /* "desolvationGrid_util.pyx":422
+          /* "desolvationGrid_util.pyx":423
  *           set_inside_sphere_to(grid_c, spacing, counts, \
  *             grid_point_x, grid_point_y, grid_point_z, \
  *             ligand_atom_radius, 0)             # <<<<<<<<<<<<<<
  * 
  *           desolvationGrid[i,j,k] = fraction_r4inv_low_dielectric(grid_c, \
  */
-          __pyx_t_4 = __pyx_f_20desolvationGrid_util_set_inside_sphere_to(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_v_grid_point_x, __pyx_v_grid_point_y, __pyx_v_grid_point_z, __pyx_v_ligand_atom_radius, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 420, __pyx_L1_error)
+          __pyx_t_4 = __pyx_f_20desolvationGrid_util_set_inside_sphere_to(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_v_grid_point_x, __pyx_v_grid_point_y, __pyx_v_grid_point_z, __pyx_v_ligand_atom_radius, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 421, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           __PYX_XDEC_MEMVIEW(&__pyx_t_77, 1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-          /* "desolvationGrid_util.pyx":424
+          /* "desolvationGrid_util.pyx":425
  *             ligand_atom_radius, 0)
  * 
  *           desolvationGrid[i,j,k] = fraction_r4inv_low_dielectric(grid_c, \             # <<<<<<<<<<<<<<
@@ -6859,39 +6857,39 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
  *             ligand_atom_radius, integration_cutoff)
  */
           __pyx_t_77 = __Pyx_PyObject_to_MemoryviewSlice_dsdsds_nn___pyx_t_20desolvationGrid_util_int_t(((PyObject *)__pyx_v_grid_c));
-          if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 424, __pyx_L1_error)
+          if (unlikely(!__pyx_t_77.memview)) __PYX_ERR(0, 425, __pyx_L1_error)
 
-          /* "desolvationGrid_util.pyx":426
+          /* "desolvationGrid_util.pyx":427
  *           desolvationGrid[i,j,k] = fraction_r4inv_low_dielectric(grid_c, \
  *             spacing, counts, grid_point_x, grid_point_y, grid_point_z, \
  *             ligand_atom_radius, integration_cutoff)             # <<<<<<<<<<<<<<
  * 
  *   return desolvationGrid
  */
-          __pyx_t_4 = __pyx_f_20desolvationGrid_util_fraction_r4inv_low_dielectric(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_v_grid_point_x, __pyx_v_grid_point_y, __pyx_v_grid_point_z, __pyx_v_ligand_atom_radius, __pyx_v_integration_cutoff, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 424, __pyx_L1_error)
+          __pyx_t_4 = __pyx_f_20desolvationGrid_util_fraction_r4inv_low_dielectric(__pyx_t_77, __pyx_v_spacing, __pyx_v_counts, __pyx_v_grid_point_x, __pyx_v_grid_point_y, __pyx_v_grid_point_z, __pyx_v_ligand_atom_radius, __pyx_v_integration_cutoff, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 425, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           __PYX_XDEC_MEMVIEW(&__pyx_t_77, 1);
 
-          /* "desolvationGrid_util.pyx":424
+          /* "desolvationGrid_util.pyx":425
  *             ligand_atom_radius, 0)
  * 
  *           desolvationGrid[i,j,k] = fraction_r4inv_low_dielectric(grid_c, \             # <<<<<<<<<<<<<<
  *             spacing, counts, grid_point_x, grid_point_y, grid_point_z, \
  *             ligand_atom_radius, integration_cutoff)
  */
-          __pyx_t_59 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_59 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 424, __pyx_L1_error)
+          __pyx_t_79 = __pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_79 == (npy_double)-1) && PyErr_Occurred())) __PYX_ERR(0, 425, __pyx_L1_error)
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-          __pyx_t_81 = __pyx_v_i;
-          __pyx_t_82 = __pyx_v_j;
-          __pyx_t_83 = __pyx_v_k;
-          *__Pyx_BufPtrStrided3d(__pyx_t_5numpy_double_t *, __pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer.buf, __pyx_t_81, __pyx_pybuffernd_desolvationGrid.diminfo[0].strides, __pyx_t_82, __pyx_pybuffernd_desolvationGrid.diminfo[1].strides, __pyx_t_83, __pyx_pybuffernd_desolvationGrid.diminfo[2].strides) = __pyx_t_59;
+          __pyx_t_80 = __pyx_v_i;
+          __pyx_t_81 = __pyx_v_j;
+          __pyx_t_82 = __pyx_v_k;
+          *__Pyx_BufPtrStrided3d(__pyx_t_20desolvationGrid_util_float_t *, __pyx_pybuffernd_desolvationGrid.rcbuffer->pybuffer.buf, __pyx_t_80, __pyx_pybuffernd_desolvationGrid.diminfo[0].strides, __pyx_t_81, __pyx_pybuffernd_desolvationGrid.diminfo[1].strides, __pyx_t_82, __pyx_pybuffernd_desolvationGrid.diminfo[2].strides) = __pyx_t_79;
         }
-        __pyx_L42:;
+        __pyx_L37:;
       }
     }
   }
 
-  /* "desolvationGrid_util.pyx":428
+  /* "desolvationGrid_util.pyx":429
  *             ligand_atom_radius, integration_cutoff)
  * 
  *   return desolvationGrid             # <<<<<<<<<<<<<<
@@ -6915,9 +6913,9 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
-  __PYX_XDEC_MEMVIEW(&__pyx_t_55, 1);
-  __Pyx_XDECREF(__pyx_t_56);
-  __Pyx_XDECREF(__pyx_t_57);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_51, 1);
+  __Pyx_XDECREF(__pyx_t_52);
+  __Pyx_XDECREF(__pyx_t_53);
   __PYX_XDEC_MEMVIEW(&__pyx_t_77, 1);
   { PyObject *__pyx_type, *__pyx_value, *__pyx_tb;
     __Pyx_PyThreadState_declare
@@ -6940,8 +6938,8 @@ __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_t_55, 1, (PyObject *(*)(char *)) __
   __Pyx_XDECREF(__pyx_v_receptor_SAS_points_ij);
   __Pyx_XDECREF(__pyx_v_receptor_coordinates_ij);
   __Pyx_XDECREF(__pyx_v_receptor_SAS_points_ijk);
-  __Pyx_XDECREF(__pyx_v_receptor_coordinates_ijk);
   __Pyx_XDECREF(__pyx_v_newly_inaccessible_SAS_points);
+  __Pyx_XDECREF(__pyx_v_receptor_coordinates_ijk);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;

@@ -17,7 +17,7 @@ class gridCalculation:
     prmtop_FN='apo.prmtop', inpcrd_FN=None, pqr_FN=None, \
     header_FN=None, site_FN=None, \
     PB_FN=None, ele_FN=None, LJa_FN=None, LJr_FN=None, \
-    spacing=None, counts=None):
+    spacing=None, counts=None, PB_spacing=None):
   
     ### Parse parameters
     self.FNs = {'prmtop':prmtop_FN, 'inpcrd':inpcrd_FN, 'header':header_FN, \
@@ -29,6 +29,9 @@ class gridCalculation:
       'LJa':{True:'LJa.nc',False:LJa_FN}[LJa_FN is None], \
       'LJr':{True:'LJr.nc',False:LJr_FN}[LJr_FN is None]}
     del prmtop_FN, inpcrd_FN, header_FN, ele_FN, LJa_FN, LJr_FN
+    
+    for key in self.FNs.keys():
+      self.FNs[key] = os.path.abspath(self.FNs[key])
   
     # Check that input files are available
     for FN in [self.FNs['prmtop'],self.FNs['inpcrd']]:
@@ -76,6 +79,10 @@ class gridCalculation:
           2.*half_edge_length/spacing[1], \
           2.*half_edge_length/spacing[2]])),dtype=int)
 
+    # PB spacing
+    if PB_spacing is None:
+      PB_spacing = 0.5
+
     spacing = np.array(spacing)
     counts = np.array(counts)
 
@@ -98,11 +105,12 @@ class gridCalculation:
     print 'Output LJ repulsive     :\t' + self.FNs['LJr']
     print 'Grid spacing            :\t', spacing
     print 'Grid counts             :\t', counts
+    print 'PB Grid spacing         :\t', PB_spacing
     print
 
     if not os.path.isfile(self.FNs['PB']):
       print 'Calculating Poisson-Boltzmann grid'
-      self.PB_grid(spacing*counts)
+      self.PB_grid(PB_spacing*counts, PB_spacing)
     else:
       print 'Poisson-Boltzmann grid already calculated'
     
@@ -196,15 +204,17 @@ class gridCalculation:
       dif_z = grid['z'] - self.crd[atom_index][2]
       R2 += dif_z*dif_z
       del dif_z  
-      R = np.sqrt(R2)
-      del R2
 
       atom_type = prmtop['ATOM_TYPE_INDEX'][atom_index]-1
       
       if not no_ele:
+        R = np.sqrt(R2)
         grid['ele'] = grid['ele'] + 332.06*prmtop['CHARGE'][atom_index]/R
-      grid['LJr'] += root_LJ_depth[atom_type]*(LJ_diameter[atom_type]**6)/R**12
-      grid['LJa'] += -2*root_LJ_depth[atom_type]*(LJ_diameter[atom_type]**3)/R**6
+        grid['LJr'] += root_LJ_depth[atom_type]*(LJ_diameter[atom_type]**6)/R**12
+        grid['LJa'] += -2*root_LJ_depth[atom_type]*(LJ_diameter[atom_type]**3)/R**6
+      else:
+        grid['LJr'] += root_LJ_depth[atom_type]*(LJ_diameter[atom_type]**6)/R2**6
+        grid['LJa'] += -2*root_LJ_depth[atom_type]*(LJ_diameter[atom_type]**3)/R2**3
 
       if atom_index%100==0:
         endTime = time.time()
@@ -230,7 +240,7 @@ class gridCalculation:
     IO_Grid.write(self.FNs['LJa'], \
       {'origin':np.array([0., 0., 0.]), 'spacing':spacing, 'counts':counts, 'vals':grid['LJa'].flatten()})
 
-  def PB_grid(self, edge_length):
+  def PB_grid(self, edge_length, PB_spacing):
     """
     Calculates a Poisson-Boltzmann grid using APBS
     
@@ -238,7 +248,7 @@ class gridCalculation:
     """
     import inspect
     import _external_paths
-    dirs = {}
+    dirs = {'current':os.getcwd()}
 
     # Sets up pqr file
     if not os.path.exists(self.FNs['pqr']):
@@ -250,9 +260,15 @@ class gridCalculation:
         self.FNs['inpcrd'],dirs['amber'],self.FNs['prmtop'],self.FNs['pqr'])
       os.system(command)
 
+    os.chdir(os.path.dirname(self.FNs['PB']))
+    tempdir = 'APBS-'+os.path.basename(self.FNs['PB'])
+    if not os.path.isdir(tempdir):
+      os.mkdir(tempdir)
+    os.chdir(tempdir)
+
     # Determine the grid parameters
     full_spacing = 1.0
-    focus_spacing = 0.5
+    focus_spacing = PB_spacing
     final_spacing = focus_spacing
 
     #   The final grid spans the same space as the other grids
@@ -363,27 +379,39 @@ END'''.format(self.FNs['pqr'], \
         final_dims, multiplier=0.596)
 
     # Remove intermediate files
-    for FN in [self.FNs['pqr'], 'io.mc', 'apbs.in', 'apbs.out']:
+    for FN in [self.FNs['pqr'], 'io.mc', 'apbs.in', 'apbs.out','apbs_focus.dx']:
       if os.path.isfile(FN):
         os.remove(FN)
+
+    os.chdir(os.path.dirname(self.FNs['PB']))
+    if os.path.isdir(tempdir):
+      os.rmdir(tempdir)
 
 if __name__ == '__main__':
   import sys
   
   try:
     import argparse
-    parser = argparse.ArgumentParser(description='Calculate van der Waals and ele grids')
+    parser = argparse.ArgumentParser(\
+      description='Calculate van der Waals and ele grids')
     parser.add_argument('--prmtop_FN', help='Input AMBER PRMTOP file')
     parser.add_argument('--inpcrd_FN', help='Input coordinates')
     parser.add_argument('--pqr_FN', help='Input for APBS (optional)')
     parser.add_argument('--header_FN', help='Input grid header (optional)')
-    parser.add_argument('--site_FN', help='Input binding site parameters (optional)')
+    parser.add_argument('--site_FN', \
+      help='Input binding site parameters (optional)')
     parser.add_argument('--PB_FN', help='Output for Poisson-Boltzmann grid')
     parser.add_argument('--ele_FN', help='Output for electrostatic grid')
-    parser.add_argument('--LJa_FN', help='Output for attractive Lennard-Jones grid')
-    parser.add_argument('--LJr_FN', help='Output for repulsive Lennard-Jones grid')
-    parser.add_argument('--spacing', nargs=3, type=float, help='Grid spacing (overrides header)')
-    parser.add_argument('--counts', nargs=3, type=int, help='Number of point in each direction (overrides header)')
+    parser.add_argument('--LJa_FN', \
+      help='Output for attractive Lennard-Jones grid')
+    parser.add_argument('--LJr_FN', \
+      help='Output for repulsive Lennard-Jones grid')
+    parser.add_argument('--spacing', nargs=3, type=float, \
+      help='Grid spacing (overrides header)')
+    parser.add_argument('--counts', nargs=3, type=int, \
+      help='Number of point in each direction (overrides header)')
+    parser.add_argument('--PB_spacing', type=float, \
+      help='PB Grid spacing (equal in all dimensions)')
     args = parser.parse_args()
   except:
     import optparse
@@ -392,13 +420,16 @@ if __name__ == '__main__':
     parser.add_option('--inpcrd_FN', help='Input coordinates')
     parser.add_option('--pqr_FN', help='Input for APBS (optional)')
     parser.add_option('--header_FN', help='Input grid header (optional)')
-    parser.add_option('--site_FN', help='Input binding site parameters (optional)')
+    parser.add_option('--site_FN', \
+      help='Input binding site parameters (optional)')
     parser.add_option('--PB_FN', help='Output for Poisson-Boltzmann grid')
     parser.add_option('--ele_FN', help='Output for electrostatic grid')
     parser.add_option('--LJa_FN', help='Output for attractive Lennard-Jones grid')
     parser.add_option('--LJr_FN', help='Output for repulsive Lennard-Jones grid')
     parser.add_option('--spacing', nargs=3, type="float", help='Grid spacing')
     parser.add_option('--counts', nargs=3, type="float", help='Grid dimensions')
+    parser.add_option('--PB_spacing', type="float", \
+      help='PB Grid spacing (equal in all dimensions)')
     (args,options) = parser.parse_args()
 
   calc = gridCalculation(**vars(args))

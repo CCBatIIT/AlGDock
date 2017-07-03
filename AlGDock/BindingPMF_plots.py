@@ -126,7 +126,7 @@ class BPMF_plots(BPMF):
   def show_samples(self, process='dock', state=-1, show_replicas=False, \
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
         save_image=False, image_labels=None, execute=True, \
-        principal_axes_alignment=False, quit=False, \
+        principal_axes_alignment=False, clear_files=True, quit=False, \
         view_args={}):
     # Gather ligand coordinates
     if show_replicas:
@@ -283,10 +283,11 @@ class BPMF_plots(BPMF):
       print 'stderr:'
       print vmd_stderr
       
-      for FN in [ligand_dcd_FN, ref_ligand_dcd_FN, start_ligand_dcd_FN, \
-                 complex_dcd_FN, script_FN]:
-        if os.path.isfile(FN):
-          os.remove(FN)
+      if clear_files:
+        for FN in [ligand_dcd_FN, ref_ligand_dcd_FN, start_ligand_dcd_FN, \
+                   complex_dcd_FN, script_FN]:
+          if os.path.isfile(FN):
+            os.remove(FN)
 
     if save_image and os.path.isfile(image_path) and (image_labels is not None):
       import PIL.Image

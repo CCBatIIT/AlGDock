@@ -219,16 +219,10 @@ void ReferenceObc::computeBornRadii(const ObcParameters* obcParameters,
 
        sum              *= half; // Now sum becomes I in OBC paper
       
-       // TODO: Remove after debugging
-       // cout << "Sum for atom " << atomI << ": " << sum;
-      
        if (Igrid!=NULL) {
          // printf("Atom %d, Born radius = %f, I_HCT = %f, I_grid = %f\n", atomI, radiusI, sum, Igrid[atomI]);
          sum += Igrid[atomI];
        }
-
-       // TODO: Remove after debugging
-       // cout << ", " << sum << endl;
       
        // TODO: Derivatives not correct after adding numerical integral.
 

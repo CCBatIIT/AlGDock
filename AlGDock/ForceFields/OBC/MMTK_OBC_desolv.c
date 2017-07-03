@@ -193,7 +193,8 @@ OBCDesolvTerm(PyObject *dummy, PyObject *args)
   self->param[4] = spacing_v[1]*(counts_v[1]-1); // hCorner in y
   self->param[5] = spacing_v[2]*(counts_v[2]-1); // hCorner in z
   // Multiplicative factor for fractional desolvation to get Igrid
-  self->param[6] = 1/r_min - 1/r_max;
+  // TODO: Understand where the factor of 4*pi comes from
+  self->param[6] = 4*3.14159265359*(1/r_min - 1/r_max);
   
   /* self->data is the other storage area for parameters. There are
      40 Python object slots there */

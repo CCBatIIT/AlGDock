@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import MMTK
 
 class Grid:
   """
@@ -209,7 +208,6 @@ class crd:
     If natoms is not none, then the coordinates will be split 
       into a list of natoms X 3 arrays.
     The coordinates will be multiplied by multiplier.
-    The default of 0.1 converts Angstroms into nanometers.
     """
     if not os.path.isfile(FN):
       raise Exception('Coordinate file %s does not exist!'%FN)
@@ -303,7 +301,7 @@ class dock6_mol2:
   def __init__(self):
     pass
 
-  def read(self, FN, reorder=None):
+  def read(self, FN, reorder=None, multiplier=None):
     crds = []
     E = {}
 
@@ -333,13 +331,17 @@ class dock6_mol2:
         fields = model.split('<TRIPOS>')
         
         crd = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
-          dtype=float)/10.
+          dtype=float)
+        if multiplier is not None:
+          crd = multiplier*crd
         if reorder is not None:
           crd = crd[reorder,:]
 
         for line in fields[0].split('\n'):
           if line.startswith('##########'):
             label = line[11:line.find(':')].strip()
+            if not label in E.keys():
+              E[label] = [0]*len(crds)
             E[label].append(float(line.split()[-1]))
 
         crds.append(crd)
@@ -361,13 +363,13 @@ class dcd:
     pass
 
   def write(self, FN, confs,
-      includeLigand=True, includeReceptor=False,
-      factor=1.0/MMTK.Units.Ang,
+      includeLigand=True, includeReceptor=False, factor=10.0,
       delta_t=0.1):
     """
     Writes a DCD file for a trajectory.
     If includeReceptor==True, the receptor coordinates are included.
     """
+    import MMTK
     import MMTK_DCD  # @UnresolvedImport
     from Scientific import N
 

@@ -310,9 +310,10 @@ last modified {1}
           os.path.join(kwargs['dir_grid'],'electrostatic.nc'),
           os.path.join(kwargs['dir_grid'],'electrostatic.dx'),
           os.path.join(kwargs['dir_grid'],'electrostatic.dx.gz'),
-          os.path.join(kwargs['dir_grid'],'pbsa.nc'),
-          os.path.join(kwargs['dir_grid'],'pbsa.dx'),
-          os.path.join(kwargs['dir_grid'],'pbsa.dx.gz')])),
+          os.path.join(kwargs['dir_grid'],'pb.nc'),
+          os.path.join(kwargs['dir_grid'],'pb.dx'),
+          os.path.join(kwargs['dir_grid'],'pb.dx.gz'),
+          os.path.join(kwargs['dir_grid'],'pbsa.nc')])),
         ('desolv',a.findPath([kwargs['grid_desolv'],
           os.path.join(kwargs['dir_grid'],'desolv.nc'),
           os.path.join(kwargs['dir_grid'],'desolv.dx'),
@@ -408,6 +409,7 @@ last modified {1}
         ('GMC_tors_threshold', 0.0)])
 
     args['default_dock'] = OrderedDict(args['default_cool'].items() + [
+      ('temperature_scaling','Linear'),
       ('site',None),
       ('site_center',None),
       ('site_direction',None),
@@ -1248,17 +1250,22 @@ last modified {1}
     if self.dock_protocol==[]:
       self.tee("\n>>> Initial docking\n    starting at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
-      undock = True if (self.params['dock']['pose'] == -1) else False
+      undock = True # if (self.params['dock']['pose'] == -1) else False
       if undock:
         lambda_o = self._lambda(1.0, 'dock')
         self.dock_protocol = [lambda_o]
         self._set_universe_evaluator(lambda_o)
-        seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
+        
+        if (self.params['dock']['pose'] == -1):
+          seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
+          self.confs['dock']['starting_poses'] = seeds
+        else:
+          # For pose BPMF, starting_poses is defined in _set_universe_evaluator
+          seeds = self.confs['dock']['starting_poses']
 
         if seeds==[]:
           undock = False
         else:
-          self.confs['dock']['starting_poses'] = seeds
           # initializes smart darting for docking and sets the universe
           # to the lowest energy configuration
           if self.params['dock']['darts_per_seed']>0:
@@ -1306,32 +1313,12 @@ last modified {1}
             confs_HT += list(self.confs['cool']['samples'][0][k])
         confs_HT = confs_HT[:self.params['dock']['seeds_per_state']]
         
-        if (self.params['dock']['pose'] > -1):
-          lambda_o = self._lambda(0.0, 'dock')
-          self.dock_protocol = [lambda_o]
-          self._set_universe_evaluator(lambda_o)
-
-          # Set external coordinates of all high temperature configurations
-          # to the reference external coordinates
-          ExternalRestraintSpecs = self._forceFields['ExternalRestraint'].get_reference_external_BAT()
-          import AlGDock.RigidBodies
-          rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
-          confs = []
-          for conf in confs_HT:
-            BAT_o = rb.BAT(conf, extended=True)
-            BAT_n = np.concatenate((ExternalRestraintSpecs, BAT_o[6:]))
-            confs.append(rb.Cartesian(BAT_n))
-          E = self._energyTerms(confs)
-          self.confs['dock']['replicas'] = [confs[np.random.randint(len(confs))]]
-          self.confs['dock']['samples'] = [[confs]]
-          self.dock_Es = [[E]]
-        else:
-          (confs, E) = self.random_dock()
-          self.tee("  random docking complete in " + \
-                   HMStime(time.time()-dock_start_time))
-          if randomOnly:
-            self._clear_lock('dock')
-            return
+        (confs, E) = self.random_dock()
+        self.tee("  random docking complete in " + \
+                 HMStime(time.time()-dock_start_time))
+        if randomOnly:
+          self._clear_lock('dock')
+          return
     else:
       # Continuing from a previous docking instance
       undock = self.dock_protocol[0]['a']>self.dock_protocol[1]['a']
@@ -2123,14 +2110,13 @@ last modified {1}
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
         # Obtain reference pose
-        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
-        confs.reverse() # Order by increasing energy
+        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False, \
+          sort=False)
         if self.params['dock']['pose']<len(confs):
           starting_pose = np.copy(confs[self.params['dock']['pose']])
           self.confs['dock']['starting_poses'] = [starting_pose]
         else:
           self._clear('dock')
-          self._save('dock')
           self._store_infinite_f_RL()
           raise Exception('Pose index greater than number of poses')
 
@@ -2987,7 +2973,7 @@ last modified {1}
     self.dock_Es.insert(neighbor_ind+1, dock_Es_s)
     self.confs['dock']['samples'].insert(neighbor_ind+1, confs_s)
     self.confs['dock']['replicas'].insert(neighbor_ind+1, \
-    self.confs['dock']['replicas'][neighbor_ind])
+      self.confs['dock']['replicas'][neighbor_ind])
 
     if clear:
       self._clear_f_RL()
@@ -3008,7 +2994,7 @@ last modified {1}
     k = 0
     while k<len(self.dock_protocol)-1:
       mean_acc = calc_mean_acc(k)
-      print k, self.dock_protocol[k]['a'], self.dock_protocol[k+1]['a'], mean_acc
+      # print k, self.dock_protocol[k]['a'], self.dock_protocol[k+1]['a'], mean_acc
       while mean_acc<0.4:
         if not updated:
           updated = True
@@ -3058,7 +3044,8 @@ last modified {1}
       import AlGDock.IO
       IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
       (confs, Es) = IO_dock6_mol2.read(self._FNs['score'], \
-        reorder=self.molecule.inv_prmtop_atom_order)
+        reorder=self.molecule.inv_prmtop_atom_order,
+        multiplier=0.1) # to convert Angstroms to nanometers
       count['dock6'] = len(confs)
     elif self._FNs['score'].endswith('.nc'):
       from netCDF4 import Dataset
@@ -3387,7 +3374,11 @@ last modified {1}
         dL = self.params['dock']['therm_speed']/tL_tensor
         if undock:
           a = lambda_o['a'] - dL
-          if a < 0.0:
+          if (self.params['dock']['pose'] > -1) and \
+             (lambda_o['a'] > 0.5) and (a < 0.5):
+            # Stop at 0.5 to facilitate entropy-energy decomposition
+            a = 0.5
+          elif a < 0.0:
             if pow>0:
               a = lambda_o['a']*(1-0.8**pow)
             else:
@@ -3395,7 +3386,11 @@ last modified {1}
               crossed = True
         else:
           a = lambda_o['a'] + dL
-          if a > 1.0:
+          if (self.params['dock']['pose'] > -1) and \
+             (lambda_o['a'] < 0.5) and (a > 0.5):
+            # Stop at 0.5 to facilitate entropy-energy decomposition
+            a = 0.5
+          elif a > 1.0:
             if pow>0:
               a = lambda_o['a'] + (1-lambda_o['a'])*0.8**pow
             else:
@@ -3442,8 +3437,7 @@ last modified {1}
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
         OBC = a_g # This is the scaling of OBC in the current state
 
-      if self.params['dock']['pose'] > -1:
-        # Pose BPMF
+      if self.params['dock']['pose'] > -1: # Pose BPMF
         a_r = np.tanh(16*a*a)
         da_r_da = 38.*a/np.cosh(16.*a*a)**2
         U_r = self._u_kln([E], [{'k_angular_ext':self.params['dock']['k_pose'], \
@@ -3512,6 +3506,7 @@ last modified {1}
         lambda_n['LJr'] = a_g
         lambda_n['LJa'] = a_g
         lambda_n['ELE'] = a_g
+        lambda_n['T'] = a_r*(self.T_SIMMIN-self.T_HIGH) + self.T_HIGH
       else:
         # BPMF
         a_sg = 1.-4.*(a-0.5)**2
@@ -3523,7 +3518,10 @@ last modified {1}
         lambda_n['ELE'] = a_g
         if site is not None:
           lambda_n['site'] = site
-      lambda_n['T'] = a*(self.T_SIMMIN-self.T_HIGH) + self.T_HIGH
+        if self.params['dock']['temperature_scaling']=='Linear':
+          lambda_n['T'] = a*(self.T_SIMMIN-self.T_HIGH) + self.T_HIGH
+        elif self.params['dock']['temperature_scaling']=='Quadratic':
+          lambda_n['T'] = a_g*(self.T_SIMMIN-self.T_HIGH) + self.T_HIGH
     elif process=='cool':
       lambda_n['a'] = a
       lambda_n['T'] = self.T_HIGH - a*(self.T_HIGH-self.T_SIMMIN)
@@ -4523,33 +4521,18 @@ END
       if p=='dock' and saved['data'][0] is not None:
         (self._n_trans, self._max_n_trans, self._random_trans, \
          self._n_rot, self._max_n_rot, self._random_rotT) = saved['data'][0]
-      if len(saved['data'])==7:
-        # New file format (after 6/13/2016) storing starting poses
-        self.confs[p]['starting_poses'] = saved['data'][1]
-        self.confs[p]['replicas'] = saved['data'][2]
-        self.confs[p]['seeds'] = saved['data'][3]
-        self.confs[p]['SmartDarting'] = saved['data'][4]
-        self.confs[p]['samples'] = saved['data'][5]
-        setattr(self,'%s_Es'%p, saved['data'][6])
-        if saved['data'][5] is not None:
-          cycle = len(saved['data'][5][-1])
-          setattr(self,'_%s_cycle'%p,cycle)
-        else:
-          setattr(self,'_%s_cycle'%p,0)
+      # New file format (after 6/13/2016) storing starting poses
+      self.confs[p]['starting_poses'] = saved['data'][1]
+      self.confs[p]['replicas'] = saved['data'][2]
+      self.confs[p]['seeds'] = saved['data'][3]
+      self.confs[p]['SmartDarting'] = saved['data'][4]
+      self.confs[p]['samples'] = saved['data'][5]
+      setattr(self,'%s_Es'%p, saved['data'][6])
+      if saved['data'][5] is not None:
+        cycle = len(saved['data'][5][-1])
+        setattr(self,'_%s_cycle'%p,cycle)
       else:
-        # Old file format without starting poses
-        print 'Loading file from old format'
-        self.confs[p]['starting_poses'] = []
-        self.confs[p]['replicas'] = saved['data'][1]
-        self.confs[p]['seeds'] = saved['data'][2]
-        self.confs[p]['SmartDarting'] = saved['data'][3]
-        self.confs[p]['samples'] = saved['data'][4]
-        setattr(self,'%s_Es'%p, saved['data'][5])
-        if saved['data'][4] is not None:
-          cycle = len(saved['data'][4][-1])
-          setattr(self,'_%s_cycle'%p,cycle)
-        else:
-          setattr(self,'_%s_cycle'%p,0)
+        setattr(self,'_%s_cycle'%p,0)
     if getattr(self,'%s_protocol'%p)==[] or \
         (not getattr(self,'%s_protocol'%p)[-1]['crossed']):
       setattr(self,'_%s_cycle'%p,0)
