@@ -418,7 +418,7 @@ last modified {1}
       ('site_density',50.),
       ('site_measured',None),
       ('pose',-1),
-      ('k_pose', 200.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K),
+      ('k_pose', 2000.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K),
       ('MCMC_moves',1),
       ('rmsd',False)] + \
       [('receptor_'+phase,None) for phase in allowed_phases])
@@ -874,8 +874,8 @@ last modified {1}
       acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
       mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
 
-      if (mean_acc<self.params['cool']['min_repX_acc']) \
-          and (self.params['cool']['protocol']=='Adaptive'):
+      if (mean_acc<self.params['cool']['min_repX_acc']) and \
+          (self.params['cool']['protocol']=='Adaptive'):
         # If the acceptance probability is too low,
         # reject the state and restart
         self.cool_protocol.pop()
@@ -884,8 +884,9 @@ last modified {1}
         rejectStage += 1
         self.tee("  rejected new state with low estimated acceptance" + \
             " rate of %.2e"%mean_acc)
-      elif (mean_acc>0.99) and (not lambda_n['crossed']) \
-          and (self.params['cool']['protocol'] == 'Adaptive'):
+      elif (len(self.cool_protocol)>2) and \
+          (mean_acc>0.99) and (not lambda_n['crossed']) and \
+          (self.params['cool']['protocol'] == 'Adaptive'):
         # If the acceptance probability is too high,
         # reject the previous state and restart
         self.confs['cool']['replicas'][-1] = confs[np.random.randint(len(confs))]
@@ -1432,7 +1433,8 @@ last modified {1}
           rejectStage += 1
           self.tee("  rejected new state with low estimated acceptance" + \
             " rate of %.2e"%mean_acc)
-        elif (mean_acc>0.99) and (not lambda_n['crossed']) and \
+        elif len(self.dock_protocol)>(2+(not undock)) and \
+            (mean_acc>0.99) and (not lambda_n['crossed']) and \
             (self.params['dock']['protocol']=='Adaptive'):
           # If the acceptance probability is too high,
           # reject the previous state and restart
@@ -3007,7 +3009,7 @@ last modified {1}
         self._insert_dock_state(a_n, clear=False)
         mean_acc = calc_mean_acc(k)
         report += 'to %.5g'%mean_acc
-        print k, self.dock_protocol[k]['a'], self.dock_protocol[k+1]['a'], mean_acc
+        # print k, self.dock_protocol[k]['a'], self.dock_protocol[k+1]['a'], mean_acc
         self.tee(report)
       k += 1
     if updated:
@@ -3416,6 +3418,7 @@ last modified {1}
   def _tL_tensor(self, E, lambda_c, process='dock'):
     # Metric tensor for the thermodynamic length
     T = lambda_c['T']
+    deltaT = np.abs(self.T_HIGH-self.T_SIMMIN)
     if process=='dock':
       a = lambda_c['a']
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
@@ -3425,17 +3428,17 @@ last modified {1}
         1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
     
-      # The OBC term is added because it also scales with a
-      if self.params['dock']['solvation']=='Full':
+      # Psi_g are terms thar are scaled in with a_g
+      # OBC is the strength of the OBC scaling in the current state
+      if self.params['dock']['solvation']=='Desolvated':
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
-        OBC = 1.0
+        OBC = 0.0
       elif self.params['dock']['solvation']=='Fractional':
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
         OBC = a_g
-      else:
-        # By default, the fully bound state is desolvated
-        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
-        OBC = a_g # This is the scaling of OBC in the current state
+      elif self.params['dock']['solvation']=='Full':
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
+        OBC = 1.0
 
       if self.params['dock']['pose'] > -1: # Pose BPMF
         a_r = np.tanh(16*a*a)
@@ -3451,7 +3454,7 @@ last modified {1}
             'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_r_da)*U_r.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-               np.abs(self.T_SIMMIN-self.T_HIGH)*U_RL_g.std()/(R*T*T)
+               deltaT*U_RL_g.std()/(R*T*T)
       else:
         # BPMF
         a_sg = 1.-4.*(a-0.5)**2
@@ -3462,16 +3465,16 @@ last modified {1}
           'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-               np.abs(self.T_SIMMIN-self.T_HIGH)*U_RL_g.std()/(R*T*T)
+               deltaT*U_RL_g.std()/(R*T*T)
     elif process=='cool':
       if self.params['cool']['solvation']=='Full':
         # OBC is always on
-        return self._u_kln([E],[{'MM':True, 'OBC':1.0}], noBeta=True).std()/(R*T*T)
+        return deltaT*self._u_kln([E],[{'MM':True, 'OBC':1.0}], noBeta=True).std()/(R*T*T)
       else:
         # OBC is scaled with the progress variable
         a = lambda_c['a']
         return self._u_kln([E],[{'OBC':1.0}], noBeta=True).std()/(R*T) + \
-          self._u_kln([E],[{'MM':True, 'OBC':a}], noBeta=True).std()/(R*T*T)
+          deltaT*self._u_kln([E],[{'MM':True, 'OBC':a}], noBeta=True).std()/(R*T*T)
     else:
       raise Exception("Unknown process!")
 
@@ -3492,10 +3495,10 @@ last modified {1}
         a_g=0
       if self.params['dock']['solvation']=='Desolvated':
         lambda_n['OBC'] = 0
-      elif self.params['dock']['solvation']=='Full':
-        lambda_n['OBC'] = 1.0
       elif self.params['dock']['solvation']=='Fractional':
         lambda_n['OBC'] = a_g # Scales the solvent with the grid
+      elif self.params['dock']['solvation']=='Full':
+        lambda_n['OBC'] = 1.0
       if self.params['dock']['pose'] > -1:
         # Pose BPMF
         a_r = np.tanh(16*a*a)
@@ -3527,10 +3530,10 @@ last modified {1}
       lambda_n['T'] = self.T_HIGH - a*(self.T_HIGH-self.T_SIMMIN)
       if self.params['cool']['solvation']=='Desolvated':
         lambda_n['OBC'] = a
-      elif self.params['cool']['solvation']=='Full':
-        lambda_n['OBC'] = 1.0
       elif self.params['cool']['solvation']=='Fractional':
         lambda_n['OBC'] = a
+      elif self.params['cool']['solvation']=='Full':
+        lambda_n['OBC'] = 1.0
     else:
       raise Exception("Unknown process!")
 

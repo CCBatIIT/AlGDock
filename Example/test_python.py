@@ -36,15 +36,15 @@ for run_type in run_types:
     pose = -1, \
     rmsd=True, \
     dir_grid='grids', \
-    protocol='Adaptive', cool_therm_speed=5.0, dock_therm_speed=0.5, \
-    T_HIGH=600.0, T_SIMMIN=300.0, T_TARGET=300.0, \
+    protocol='Adaptive', cool_therm_speed=25.0, dock_therm_speed=0.25, \
+    T_HIGH=450.0, T_SIMMIN=300.0, T_TARGET=300.0, \
     sampler='HMC', \
     MCMC_moves=1, \
     sampling_importance_resampling = True, \
-    solvation = 'Fractional', \
+    solvation = 'Full', \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
-    sweeps_per_cycle=25, attempts_per_sweep=100, \
-    steps_per_sweep=100, darts_per_sweep=0, \
+    sweeps_per_cycle=50, attempts_per_sweep=100, \
+    steps_per_sweep=50, darts_per_sweep=0, \
     cool_repX_cycles=3, dock_repX_cycles=4, \
     site='Sphere', site_center=[1.7416, 1.7416, 1.7416], \
     site_max_R=1.0, \
