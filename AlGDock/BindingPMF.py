@@ -2809,18 +2809,16 @@ last modified {1}
       delta_t = lambda_k['delta_t']
     else:
       raise Exception('No time step specified')
-    
+
+    sampler = self.sampler[process]
+    steps_per_trial = self.params[process]['steps_per_sweep']
     if initialize:
-      sampler = self.sampler[process]
       steps = self.params[process]['steps_per_seed']
-      steps_per_trial = self.params[process]['steps_per_seed']/10
       ndarts = self.params[process]['darts_per_seed']
     else:
-      sampler = self.sampler[process]
       steps = self.params[process]['steps_per_sweep']
-      steps_per_trial = steps
       ndarts = self.params[process]['darts_per_sweep']
-
+    
     random_seed = reference*reference + int(abs(seed[0][0]*10000))
     if self._random_seed>0:
       random_seed += self._random_seed
