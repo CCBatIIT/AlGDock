@@ -21,6 +21,7 @@ if confs==[]:
 
 import numpy as np
 confs = np.array(confs)
+confs = np.array(confs)/10. # Convert Angstroms to nanometers
 
 from netCDF4 import Dataset
 dock6_nc = Dataset(outFN,'w',format='NETCDF4')

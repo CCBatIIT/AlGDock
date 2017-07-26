@@ -276,7 +276,8 @@ last modified {1}
       if 'gaff' in a.search_paths.keys() else []
     FNs['new'] = OrderedDict([
       ('ligand_database',cdir_or_dir_dock(kwargs['ligand_database'])),
-      ('forcefield',a.findPath([kwargs['forcefield'],'../Data/gaff2.dat'] + FFpath)),
+      ('forcefield',a.findPath(\
+        [kwargs['forcefield'],'../Data/gaff2.dat'] + FFpath)),
       ('frcmodList',kwargs['frcmodList']),
       ('tarball',OrderedDict([
         ('L',a.findPath([kwargs['ligand_tarball']])),
@@ -339,8 +340,9 @@ last modified {1}
         dir_lig = '.'
         frcmodpaths = []
       if kwargs['frcmodList'] is None:
-        frcmodpaths.extend([os.path.abspath(os.path.join(dir_lig,'lig.frcmod')),\
-                            os.path.abspath(os.path.join(dir_lig,'ligand.frcmod'))])
+        frcmodpaths.extend([\
+          os.path.abspath(os.path.join(dir_lig,'lig.frcmod')),\
+          os.path.abspath(os.path.join(dir_lig,'ligand.frcmod'))])
         frcmod = a.findPath(frcmodpaths)
         self._FNs['frcmodList'] = [frcmod]
     elif not isinstance(self._FNs['frcmodList'],list):
@@ -381,15 +383,15 @@ last modified {1}
     
     args['default_cool'] = OrderedDict([
         ('protocol','Adaptive'),
-        ('therm_speed',0.2),
+        ('therm_speed',30.0),
         ('T_HIGH',600.),
-        ('T_SIMMIN',320.),
+        ('T_SIMMIN',300.),
         ('T_TARGET',300.),
         ('H_mass',4.0),
         ('fraction_CD',0.5),
         ('CD_steps_per_trial',5),
         ('delta_t_CD',4.0),
-        ('delta_t',3.0),
+        ('delta_t',4.0),
         ('sampler','NUTS'),
         ('steps_per_seed',1000),
         ('seeds_per_state',50),
@@ -418,11 +420,11 @@ last modified {1}
       ('site_density',50.),
       ('site_measured',None),
       ('pose',-1),
-      ('k_pose', 2000.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K),
+      ('k_pose', 1000.0 * MMTK.Units.kJ / MMTK.Units.mol / MMTK.Units.K),
       ('MCMC_moves',1),
       ('rmsd',False)] + \
       [('receptor_'+phase,None) for phase in allowed_phases])
-    args['default_dock']['snaps_per_independent'] = 20.0
+    args['default_dock']['snaps_per_independent'] = 50.0
 
     # Store passed arguments in dictionary
     for p in ['cool','dock']:
@@ -519,7 +521,8 @@ last modified {1}
 
     self.molecule.prmtop_atom_order = np.array([atom.number \
       for atom in self.molecule.prmtop_order], dtype=int)
-    self.molecule.inv_prmtop_atom_order = np.zeros(shape=len(self.molecule.prmtop_atom_order), dtype=int)
+    self.molecule.inv_prmtop_atom_order = \
+      np.zeros(shape=len(self.molecule.prmtop_atom_order), dtype=int)
     for i in range(len(self.molecule.prmtop_atom_order)):
       self.molecule.inv_prmtop_atom_order[self.molecule.prmtop_atom_order[i]] = i
 
@@ -568,10 +571,12 @@ last modified {1}
     if self._FNs['inpcrd']['R'] is not None:
       if os.path.isfile(self._FNs['inpcrd']['L']):
         lig_crd = IO_crd.read(self._FNs['inpcrd']['L'], multiplier=0.1)
-      self.confs['receptor'] = IO_crd.read(self._FNs['inpcrd']['R'], multiplier=0.1)
+      self.confs['receptor'] = IO_crd.read(\
+        self._FNs['inpcrd']['R'], multiplier=0.1)
     elif self._FNs['inpcrd']['RL'] is not None:
       complex_crd = IO_crd.read(self._FNs['inpcrd']['RL'], multiplier=0.1)
-      lig_crd = complex_crd[self._ligand_first_atom:self._ligand_first_atom + self._ligand_natoms,:]
+      lig_crd = complex_crd[self._ligand_first_atom:self._ligand_first_atom + \
+        self._ligand_natoms,:]
       self.confs['receptor'] = np.vstack(\
         (complex_crd[:self._ligand_first_atom,:],\
          complex_crd[self._ligand_first_atom + self._ligand_natoms:,:]))
@@ -641,7 +646,8 @@ last modified {1}
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'MixedHMC':
         from AlGDock.Integrators.CDHMC import CDHMC
-        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo import HamiltonianMonteCarloIntegrator
+        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+          import HamiltonianMonteCarloIntegrator
         self.mixed_samplers = []
         self.mixed_samplers.append(CDHMC.CDHMCIntegrator(self.universe, \
           os.path.dirname(self._FNs['ligand_database']), \
@@ -783,7 +789,8 @@ last modified {1}
       # and sets the universe to the lowest energy configuration
       if self.params['cool']['darts_per_seed']>0:
         self.tee(self.sampler['cool_SmartDarting'].set_confs(seeds))
-        self.confs['cool']['SmartDarting'] = self.sampler['cool_SmartDarting'].confs
+        self.confs['cool']['SmartDarting'] = \
+          self.sampler['cool_SmartDarting'].confs
       elif len(seeds)>0:
         self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
       self.confs['cool']['starting_poses'] = seeds
@@ -793,11 +800,10 @@ last modified {1}
 
       # Run at starting temperature
       state_start_time = time.time()
-      conf = self.universe.configuration().array
-      (confs, Es_tot, lambda_o['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(\
-        [self.universe.configuration().array]*self.params['cool']['seeds_per_state'], \
-        'cool', lambda_o)
+      seeds = [np.copy(self.universe.configuration().array) \
+        for n in range(self.params['cool']['seeds_per_state'])]
+      (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
+        self._initial_sim_state(seeds, 'cool', lambda_o)
       E = self._energyTerms(confs, process='cool')
       self.confs['cool']['replicas'] = [confs[np.random.randint(len(confs))]]
       self.confs['cool']['samples'] = [[confs]]
@@ -851,7 +857,7 @@ last modified {1}
         self.tee(self.sampler['cool_SmartDarting'].set_confs(\
           self.confs['cool']['SmartDarting']))
         self.confs['cool']['SmartDarting'] = self.sampler['cool_SmartDarting'].confs
-      (confs, Es_tot, lambda_n['delta_t'], sampler_metrics) = \
+      (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'cool', lambda_n)
 
       if self.params['cool']['darts_per_seed']>0:
@@ -1271,19 +1277,27 @@ last modified {1}
           # to the lowest energy configuration
           if self.params['dock']['darts_per_seed']>0:
             self.tee(self.sampler['dock_SmartDarting'].set_confs(seeds))
-            self.confs['dock']['SmartDarting'] = self.sampler['dock_SmartDarting'].confs
+            self.confs['dock']['SmartDarting'] = \
+              self.sampler['dock_SmartDarting'].confs
           elif len(seeds)>0:
             self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
-          
-          # Ramp up the temperature using HMC
-          self._ramp_T(self.T_SIMMIN, normalize=False)
 
-          # Simulate
-          sim_start_time = time.time()
-          (confs, Es_tot, lambda_o['delta_t'], sampler_metrics) = \
-            self._initial_sim_state(\
-              [self.universe.configuration().array]*self.params['dock']['seeds_per_state'], \
-              'dock', lambda_o)
+          attempts = 0
+          DeltaEs = np.array([0.])
+          while np.std(DeltaEs)<1E-7:
+            # Ramp up the temperature using HMC
+            self._ramp_T(self.T_SIMMIN, normalize=False)
+
+            seeds = [np.copy(self.universe.configuration().array) \
+              for n in range(self.params['dock']['seeds_per_state'])]
+            # Simulate
+            sim_start_time = time.time()
+            (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
+              self._initial_sim_state(seeds, 'dock', lambda_o)
+            
+            attempts += 1
+            if attempts == 5:
+              raise Exception('Unable to initialize simulation')
 
           # Get state energies
           E = self._energyTerms(confs)
@@ -1367,19 +1381,24 @@ last modified {1}
       if (not undock) and (self.params['dock']['pose'] == -1) \
           and (len(self.dock_protocol)==2):
         # Cooling state 0 configurations, randomly oriented
-        # Use the lowest energy configuration in the first docking state for replica exchange
+        # Use the lowest energy configuration
+        # in the first docking state for replica exchange
         ind = np.argmin(u_n)
-        (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
+        (c,i_rot,i_trans) = np.unravel_index(ind, \
+          (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
         repX_conf = np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]),\
                            self._random_trans[i_trans].array)
         self.confs['dock']['starting_poses'] = [repX_conf]
         self.confs['dock']['replicas'] = [repX_conf]
         self.confs['dock']['samples'] = [[repX_conf]]
-        self.dock_Es = [[dict([(key,np.array([val[ind]])) for (key,val) in E.iteritems()])]]
+        self.dock_Es = [[dict([(key,np.array([val[ind]])) \
+          for (key,val) in E.iteritems()])]]
         seeds = []
         for ind in seedIndicies:
-          (c,i_rot,i_trans) = np.unravel_index(ind, (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
-          seeds.append(np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]), self._random_trans[i_trans].array))
+          (c,i_rot,i_trans) = np.unravel_index(ind, \
+            (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
+          seeds.append(np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]), \
+            self._random_trans[i_trans].array))
         confs = None
         E = {}
       else: # Seeds from last state
@@ -1397,8 +1416,10 @@ last modified {1}
         self.tee(self.sampler['dock_SmartDarting'].set_confs(\
           self.confs['dock']['SmartDarting']))
         self.confs['dock']['SmartDarting'] = self.sampler['dock_SmartDarting'].confs
-      (confs, Es_tot, lambda_n['delta_t'], sampler_metrics) = \
+      (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
+      if np.std(DeltaEs)<1E-7:
+        raise Exception('Unable to initialize simulation')
 
       if self.params['dock']['darts_per_seed']>0:
         self.confs['dock']['SmartDarting'] += confs
@@ -1710,22 +1731,28 @@ last modified {1}
           for c in extractCycles])
         u_sampled = np.concatenate([\
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
-        
+
         # From the full grid to the fully bound complex in phase
         du = u_RL - u_sampled
         min_du = min(du)
-        #   Exponential average
-        f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du
-        
         weights = np.exp(-du+min_du)
+
+        # Filter outliers
+        toKeep = np.abs(du - np.median(du))<(2*np.std(du))
+        du = du[toKeep]
+        weights[~toKeep] = 0.
+
         weights = weights/sum(weights)
-        
+
+        #   Exponential average
+        f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du - f_R_solv
+
         # Interaction energies
         Psi = np.concatenate([self.stats_RL['Psi_'+phase][c] \
           for c in extractCycles])
         min_Psi = min(Psi)
         max_Psi = max(Psi)
-        
+    
         # Complex solvation
         self.f_RL[phase+'_solv'].append(f_RL_solv)
         
@@ -1735,7 +1762,7 @@ last modified {1}
         self.B[phase+'_EXP'].append(\
           np.log(sum(weights*np.exp(Psi-max_Psi))) + max_Psi)
         
-        self.B[phase+'_MBAR'].append(-f_R_solv \
+        self.B[phase+'_MBAR'].append(\
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
           + self.f_RL['grid_MBAR'][-1][-1] + f_RL_solv)
 
@@ -1768,7 +1795,7 @@ last modified {1}
 
     equilibrated_cycle = []
     for c in range(getattr(self,'_%s_cycle'%process)):
-      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<std_u_KKs[c]
+      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<2*std_u_KKs[c]
       if nearMean.any():
         nearMean = list(nearMean).index(True)
       else:
@@ -1777,13 +1804,45 @@ last modified {1}
         nearMean = max(nearMean,1)
       equilibrated_cycle.append(nearMean)
     return equilibrated_cycle
-
-#  correlation_times = [pymbar.timeseries.integratedAutocorrelationTimeMultiple(\
-#    np.transpose(np.hstack([np.array(self.dock_Es[0][c]['repXpath']) \
-#      for c in range(start_c,len(self.dock_Es[0])) \
-#      if 'repXpath' in self.dock_Es[0][c].keys()]))) \
-#        for start_c in range(1,len(self.dock_Es[0]))]
   
+#   This equilibration detection suggested by Chodera
+#   doesn't seem to work well in practice.
+#
+#    process_Es = getattr(self,'%s_Es'%process)
+#
+#    # Get previous results, if any
+#    if process=='cool':
+#      if hasattr(self,'stats_L') and \
+#          ('equilibrated_cycle' in self.stats_L.keys()) and \
+#          self.stats_L['equilibrated_cycle']!=[]:
+#        equilibrated_cycle = self.stats_L['equilibrated_cycle']
+#      else:
+#        equilibrated_cycle = [0]
+#    elif process=='dock':
+#      if hasattr(self,'stats_RL') and \
+#          ('equilibrated_cycle' in self.stats_RL.keys()) and \
+#          self.stats_RL['equilibrated_cycle']!=[]:
+#        equilibrated_cycle = self.stats_RL['equilibrated_cycle']
+#      else:
+#        equilibrated_cycle = [0]
+#
+#    # Estimate equilibrated cycle
+#    for last_c in range(len(equilibrated_cycle), getattr(self,'_%s_cycle'%process)):
+#      correlation_times = [np.inf] + [\
+#        pymbar.timeseries.integratedAutocorrelationTimeMultiple(\
+#          np.transpose(np.hstack([np.array(process_Es[0][c]['repXpath']) \
+#           for c in range(start_c,last_c) \
+#             if 'repXpath' in process_Es[0][c].keys()])), fast=True) \
+#               for start_c in range(1,last_c)]
+#      g = 2*np.array(correlation_times) + 1
+#      nsamples_tot = [n for n in reversed(np.cumsum([len(process_Es[0][c]['MM']) \
+#        for c in reversed(range(last_c))]))]
+#      nsamples_ind = nsamples_tot/g
+#      equilibrated_cycle_last_c = max(np.argmax(nsamples_ind),1)
+#      equilibrated_cycle.append(equilibrated_cycle_last_c)
+#
+#    return equilibrated_cycle
+
   def _get_pose_prediction(self, process, equilibrated_cycle):
     # Gather snapshots
     for k in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process)):
@@ -1886,26 +1945,26 @@ last modified {1}
         self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
           for c in range(len(confs))])
 
-    # Grid interpolation energies
-    inv_powers = np.array(range(-12,0) + range(1,13), dtype=float)
-    n_powers = len(inv_powers)
-    from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
-    for grid_type in ['LJa','LJr']:
-      for interpolation_type in ['Trilinear']: # ,'BSpline']: # ,'Tricubic']:
-        key = '%s_%sTransform'%(grid_type,interpolation_type)
-        Es[key] = np.zeros((n_powers,len(confs)),dtype=np.float)
-        for p in range(n_powers):
-          print interpolation_type + ' interpolation of the ' + \
-            grid_type + ' grid with a power of 1/%d'%(inv_powers[p])
-          FF = InterpolationForceField(self._FNs['grids'][grid_type], \
-            name='%.5g'%(inv_powers[p]),
-            interpolation_type=interpolation_type, strength=1.0,
-            scaling_property='scaling_factor_'+grid_type, \
-            inv_power=inv_powers[p])
-          self.universe.setForceField(FF)
-          for c in range(len(confs)):
-            self.universe.setConfiguration(Configuration(self.universe,confs[c]))
-            Es[key][p,c] = self.universe.energy()
+#    # Grid interpolation energies
+#    inv_powers = np.array(range(-12,0) + range(1,13), dtype=float)
+#    n_powers = len(inv_powers)
+#    from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
+#    for grid_type in ['LJa','LJr']:
+#      for interpolation_type in ['Trilinear']: # ,'BSpline']: # ,'Tricubic']:
+#        key = '%s_%sTransform'%(grid_type,interpolation_type)
+#        Es[key] = np.zeros((n_powers,len(confs)),dtype=np.float)
+#        for p in range(n_powers):
+#          print interpolation_type + ' interpolation of the ' + \
+#            grid_type + ' grid with a power of 1/%d'%(inv_powers[p])
+#          FF = InterpolationForceField(self._FNs['grids'][grid_type], \
+#            name='%.5g'%(inv_powers[p]),
+#            interpolation_type=interpolation_type, strength=1.0,
+#            scaling_property='scaling_factor_'+grid_type, \
+#            inv_power=inv_powers[p])
+#          self.universe.setForceField(FF)
+#          for c in range(len(confs)):
+#            self.universe.setConfiguration(Configuration(self.universe,confs[c]))
+#            Es[key][p,c] = self.universe.energy()
 
     # Implicit solvent energies
     self._load_programs(self.params['dock']['phases'])
@@ -2239,19 +2298,19 @@ last modified {1}
   def _initial_sim_state(self, seeds, process, lambda_k):
     """
     Initializes a state, returning the configurations and potential energy.
-    Attempts simulation with decreasing time steps up to 5 times
-    until there is variance in the potential energy.
-    If the time step is below 1 fs, though, also repeats attempt.
+    Attempts simulation up to 5 times, adjusting the time step.
     """
     
+    lambda_k['delta_t'] = 1.*self.params[process]['delta_t']*MMTK.Units.fs
+
     attempts_left = 5
     while (attempts_left>0):
       # Get initial potential energy
-      potEs_o = []
+      Es_o = []
       for seed in seeds:
         self.universe.setConfiguration(Configuration(self.universe, seed))
-        potEs_o.append(self.universe.energy())
-      potEs_o = np.array(potEs_o)
+        Es_o.append(self.universe.energy())
+      Es_o = np.array(Es_o)
     
       # Perform simulation
       results = []
@@ -2279,29 +2338,43 @@ last modified {1}
           seeds[k], process, lambda_k, True, k) for k in range(len(seeds))]
 
       seeds = [result['confs'] for result in results]
-      potEs = np.array([result['Etot'] for result in results])
+      Es_n = np.array([result['Etot'] for result in results])
+      deltaEs = Es_n-Es_o
+      attempts_left -= 1
 
-      # Adjust time step
+      # Adjust the time step
       delta_t = np.array([result['delta_t'] for result in results])
       if np.std(delta_t)>1E-3:
+        # If the integrator adapts the time step, take an average
         delta_t = min(max(np.mean(delta_t), \
           self.params[process]['delta_t']/5.*MMTK.Units.fs), \
-          self.params[process]['delta_t']*2.*MMTK.Units.fs)
+          self.params[process]['delta_t']*1.*MMTK.Units.fs)
       else:
         delta_t = delta_t[0]
 
-      acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
-        np.sum([r['att_Sampler'] for r in results])
+      if 'HamiltonianMonteCarlo' in self.sampler[process].__module__:
+        # Adjust the time step for Hamiltonian Monte Carlo
+        acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
+          np.sum([r['att_Sampler'] for r in results])
+        if acc_rate>0.8:
+          delta_t += 0.25*MMTK.Units.fs
+        elif acc_rate<0.1:
+          delta_t -= 0.5*MMTK.Units.fs
+        elif acc_rate<0.4:
+          delta_t -= 0.25*MMTK.Units.fs
+        else:
+          attempts_left = 0
+      else:
+        # For other integrators, make sure the time step
+        # is small enough to see changes in the energy
+        if (np.std(deltaEs)<1E-3):
+          delta_t -= 0.5*MMTK.Units.fs
+        else:
+          attempts_left = 0
 
       if (delta_t<1.*MMTK.Units.fs):
-        lambda_k['delta_t'] = 1.*MMTK.Units.fs
-        attempts_left -= 1
-      elif (np.std(potEs)>1E-3) and (np.std(potEs-potEs_o)>1E-3):
-        attempts_left = 0
-      else:
-        delta_t = 0.9*delta_t
-        lambda_k['delta_t'] = delta_t
-        attempts_left -= 1
+        delta_t = 1.*MMTK.Units.fs
+      lambda_k['delta_t'] = delta_t
 
     sampler_metrics = '  '
     for s in ['ExternalMC', 'SmartDarting', 'Sampler']:
@@ -2312,7 +2385,7 @@ last modified {1}
         if att>0:
           sampler_metrics += '%s %d/%d=%.2f (%.1f s); '%(\
             s,acc,att,float(acc)/att,time)
-    return (seeds, potEs, delta_t, sampler_metrics)
+    return (seeds, Es_n-Es_o, delta_t, sampler_metrics)
   
   def _replica_exchange(self, process):
     """
@@ -2717,7 +2790,7 @@ last modified {1}
     for k in range(K):
       (s,n) = linear_index_to_snapshot_index(\
         np.random.choice(range(W_nl.shape[0]), size = 1, p = W_nl[:,k])[0])
-      self.confs[process]['replicas'].append(confs_repX[s][n])
+      self.confs[process]['replicas'].append(np.copy(confs_repX[s][n]))
 
   def _sim_one_state_worker(self, input, output):
     """
@@ -2735,7 +2808,7 @@ last modified {1}
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
-      delta_t = self.params[process]['delta_t']*MMTK.Units.fs
+      raise Exception('No time step specified')
     
     if initialize:
       sampler = self.sampler[process]
@@ -2961,10 +3034,12 @@ last modified {1}
             (snapshot_s,snapshot_c,snapshot_n) = linear_index_to_snapshot_index(\
              np.random.choice(range(len(weights)), size = 1, p = weights)[0])
         for term in terms:
-          dock_Es_c[term].append(self.dock_Es[snapshot_s][snapshot_c][term][snapshot_n])
+          dock_Es_c[term].append(\
+            np.copy(self.dock_Es[snapshot_s][snapshot_c][term][snapshot_n]))
         if self.params['dock']['keep_intermediate']:
           # Has not been tested:
-          confs_c.append(self.confs['dock']['samples'][snapshot_s][snapshot_c])
+          confs_c.append(\
+            np.copy(self.confs['dock']['samples'][snapshot_s][snapshot_c]))
       for term in terms:
         dock_Es_c[term] = np.array(dock_Es_c[term])
       dock_Es_s.append(dock_Es_c)
@@ -2975,7 +3050,7 @@ last modified {1}
     self.dock_Es.insert(neighbor_ind+1, dock_Es_s)
     self.confs['dock']['samples'].insert(neighbor_ind+1, confs_s)
     self.confs['dock']['replicas'].insert(neighbor_ind+1, \
-      self.confs['dock']['replicas'][neighbor_ind])
+      np.copy(self.confs['dock']['replicas'][neighbor_ind]))
 
     if clear:
       self._clear_f_RL()
@@ -3000,6 +3075,7 @@ last modified {1}
       while mean_acc<0.4:
         if not updated:
           updated = True
+          self._set_lock('dock')
         a_k = self.dock_protocol[k]['a']
         a_kp = self.dock_protocol[k+1]['a']
         a_n = (a_k+a_kp)/2.
@@ -3016,6 +3092,7 @@ last modified {1}
       self._clear_f_RL()
       self._save('dock')
       self.tee("")
+      self._clear_lock('dock')
 
   def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True, sort=True):
     """
@@ -3370,42 +3447,37 @@ last modified {1}
       # Change grid scaling and temperature simultaneously
       tL_tensor = self._tL_tensor(E,lambda_o)
       crossed = lambda_o['crossed']
-      if pow is not None:
-        tL_tensor = tL_tensor*(1.25**pow)
-      if tL_tensor>1E-7:
-        dL = self.params['dock']['therm_speed']/tL_tensor
-        if undock:
-          a = lambda_o['a'] - dL
-          if (self.params['dock']['pose'] > -1) and \
-             (lambda_o['a'] > 0.5) and (a < 0.5):
-            # Stop at 0.5 to facilitate entropy-energy decomposition
-            a = 0.5
-          elif a < 0.0:
-            if pow>0:
-              a = lambda_o['a']*(1-0.8**pow)
-            else:
-              a = 0.0
-              crossed = True
-        else:
-          a = lambda_o['a'] + dL
-          if (self.params['dock']['pose'] > -1) and \
-             (lambda_o['a'] < 0.5) and (a > 0.5):
-            # Stop at 0.5 to facilitate entropy-energy decomposition
-            a = 0.5
-          elif a > 1.0:
-            if pow>0:
-              a = lambda_o['a'] + (1-lambda_o['a'])*0.8**pow
-            else:
-              a = 1.0
-              crossed = True
-        return self._lambda(a, process='dock', lambda_o=lambda_o, crossed=crossed)
+      # Calculate the change in the progress variable, capping at 0.05
+      if pow is None:
+        dL = min(self.params['dock']['therm_speed']/tL_tensor, 0.05)
       else:
-        # Repeats the previous stage
-        lambda_n = copy.deepcopy(lambda_o)
-        lambda_n['delta_t'] = lambda_o['delta_t']*(1.25**pow)
-        self.tee('  no variance in previous stage!' + \
-          ' trying time step of %.5g'%lambda_n['delta_t'])
-        return lambda_n
+        # If there have been rejected stages, reduce dL
+        dL = min(self.params['dock']['therm_speed']/tL_tensor/(1.25**pow), 0.05)
+      if undock:
+        a = lambda_o['a'] - dL
+        if (self.params['dock']['pose'] > -1) and \
+           (lambda_o['a'] > 0.5) and (a < 0.5):
+          # Stop at 0.5 to facilitate entropy-energy decomposition
+          a = 0.5
+        elif a < 0.0:
+          if pow>0:
+            a = lambda_o['a']*(1-0.8**pow)
+          else:
+            a = 0.0
+            crossed = True
+      else:
+        a = lambda_o['a'] + dL
+        if (self.params['dock']['pose'] > -1) and \
+           (lambda_o['a'] < 0.5) and (a > 0.5):
+          # Stop at 0.5 to facilitate entropy-energy decomposition
+          a = 0.5
+        elif a > 1.0:
+          if pow>0:
+            a = lambda_o['a'] + (1-lambda_o['a'])*0.8**pow
+          else:
+            a = 1.0
+            crossed = True
+      return self._lambda(a, process='dock', lambda_o=lambda_o, crossed=crossed)
     elif self.params['dock']['protocol']=='Geometric':
       A_GEOMETRIC = [0.] + list(np.exp(np.linspace(np.log(1E-10),np.log(1.0),
         int(1/self.params['dock']['therm_speed']))))
@@ -4642,7 +4714,11 @@ END
   def _set_lock(self, p):
     if not os.path.isdir(self.dir[p]):
       os.system('mkdir -p '+self.dir[p])
-    lockFN = os.path.join(self.dir[p],'.lock')
+    if p=='dock' and self.params['dock']['pose']>-1:
+      lockFN = os.path.join(self.dir[p], \
+        '.lock_pose%03d'%self.params['dock']['pose'])
+    else:
+      lockFN = os.path.join(self.dir[p],'.lock')
     if os.path.isfile(lockFN):
       raise Exception(p + ' is locked')
     else:
@@ -4656,7 +4732,11 @@ END
     self.log = open(logFN,'a')
 
   def _clear_lock(self, p):
-    lockFN = os.path.join(self.dir[p],'.lock')
+    if p=='dock' and self.params['dock']['pose']>-1:
+      lockFN = os.path.join(self.dir[p], \
+        '.lock_pose%03d'%self.params['dock']['pose'])
+    else:
+      lockFN = os.path.join(self.dir[p],'.lock')
     if os.path.isfile(lockFN):
       os.remove(lockFN)
     if hasattr(self,'log'):

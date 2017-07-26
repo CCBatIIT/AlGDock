@@ -79,7 +79,13 @@ if os.path.exists('/share/apps/algdock'): # CCB Cluster
   email_specified = ''
   if args.email == '':
     email_specified = '#'
-  
+
+# ONLY USE IF THERE ARE ISSUES WITH SPECIFIC NODES!
+# Selects certain specific nodes:
+# nodeslist=['compute-1-1','compute-1-2','compute-1-6','compute-1-7','compute-1-8']
+#  import numpy as np
+#  args.nodes = nodeslist[np.random.randint(0,len(nodeslist))]
+
   # Write script
   submit_script = '''#!/bin/bash
 #
@@ -92,6 +98,8 @@ if os.path.exists('/share/apps/algdock'): # CCB Cluster
 #PBS -q default
 {10}#PBS -M {11}
 {10}#PBS -m {12}
+
+hostname
 
 {7}
 {8}
@@ -134,6 +142,8 @@ elif os.path.exists('/pylon2') or os.path.exists('/oasis/projects/nsf'): # Bridg
 #SBATCH --workdir={5}
 #SBATCH -o {6}
 #SBATCH -e {7}
+
+hostname
 
 {8}
 
@@ -226,11 +236,11 @@ Queue 1
 module load libgfortran
 
 # Download data
-# wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=0ByidOA_rkLLSbXl3WnZ3MmtWbnc' -O google_drive_downloader.tar.gz
-tar -xvf google_drive_downloader.tar.gz
-./google_drive_downloader/google_drive_downloader
-tar xzf algdock.tar.gz
+wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/algdock.tar.gz
+# wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=0ByidOA_rkLLSbXl3WnZ3MmtWbnc' -O google_drive_downloader.tar.gz
+# tar -xvf google_drive_downloader.tar.gz
+# ./google_drive_downloader/google_drive_downloader
+# tar xzf algdock.tar.gz
 
 # Modify paths
 echo "
@@ -264,11 +274,13 @@ ls -ltr
 
   if command.find('$ALGDOCK')!=-1 and command.find('timed')!=-1:
       # -s means file is not zero size
+      dock_result = command[command.find('f_RL'):]
+      dock_result = dock_result[:dock_result.find(' ')]
       execute_script += """
-if [ ! -s f_RL.pkl.gz ]
+if [ ! -s {0} ]
   then
     exit 100
-fi"""
+fi""".format(dock_result)
 else:
   cluster = None
   submit_script = args.command
@@ -288,7 +300,7 @@ if execute_script!='':
   sh_F.write(execute_script)
   sh_F.close()
 
-if (not args.dry) and cluster in ['OSG','CCB','Bridges']:
+if (not args.dry) and cluster in ['OSG','CCB','Bridges','Comet']:
   print 'Submitting job script: ' + submit_FN
 
 print('Job name: ' + args.name)
