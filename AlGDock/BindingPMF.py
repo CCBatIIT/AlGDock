@@ -198,7 +198,7 @@ last modified {1}
     if len(tarFNs)>0:
       # From the keyword arguments
       for prefix in ['ligand','receptor','complex']:
-        for postfix in ('database','prmtop','inpcrd','mol2','rb','fixed_atoms'):
+        for postfix in ('database','prmtop','inpcrd','mol2','fixed_atoms'):
           key = '%s_%s'%(prefix,postfix)
           if (key in kwargs.keys()) and (kwargs[key] is not None):
             FN = os.path.abspath(kwargs[key])
@@ -225,7 +225,7 @@ last modified {1}
     if len(seekFNs)>0:
       import tarfile
 
-      print '>>> Decompressing tarballs'
+      print ">>> Decompressing tarballs"
       print 'looking for:\n  ' + '\n  '.join(seekFNs)
       if seek_frcmod:
         print '  and frcmod files'
@@ -293,8 +293,6 @@ last modified {1}
         ('RL',cdir_or_dir_dock(kwargs['complex_inpcrd']))])),
       ('mol2',OrderedDict([
         ('L',cdir_or_dir_dock(kwargs['ligand_mol2']))])),
-      ('rb',OrderedDict([
-        ('L',cdir_or_dir_dock(kwargs['ligand_rb']))])),
       ('fixed_atoms',OrderedDict([
         ('R',cdir_or_dir_dock(kwargs['receptor_fixed_atoms'])),
         ('RL',cdir_or_dir_dock(kwargs['complex_fixed_atoms']))])),
@@ -399,10 +397,10 @@ last modified {1}
         ('repX_cycles',20),
         ('min_repX_acc',0.4),
         ('sweeps_per_cycle',1000),
+        ('snaps_per_cycle',50),
         ('attempts_per_sweep',25),
         ('steps_per_sweep',50),
         ('darts_per_sweep',0),
-        ('snaps_per_independent',3.0),
         ('phases',['NAMD_Gas','NAMD_OBC']),
         ('sampling_importance_resampling',False),
         ('solvation','Desolvated'),
@@ -424,7 +422,7 @@ last modified {1}
       ('MCMC_moves',1),
       ('rmsd',False)] + \
       [('receptor_'+phase,None) for phase in allowed_phases])
-    args['default_dock']['snaps_per_independent'] = 50.0
+    args['default_dock']['snaps_per_cycle'] = 50
 
     # Store passed arguments in dictionary
     for p in ['cool','dock']:
@@ -483,7 +481,6 @@ last modified {1}
     self.T_TARGET = self.params['cool']['T_TARGET']
     self.RT_TARGET = R * self.params['cool']['T_TARGET']
 
-    print '>>> Setting up the simulation'
     self._setup_universe(do_dock = do_dock)
 
     print '\n*** Simulation parameters and constants ***'
@@ -491,9 +488,10 @@ last modified {1}
       print '\nfor %s:'%p
       print dict_view(self.params[p])[:-1]
 
-    self.timing = {'start':time.time(), 'max':kwargs['max_time']}
+    self.timings = {'max':kwargs['max_time']}
+    self.start_times = {}
     self._run(kwargs['run_type'])
-  
+      
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
   
@@ -555,7 +553,7 @@ last modified {1}
       elif len(ligand_ind) > 1:
         print '  possible ligand residue labels: '+\
           ', '.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
-      print '  considering a residue named "%s" as the ligand'%\
+      print 'ligand residue name: ' + \
         prmtop_RL['RESIDUE_LABEL'][ligand_ind[-1]].strip()
       self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[-1]] - 1
     else:
@@ -686,7 +684,8 @@ last modified {1}
       np.random.seed(self._random_seed)
 
   def _run(self, run_type):
-    self.run_type = run_type
+    self.start_times['run'] = time.time()
+    self._run_type = run_type
     if run_type=='configuration_energies' or \
        run_type=='minimized_configuration_energies':
       self.configuration_energies(minimize=(\
@@ -700,6 +699,8 @@ last modified {1}
       self.sim_process('cool')
       self._postprocess([('cool',-1,-1,'L')])
       self.calc_f_L()
+    elif run_type=='initial_dock':
+      self.initial_dock()
     elif run_type=='dock': # Sample the docking process
       self.sim_process('dock')
       self._postprocess()
@@ -753,6 +754,9 @@ last modified {1}
           for cycle_ind in range(len(self.confs[process]['samples'][state_ind])):
             self.confs[process]['samples'][state_ind][cycle_ind] = []
         self._save(process)
+    if run_type is not None:
+      print "\nElapsed time for execution of %s: %s"%(run_type,
+        HMStime(time.time()-self.start_times['run']))
 
   ###########
   # Cooling #
@@ -771,12 +775,13 @@ last modified {1}
       return # Initial cooling is already complete
     
     self._set_lock('cool')
-    cool_start_time = time.time()
+    self.start_times['cool'] = time.time()
+    self.start_times['cool_save'] = time.time()
 
     direction_name = 'warm' if warm else 'cool'
     if self.cool_protocol==[]:
-      self.tee("\n>>> Initial %sing\n    starting at "%direction_name + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
+      self.tee("\n>>> Initial %sing, starting at "%direction_name + \
+        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
 
       # Set up the force field
       lambda_o = self._lambda(1.0 if warm else 0., 'cool', site=False)
@@ -799,7 +804,7 @@ last modified {1}
       self._ramp_T(lambda_o['T'], normalize=True)
 
       # Run at starting temperature
-      state_start_time = time.time()
+      self.start_times['cool_state'] = time.time()
       seeds = [np.copy(self.universe.configuration().array) \
         for n in range(self.params['cool']['seeds_per_state'])]
       (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
@@ -809,15 +814,13 @@ last modified {1}
       self.confs['cool']['samples'] = [[confs]]
       self.cool_Es = [[E]]
 
-      self.tee("  drew %d configurations "%len(confs) + \
-               "at %d K "%lambda_o['T'] + \
-               "in " + HMStime(time.time()-state_start_time))
-      self.tee(sampler_metrics)
-      self.tee("  dt=%.2f fs; tL_tensor=%.3e"%(\
+      self.tee("  at %d K in %s: %s"%(lambda_o['T'],
+        HMStime(time.time()-self.start_times['cool_state']), sampler_metrics))
+      self.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
         lambda_o['delta_t']*1000., self._tL_tensor(E,lambda_o,process='cool')))
     else:
-      self.tee("\n>>> Initial %sing\n    continuing at "%direction_name + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
+      self.tee("\n>>> Initial %sing, continuing at "%direction_name + \
+        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
       lambda_o = self.cool_protocol[-1]
       confs = self.confs['cool']['samples'][-1][0]
       E = self.cool_Es[-1][0]
@@ -825,8 +828,6 @@ last modified {1}
     if self.params['cool']['darts_per_seed']>0:
       self.confs['cool']['SmartDarting'] += confs
 
-    self.tee("")
-    
     # Main loop for initial cooling:
     # choose new temperature, randomly select seeds, simulate
     rejectStage = 0
@@ -851,7 +852,7 @@ last modified {1}
       E_o = E
       
       # Simulate
-      state_start_time = time.time()
+      self.start_times['cool_state'] = time.time()
       self._set_universe_evaluator(lambda_n)
       if self.params['cool']['darts_per_seed']>0:
         self.tee(self.sampler['cool_SmartDarting'].set_confs(\
@@ -866,19 +867,18 @@ last modified {1}
       # Get state energies
       E = self._energyTerms(confs, process='cool')
 
-      self.tee("  drew %d configurations "%len(confs) + \
-               "at %d K "%lambda_n['T'] + \
-               "in " + (HMStime(time.time()-state_start_time)))
-      self.tee(sampler_metrics)
-      self.tee("  dt=%.2f fs; tL_tensor=%.3e"%(\
-        lambda_n['delta_t']*1000., self._tL_tensor(E,lambda_o,process='cool')))
-
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
       (u_kln,N_k) = self._u_kln([[E_o],[E]], self.cool_protocol[-2:])
       N = min(N_k)
       acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
       mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
+
+      self.tee("  at %d K in %s: %s"%(\
+        lambda_n['T'], HMStime(time.time()-self.start_times['cool_state']), sampler_metrics))
+      self.tee("    dt=%.2f fs; tL_tensor=%.2e; <acc>=%.2f"%(\
+        lambda_n['delta_t']*1000., \
+        self._tL_tensor(E,lambda_o,process='cool'), mean_acc))
 
       if (mean_acc<self.params['cool']['min_repX_acc']) and \
           (self.params['cool']['protocol']=='Adaptive'):
@@ -888,8 +888,7 @@ last modified {1}
         confs = confs_o
         E = E_o
         rejectStage += 1
-        self.tee("  rejected new state with low estimated acceptance" + \
-            " rate of %.2e"%mean_acc)
+        self.tee("  rejected new state with low acceptance rate")
       elif (len(self.cool_protocol)>2) and \
           (mean_acc>0.99) and (not lambda_n['crossed']) and \
           (self.params['cool']['protocol'] == 'Adaptive'):
@@ -900,8 +899,7 @@ last modified {1}
         self.cool_protocol[-1] = copy.deepcopy(lambda_n)
         rejectStage -= 1
         lambda_o = lambda_n
-        self.tee("  rejected previous state with high estimated acceptance" + \
-            " rate of %.2f"%mean_acc)
+        self.tee("  rejected previous state with high acceptance rate")
       else:
         # Store data and continue with initialization
         self.confs['cool']['replicas'].append(confs[np.random.randint(len(confs))])
@@ -910,7 +908,6 @@ last modified {1}
         self.cool_protocol[-1] = copy.deepcopy(lambda_n)
         rejectStage = 0
         lambda_o = lambda_n
-        self.tee("  the estimated repX acceptance rate is %.2f\n"%mean_acc)
 
       # Special tasks after the last stage
       if self.cool_protocol[-1]['crossed']:
@@ -931,18 +928,16 @@ last modified {1}
         self._cool_cycle += 1
 
       # Save progress every 5 minutes
-      if ('last_cool_save' not in self.timing) or \
-         ((time.time()-self.timing['last_cool_save'])>5*60):
+      if ((time.time()-self.start_times['cool_save'])>5*60):
         self._save('cool')
-        self.tee("")
-        self.timing['last_cool_save'] = time.time()
+        self.start_times['cool_save'] = time.time()
         saved = True
       else:
         saved = False
 
-      if self.run_type=='timed':
-        remaining_time = self.timing['max']*60 - \
-          (time.time()-self.timing['start'])
+      if self._run_type=='timed':
+        remaining_time = self.timings['max']*60 - \
+          (time.time()-self.start_times['run'])
         if remaining_time<0:
           if not saved:
             self._save('cool')
@@ -958,7 +953,7 @@ last modified {1}
 
     self.tee("Elapsed time for initial %sing of "%direction_name + \
       "%d states: "%len(self.cool_protocol) + \
-      HMStime(time.time()-cool_start_time))
+      HMStime(time.time()-self.start_times['cool']))
     self._clear_lock('cool')
     self.sampler['cool_SmartDarting'].confs = []
     return True
@@ -994,9 +989,9 @@ last modified {1}
         self.tee("  skipping the cooling free energy calculation")
         return
 
-    start_string = "\n>>> Ligand free energy calculations\n    starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n"
-    free_energy_start_time = time.time()
+    start_string = "\n>>> Ligand free energy calculations, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n"
+    self.start_times['free energy'] = time.time()
 
     # Store stats_L internal energies
     self.stats_L['u_K_sampled'] = \
@@ -1045,7 +1040,7 @@ last modified {1}
 
     if not do_solvation:
       if updated:
-        if not self.run_type=='timed':
+        if not self._run_type=='timed':
           self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L), quiet=True)
         self._clear_lock('cool')
       return True
@@ -1108,7 +1103,7 @@ last modified {1}
     if updated:
       self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L))
       self.tee("\nElapsed time for free energy calculation: " + \
-        HMStime(time.time()-free_energy_start_time))
+        HMStime(time.time()-self.start_times['free energy']))
       self._clear_lock('cool')
     return True
 
@@ -1231,11 +1226,11 @@ last modified {1}
              " first and second docking states is " + \
              "%.5g (%.5g)"%(f_grid0.mean(),f_grid0_std))
 
-    ravel_start_time = time.time()
+    self.start_times['ravel'] = time.time()
     for term in E.keys():
       E[term] = np.ravel(E[term][:,:self._n_rot,:self._n_trans])
     self.tee("  raveled energy terms in " + \
-      HMStime(time.time()-ravel_start_time))
+      HMStime(time.time()-self.start_times['ravel']))
 
     return (cool0_confs, E)
 
@@ -1252,11 +1247,12 @@ last modified {1}
       return # Initial docking already complete
 
     self._set_lock('dock')
-    dock_start_time = time.time()
+    self.start_times['initial_dock'] = time.time()
+    self.start_times['dock_save'] = time.time()
     
     if self.dock_protocol==[]:
-      self.tee("\n>>> Initial docking\n    starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
+      self.tee("\n>>> Initial docking, starting at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
       undock = True # if (self.params['dock']['pose'] == -1) else False
       if undock:
         lambda_o = self._lambda(1.0, 'dock')
@@ -1291,7 +1287,6 @@ last modified {1}
             seeds = [np.copy(self.universe.configuration().array) \
               for n in range(self.params['dock']['seeds_per_state'])]
             # Simulate
-            sim_start_time = time.time()
             (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
               self._initial_sim_state(seeds, 'dock', lambda_o)
             
@@ -1305,11 +1300,9 @@ last modified {1}
           self.confs['dock']['samples'] = [[confs]]
           self.dock_Es = [[E]]
 
-          self.tee("  drew %d configurations "%len(confs) + \
-                   "with progress %e "%lambda_o['a'] + \
-                   "in " + HMStime(time.time()-sim_start_time))
-          self.tee(sampler_metrics)
-          self.tee("  dt=%.2f fs, tL_tensor=%.3e"%(\
+          self.tee("\n  at a=%.3e in %s: %s"%(\
+            lambda_o['a'], HMStime(time.time()-self.start_times['initial_dock']), sampler_metrics))
+          self.tee("    dt=%.2f fs, tL_tensor=%.3e"%(\
             lambda_o['delta_t']*1000., \
             self._tL_tensor(E,lambda_o)))
     
@@ -1330,16 +1323,16 @@ last modified {1}
         
         (confs, E) = self.random_dock()
         self.tee("  random docking complete in " + \
-                 HMStime(time.time()-dock_start_time))
+                 HMStime(time.time()-self.start_times['initial_dock']))
         if randomOnly:
           self._clear_lock('dock')
           return
     else:
       # Continuing from a previous docking instance
       undock = self.dock_protocol[0]['a']>self.dock_protocol[1]['a']
-      self.tee("\n>>> Initial %sdocking\n"%({True:'un',False:''}[undock]) + \
-        "    continuing at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+      self.tee("\n>>> Initial %sdocking, "%({True:'un',False:''}[undock]) + \
+        "continuing at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
       confs = self.confs['dock']['samples'][-1][0]
       E = self.dock_Es[-1][0]
 
@@ -1410,7 +1403,7 @@ last modified {1}
       E_o = E
 
       # Simulate
-      sim_start_time = time.time()
+      self.start_times['dock_state'] = time.time()
       self._set_universe_evaluator(lambda_n)
       if self.params['dock']['darts_per_seed']>0  and lambda_n['a']>0.1:
         self.tee(self.sampler['dock_SmartDarting'].set_confs(\
@@ -1427,23 +1420,20 @@ last modified {1}
       # Get state energies
       E = self._energyTerms(confs)
 
-      self.tee("  drew %d configurations "%len(confs) + \
-               "with progress %e "%lambda_n['a'] + \
-               "in " + HMStime(time.time()-sim_start_time))
-      self.tee(sampler_metrics)
-      self.tee("  dt=%.2f fs, tL_tensor=%.3e"%(\
-        lambda_n['delta_t']*1000.,
-        self._tL_tensor(E,lambda_n)))
+      # Estimate the mean replica exchange acceptance rate
+      # between the previous and new state
+      (u_kln,N_k) = self._u_kln([[E_o],[E]], self.dock_protocol[-2:])
+      N = min(N_k)
+      acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
+      mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
+
+      self.tee("  at a=%.3e in %s: %s"%(\
+        lambda_n['a'], HMStime(time.time()-self.start_times['dock_state']), sampler_metrics))
+      self.tee("    dt=%.2f fs; tL_tensor=%.3e; <acc>=%.2f"%(\
+        lambda_o['delta_t']*1000., self._tL_tensor(E,lambda_o), mean_acc))
 
       # Decide whether to keep the state
       if len(self.dock_protocol)>(1+(not undock)):
-        # Estimate the mean replica exchange acceptance rate
-        # between the previous and new state
-        (u_kln,N_k) = self._u_kln([[E_o],[E]], self.dock_protocol[-2:])
-        N = min(N_k)
-        acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
-        mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
-        
         if (mean_acc<self.params['dock']['min_repX_acc']) and \
             (self.params['dock']['protocol']=='Adaptive'):
           # If the acceptance probability is too low,
@@ -1452,8 +1442,7 @@ last modified {1}
           confs = confs_o
           E = E_o
           rejectStage += 1
-          self.tee("  rejected new state with low estimated acceptance" + \
-            " rate of %.2e"%mean_acc)
+          self.tee("  rejected new state with low estimated acceptance rate")
         elif len(self.dock_protocol)>(2+(not undock)) and \
             (mean_acc>0.99) and (not lambda_n['crossed']) and \
             (self.params['dock']['protocol']=='Adaptive'):
@@ -1464,8 +1453,7 @@ last modified {1}
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage -= 1
           lambda_o = lambda_n
-          self.tee("  rejected previous state with high estimated acceptance" + \
-            " rate of %.2f"%mean_acc)
+          self.tee("  rejected past state with high estimated acceptance rate")
         else:
           # Store data and continue with initialization
           self.confs['dock']['replicas'].append(confs[np.random.randint(len(confs))])
@@ -1474,7 +1462,6 @@ last modified {1}
           self.dock_protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage = 0
           lambda_o = lambda_n
-          self.tee("  the estimated repX acceptance rate is %.2f\n"%mean_acc)
       else:
         # Store data and continue with initialization (first time)
         self.confs['dock']['replicas'].append(confs[np.random.randint(len(confs))])
@@ -1504,33 +1491,29 @@ last modified {1}
         self._dock_cycle += 1
 
       # Save progress every 5 minutes
-      if ('last_dock_save' not in self.timing) or \
-         ((time.time()-self.timing['last_dock_save'])>5*60):
+      if ((time.time()-self.start_times['dock_save'])>5*60):
         self._save('dock')
-        self.timing['last_dock_save'] = time.time()
-        self.tee("")
+        self.start_times['dock_save'] = time.time()
         saved = True
       else:
         saved = False
 
-      if self.run_type=='timed':
-        remaining_time = self.timing['max']*60 - \
-          (time.time()-self.timing['start'])
+      if self._run_type=='timed':
+        remaining_time = self.timings['max']*60 - \
+          (time.time()-self.start_times['run'])
         if remaining_time<0:
           if not saved:
             self._save('dock')
-            self.tee("")
           self.tee("  no time remaining for initial dock")
           self._clear_lock('dock')
           return False
 
     if not saved:
       self._save('dock')
-      self.tee("")
 
-    self.tee("Elapsed time for initial docking of " + \
+    self.tee("\nElapsed time for initial docking of " + \
       "%d states: "%len(self.dock_protocol) + \
-      HMStime(time.time()-dock_start_time))
+      HMStime(time.time()-self.start_times['initial_dock']))
     self._clear_lock('dock')
     self.sampler['dock_SmartDarting'].confs = []
     return True
@@ -1567,9 +1550,9 @@ last modified {1}
       self.tee("  skipping the binding PMF calculation")
       return
 
-    start_string = "\n>>> Complex free energy calculations\n    starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n"
-    BPMF_start_time = time.time()
+    start_string = "\n>>> Complex free energy calculations, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n"
+    self.start_times['BPMF'] = time.time()
 
     updated = False
     def set_updated_to_True(updated, quiet=False):
@@ -1604,15 +1587,16 @@ last modified {1}
     if self.stats_RL['equilibrated_cycle']!=eqc_o:
       updated = set_updated_to_True(updated, quiet=~do_solvation)
 
-    # Autocorrelation time for all replicas
-    if updated:
-      paths = [np.array(self.dock_Es[0][c]['repXpath']) \
-        for c in range(len(self.dock_Es[0])) \
-        if 'repXpath' in self.dock_Es[0][c].keys()]
-      if len(paths)>0:
-        paths = np.transpose(np.hstack(paths))
-        self.stats_RL['tau_ac'] = \
-          pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
+    # TODO: Calculate autocorrelation based on different metric
+#    # Autocorrelation time for all replicas
+#    if updated:
+#      paths = [np.array(self.dock_Es[0][c]['repXpath']) \
+#        for c in range(len(self.dock_Es[0])) \
+#        if 'repXpath' in self.dock_Es[0][c].keys()]
+#      if len(paths)>0:
+#        paths = np.transpose(np.hstack(paths))
+#        self.stats_RL['tau_ac'] = \
+#          pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
 
     # Store rmsd values
     self.stats_RL['rmsd'] = [(np.hstack([self.dock_Es[k][c]['rmsd']
@@ -1663,7 +1647,7 @@ last modified {1}
 
     if not do_solvation:
       if updated:
-        if not self.run_type=='timed':
+        if not self._run_type=='timed':
           self._write_pkl_gz(f_RL_FN, \
             (self.f_L, self.stats_RL, self.f_RL, self.B))
         self._clear_lock('dock')
@@ -1773,7 +1757,7 @@ last modified {1}
     if updated:
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
       self.tee("\nElapsed time for binding PMF estimation: " + \
-        HMStime(time.time()-BPMF_start_time))
+        HMStime(time.time()-self.start_times['BPMF']))
     self._clear_lock('dock')
     
   def _store_infinite_f_RL(self):
@@ -1785,63 +1769,41 @@ last modified {1}
     self._write_pkl_gz(f_RL_FN, (self.f_L, [], np.inf, np.inf))
 
   def _get_equilibrated_cycle(self, process):
-    # Estimate cycle at which simulation has equilibrated
-    u_KKs = [np.sum([self._u_kln(\
-      [getattr(self,process+'_Es')[k][c]], [getattr(self,process+'_protocol')[k]]) \
-        for k in range(len(getattr(self,process+'_protocol')))],0) \
-          for c in range(getattr(self,'_%s_cycle'%process))]
-    mean_u_KKs = np.array([np.mean(u_KK) for u_KK in u_KKs])
-    std_u_KKs = np.array([np.std(u_KK) for u_KK in u_KKs])
+    process_Es = getattr(self,'%s_Es'%process)
 
-    equilibrated_cycle = []
-    for c in range(getattr(self,'_%s_cycle'%process)):
-      nearMean = abs(mean_u_KKs - mean_u_KKs[c])<2*std_u_KKs[c]
-      if nearMean.any():
-        nearMean = list(nearMean).index(True)
+    # Get previous results, if any
+    if process=='cool':
+      if hasattr(self,'stats_L') and \
+          ('equilibrated_cycle' in self.stats_L.keys()) and \
+          self.stats_L['equilibrated_cycle']!=[]:
+        equilibrated_cycle = self.stats_L['equilibrated_cycle']
       else:
-        nearMean = c
-      if c>0: # If possible, reject burn-in
-        nearMean = max(nearMean,1)
-      equilibrated_cycle.append(nearMean)
+        equilibrated_cycle = [0]
+    elif process=='dock':
+      if hasattr(self,'stats_RL') and \
+          ('equilibrated_cycle' in self.stats_RL.keys()) and \
+          self.stats_RL['equilibrated_cycle']!=[]:
+        equilibrated_cycle = self.stats_RL['equilibrated_cycle']
+      else:
+        equilibrated_cycle = [0]
+
+    # Estimate equilibrated cycle
+    for last_c in range(len(equilibrated_cycle), \
+        getattr(self,'_%s_cycle'%process)):
+      correlation_times = [np.inf] + [\
+        pymbar.timeseries.integratedAutocorrelationTime(\
+          np.concatenate([process_Es[0][c]['mean_energies'] \
+            for c in range(len(process_Es[0])) \
+            if 'mean_energies' in process_Es[0][c].keys()])) \
+               for start_c in range(1,last_c)]
+      g = 2*np.array(correlation_times) + 1
+      nsamples_tot = [n for n in reversed(np.cumsum([len(process_Es[0][c]['MM']) \
+        for c in reversed(range(last_c))]))]
+      nsamples_ind = nsamples_tot/g
+      equilibrated_cycle_last_c = max(np.argmax(nsamples_ind),1)
+      equilibrated_cycle.append(equilibrated_cycle_last_c)
+      
     return equilibrated_cycle
-  
-#   This equilibration detection suggested by Chodera
-#   doesn't seem to work well in practice.
-#
-#    process_Es = getattr(self,'%s_Es'%process)
-#
-#    # Get previous results, if any
-#    if process=='cool':
-#      if hasattr(self,'stats_L') and \
-#          ('equilibrated_cycle' in self.stats_L.keys()) and \
-#          self.stats_L['equilibrated_cycle']!=[]:
-#        equilibrated_cycle = self.stats_L['equilibrated_cycle']
-#      else:
-#        equilibrated_cycle = [0]
-#    elif process=='dock':
-#      if hasattr(self,'stats_RL') and \
-#          ('equilibrated_cycle' in self.stats_RL.keys()) and \
-#          self.stats_RL['equilibrated_cycle']!=[]:
-#        equilibrated_cycle = self.stats_RL['equilibrated_cycle']
-#      else:
-#        equilibrated_cycle = [0]
-#
-#    # Estimate equilibrated cycle
-#    for last_c in range(len(equilibrated_cycle), getattr(self,'_%s_cycle'%process)):
-#      correlation_times = [np.inf] + [\
-#        pymbar.timeseries.integratedAutocorrelationTimeMultiple(\
-#          np.transpose(np.hstack([np.array(process_Es[0][c]['repXpath']) \
-#           for c in range(start_c,last_c) \
-#             if 'repXpath' in process_Es[0][c].keys()])), fast=True) \
-#               for start_c in range(1,last_c)]
-#      g = 2*np.array(correlation_times) + 1
-#      nsamples_tot = [n for n in reversed(np.cumsum([len(process_Es[0][c]['MM']) \
-#        for c in reversed(range(last_c))]))]
-#      nsamples_ind = nsamples_tot/g
-#      equilibrated_cycle_last_c = max(np.argmax(nsamples_ind),1)
-#      equilibrated_cycle.append(equilibrated_cycle_last_c)
-#
-#    return equilibrated_cycle
 
   def _get_pose_prediction(self, process, equilibrated_cycle):
     # Gather snapshots
@@ -2033,11 +1995,6 @@ last modified {1}
     self.T = lambda_n['T']
     self.RT = R*lambda_n['T']
     
-    if 'delta_t' in lambda_n.keys():
-      self.delta_t = lambda_n['delta_t']
-    else:
-      self.delta_t = self.params['cool']['delta_t']*MMTK.Units.fs
-
     # Reuse evaluators that have been stored
     evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
       for k in sorted(lambda_n.keys())])
@@ -2122,7 +2079,7 @@ last modified {1}
             else:
               self._forceFields['OBC'] = OBCForceField()
           else: # Grids
-            loading_start_time = time.time()
+            self.start_times['grid_loading'] = time.time()
             grid_FN = self._FNs['grids'][{'sLJr':'LJr','sLJa':'LJa','sELE':'ELE',
               'LJr':'LJr','LJa':'LJa','ELE':'ELE'}[scalable]]
             grid_scaling_factor = 'scaling_factor_' + \
@@ -2158,7 +2115,7 @@ last modified {1}
               grid_thresh=grid_thresh)
             self.tee('  %s grid loaded from %s in %s'%(scalable, \
               os.path.basename(grid_FN), \
-              HMStime(time.time()-loading_start_time)))
+              HMStime(time.time()-self.start_times['grid_loading'])))
 
         # Set the force field strength to the desired value
         self._forceFields[scalable].set_strength(lambda_n[scalable])
@@ -2241,6 +2198,8 @@ last modified {1}
         del self._forceFields[scalable]
 
   def _ramp_T(self, T_START, T_LOW = 20., normalize=False):
+    self.start_times['T_ramp'] = time.time()
+  
     # First minimize the energy
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
@@ -2273,6 +2232,7 @@ last modified {1}
     T_LOW = 20.
     T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
     for T in T_SERIES:
+      delta_t = 1.*self.params['dock']['delta_t']*MMTK.Units.fs
       attempts_left = 5
       while attempts_left>0:
         random_seed = int(T*10000) + attempts_left + \
@@ -2281,19 +2241,23 @@ last modified {1}
           random_seed += int(time.time())
         random_seed = random_seed%32767
         (xs, energies, acc, ntrials, delta_t) = \
-          sampler(steps = 500, steps_per_trial = 50, T=T,\
-                  delta_t=self.delta_t, random_seed=random_seed)
-        if (np.std(energies)>1E-3) and float(acc)/ntrials>0.4:
-          attempts_left = 0
+          sampler(steps = 5000, steps_per_trial = 50, T=T,\
+                  delta_t=delta_t, random_seed=random_seed)
+        attempts_left -= 1
+        acc_rate = float(acc)/ntrials
+        if acc_rate<0.1:
+          delta_t -= 0.5*MMTK.Units.fs
+        elif acc_rate<0.4:
+          delta_t -= 0.25*MMTK.Units.fs
         else:
-          self.delta_t *= 0.9
-          attempts_left -= 1
+          attempts_left = 0
     if normalize:
       self.universe.normalizePosition()
     e_f = self.universe.energy()
     
-    self.tee("  ramped temperature from %d to %d K\n"%(T_LOW, T_START) + \
-      "  changing energy from %.3g to %.3g kcal/mol\n"%(e_o, e_f))
+    self.tee("\n  ramped temperature from %d to %d K in %s, "%(\
+      T_LOW, T_START, HMStime(time.time()-self.start_times['T_ramp'])) + \
+      "changing energy from %.3g to %.3g kcal/mol"%(e_o, e_f))
 
   def _initial_sim_state(self, seeds, process, lambda_k):
     """
@@ -2376,7 +2340,7 @@ last modified {1}
         delta_t = 1.*MMTK.Units.fs
       lambda_k['delta_t'] = delta_t
 
-    sampler_metrics = '  '
+    sampler_metrics = ''
     for s in ['ExternalMC', 'SmartDarting', 'Sampler']:
       if np.array(['acc_'+s in r.keys() for r in results]).any():
         acc = np.sum([r['acc_'+s] for r in results])
@@ -2557,7 +2521,7 @@ last modified {1}
     for var in ['confs','state_inds','energies']:
       storage[var] = []
     
-    cycle_start_time = time.time()
+    self.start_times['repX cycle'] = time.time()
 
     if self._cores>1:
       # Multiprocessing setup
@@ -2582,8 +2546,10 @@ last modified {1}
     for move_type in ['ExternalMC','SmartDarting','Sampler']:
       acc[move_type] = np.zeros(K, dtype=int)
       att[move_type] = np.zeros(K, dtype=int)
-      self.timing[move_type] = 0.
-    self.timing['repX'] = 0.
+      self.timings[move_type] = 0.
+    self.timings['repX'] = 0.
+    
+    mean_energies = []
 
     # Do replica exchange
     state_inds = range(K)
@@ -2625,6 +2591,7 @@ last modified {1}
       # Store energies
       for k in range(K):
         confs[k] = results[k]['confs']
+      mean_energies.append(np.mean([results[k]['Etot'] for k in range(K)]))
       E = self._energyTerms(confs, E, process=process)
       if (process=='dock') and (self.params['dock']['rmsd'] is not False):
         E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
@@ -2637,7 +2604,7 @@ last modified {1}
           if key in results[k].keys():
             acc[move_type][state_inds[k]] += results[k][key]
             att[move_type][state_inds[k]] += results[k]['att_'+move_type]
-            self.timing[move_type] += results[k]['time_'+move_type]
+            self.timings[move_type] += results[k]['time_'+move_type]
 
       # Calculate u_ij (i is the replica, and j is the configuration),
       #    a list of arrays
@@ -2647,7 +2614,7 @@ last modified {1}
       (state_inds, inv_state_inds) = \
         attempt_swaps(state_inds, inv_state_inds, u_ij, pairs_to_swap, \
           self.params[process]['attempts_per_sweep'])
-      self.timing['repX'] += (time.time()-repX_start_time)
+      self.timings['repX'] += (time.time()-repX_start_time)
 
       # Store data in local variables
       storage['confs'].append(list(confs))
@@ -2662,25 +2629,9 @@ last modified {1}
           if gMC_attempt_count > 0 else 0, \
         HMStime(time_gMC)))
 
-    # Estimate relaxation time from autocorrelation
-    state_inds = np.array(storage['state_inds'])
-    tau_ac = pymbar.timeseries.integratedAutocorrelationTimeMultiple(state_inds.T)
-
-    # There will be at least per_independent
-    # and up to sweeps_per_cycle saved samples
-    # max(int(np.ceil((1+2*tau_ac)/per_independent)),1) is the minimum stride,
-    # which is based on per_independent samples per autocorrelation time.
-    # max(self.params['dock']['sweeps_per_cycle']/per_independent)
-    # is the maximum stride, which gives per_independent samples if possible.
-    per_independent = self.params[process]['snaps_per_independent']
-    stride = min(max(int(np.ceil((1+2*tau_ac)/per_independent)),1), \
-                 max(int(np.ceil(nsweeps/per_independent)),1))
-
-    store_indicies = np.array(range(min(stride-1,nsweeps-1), nsweeps, stride), dtype=int)
-
-    self.tee("  saving %d configurations"%(len(store_indicies)) + \
-      " in cycle %d in %s"%(cycle, HMStime(time.time()-cycle_start_time)) + \
-      " (tau_ac=%.5g)"%(tau_ac))
+    # Report
+    self.tee("  completed cycle %d in %s"%(cycle, \
+      HMStime(time.time()-self.start_times['repX cycle'])))
     MC_report = " "
     for move_type in ['ExternalMC','SmartDarting','Sampler']:
       total_acc = np.sum(acc[move_type])
@@ -2688,8 +2639,8 @@ last modified {1}
       if total_att>0:
         MC_report += " %s %d/%d=%.2f (%.1f s);"%(move_type, \
           total_acc, total_att, float(total_acc)/total_att, \
-          self.timing[move_type])
-    MC_report += " repX t %.1f s"%self.timing['repX']
+          self.timings[move_type])
+    MC_report += " repX t %.1f s"%self.timings['repX']
     self.tee(MC_report)
 
     # Get indicies for sorting by thermodynamic state, not replica
@@ -2704,6 +2655,9 @@ last modified {1}
     #   self.process_Es and self.confs[process]['samples']
     # and also local variables 
     #   Es_repX and confs_repX
+    store_indicies = np.array(np.linspace(0, nsweeps-1,\
+      num=self.params[process]['snaps_per_cycle']), dtype=np.int)
+
     if (process=='dock') and (self.params['dock']['rmsd'] is not False):
         terms.append('rmsd') # Make sure to save the rmsd
     Es_repX = []
@@ -2711,9 +2665,9 @@ last modified {1}
       E_k = {}
       E_k_repX = {}
       if k==0:
-        E_k['repXpath'] = storage['state_inds']
         E_k['acc'] = acc
         E_k['att'] = att
+        E_k['mean_energies'] = mean_energies
       for term in terms:
         E_term = np.array([storage['energies'][snap][term][\
           inv_state_inds[snap][k]] for snap in range(nsweeps)])
@@ -2895,20 +2849,19 @@ last modified {1}
         if len(confs)>0:
           self.confs['dock']['replicas'] = confs
 
-      self.tee("\n>>> Replica exchange for {0}ing\n    starting at {1} GMT".format(\
-        process, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))  + "\n", \
+      self.tee("\n>>> Replica exchange for {0}ing, starting at {1}\n".format(\
+        process, time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime())), \
         process=process)
-      self.timing[process+'_repX_start'] = time.time()
+      self.start_times[process+'_repX_start'] = time.time()
       start_cycle = getattr(self,'_%s_cycle'%process)
       cycle_times = []
       while ((getattr(self,'_%s_cycle'%process) < self.params[process]['repX_cycles'])):
-        cycle_start_time = time.time()
         self._replica_exchange(process)
-        cycle_times.append(time.time()-cycle_start_time)
+        cycle_times.append(time.time()-self.start_times['repX cycle'])
         if process=='dock':
           self._insert_dock_state_between_low_acc()
-        if self.run_type=='timed':
-          remaining_time = self.timing['max']*60 - (time.time()-self.timing['start'])
+        if self._run_type=='timed':
+          remaining_time = self.timings['max']*60 - (time.time()-self.start_times['run'])
           cycle_time = np.mean(cycle_times)
           self.tee("  projected cycle time: %s, remaining time: %s"%(\
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
@@ -2916,7 +2869,7 @@ last modified {1}
             return False
       self.tee("\nElapsed time for %d cycles of replica exchange was %s"%(\
          (getattr(self,'_%s_cycle'%process) - start_cycle), \
-          HMStime(time.time() - self.timing[process+'_repX_start'])), \
+          HMStime(time.time() - self.start_times[process+'_repX_start'])), \
           process=process)
 
     # If there are insufficient configurations,
@@ -2927,11 +2880,10 @@ last modified {1}
         E_MM += list(self.cool_Es[0][k]['MM'])
       while len(E_MM)<self.params['dock']['seeds_per_state']:
         self.tee("More samples from high temperature ligand simulation needed", process='cool')
-        cycle_start_time = time.time()
         self._replica_exchange('cool')
-        cycle_times.append(time.time()-cycle_start_time)
-        if self.run_type=='timed':
-          remaining_time = self.timing['max']*60 - (time.time()-self.timing['start'])
+        cycle_times.append(time.time()-self.start_times['repX cycle'])
+        if self._run_type=='timed':
+          remaining_time = self.timings['max']*60 - (time.time()-self.start_times['run'])
           cycle_time = np.mean(cycle_times)
           self.tee("  projected cycle time: %s, remaining time: %s"%(\
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
@@ -3185,7 +3137,7 @@ last modified {1}
 
       minimized_confs = []
       minimized_energies = []
-      min_start_time = time.time()
+      self.start_times['minimization'] = time.time()
       for conf in confs:
         self.universe.setConfiguration(Configuration(self.universe, conf))
         x_o = np.copy(self.universe.configuration().array)
@@ -3210,7 +3162,7 @@ last modified {1}
       confs = minimized_confs
       energies = minimized_energies
       self.tee("  minimized %d configurations in "%len(confs) + \
-        HMStime(time.time()-min_start_time) + \
+        HMStime(time.time()-self.start_times['minimization']) + \
         "\n  the first %d energies are:\n  "%min(len(confs),10) + \
         ', '.join(['%.2f'%e for e in energies[:10]]))
     else:
@@ -3762,9 +3714,9 @@ last modified {1}
 
     # Start postprocessing
     self._set_lock('dock' if 'dock' in [loc[0] for loc in incomplete] else 'cool')
-    self.tee("\n>>> Postprocessing\n    starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()) + "\n")
-    postprocess_start_time = time.time()
+    self.tee("\n>>> Postprocessing, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+    self.start_times['postprocess'] = time.time()
 
     done_queue = m.Queue()
     processes = [multiprocessing.Process(target=self._energy_worker, \
@@ -3838,7 +3790,7 @@ last modified {1}
     if len(updated_processes)>0:
       self._clear_lock('dock' if 'dock' in updated_processes else 'cool')
       self.tee("\nElapsed time for postprocessing was " + \
-        HMStime(time.time()-postprocess_start_time))
+        HMStime(time.time()-self.start_times['postprocess']))
       return len(incomplete)==len(results)
 
   def _energy_worker(self, input, output, time_per_snap):
@@ -3848,9 +3800,9 @@ last modified {1}
       nsnaps = len(confs)
       
       # Make sure there is enough time remaining
-      if self.run_type=='timed':
-        remaining_time = self.timing['max']*60 - \
-          (time.time()-self.timing['start'])
+      if self._run_type=='timed':
+        remaining_time = self.timings['max']*60 - \
+          (time.time()-self.start_times['run'])
         if len(time_per_snap[moiety+phase])>0:
           mean_time_per_snap = np.mean(np.mean(time_per_snap[moiety+phase]))
           if np.isnan(mean_time_per_snap):
@@ -3863,12 +3815,12 @@ last modified {1}
             return
     
       # Calculate the energy
-      start_time = time.time()
+      self.start_times['energy'] = time.time()
       for program in ['NAMD','sander','gbnsr6','OpenMM','APBS']:
         if phase.startswith(program):
           E = getattr(self,'_%s_Energy'%program)(*args)
           break
-      wall_time = time.time() - start_time
+      wall_time = time.time() - self.start_times['energy']
 
       if not np.isinf(E).any():
         self.tee("  postprocessed %s, state %d, cycle %d, %s in %s"%(\
@@ -4652,7 +4604,7 @@ END
     else:
       f_RL_FN = os.path.join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
-    if hasattr(self,'run_type') and (not self.run_type=='timed'):
+    if hasattr(self,'run_type') and (not self._run_type=='timed'):
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
 
   def _save(self, p, keys=['progress','data']):
@@ -4707,7 +4659,8 @@ END
         os.system('mkdir -p '+self.dir[p])
       if os.path.isfile(saved_FN):
         os.rename(saved_FN,saved_FN+'.BAK')
-      self._write_pkl_gz(saved_FN, saved[key])
+      self._write_pkl_gz(saved_FN, saved[key], quiet=True)
+    self.tee('  saved %s progress and data'%p)
 
   def _set_lock(self, p):
     if not os.path.isdir(self.dir[p]):
@@ -4763,7 +4716,7 @@ END
       if self.params[p]['sampler'] == 'MixedHMC':
         self.sampler[p].TDintegrator.Clear()
     if (not DEBUG) and len(self._toClear)>0:
-      print '\n>>> Clearing files'
+      print "\n>>> Clearing files"
       for FN in self._toClear:
         if os.path.isfile(FN):
           os.remove(FN)

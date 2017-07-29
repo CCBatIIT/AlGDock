@@ -43,7 +43,7 @@ for run_type in run_types:
     sampling_importance_resampling = True, \
     solvation = 'Full', \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
-    sweeps_per_cycle=50, attempts_per_sweep=100, \
+    sweeps_per_cycle=50, snaps_per_cycle=25, attempts_per_sweep=100, \
     steps_per_sweep=50, darts_per_sweep=0, \
     cool_repX_cycles=3, dock_repX_cycles=4, \
     site='Sphere', site_center=[1.7416, 1.7416, 1.7416], \

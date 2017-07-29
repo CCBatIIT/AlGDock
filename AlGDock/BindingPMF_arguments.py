@@ -69,7 +69,7 @@ arguments = {
     'help':'Number of replica exchange cycles for docking'},
   'run_type':{'choices':['configuration_energies','minimized_configuration_energies',
               'store_params', 'initial_cool', 'cool', \
-              'dock','timed','postprocess',\
+              'initial_dock', 'dock','timed','postprocess',\
               'redo_postprocess','free_energies','redo_free_energies', 'all', \
               'render_docked', 'render_intermediates', \
               'clear_intermediates', None],
@@ -95,11 +95,11 @@ arguments = {
     'help':'The number of steps for constrained dynamics HMC trials'},
   'delta_t_TD':{'type':float, 'default':4.0, \
     'help':'The time step for constrained dynamics HMC trials'},
-  'delta_t':{'type':float, 'default':3.0, \
+  'delta_t':{'type':float, 'default':3.5, \
     'help':'The default time step, in fs'},
   'T_HIGH':{'type':float, 'default':600.0,
     'help':'High temperature'},
-  'T_SIMMIN':{'type':float, 'default':325.0,
+  'T_SIMMIN':{'type':float, 'default':300.0,
     'help':'Minimum simulation temperature'},
   'T_TARGET':{'type':float, 'default':300.0,
     'help':'Target temperature'},
@@ -123,8 +123,8 @@ arguments = {
     'help':'Number of MD steps per replica exchange sweep'},
   'darts_per_sweep':{'type':int,
     'help':'Number of smart darting attempts per replica exchange sweep'},
-  'snaps_per_independent':{'type':int,
-    'help':'Number of snapshots per independent sample'},
+  'snaps_per_cycle':{'type':int,
+    'help':'Number of snapshots to save per cycle'},
   'sampling_importance_resampling':{'action':'store_true',
     'help':'perfom sampling importance resampling'},
   'solvation':{'choices':['Desolvated','Full','Fractional'], \
@@ -175,7 +175,7 @@ for process in ['cool','dock']:
       'seeds_per_state', 'steps_per_seed', 'darts_per_seed',
       'sweeps_per_cycle', 'attempts_per_sweep',
       'steps_per_sweep', 'darts_per_sweep',
-      'snaps_per_independent', 'keep_intermediate']:
+      'snaps_per_cycle', 'keep_intermediate']:
     arguments[process+'_'+key] = copy.deepcopy(arguments[key])
 
 for phase in allowed_phases:
