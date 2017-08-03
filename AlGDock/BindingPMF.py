@@ -1137,6 +1137,7 @@ last modified {1}
 
     # Do the random docking
     lambda_o = self._lambda(0.0, 'dock')
+    lambda_o['delta_t'] = 1.*self.cool_protocol[0]['delta_t']
     self.dock_protocol = [lambda_o]
 
     # Set up the force field with full interaction grids
@@ -1422,15 +1423,21 @@ last modified {1}
 
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
-      (u_kln,N_k) = self._u_kln([[E_o],[E]], self.dock_protocol[-2:])
-      N = min(N_k)
-      acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
-      mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
-
       self.tee("  at a=%.3e in %s: %s"%(\
-        lambda_n['a'], HMStime(time.time()-self.start_times['dock_state']), sampler_metrics))
-      self.tee("    dt=%.2f fs; tL_tensor=%.3e; <acc>=%.2f"%(\
-        lambda_o['delta_t']*1000., self._tL_tensor(E,lambda_o), mean_acc))
+        lambda_n['a'], \
+        HMStime(time.time()-self.start_times['dock_state']), sampler_metrics))
+
+      if E_o!={}:
+        (u_kln,N_k) = self._u_kln([[E_o],[E]], self.dock_protocol[-2:])
+        N = min(N_k)
+        acc = np.exp(-u_kln[0,1,:N]-u_kln[1,0,:N]+u_kln[0,0,:N]+u_kln[1,1,:N])
+        mean_acc = np.mean(np.minimum(acc,np.ones(acc.shape)))
+
+        self.tee("    dt=%.2f fs; tL_tensor=%.3e; <acc>=%.2f"%(\
+          lambda_n['delta_t']*1000., self._tL_tensor(E,lambda_o), mean_acc))
+      else:
+        self.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
+          lambda_n['delta_t']*1000., self._tL_tensor(E,lambda_o)))
 
       # Decide whether to keep the state
       if len(self.dock_protocol)>(1+(not undock)):
