@@ -1254,7 +1254,7 @@ last modified {1}
     if self.dock_protocol==[]:
       self.tee("\n>>> Initial docking, starting at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-      undock = True # if (self.params['dock']['pose'] == -1) else False
+      undock = True
       if undock:
         lambda_o = self._lambda(1.0, 'dock')
         self.dock_protocol = [lambda_o]
@@ -1293,7 +1293,7 @@ last modified {1}
             
             attempts += 1
             if attempts == 5:
-              raise Exception('Unable to initialize simulation')
+              raise Exception('Unable to ramp temperature')
 
           # Get state energies
           E = self._energyTerms(confs)
@@ -2216,8 +2216,8 @@ last modified {1}
 
     x_o = np.copy(self.universe.configuration().array)
     e_o = self.universe.energy()
-    for rep in range(50):
-      minimizer(steps = 25)
+    for rep in range(5000):
+      minimizer(steps = 10)
       x_n = np.copy(self.universe.configuration().array)
       e_n = self.universe.energy()
       diff = abs(e_o-e_n)
@@ -2229,26 +2229,27 @@ last modified {1}
         e_o = e_n
   
     sys.stderr = original_stderr
-  
+    self.tee("  minimized to %.3g kcal/mol over %d steps"%(e_o, 10*(rep+1)))
+
     # Then ramp the energy to the starting temperature
     from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
       import HamiltonianMonteCarloIntegrator
     sampler = HamiltonianMonteCarloIntegrator(self.universe)
-    
+
     e_o = self.universe.energy()
     T_LOW = 20.
     T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
     for T in T_SERIES:
-      delta_t = 1.*self.params['dock']['delta_t']*MMTK.Units.fs
-      attempts_left = 5
+      delta_t = 2.*MMTK.Units.fs
+      attempts_left = 10
       while attempts_left>0:
         random_seed = int(T*10000) + attempts_left + \
           int(self.universe.configuration().array[0][0]*10000)
         if self._random_seed==0:
-          random_seed += int(time.time())
+          random_seed += int(time.time()*1000)
         random_seed = random_seed%32767
         (xs, energies, acc, ntrials, delta_t) = \
-          sampler(steps = 5000, steps_per_trial = 50, T=T,\
+          sampler(steps = 2500, steps_per_trial = 10, T=T,\
                   delta_t=delta_t, random_seed=random_seed)
         attempts_left -= 1
         acc_rate = float(acc)/ntrials
@@ -2258,13 +2259,16 @@ last modified {1}
           delta_t -= 0.25*MMTK.Units.fs
         else:
           attempts_left = 0
+        if delta_t < 0.25*MMTK.Units.fs:
+          delta_t = 0.25*MMTK.Units.fs
+      self.tee("  T = %d, delta_t = %.3f fs, acc_rate = %.3f"%(T, delta_t*1000, acc_rate))
     if normalize:
       self.universe.normalizePosition()
     e_f = self.universe.energy()
     
-    self.tee("\n  ramped temperature from %d to %d K in %s, "%(\
+    self.tee("  ramped temperature from %d to %d K in %s, "%(\
       T_LOW, T_START, HMStime(time.time()-self.start_times['T_ramp'])) + \
-      "changing energy from %.3g to %.3g kcal/mol"%(e_o, e_f))
+      "changing energy to %.3g kcal/mol"%(e_f))
 
   def _initial_sim_state(self, seeds, process, lambda_k):
     """

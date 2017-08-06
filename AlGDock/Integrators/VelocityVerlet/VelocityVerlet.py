@@ -39,6 +39,11 @@ class VelocityVerletIntegrator(Dynamics.Integrator):
           steps_per_trial = self.getOption('steps')
           ntrials = 1
   
+        if 'max_diff' in self.call_options.keys():
+          max_diff = self.getOption('max_diff')
+        else:
+          max_diff = 1000.
+  
         if 'normalize' in self.call_options.keys():
           normalize = self.getOption('normalize')
         else:
@@ -90,13 +95,17 @@ class VelocityVerletIntegrator(Dynamics.Integrator):
           # Decide whether to accept the move
           pe_n = self.universe.energy()
           en = pe_n + self.universe.kineticEnergy()
-          if not np.isnan(en):
+          
+          diff = np.abs(en-eo)
+          
+          if (not np.isnan(en)) and (diff<max_diff):
             xo = np.copy(self.universe.configuration().array)
             pe_o = pe_n
             acc += 1
             if normalize:
               self.universe.normalizePosition()
           else:
+            # print diff
             self.universe.setConfiguration(Configuration(self.universe,xo))
           
           xs.append(np.copy(self.universe.configuration().array))
