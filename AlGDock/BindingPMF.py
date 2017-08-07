@@ -2240,7 +2240,8 @@ last modified {1}
     T_LOW = 20.
     T_SERIES = T_LOW*(T_START/T_LOW)**(np.arange(30)/29.)
     for T in T_SERIES:
-      delta_t = 2.*MMTK.Units.fs
+      delta_t = 2.0*MMTK.Units.fs
+      steps_per_trial = 10
       attempts_left = 10
       while attempts_left>0:
         random_seed = int(T*10000) + attempts_left + \
@@ -2259,9 +2260,11 @@ last modified {1}
           delta_t -= 0.25*MMTK.Units.fs
         else:
           attempts_left = 0
-        if delta_t < 0.25*MMTK.Units.fs:
-          delta_t = 0.25*MMTK.Units.fs
-      self.tee("  T = %d, delta_t = %.3f fs, acc_rate = %.3f"%(T, delta_t*1000, acc_rate))
+        if delta_t < 0.5*MMTK.Units.fs:
+          delta_t = 0.5*MMTK.Units.fs
+          steps_per_trial = max(int(steps_per_trial/2), 2)
+      self.tee("  T = %d, delta_t = %.3f fs, steps_per_trial = %d, acc_rate = %.3f"%(\
+        T, delta_t*1000, steps_per_trial, acc_rate))
     if normalize:
       self.universe.normalizePosition()
     e_f = self.universe.energy()
@@ -2277,8 +2280,9 @@ last modified {1}
     """
     
     lambda_k['delta_t'] = 1.*self.params[process]['delta_t']*MMTK.Units.fs
+    lambda_k['steps_per_trial'] = self.params[process]['steps_per_sweep']
 
-    attempts_left = 5
+    attempts_left = 10
     while (attempts_left>0):
       # Get initial potential energy
       Es_o = []
@@ -2322,8 +2326,8 @@ last modified {1}
       if np.std(delta_t)>1E-3:
         # If the integrator adapts the time step, take an average
         delta_t = min(max(np.mean(delta_t), \
-          self.params[process]['delta_t']/5.*MMTK.Units.fs), \
-          self.params[process]['delta_t']*1.*MMTK.Units.fs)
+          self.params[process]['delta_t']/5.0*MMTK.Units.fs), \
+          self.params[process]['delta_t']*0.5*MMTK.Units.fs)
       else:
         delta_t = delta_t[0]
 
@@ -2333,10 +2337,13 @@ last modified {1}
           np.sum([r['att_Sampler'] for r in results])
         if acc_rate>0.8:
           delta_t += 0.25*MMTK.Units.fs
-        elif acc_rate<0.1:
-          delta_t -= 0.5*MMTK.Units.fs
         elif acc_rate<0.4:
+          if delta_t < 2.00*MMTK.Units.fs:
+            lambda_k['steps_per_trial'] = \
+              max(int(lambda_k['steps_per_trial']/2.),5)
           delta_t -= 0.25*MMTK.Units.fs
+          if acc_rate<0.1:
+            delta_t -= 0.25*MMTK.Units.fs
         else:
           attempts_left = 0
       else:
@@ -2347,8 +2354,8 @@ last modified {1}
         else:
           attempts_left = 0
 
-      if (delta_t<1.*MMTK.Units.fs):
-        delta_t = 1.*MMTK.Units.fs
+      if delta_t<0.5*MMTK.Units.fs:
+        delta_t = 0.5*MMTK.Units.fs
       lambda_k['delta_t'] = delta_t
 
     sampler_metrics = ''
@@ -2769,14 +2776,17 @@ last modified {1}
       initialize=False, reference=0):
     
     self.universe.setConfiguration(Configuration(self.universe, seed))
+    
     self._set_universe_evaluator(lambda_k)
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
       raise Exception('No time step specified')
+    if 'steps_per_trial' in lambda_k.keys():
+      steps_per_trial = lambda_k['steps_per_trial']
+    else:
+      steps_per_trial = self.params[process]['steps_per_sweep']
 
-    sampler = self.sampler[process]
-    steps_per_trial = self.params[process]['steps_per_sweep']
     if initialize:
       steps = self.params[process]['steps_per_seed']
       ndarts = self.params[process]['darts_per_seed']
@@ -2803,7 +2813,7 @@ last modified {1}
 
     # Execute dynamics sampler
     time_start_Sampler = time.time()
-    dat = sampler(\
+    dat = self.sampler[process](\
       steps=steps, steps_per_trial=steps_per_trial, \
       T=lambda_k['T'], delta_t=delta_t, \
       normalize=(process=='cool'), adapt=initialize, random_seed=random_seed)
