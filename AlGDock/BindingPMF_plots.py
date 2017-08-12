@@ -122,36 +122,61 @@ class BPMF_plots(BPMF):
         e_ratio_k = np.hstack((e_ratio_k,np.abs(self.dock_Es[k][c]['ELE']/self.dock_Es[k][c]['sLJr'])))
       e_ratio.append(e_ratio_k)
     plt.plot(np.transpose(e_ratio))
-
-  def show_samples(self, process='dock', state=-1, show_replicas=False, \
+    
+  def show_replicas(self, process='dock', \
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
         save_image=False, image_labels=None, execute=True, \
         principal_axes_alignment=False, clear_files=True, quit=False, \
         view_args={}):
-    # Gather ligand coordinates
-    if show_replicas:
-      confs = self.confs['dock']['replicas']
-      prefix = 'replicas'
+    """
+    Show replicas from replica exchange
+    """
+    confs = self.confs['dock']['replicas']
+    prefix = 'replicas'
+    return self.show_poses(confs, prefix, \
+      show_ref_ligand, show_starting_pose, show_receptor, \
+      save_image, image_labels, execute, \
+      principal_axes_alignment, clear_files, quit, view_args)
+
+  def show_samples(self, process='dock', state=-1, \
+        show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
+        save_image=False, image_labels=None, execute=True, \
+        principal_axes_alignment=False, clear_files=True, quit=False, \
+        view_args={}):
+    """
+    Show samples from replica exchange
+    """
+    if state==-1:
+      state = len(self.confs[process]['samples'])-1
+      prefix = '%s-last'%(process)
     else:
-      if state==-1:
-        state = len(self.confs[process]['samples'])-1
-        prefix = '%s-last'%(process)
-      else:
-        prefix = '%s-%05d'%(process,state)
+      prefix = '%s-%05d'%(process,state)
 
-      if process == 'dock':
-        first_cycle = self.stats_RL['equilibrated_cycle'][-1]
-      else:
-        first_cycle = self.stats_L['equilibrated_cycle'][-1]
+    if process == 'dock':
+      first_cycle = self.stats_RL['equilibrated_cycle'][-1]
+    else:
+      first_cycle = self.stats_L['equilibrated_cycle'][-1]
 
-      confs = []
-      for c in range(first_cycle, len(self.confs[process]['samples'][state])):
-        if len(self.confs[process]['samples'][state][c])>0:
-          if not isinstance(self.confs[process]['samples'][state][c],list):
-            self.confs[process]['samples'][state][c] = \
-              [self.confs[process]['samples'][state][c]]
-          confs += self.confs[process]['samples'][state][c]
+    confs = []
+    for c in range(first_cycle, len(self.confs[process]['samples'][state])):
+      if len(self.confs[process]['samples'][state][c])>0:
+        if not isinstance(self.confs[process]['samples'][state][c],list):
+          self.confs[process]['samples'][state][c] = \
+            [self.confs[process]['samples'][state][c]]
+        confs += self.confs[process]['samples'][state][c]
+    return self.show_poses(confs, prefix, \
+      show_ref_ligand, show_starting_pose, show_receptor, \
+      save_image, image_labels, execute, \
+      principal_axes_alignment, clear_files, quit, view_args)
 
+  def show_poses(self, confs, prefix,
+        show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
+        save_image=False, image_labels=None, execute=True, \
+        principal_axes_alignment=False, clear_files=True, quit=False, \
+        view_args={}):
+    """
+    Show poses in the context of the protein
+    """
     # Write ligand coordinates
     import AlGDock.IO
     IO_dcd = AlGDock.IO.dcd(self.molecule,

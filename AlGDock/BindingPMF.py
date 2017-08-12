@@ -1059,8 +1059,7 @@ last modified {1}
           for c in range(self._cool_cycle)]
 
     # Get predicted pose
-    (self.stats_L['predicted_pose_index'], \
-     self.stats_L['lowest_energy_pose_index']) = \
+    (self.stats_L['pose_inds'], self.stats_L['scores']) = \
       self._get_pose_prediction('cool', self.stats_L['equilibrated_cycle'][-1])
 
     # Calculate solvation free energies that have not already been calculated,
@@ -1682,8 +1681,7 @@ last modified {1}
            self.original_Es[0][0]['R'+phase][:,-1])/self.RT_SIMMIN)
 
     # Predict native pose
-    (self.stats_RL['predicted_pose_index'], \
-     self.stats_RL['lowest_energy_pose_index']) = \
+    (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
       self._get_pose_prediction('dock', self.stats_RL['equilibrated_cycle'][-1])
 
     # BPMF assuming receptor and complex solvation cancel
@@ -1804,6 +1802,13 @@ last modified {1}
     return equilibrated_cycle
 
   def _get_pose_prediction(self, process, equilibrated_cycle):
+    if process=='dock':
+      stats = self.stats_RL
+      compareToRef = self.params['dock']['rmsd']
+    else:
+      stats = self.stats_L
+      compareToRef = False
+
     # Gather snapshots
     for k in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process)):
       if not isinstance(self.confs[process]['samples'][-1][k], list):
@@ -1824,13 +1829,13 @@ last modified {1}
     from pyRMSD.matrixHandler import MatrixHandler
     rmsd_matrix = MatrixHandler().createMatrix(confs, \
       {'cool':'QCP_SERIAL_CALCULATOR', \
-       'dock':'NOSUP_SERIAL_CALCULATOR'}[process])
+       'dock':'NOSUP_SERIAL_CALCULATOR'}[process]).get_data()
     sys.stdout = original_stdout
     sys.stderr = original_stderr
 
     # Clustering
     import scipy.cluster
-    Z = scipy.cluster.hierarchy.complete(rmsd_matrix.get_data())
+    Z = scipy.cluster.hierarchy.linkage(rmsd_matrix, method='complete')
     assignments = np.array(\
       scipy.cluster.hierarchy.fcluster(Z, 0.1, criterion='distance'))
 
@@ -1843,36 +1848,87 @@ last modified {1}
         new_index += 1
     assignments = [mapping_to_new_index[a] for a in assignments]
 
+    # Gets the medoid of every cluster and store rmsd if relevant
     def linear_index_to_pair(ind):
       cycle = list(ind<cum_Nk).index(True)-1
       n = ind-cum_Nk[cycle]
       return (cycle + equilibrated_cycle,n)
 
-    if process=='dock':
-      stats = self.stats_RL
-    else:
-      stats = self.stats_L
-
-    # Find lowest energy pose in most populated cluster (after equilibration)
-    pose_ind = {}
-    lowest_e_ind = {}
-    for phase in (['sampled']+self.params[process]['phases']):
-      un = np.concatenate([stats['u_K_'+phase][c] \
-        for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
-      uo = np.concatenate([stats['u_K_sampled'][c] \
-        for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
-      du = un-uo
-      min_du = min(du)
-      weights = np.exp(-du+min_du)
+    from scipy.spatial.distance import squareform
+    rmsd_matrix = squareform(rmsd_matrix)
+    pose_inds = []
+    scores = {}
+    if compareToRef:
+      scores['rmsd'] = []
+    for n in range(max(assignments)+1):
+      inds = [i for i in range(len(assignments)) if assignments[i]==n]
+      rmsd_matrix_n = rmsd_matrix[inds][:,inds]
+      (cycle,n) = linear_index_to_pair(inds[np.argmin(np.mean(rmsd_matrix_n,0))])
+      pose_inds.append((cycle,n))
+      if compareToRef:
+        scores['rmsd'].append(self.dock_Es[-1][cycle]['rmsd'][n])
+        
+    # Score clusters based on total energy
+    uo = np.concatenate([stats['u_K_sampled'][c] \
+      for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+    for phase in (['grid']+self.params[process]['phases']):
+      if phase!='grid':
+        un = np.concatenate([stats['u_K_'+phase][c] \
+          for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+        du = un-uo
+        min_du = min(du)
+        weights = np.exp(-du+min_du)
+      else:
+        un = uo
+        weights = np.ones(len(assignments))
       cluster_counts = np.histogram(assignments, \
-        bins=np.arange(len(set(assignments))+1)+0.5,
+        bins=np.arange(len(set(assignments))+1)-0.5,
         weights=weights)[0]
-      top_cluster = np.argmax(cluster_counts)
-      pose_ind[phase] = linear_index_to_pair(\
-        np.argmin(un+(assignments!=top_cluster)*np.max(un)))
-      lowest_e_ind[phase] = linear_index_to_pair(np.argmin(un))
-    return (pose_ind, lowest_e_ind)
+      # by free energy
+      cluster_fe = -self.RT_TARGET*np.log(cluster_counts)
+      cluster_fe -= np.min(cluster_fe)
+      scores[phase+'_fe_u'] = cluster_fe
+      # by minimum and mean energy
+      scores[phase+'_min_u'] = []
+      scores[phase+'_mean_u'] = []
+      for n in range(max(assignments)+1):
+        un_n = [un[i] for i in range(len(assignments)) if assignments[i]==n]
+        scores[phase+'_min_u'].append(np.min(un_n))
+        scores[phase+'_mean_u'].append(np.mean(un_n))
+    
+    # Score clusters based on interaction energy
+    Psi_o = np.concatenate([stats['Psi_grid'][c] \
+      for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+    for phase in (['grid']+self.params[process]['phases']):
+      if phase!='grid':
+        Psi_n = np.concatenate([stats['Psi_'+phase][c] \
+          for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+        dPsi = Psi_n-Psi_o
+        min_dPsi = min(dPsi)
+        weights = np.exp(-dPsi+min_dPsi)
+      else:
+        Psi_n = Psi_o
+        weights = np.ones(len(assignments))
+      cluster_counts = np.histogram(assignments, \
+        bins=np.arange(len(set(assignments))+1)-0.5,
+        weights=weights)[0]
+      # by free energy
+      cluster_fe = -self.RT_TARGET*np.log(cluster_counts)
+      cluster_fe -= np.min(cluster_fe)
+      scores[phase+'_fe_Psi'] = cluster_fe
+      # by minimum and mean energy
+      scores[phase+'_min_Psi'] = []
+      scores[phase+'_mean_Psi'] = []
+      for n in range(max(assignments)+1):
+        Psi_n_n = [Psi_n[i] for i in range(len(assignments)) if assignments[i]==n]
+        scores[phase+'_min_Psi'].append(np.min(Psi_n_n))
+        scores[phase+'_mean_Psi'].append(np.mean(Psi_n_n))     
 
+    for key in scores.keys():
+      scores[key] = np.array(scores[key])
+    
+    return (pose_inds, scores)
+    
   def configuration_energies(self, minimize=False):
     """
     Calculates the energy for configurations from self._FNs['score']
