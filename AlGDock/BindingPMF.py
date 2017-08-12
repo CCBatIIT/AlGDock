@@ -1791,7 +1791,7 @@ last modified {1}
       correlation_times = [np.inf] + [\
         pymbar.timeseries.integratedAutocorrelationTime(\
           np.concatenate([process_Es[0][c]['mean_energies'] \
-            for c in range(len(process_Es[0])) \
+            for c in range(start_c,len(process_Es[0])) \
             if 'mean_energies' in process_Es[0][c].keys()])) \
                for start_c in range(1,last_c)]
       g = 2*np.array(correlation_times) + 1
