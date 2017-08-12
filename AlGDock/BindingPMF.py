@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# TODO: Free energy of external confinement for poseBPMFs
+
 import os
 import cPickle as pickle
 import gzip
@@ -1277,7 +1279,8 @@ last modified {1}
             self.confs['dock']['SmartDarting'] = \
               self.sampler['dock_SmartDarting'].confs
           elif len(seeds)>0:
-            self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
+            self.universe.setConfiguration(\
+              Configuration(self.universe,np.copy(seeds[-1])))
 
           attempts = 0
           DeltaEs = np.array([0.])
@@ -1382,7 +1385,6 @@ last modified {1}
           (self.params['dock']['seeds_per_state'], self._n_rot, self._n_trans))
         repX_conf = np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]),\
                            self._random_trans[i_trans].array)
-        self.confs['dock']['starting_poses'] = [repX_conf]
         self.confs['dock']['replicas'] = [repX_conf]
         self.confs['dock']['samples'] = [[repX_conf]]
         self.dock_Es = [[dict([(key,np.array([val[ind]])) \
@@ -1497,8 +1499,8 @@ last modified {1}
 
         self._dock_cycle += 1
 
-      # Save progress every 5 minutes
-      if ((time.time()-self.start_times['dock_save'])>5*60):
+      # Save progress every 10 minutes
+      if ((time.time()-self.start_times['dock_save'])>(10*60)):
         self._save('dock')
         self.start_times['dock_save'] = time.time()
         saved = True
@@ -1593,17 +1595,6 @@ last modified {1}
     self.stats_RL['equilibrated_cycle'] = self._get_equilibrated_cycle('dock')
     if self.stats_RL['equilibrated_cycle']!=eqc_o:
       updated = set_updated_to_True(updated, quiet=~do_solvation)
-
-    # TODO: Calculate autocorrelation based on different metric
-#    # Autocorrelation time for all replicas
-#    if updated:
-#      paths = [np.array(self.dock_Es[0][c]['repXpath']) \
-#        for c in range(len(self.dock_Es[0])) \
-#        if 'repXpath' in self.dock_Es[0][c].keys()]
-#      if len(paths)>0:
-#        paths = np.transpose(np.hstack(paths))
-#        self.stats_RL['tau_ac'] = \
-#          pymbar.timeseries.integratedAutocorrelationTimeMultiple(paths)
 
     # Store rmsd values
     self.stats_RL['rmsd'] = [(np.hstack([self.dock_Es[k][c]['rmsd']
@@ -2135,18 +2126,22 @@ last modified {1}
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
         # Obtain reference pose
-        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False, \
-          sort=False)
-        if self.params['dock']['pose']<len(confs):
-          starting_pose = np.copy(confs[self.params['dock']['pose']])
-          self.confs['dock']['starting_poses'] = [starting_pose]
+        if 'starting_poses' in self.confs['dock'].keys():
+          starting_pose = np.copy(self.confs['dock']['starting_poses'][0])
         else:
-          self._clear('dock')
-          self._store_infinite_f_RL()
-          raise Exception('Pose index greater than number of poses')
+          (confs, Es) = self._get_confs_to_rescore(site=False, \
+            minimize=False, sort=False)
+          if self.params['dock']['pose']<len(confs):
+            starting_pose = np.copy(confs[self.params['dock']['pose']])
+            self.confs['dock']['starting_poses'] = [np.copy(starting_pose)]
+          else:
+            self._clear('dock')
+            self._store_infinite_f_RL()
+            raise Exception('Pose index greater than number of poses')
 
         Xo = np.copy(self.universe.configuration().array)
-        self.universe.setConfiguration(Configuration(self.universe, starting_pose))
+        self.universe.setConfiguration(Configuration(self.universe, \
+          np.copy(starting_pose)))
         import AlGDock.RigidBodies
         rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
         (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
@@ -2253,18 +2248,16 @@ last modified {1}
           sampler(steps = 2500, steps_per_trial = 10, T=T,\
                   delta_t=delta_t, random_seed=random_seed)
         attempts_left -= 1
-        acc_rate = float(acc)/ntrials
-        if acc_rate<0.1:
-          delta_t -= 0.5*MMTK.Units.fs
-        elif acc_rate<0.4:
+        acc_rate = float(acc)/ntrials  
+        if acc_rate<0.4:
           delta_t -= 0.25*MMTK.Units.fs
         else:
           attempts_left = 0
-        if delta_t < 0.5*MMTK.Units.fs:
-          delta_t = 0.5*MMTK.Units.fs
-          steps_per_trial = max(int(steps_per_trial/2), 2)
-      self.tee("  T = %d, delta_t = %.3f fs, steps_per_trial = %d, acc_rate = %.3f"%(\
-        T, delta_t*1000, steps_per_trial, acc_rate))
+        if delta_t < 0.1*MMTK.Units.fs:
+          delta_t = 0.1*MMTK.Units.fs
+          steps_per_trial = max(int(steps_per_trial/2), 1)
+      fmt = "  T = %d, delta_t = %.3f fs, steps_per_trial = %d, acc_rate = %.3f"
+      self.tee(fmt%(T, delta_t*1000, steps_per_trial, acc_rate))
     if normalize:
       self.universe.normalizePosition()
     e_f = self.universe.energy()
@@ -2279,10 +2272,11 @@ last modified {1}
     Attempts simulation up to 5 times, adjusting the time step.
     """
     
-    lambda_k['delta_t'] = 1.*self.params[process]['delta_t']*MMTK.Units.fs
+    if not 'delta_t' in lambda_k.keys():
+      lambda_k['delta_t'] = 1.*self.params[process]['delta_t']*MMTK.Units.fs
     lambda_k['steps_per_trial'] = self.params[process]['steps_per_sweep']
 
-    attempts_left = 10
+    attempts_left = 12
     while (attempts_left>0):
       # Get initial potential energy
       Es_o = []
@@ -2321,26 +2315,26 @@ last modified {1}
       deltaEs = Es_n-Es_o
       attempts_left -= 1
 
-      # Adjust the time step
+      # Get the time step
       delta_t = np.array([result['delta_t'] for result in results])
       if np.std(delta_t)>1E-3:
         # If the integrator adapts the time step, take an average
         delta_t = min(max(np.mean(delta_t), \
           self.params[process]['delta_t']/5.0*MMTK.Units.fs), \
-          self.params[process]['delta_t']*0.5*MMTK.Units.fs)
+          self.params[process]['delta_t']*0.1*MMTK.Units.fs)
       else:
         delta_t = delta_t[0]
 
+      # Adjust the time step
       if 'HamiltonianMonteCarlo' in self.sampler[process].__module__:
         # Adjust the time step for Hamiltonian Monte Carlo
         acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
           np.sum([r['att_Sampler'] for r in results])
         if acc_rate>0.8:
-          delta_t += 0.25*MMTK.Units.fs
+          delta_t += 0.125*MMTK.Units.fs
         elif acc_rate<0.4:
-          if delta_t < 2.00*MMTK.Units.fs:
-            lambda_k['steps_per_trial'] = \
-              max(int(lambda_k['steps_per_trial']/2.),5)
+          if delta_t<2.0*MMTK.Units.fs:
+            lambda_k['steps_per_trial'] = max(int(lambda_k['steps_per_trial']/2.),1)
           delta_t -= 0.25*MMTK.Units.fs
           if acc_rate<0.1:
             delta_t -= 0.25*MMTK.Units.fs
@@ -2350,12 +2344,13 @@ last modified {1}
         # For other integrators, make sure the time step
         # is small enough to see changes in the energy
         if (np.std(deltaEs)<1E-3):
-          delta_t -= 0.5*MMTK.Units.fs
+          delta_t -= 0.25*MMTK.Units.fs
         else:
           attempts_left = 0
+        
+      if delta_t<0.1*MMTK.Units.fs:
+        delta_t = 0.1*MMTK.Units.fs
 
-      if delta_t<0.5*MMTK.Units.fs:
-        delta_t = 0.5*MMTK.Units.fs
       lambda_k['delta_t'] = delta_t
 
     sampler_metrics = ''
@@ -2661,6 +2656,24 @@ last modified {1}
     MC_report += " repX t %.1f s"%self.timings['repX']
     self.tee(MC_report)
 
+    # Adapt HamiltonianMonteCarlo parameters
+    if 'HamiltonianMonteCarlo' in self.sampler[process].__module__:
+      acc_rates = np.array(acc['Sampler'],dtype=np.float)/att['Sampler']
+      for k in range(K):
+        acc_rate = acc_rates[k]
+        if acc_rate>0.8:
+          lambdas[k]['delta_t'] += 0.125*MMTK.Units.fs
+          lambdas[k]['steps_per_trial'] = min(lambdas[k]['steps_per_trial']*2,\
+            self.params[process]['steps_per_sweep'])
+        elif acc_rate<0.4:
+          if lambdas[k]['delta_t']<2.0*MMTK.Units.fs:
+            lambdas[k]['steps_per_trial'] = max(int(lambdas[k]['steps_per_trial']/2.),1)
+          lambdas[k]['delta_t'] -= 0.25*MMTK.Units.fs
+          if acc_rate<0.1:
+            lambdas[k]['delta_t'] -= 0.25*MMTK.Units.fs
+        if lambdas[k]['delta_t']<0.1*MMTK.Units.fs:
+          lambdas[k]['delta_t'] = 0.1*MMTK.Units.fs
+
     # Get indicies for sorting by thermodynamic state, not replica
     inv_state_inds = np.zeros((nsweeps,K),dtype=int)
     for snap in range(nsweeps):
@@ -2696,7 +2709,7 @@ last modified {1}
 
     confs_repX = []
     for k in range(K):
-      confs_k = [storage['confs'][snap][inv_state_inds[snap][k]] \
+      confs_k = [np.copy(storage['confs'][snap][inv_state_inds[snap][k]]) \
         for snap in range(nsweeps)]
       if self.params[process]['keep_intermediate'] or \
           ((process=='cool') and (k==0)) or (k==(K-1)):
@@ -2706,7 +2719,7 @@ last modified {1}
 
     # Store final conformation of each replica
     self.confs[process]['replicas'] = \
-      [storage['confs'][store_indicies[-1]][inv_state_inds[-1][k]] \
+      [np.copy(storage['confs'][store_indicies[-1]][inv_state_inds[-1][k]]) \
        for k in range(K)]
         
     if self.params[process]['darts_per_sweep']>0:

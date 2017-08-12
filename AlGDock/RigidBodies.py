@@ -68,7 +68,8 @@ class identifier(converter):
     for ring in [set(_in_ring(a)) for a in self.molecule.atoms]:
       if ring!=set() and (not ring in unique_paths):
         unique_paths.append(ring)
-    self.rings = sorted(_join_sets(unique_paths), key=lambda r:len(r))
+    self.rings = sorted(_join_sets(unique_paths), key=lambda r:repr(r))
+    self.rings = sorted(self.rings, key=lambda r:len(r))
 
     # Rigid bodies also include terminal atoms adjacent to ring atoms
     # TO DO: include planar systems
@@ -78,11 +79,14 @@ class identifier(converter):
         [a for a in self.molecule.atoms \
           if len(a.bondedTo())==1 and a.bondedTo()[0] in self.rings[index]])
       rigid_bodies.append(self.rings[index].union(attached_terminal_atoms))
-    self.rigid_bodies = sorted(_join_sets(rigid_bodies), key=lambda b:len(b))
+    rigid_bodies = sorted(_join_sets(rigid_bodies), key=lambda b:repr(b))
+    self.rigid_bodies = sorted(rigid_bodies, key=lambda b:len(b))
 
     # Choose initial atom
     if len(self.rings)>0 and len(attached_terminal_atoms)>0:
       # heaviest terminal atom attached to the largest ring
+      attached_terminal_atoms = sorted(list(attached_terminal_atoms), \
+         key=lambda atom:atom.fullName())
       attached_terminal_atoms = sorted(list(attached_terminal_atoms), \
          key=lambda atom:atom.mass())
       self._converter_setup(
