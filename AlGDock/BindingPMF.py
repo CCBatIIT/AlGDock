@@ -1681,8 +1681,9 @@ last modified {1}
            self.original_Es[0][0]['R'+phase][:,-1])/self.RT_SIMMIN)
 
     # Predict native pose
-    (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
-      self._get_pose_prediction('dock', self.stats_RL['equilibrated_cycle'][-1])
+    if self.params['dock']['pose']==-1:
+      (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
+        self._get_pose_prediction('dock', self.stats_RL['equilibrated_cycle'][-1])
 
     # BPMF assuming receptor and complex solvation cancel
     self.B['MMTK_MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
@@ -1830,6 +1831,7 @@ last modified {1}
     rmsd_matrix = MatrixHandler().createMatrix(confs, \
       {'cool':'QCP_SERIAL_CALCULATOR', \
        'dock':'NOSUP_SERIAL_CALCULATOR'}[process]).get_data()
+    rmsd_matrix = np.clip(rmsd_matrix, 0., None)
     sys.stdout = original_stdout
     sys.stderr = original_stderr
 
@@ -1896,33 +1898,34 @@ last modified {1}
         scores[phase+'_min_u'].append(np.min(un_n))
         scores[phase+'_mean_u'].append(np.mean(un_n))
     
-    # Score clusters based on interaction energy
-    Psi_o = np.concatenate([stats['Psi_grid'][c] \
-      for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
-    for phase in (['grid']+self.params[process]['phases']):
-      if phase!='grid':
-        Psi_n = np.concatenate([stats['Psi_'+phase][c] \
-          for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
-        dPsi = Psi_n-Psi_o
-        min_dPsi = min(dPsi)
-        weights = np.exp(-dPsi+min_dPsi)
-      else:
-        Psi_n = Psi_o
-        weights = np.ones(len(assignments))
-      cluster_counts = np.histogram(assignments, \
-        bins=np.arange(len(set(assignments))+1)-0.5,
-        weights=weights)[0]
-      # by free energy
-      cluster_fe = -self.RT_TARGET*np.log(cluster_counts)
-      cluster_fe -= np.min(cluster_fe)
-      scores[phase+'_fe_Psi'] = cluster_fe
-      # by minimum and mean energy
-      scores[phase+'_min_Psi'] = []
-      scores[phase+'_mean_Psi'] = []
-      for n in range(max(assignments)+1):
-        Psi_n_n = [Psi_n[i] for i in range(len(assignments)) if assignments[i]==n]
-        scores[phase+'_min_Psi'].append(np.min(Psi_n_n))
-        scores[phase+'_mean_Psi'].append(np.mean(Psi_n_n))     
+    if process=='dock':
+      # Score clusters based on interaction energy
+      Psi_o = np.concatenate([stats['Psi_grid'][c] \
+        for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+      for phase in (['grid']+self.params[process]['phases']):
+        if phase!='grid':
+          Psi_n = np.concatenate([stats['Psi_'+phase][c] \
+            for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+          dPsi = Psi_n-Psi_o
+          min_dPsi = min(dPsi)
+          weights = np.exp(-dPsi+min_dPsi)
+        else:
+          Psi_n = Psi_o
+          weights = np.ones(len(assignments))
+        cluster_counts = np.histogram(assignments, \
+          bins=np.arange(len(set(assignments))+1)-0.5,
+          weights=weights)[0]
+        # by free energy
+        cluster_fe = -self.RT_TARGET*np.log(cluster_counts)
+        cluster_fe -= np.min(cluster_fe)
+        scores[phase+'_fe_Psi'] = cluster_fe
+        # by minimum and mean energy
+        scores[phase+'_min_Psi'] = []
+        scores[phase+'_mean_Psi'] = []
+        for n in range(max(assignments)+1):
+          Psi_n_n = [Psi_n[i] for i in range(len(assignments)) if assignments[i]==n]
+          scores[phase+'_min_Psi'].append(np.min(Psi_n_n))
+          scores[phase+'_mean_Psi'].append(np.mean(Psi_n_n))     
 
     for key in scores.keys():
       scores[key] = np.array(scores[key])
