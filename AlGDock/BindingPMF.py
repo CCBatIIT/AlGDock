@@ -1932,7 +1932,7 @@ last modified {1}
     
     return (pose_inds, scores)
     
-  def configuration_energies(self, minimize=False):
+  def configuration_energies(self, minimize=False, max_confs=None):
     """
     Calculates the energy for configurations from self._FNs['score']
     """
@@ -1954,39 +1954,62 @@ last modified {1}
       (confs, Es) = self._get_confs_to_rescore(site=False, \
         minimize=minimize, sort=False)
 
-    # Calculate MM energies
+    if max_confs is not None:
+      confs = confs[:max_confs]
+
+    self._set_lock('dock')
+    self.tee("\n>>> Calculating energies for %d configurations, "%len(confs) + \
+      "starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+    self.start_times['configuration_energies'] = time.time()
+
+    updated = False
+    # Calculate MM and OBC energies
     if not 'MM' in Es.keys():
       Es = self._energyTerms(confs, Es)
+      solvation_o = self.params['dock']['solvation']
+      self.params['dock']['solvation'] = 'Fractional'
+      if 'OBC' in self._forceFields.keys():
+        del self._forceFields['OBC']
+      self._evaluators = {}
+      self._set_universe_evaluator(lambda_o)
+      Es = self._energyTerms(confs, Es)
+      Es['OBC_Fractional'] = Es['OBC']
+      self.params['dock']['solvation'] = 'Full'
+      if 'OBC' in self._forceFields.keys():
+        del self._forceFields['OBC']
+      self._evaluators = {}
+      self._set_universe_evaluator(lambda_o)
+      Es = self._energyTerms(confs, Es)
+      self.params['dock']['solvation'] = solvation_o
+      updated = True
+  
+    # Direct electrostatic energy
+    FN = os.path.join(os.path.dirname(self._FNs['grids']['ELE']), 'direct_ele.nc')
+    if not 'direct_ELE' in Es.keys() and os.path.isfile(FN):
+      key = 'direct_ELE'
+      Es[key] = np.zeros(len(confs))
+      from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
+      FF = InterpolationForceField(FN, \
+        scaling_property='scaling_factor_electrostatic')
+      self.universe.setForceField(FF)
+      for c in range(len(confs)):
+        self.universe.setConfiguration(Configuration(self.universe,confs[c]))
+        Es[key][c] = self.universe.energy()
+      updated = True
 
-    # Calculate RMSD
-    if (self.params['dock']['rmsd'] is not False):
-      Es['rmsd'] = np.array([np.sqrt(((confs[c][self.molecule.heavy_atoms,:] - \
-        self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
-          for c in range(len(confs))])
-
-#    # Grid interpolation energies
-#    inv_powers = np.array(range(-12,0) + range(1,13), dtype=float)
-#    n_powers = len(inv_powers)
-#    from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
-#    for grid_type in ['LJa','LJr']:
-#      for interpolation_type in ['Trilinear']: # ,'BSpline']: # ,'Tricubic']:
-#        key = '%s_%sTransform'%(grid_type,interpolation_type)
-#        Es[key] = np.zeros((n_powers,len(confs)),dtype=np.float)
-#        for p in range(n_powers):
-#          print interpolation_type + ' interpolation of the ' + \
-#            grid_type + ' grid with a power of 1/%d'%(inv_powers[p])
-#          FF = InterpolationForceField(self._FNs['grids'][grid_type], \
-#            name='%.5g'%(inv_powers[p]),
-#            interpolation_type=interpolation_type, strength=1.0,
-#            scaling_property='scaling_factor_'+grid_type, \
-#            inv_power=inv_powers[p])
-#          self.universe.setForceField(FF)
-#          for c in range(len(confs)):
-#            self.universe.setConfiguration(Configuration(self.universe,confs[c]))
-#            Es[key][p,c] = self.universe.energy()
+    if updated:
+      self.tee("\nElapsed time for ligand MM, OBC, and grid energies was " + \
+        HMStime(time.time() - self.start_times['configuration_energies']), \
+        process='dock')
+    self._clear_lock('dock')
 
     # Implicit solvent energies
     self._load_programs(self.params['dock']['phases'])
+
+    self.confs['dock']['starting_poses'] = None
+    self._postprocess([('original',0, 0,'R')])
+
     toClear = []
     for phase in self.params['dock']['phases']:
       if not 'R'+phase in Es.keys():
@@ -2014,14 +2037,38 @@ last modified {1}
             if phase.startswith(program):
               Es[moiety+phase] = getattr(self,'_%s_Energy'%program)(confs, \
                 moiety, phase, traj_FN, outputname, debug=DEBUG)
+              updated = True
               break
     for FN in toClear:
       if os.path.isfile(FN):
         os.remove(FN)
+
+    for key in Es.keys():
+      Es[key] = np.array(Es[key])
     self._combine_MM_and_solvent(Es)
 
-    # Store the data
-    self._write_pkl_gz(energyFN,(confs,Es))
+    # Calculate RMSD
+    if (self.params['dock']['rmsd'] is not False):
+      Es['rmsd'] = np.array([np.sqrt(((confs[c][self.molecule.heavy_atoms,:] - \
+        self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
+          for c in range(len(confs))])
+
+    if updated:
+      self._set_lock('dock')
+      self.tee("\nElapsed time for energies was " + \
+        HMStime(time.time() - self.start_times['configuration_energies']), \
+        process='dock')
+      self._clear_lock('dock')
+
+      # Get any data added since the calculation started
+      if os.path.isfile(energyFN):
+        (confs_o, Es_o) = self._load_pkl_gz(energyFN)
+        for key in Es_o.keys():
+          if key not in Es.keys():
+            Es[key] = Es_o[key]
+
+      # Store the data
+      self._write_pkl_gz(energyFN,(confs,Es))
     return (confs,Es)
 
   ######################
@@ -2133,6 +2180,9 @@ last modified {1}
                 ('ELE' in lambda_n.keys()):
               self._forceFields['OBC'] = OBCForceField(\
                 desolvationGridFN=self._FNs['grids']['desolv'])
+              self.tee('  %s grid loaded from %s in %s'%(scalable, \
+                os.path.basename(self._FNs['grids']['desolv']), \
+                HMStime(time.time()-self.start_times['grid_loading'])))
             else:
               self._forceFields['OBC'] = OBCForceField()
           else: # Grids
@@ -2185,7 +2235,8 @@ last modified {1}
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
         # Obtain reference pose
-        if 'starting_poses' in self.confs['dock'].keys():
+        if ('starting_poses' in self.confs['dock'].keys()) and \
+           (self.confs['dock']['starting_poses'] is not None):
           starting_pose = np.copy(self.confs['dock']['starting_poses'][0])
         else:
           (confs, Es) = self._get_confs_to_rescore(site=False, \
@@ -3692,7 +3743,8 @@ last modified {1}
     self._evaluators = {}
     
     if phases is None:
-      phases = list(set(self.params['cool']['phases'] + self.params['dock']['phases']))
+      phases = list(set(self.params['cool']['phases'] + \
+        self.params['dock']['phases']))
 
     updated_processes = []
 
@@ -4112,17 +4164,18 @@ last modified {1}
   def _get_elsize(self):
     # Calculates the electrostatic size of the receptor for ALPB calculations
     # Writes the coordinates in AMBER format
-    inpcrd_FN = os.path.join(self.dir['dock'], 'receptor.inpcrd')
     pqr_FN = os.path.join(self.dir['dock'], 'receptor.pqr')
+    if not os.path.isdir(self.dir['dock']):
+      os.system('mkdir -p '+self.dir['dock'])
     
     import AlGDock.IO
     IO_crd = AlGDock.IO.crd()
     factor = 1.0/MMTK.Units.Ang
-    IO_crd.write(inpcrd_FN, factor*self.confs['receptor'], \
+    IO_crd.write(self._FNs['inpcrd']['R'], factor*self.confs['receptor'], \
       'title', trajectory=False)
     
     # Converts the coordinates to a pqr file
-    inpcrd_F = open(inpcrd_FN,'r')
+    inpcrd_F = open(self._FNs['inpcrd']['R'],'r')
     cdir = os.getcwd()
     import subprocess
     try:
@@ -4153,7 +4206,7 @@ last modified {1}
     (stdoutdata_elsize, stderrdata_elsize) = p.communicate()
     p.wait()
     
-    for FN in [inpcrd_FN, pqr_FN]:
+    for FN in [pqr_FN]:
       if os.path.isfile(FN):
         os.remove(FN)
     try:
@@ -4659,6 +4712,7 @@ END
   def _clear(self, p):
     setattr(self,'%s_protocol'%p,[])
     setattr(self,'_%s_cycle'%p,0)
+    self.confs[p]['starting_poses'] = None
     self.confs[p]['replicas'] = None
     self.confs[p]['seeds'] = None
     self.confs[p]['SmartDarting'] = []

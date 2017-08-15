@@ -60,10 +60,11 @@ class converter():
     self._converter_setup(initial_atom)
 
   def _converter_setup(self, initial_atom=None):
+    atom_name = lambda atom:atom.fullName()
     atom_mass = lambda atom:atom.mass()
     terminal_atoms = sorted(\
-      [a for a in self.molecule.atoms if len(a.bondedTo())==1], \
-      key=atom_mass)
+      [a for a in self.molecule.atoms if len(a.bondedTo())==1], key=atom_name)
+    terminal_atoms = sorted(terminal_atoms, key=atom_mass)
     if (initial_atom is None):
       # Select the heaviest root atoms from the heaviest terminal atom
       root = [terminal_atoms[-1]]
@@ -74,9 +75,13 @@ class converter():
         raise Exception('Initial atom is not a terminal atom')
     self.initial_atom = initial_atom
     
-    root.append(sorted(root[0].bondedTo(),key=atom_mass)[-1])
-    root.append(sorted([a for a in root[-1].bondedTo() \
-      if (a not in root) and (a not in terminal_atoms)],key=atom_mass)[-1])
+    attached_to_zero = sorted(root[0].bondedTo(), key=atom_name)
+    attached_to_zero = sorted(attached_to_zero, key=atom_mass)
+    root.append(attached_to_zero[-1])
+    attached_to_one = sorted([a for a in root[-1].bondedTo() \
+      if (a not in root) and (a not in terminal_atoms)], key=atom_name)
+    attached_to_one = sorted(attached_to_one, key=atom_mass)
+    root.append(attached_to_one[-1])
 
     def _find_dihedral(selected):
       """
@@ -84,18 +89,22 @@ class converter():
       :param selected: a list of atoms that have already been selected
       :returns: a list of atoms that includes the new atom and its neighboring selected atoms
       """
+      atom_name = lambda atom:atom.fullName()
       atom_mass = lambda atom:atom.mass()
       # Loop over possible nearest neighbors
       for a2 in selected:
         # Find the new atom
-        for a1 in sorted([a for a in a2.bondedTo() \
-            if a not in selected],key=atom_mass,reverse=True):
+        attached_to_a2 = sorted([a for a in a2.bondedTo() \
+            if a not in selected], key=atom_name)
+        for a1 in sorted(attached_to_a2, key=atom_mass, reverse=True):
           # Find the third atom
-          for a3 in sorted([a for a in a2.bondedTo() \
-              if (a in selected) and (a!=a1)],key=atom_mass,reverse=True):
+          attached_to_a3 = sorted([a for a in a2.bondedTo() \
+              if (a in selected) and (a!=a1)], key=atom_name)
+          for a3 in sorted(attached_to_a3, key=atom_mass, reverse=True):
             # Find the last atom
-            for a4 in sorted([a for a in a3.bondedTo() \
-                if (a in selected) and (a!=a2)],key=atom_mass,reverse=True):
+            attached_to_a4 = sorted([a for a in a3.bondedTo() \
+                if (a in selected) and (a!=a2)], key=atom_name)
+            for a4 in sorted(attached_to_a4, key=atom_mass, reverse=True):
               return (a1,a2,a3,a4)
       print 'Selected atoms:', selected
       raise Exception('No new dihedral angle found!')

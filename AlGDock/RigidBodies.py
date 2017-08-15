@@ -68,9 +68,8 @@ class identifier(converter):
     for ring in [set(_in_ring(a)) for a in self.molecule.atoms]:
       if ring!=set() and (not ring in unique_paths):
         unique_paths.append(ring)
-    self.rings = sorted(_join_sets(unique_paths), key=lambda r:repr(r))
-    self.rings = sorted(self.rings, key=lambda r:len(r))
-
+    self.rings = _join_sets(unique_paths)
+    
     # Rigid bodies also include terminal atoms adjacent to ring atoms
     # TO DO: include planar systems
     rigid_bodies = []
@@ -79,21 +78,25 @@ class identifier(converter):
         [a for a in self.molecule.atoms \
           if len(a.bondedTo())==1 and a.bondedTo()[0] in self.rings[index]])
       rigid_bodies.append(self.rings[index].union(attached_terminal_atoms))
-    rigid_bodies = sorted(_join_sets(rigid_bodies), key=lambda b:repr(b))
-    self.rigid_bodies = sorted(rigid_bodies, key=lambda b:len(b))
-
-    # Choose initial atom
-    if len(self.rings)>0 and len(attached_terminal_atoms)>0:
-      # heaviest terminal atom attached to the largest ring
-      attached_terminal_atoms = sorted(list(attached_terminal_atoms), \
-         key=lambda atom:atom.fullName())
-      attached_terminal_atoms = sorted(list(attached_terminal_atoms), \
-         key=lambda atom:atom.mass())
-      self._converter_setup(
-        initial_atom=attached_terminal_atoms[-1])
-    else:
-      self._converter_setup()
-      
+    self.rigid_bodies = _join_sets(rigid_bodies)
+    
+    # Choose initial atom, 
+    # preferably the heaviest terminal atom attached to the largest ring
+    initial_atom = None
+    ring_lists = [sorted(list(ring), key=lambda a:a.fullName()) \
+      for ring in self.rings]
+    ordered_rings = sorted(sorted(ring_lists, \
+      key=lambda r:repr(r)), key=lambda r:len(r), reverse=True)
+    for ring in ordered_rings:
+      attached_terminal_atoms = sorted(sorted([a for a in self.molecule.atoms \
+        if len(a.bondedTo())==1 and a.bondedTo()[0] in ring], \
+        key=lambda a:a.fullName()), key=lambda a:a.mass())
+      if len(attached_terminal_atoms)>0:
+        initial_atom = attached_terminal_atoms[-1]
+        print initial_atom
+        break
+    self._converter_setup(initial_atom=initial_atom)
+    
     # Select soft torsions, primary torsions that are not in the same rigid body
     softTorsionInd = []
     for torsion_ind in set(self._firstTorsionTInd):
