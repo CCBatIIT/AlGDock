@@ -1058,7 +1058,7 @@ last modified {1}
         [self.cool_Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
           for c in range(self._cool_cycle)]
 
-    # Get predicted pose
+    # Get predicted pose (not really needed for cooling)
     (self.stats_L['pose_inds'], self.stats_L['scores']) = \
       self._get_pose_prediction('cool', self.stats_L['equilibrated_cycle'][-1])
 
@@ -1718,10 +1718,10 @@ last modified {1}
         min_du = min(du)
         weights = np.exp(-du+min_du)
 
-        # Filter outliers
-        toKeep = np.abs(du - np.median(du))<(2*np.std(du))
-        du = du[toKeep]
-        weights[~toKeep] = 0.
+#        # Filter outliers
+#        toKeep = np.abs(du - np.median(du))<(2*np.std(du))
+#        du = du[toKeep]
+#        weights[~toKeep] = 0.
 
         weights = weights/sum(weights)
 
@@ -1823,17 +1823,13 @@ last modified {1}
       for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
 
     # RMSD matrix
-    original_stdout = sys.stdout
-    original_stderr = sys.stderr
-    sys.stdout = NullDevice()
-    sys.stderr = NullDevice()
+    # This seems to segfault often
     from pyRMSD.matrixHandler import MatrixHandler
-    rmsd_matrix = MatrixHandler().createMatrix(confs, \
+    rmsd_matrix_handler = MatrixHandler().createMatrix(confs, \
       {'cool':'QCP_SERIAL_CALCULATOR', \
-       'dock':'NOSUP_SERIAL_CALCULATOR'}[process]).get_data()
+       'dock':'NOSUP_SERIAL_CALCULATOR'}[process])
+    rmsd_matrix = rmsd_matrix_handler.get_data()
     rmsd_matrix = np.clip(rmsd_matrix, 0., None)
-    sys.stdout = original_stdout
-    sys.stderr = original_stderr
 
     # Clustering
     import scipy.cluster
@@ -2010,11 +2006,14 @@ last modified {1}
     self.confs['dock']['starting_poses'] = None
     self._postprocess([('original',0, 0,'R')])
 
-    toClear = []
     for phase in self.params['dock']['phases']:
       if not 'R'+phase in Es.keys():
         Es['R'+phase] = self.params['dock']['receptor_'+phase]
-        for moiety in ['L','RL']:
+
+    toClear = []
+    for phase in self.params['dock']['phases']:
+      for moiety in ['L','RL']:
+        if not moiety+phase in Es.keys():
           outputname = os.path.join(self.dir['dock'],'%s.%s%s'%(prefix,moiety,phase))
           if phase.startswith('NAMD'):
             traj_FN = os.path.join(self.dir['dock'],'%s.%s.dcd'%(prefix,moiety))
@@ -2035,9 +2034,18 @@ last modified {1}
             toClear.append(traj_FN)
           for program in ['NAMD','sander','gbnsr6','OpenMM','APBS']:
             if phase.startswith(program):
+              # TODO: Mechanism to do partial calculation
               Es[moiety+phase] = getattr(self,'_%s_Energy'%program)(confs, \
                 moiety, phase, traj_FN, outputname, debug=DEBUG)
               updated = True
+              # Get any data added since the calculation started
+              if os.path.isfile(energyFN):
+                (confs_o, Es_o) = self._load_pkl_gz(energyFN)
+                for key in Es_o.keys():
+                  if key not in Es.keys():
+                    Es[key] = Es_o[key]
+              # Store the data
+              self._write_pkl_gz(energyFN,(confs,Es))
               break
     for FN in toClear:
       if os.path.isfile(FN):
@@ -2250,8 +2258,7 @@ last modified {1}
             raise Exception('Pose index greater than number of poses')
 
         Xo = np.copy(self.universe.configuration().array)
-        self.universe.setConfiguration(Configuration(self.universe, \
-          np.copy(starting_pose)))
+        self.universe.setConfiguration(Configuration(self.universe, starting_pose))
         import AlGDock.RigidBodies
         rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
         (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
@@ -2678,6 +2685,7 @@ last modified {1}
     state_inds = range(K)
     inv_state_inds = range(K)
     nsweeps = self.params[process]['sweeps_per_cycle']
+    nsnaps = nsweeps/self.params[process]['snaps_per_cycle']
     for sweep in range(nsweeps):
       E = {}
       for term in terms:
@@ -2740,9 +2748,10 @@ last modified {1}
       self.timings['repX'] += (time.time()-repX_start_time)
 
       # Store data in local variables
-      storage['confs'].append(list(confs))
-      storage['state_inds'].append(list(state_inds))
-      storage['energies'].append(copy.deepcopy(E))
+      if (sweep+1)%self.params[process]['snaps_per_cycle']==0:
+        storage['confs'].append(list(confs))
+        storage['state_inds'].append(list(state_inds))
+        storage['energies'].append(copy.deepcopy(E))
 
     # GMC
     if do_gMC:
@@ -2785,8 +2794,8 @@ last modified {1}
           lambdas[k]['delta_t'] = 0.1*MMTK.Units.fs
 
     # Get indicies for sorting by thermodynamic state, not replica
-    inv_state_inds = np.zeros((nsweeps,K),dtype=int)
-    for snap in range(nsweeps):
+    inv_state_inds = np.zeros((nsnaps,K),dtype=int)
+    for snap in range(nsnaps):
       state_inds = storage['state_inds'][snap]
       for k in range(K):
         inv_state_inds[snap][state_inds[k]] = k
@@ -2796,9 +2805,6 @@ last modified {1}
     #   self.process_Es and self.confs[process]['samples']
     # and also local variables 
     #   Es_repX and confs_repX
-    store_indicies = np.array(np.linspace(0, nsweeps-1,\
-      num=self.params[process]['snaps_per_cycle']), dtype=np.int)
-
     if (process=='dock') and (self.params['dock']['rmsd'] is not False):
         terms.append('rmsd') # Make sure to save the rmsd
     Es_repX = []
@@ -2811,25 +2817,24 @@ last modified {1}
         E_k['mean_energies'] = mean_energies
       for term in terms:
         E_term = np.array([storage['energies'][snap][term][\
-          inv_state_inds[snap][k]] for snap in range(nsweeps)])
-        E_k[term] = E_term[store_indicies]
+          inv_state_inds[snap][k]] for snap in range(nsnaps)])
+        E_k[term] = E_term
         E_k_repX[term] = E_term
       getattr(self,process+'_Es')[k].append(E_k)
       Es_repX.append([E_k_repX])
 
     confs_repX = []
     for k in range(K):
-      confs_k = [np.copy(storage['confs'][snap][inv_state_inds[snap][k]]) \
-        for snap in range(nsweeps)]
+      confs_k = [storage['confs'][snap][inv_state_inds[snap][k]] \
+        for snap in range(nsnaps)]
       if self.params[process]['keep_intermediate'] or \
           ((process=='cool') and (k==0)) or (k==(K-1)):
-        self.confs[process]['samples'][k].append([confs_k[n] \
-          for n in store_indicies])
+        self.confs[process]['samples'][k].append(confs_k)
       confs_repX.append(confs_k)
 
     # Store final conformation of each replica
     self.confs[process]['replicas'] = \
-      [np.copy(storage['confs'][store_indicies[-1]][inv_state_inds[-1][k]]) \
+      [np.copy(storage['confs'][-1][inv_state_inds[-1][k]]) \
        for k in range(K)]
         
     if self.params[process]['darts_per_sweep']>0:
@@ -2846,6 +2851,7 @@ last modified {1}
     self.tee("")
     self._clear_lock(process)
 
+    # The code below is only for sampling importance resampling
     if not self.params[process]['sampling_importance_resampling']:
       return
 
@@ -4557,8 +4563,10 @@ END
       'gcent':[full_center, focus_center], \
       'spacing':[full_spacing, focus_spacing]}
 
-  def _combine_MM_and_solvent(self, E):
-    toParse = [k for k in E.keys() if (E[k] is not None) and (len(E[k].shape)==2)]
+  def _combine_MM_and_solvent(self, E, toParse=None):
+    if toParse is None:
+      toParse = [k for k in E.keys() \
+        if (E[k] is not None) and (len(E[k].shape)==2)]
     for key in toParse:
       if np.isnan(E[key][:,-1]).all():
         E[key] = E[key][:,:-1]
