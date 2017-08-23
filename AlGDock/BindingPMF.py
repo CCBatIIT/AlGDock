@@ -1295,6 +1295,7 @@ last modified {1}
             
             attempts += 1
             if attempts == 5:
+              self._store_infinite_f_RL()
               raise Exception('Unable to ramp temperature')
 
           # Get state energies
@@ -1414,6 +1415,7 @@ last modified {1}
       (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'dock', lambda_n)
       if np.std(DeltaEs)<1E-7:
+        self._store_infinite_f_RL()
         raise Exception('Unable to initialize simulation')
 
       if self.params['dock']['darts_per_seed']>0:

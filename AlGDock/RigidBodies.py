@@ -93,7 +93,6 @@ class identifier(converter):
         key=lambda a:a.fullName()), key=lambda a:a.mass())
       if len(attached_terminal_atoms)>0:
         initial_atom = attached_terminal_atoms[-1]
-        print initial_atom
         break
     self._converter_setup(initial_atom=initial_atom)
     
