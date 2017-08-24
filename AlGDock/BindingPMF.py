@@ -3657,8 +3657,12 @@ last modified {1}
       lambda_o = copy.deepcopy(getattr(self,process+'_protocol')[-1])
     if (lambda_o is not None):
       lambda_n = copy.deepcopy(lambda_o)
+      if 'steps_per_trial' not in lambda_o.keys():
+        lambda_n['steps_per_trial'] = 1*self.params[process]['steps_per_sweep']
     else:
       lambda_n = {}
+      lambda_n['steps_per_trial'] = 1*self.params[process]['steps_per_sweep']
+
     lambda_n['MM'] = True
     if crossed is not None:
       lambda_n['crossed'] = crossed
