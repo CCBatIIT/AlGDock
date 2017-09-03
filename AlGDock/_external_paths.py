@@ -107,6 +107,10 @@ search_paths = {
       'gaff':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
               '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
               '/home/daveminh/algdock_data/gaff2.dat'],
+             # For getting rmsds
+       'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
+                '/Applications/dock6/dock6',
+                '/share/apps/dock/6/bin/dock6'],
              # For postprocessing snapshots with NAMD
       'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
@@ -156,6 +160,7 @@ search_paths = {
               '/home/dminh/shared/TTF/Arial.ttf']}
 
 download_paths = {
+  'dock6':('dock6.tar.gz','','dock6/bin/dock6'),
   'namd':('namd.tar.gz','','namd2'),
   'sander':('sander.tar.gz','','sander'),
   'elsize':('elsize.tar.gz','','elsize'),

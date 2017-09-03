@@ -347,6 +347,35 @@ class dock6_mol2:
         crds.append(crd)
     return (crds,E)
 
+  def write(self, templateFN, confs, FN):
+    if (templateFN is None) or not os.path.isfile(templateFN):
+      raise Exception('Template required')
+
+    # Read the first model from the template
+    if templateFN.endswith('.mol2'):
+      mol2F = open(templateFN,'r')
+    elif templateFN.endswith('.mol2.gz'):
+      import gzip
+      mol2F = gzip.open(templateFN,'r')
+    else:
+      raise Exception('Template for mol2 is unknown file type')
+    
+    template = mol2F.read().strip().split('########## Name:')[1]
+    template = template[template.find('@<TRIPOS>'):]
+    mol2F.close()
+
+    header = template[template.find('@<TRIPOS>MOLECULE'):template.find('@<TRIPOS>ATOM')+14]
+    body = template[template.find('@<TRIPOS>ATOM')+14:template.find('\n@<TRIPOS>BOND')].split('\n')
+    footer = template[template.find('\n@<TRIPOS>BOND'):]
+    F = open(FN,'w')
+    for conf in confs:
+      F.write(header + \
+        '\n'.join([body[ind][:16] + \
+                   ''.join(['%10.4f'%x for x in conf[ind]]) + \
+                   body[ind][46:] for ind in range(len(body))]) \
+        + footer)
+    F.close()
+
 class dcd:
   """
   Class to write DCD files

@@ -602,7 +602,7 @@ last modified {1}
         rmsd_crd = IO_crd.read(self.params['dock']['rmsd'], \
           natoms=self.universe.numberOfAtoms(), multiplier=0.1)
         rmsd_crd = rmsd_crd[self.molecule.inv_prmtop_atom_order,:]
-      self.confs['rmsd'] = rmsd_crd[self.molecule.heavy_atoms,:]
+      self.confs['rmsd'] = rmsd_crd
 
     # Locate programs for postprocessing
     all_phases = self.params['dock']['phases'] + self.params['cool']['phases']
@@ -690,8 +690,9 @@ last modified {1}
     self._run_type = run_type
     if run_type=='configuration_energies' or \
        run_type=='minimized_configuration_energies':
-      self.configuration_energies(minimize=(\
-        run_type=='minimized_configuration_energies'))
+      self.configuration_energies(\
+        minimize = (run_type=='minimized_configuration_energies'), \
+        max_confs = 50)
     elif run_type=='store_params':
       self._save('cool', keys=['progress'])
       self._save('dock', keys=['progress'])
@@ -1531,7 +1532,7 @@ last modified {1}
   def calc_f_RL(self, readOnly=False, do_solvation=True, redo=False):
     """
     Calculates the binding potential of mean force
-    redo does not do anything now; it is an option for debugging
+    redo recalculates f_RL and B except grid_MBAR 
     """
     if self.dock_protocol==[]:
       return # Initial docking is incomplete
@@ -1550,6 +1551,15 @@ last modified {1}
       self._clear_f_RL()
     if readOnly:
       return True
+
+    if redo:
+      for key in self.f_RL.keys():
+        if key!='grid_MBAR':
+          self.f_RL[key] = []
+      self.B = {'MMTK_MBAR':[]}
+      for phase in self.params['dock']['phases']:
+        for method in ['min_Psi','mean_Psi','EXP','MBAR']:
+          self.B[phase+'_'+method] = []
 
     # Make sure all the energies are available
     for c in range(self._dock_cycle):
@@ -1598,6 +1608,12 @@ last modified {1}
       updated = set_updated_to_True(updated, quiet=~do_solvation)
 
     # Store rmsd values
+    if redo and (self.params['dock']['rmsd'] is not False):
+      k = len(self.dock_protocol) - 1
+      for c in range(self._dock_cycle):
+        confs = [conf[self.molecule.prmtop_atom_order,:]*10. \
+          for conf in self.confs['dock']['samples'][k][c]]
+        self.dock_Es[k][c]['rmsd'] = self.get_rmsds(confs)
     self.stats_RL['rmsd'] = [(np.hstack([self.dock_Es[k][c]['rmsd']
       if 'rmsd' in self.dock_Es[k][c].keys() else [] \
         for c in range(self.stats_RL['equilibrated_cycle'][-1], \
@@ -1699,35 +1715,34 @@ last modified {1}
       for method in ['min_Psi','mean_Psi','EXP','MBAR']:
         if not phase+'_'+method in self.B:
           self.B[phase+'_'+method] = []
-      
+
       # Receptor solvation
       f_R_solv = self.original_Es[0][0]['R'+phase][:,-1]/self.RT_TARGET
 
       for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
         updated = set_updated_to_True(updated)
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
-        u_L = np.concatenate([\
-          self.dock_Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
-          for c in extractCycles])
+
+        # From the full grid to the fully bound complex in phase
         u_RL = np.concatenate([\
           self.dock_Es[-1][c]['RL'+phase][:,-1]/self.RT_TARGET \
           for c in extractCycles])
         u_sampled = np.concatenate([\
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
 
-        # From the full grid to the fully bound complex in phase
         du = u_RL - u_sampled
         min_du = min(du)
         weights = np.exp(-du+min_du)
 
-#        # Filter outliers
-#        toKeep = np.abs(du - np.median(du))<(2*np.std(du))
-#        du = du[toKeep]
-#        weights[~toKeep] = 0.
+        # Filter outliers
+        if self.params['dock']['pose']>-1:
+          toKeep = du > (np.mean(du) - 3*np.std(du))
+          du = du[toKeep]
+          weights[~toKeep] = 0.
 
         weights = weights/sum(weights)
 
-        #   Exponential average
+        # Exponential average
         f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du - f_R_solv
 
         # Interaction energies
@@ -1825,7 +1840,6 @@ last modified {1}
       for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
 
     # RMSD matrix
-    # This seems to segfault often
     from pyRMSD.matrixHandler import MatrixHandler
     rmsd_matrix_handler = MatrixHandler().createMatrix(confs, \
       {'cool':'QCP_SERIAL_CALCULATOR', \
@@ -1952,9 +1966,6 @@ last modified {1}
       (confs, Es) = self._get_confs_to_rescore(site=False, \
         minimize=minimize, sort=False)
 
-    if max_confs is not None:
-      confs = confs[:max_confs]
-
     self._set_lock('dock')
     self.tee("\n>>> Calculating energies for %d configurations, "%len(confs) + \
       "starting at " + \
@@ -1996,11 +2007,22 @@ last modified {1}
         Es[key][c] = self.universe.energy()
       updated = True
 
+    # Calculate symmetry-corrected RMSD
+    if (not 'rmsd' in Es.keys()) and (self.params['dock']['rmsd'] is not False):
+      confs_prmtop_order = [conf[self.molecule.prmtop_atom_order,:]*10. \
+        for conf in confs]
+      Es['rmsd'] = self.get_rmsds(confs_prmtop_order)
+      updated = True
+
     if updated:
       self.tee("\nElapsed time for ligand MM, OBC, and grid energies was " + \
         HMStime(time.time() - self.start_times['configuration_energies']), \
         process='dock')
     self._clear_lock('dock')
+
+    # Reduce the number of conformations
+    if max_confs is not None:
+      confs = confs[:max_confs]
 
     # Implicit solvent energies
     self._load_programs(self.params['dock']['phases'])
@@ -2056,12 +2078,6 @@ last modified {1}
     for key in Es.keys():
       Es[key] = np.array(Es[key])
     self._combine_MM_and_solvent(Es)
-
-    # Calculate RMSD
-    if (self.params['dock']['rmsd'] is not False):
-      Es['rmsd'] = np.array([np.sqrt(((confs[c][self.molecule.heavy_atoms,:] - \
-        self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) \
-          for c in range(len(confs))])
 
     if updated:
       self._set_lock('dock')
@@ -2327,7 +2343,7 @@ last modified {1}
 
     original_stderr = sys.stderr
     sys.stderr = NullDevice() # Suppresses warnings for minimization
-
+    
     x_o = np.copy(self.universe.configuration().array)
     e_o = self.universe.energy()
     for rep in range(5000):
@@ -2380,7 +2396,7 @@ last modified {1}
     if normalize:
       self.universe.normalizePosition()
     e_f = self.universe.energy()
-    
+
     self.tee("  ramped temperature from %d to %d K in %s, "%(\
       T_LOW, T_START, HMStime(time.time()-self.start_times['T_ramp'])) + \
       "changing energy to %.3g kcal/mol"%(e_f))
@@ -2726,9 +2742,6 @@ last modified {1}
         confs[k] = results[k]['confs']
       mean_energies.append(np.mean([results[k]['Etot'] for k in range(K)]))
       E = self._energyTerms(confs, E, process=process)
-      if (process=='dock') and (self.params['dock']['rmsd'] is not False):
-        E['rmsd'] = np.array([np.sqrt(((confs[k][self.molecule.heavy_atoms,:] - \
-          self.confs['rmsd'])**2).sum()/self.molecule.nhatoms) for k in range(K)])
 
       # Store MC move statistics
       for k in range(K):
@@ -2751,6 +2764,10 @@ last modified {1}
 
       # Store data in local variables
       if (sweep+1)%self.params[process]['snaps_per_cycle']==0:
+        if (process=='dock') and (self.params['dock']['rmsd'] is not False):
+          confs_prmtop_order = [conf[self.molecule.prmtop_atom_order,:]*10. \
+            for conf in confs]
+          E['rmsd'] = self.get_rmsds(confs_prmtop_order)
         storage['confs'].append(list(confs))
         storage['state_inds'].append(list(state_inds))
         storage['energies'].append(copy.deepcopy(E))
@@ -2808,7 +2825,7 @@ last modified {1}
     # and also local variables 
     #   Es_repX and confs_repX
     if (process=='dock') and (self.params['dock']['rmsd'] is not False):
-        terms.append('rmsd') # Make sure to save the rmsd
+      terms.append('rmsd') # Make sure to save the rmsd
     Es_repX = []
     for k in range(K):
       E_k = {}
@@ -4589,6 +4606,75 @@ END
           totalMM = np.transpose(np.atleast_2d(E[prefix+'NAMD_Gas'][:,-1]))
           E[key] = np.hstack((E[key],totalMM))
         E[key] = np.hstack((E[key],np.sum(E[key],1)[...,None]))
+
+  def get_rmsds(self, confs):
+    import AlGDock.IO
+    IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
+
+    ref_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd_reference.mol2'))
+    if not os.path.isfile(ref_FN):
+      ref_conf = self.confs['rmsd'][self.molecule.prmtop_atom_order,:]*10.
+      IO_dock6_mol2.write(self._FNs['score'], [ref_conf], ref_FN)
+    target_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd_target.mol2'))
+    IO_dock6_mol2.write(self._FNs['score'], confs, target_FN)
+
+    self._FNs['dock6'] = a.findPaths(['dock6'])['dock6']
+    in_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd.in'))
+    in_F = open(in_FN,'w')
+    in_F.write('''
+ligand_atom_file                                             {1}
+limit_max_ligands                                            no
+skip_molecule                                                no
+read_mol_solvation                                           no
+calculate_rmsd                                               yes
+use_rmsd_reference_mol                                       yes
+rmsd_reference_filename                                      {2}
+use_database_filter                                          no
+orient_ligand                                                no
+use_internal_energy                                          no
+flexible_ligand                                              no
+bump_filter                                                  no
+score_molecules                                              no
+atom_model                                                   all
+vdw_defn_file                                                {0}/parameters/vdw_AMBER_parm99.defn
+flex_defn_file                                               {0}/parameters/flex.defn
+flex_drive_file                                              {0}/parameters/flex_drive.tbl
+ligand_outfile_prefix                                        rmsd
+write_orientations                                           no
+num_scored_conformers                                        1000
+write_conformations                                          no
+cluster_conformations                                        no
+rank_ligands                                                 no
+'''.format(self._FNs['dock6'][:-10], target_FN, ref_FN))
+    in_F.close()
+
+    dir_o = os.getcwd()
+    os.chdir(self.dir['dock'])
+    import subprocess
+    p = subprocess.Popen(\
+      [self._FNs['dock6'], '-i',in_FN], \
+      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdoutdata, stderrdata) = p.communicate()
+    p.wait()
+    os.chdir(dir_o)
+    
+    scored_FN = os.path.abspath(\
+      os.path.join(self.dir['dock'],'rmsd_scored.mol2'))
+    if not os.path.isfile(scored_FN):
+      raise Exception('DOCK 6 failed to calculate rmsd')
+
+    F = open(scored_FN,'r')
+    rmsds = [float(line.split('\t')[-1]) for line in F.read().split('\n') \
+      if line.startswith('########## HA_RMSDh:')]
+    F.close()
+
+    os.remove(target_FN)
+    os.remove(in_FN)
+    os.remove(scored_FN)
+    if not ref_FN in self._toClear:
+      self._toClear.append(ref_FN)
+    
+    return np.array(rmsds)/10.
 
   def _write_traj(self, traj_FN, confs, moiety, \
       title='', factor=1.0/MMTK.Units.Ang):
