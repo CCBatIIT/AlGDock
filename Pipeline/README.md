@@ -120,23 +120,28 @@ Create `$TARGET/receptor/xtal_ligand_selection.py`.
 This file specifies ligands to be included or excluded from the binding site analysis, e.g.
 
 >\# Ligands to include, specifying (pdb_id, chain_id, rename, res_id)
-selection = []
-\# Ligands to exclude, specifying (pdb_id, chain_id, rename, res_id)
-exclude = []
-\# Ligands to exclude, only specifying resname
-exclude_resname = ['HOH']
-\# The minimum number of atoms in a ligand
-minimum_natoms = 8
-\# Ligands will be clustered using hierarchical clustering with
-\# clustering_method = (method, number_of_clusters)
-\# or not clustered at all.
-\# If clustering is None, then a plot will be generated
-\# showing a number of possible clusterings.
-\# If is specified, then colors of the clusters will be shown.
-clustering_method = None
-\# If site_R is None, the site radius will come from rounding up the
-\# distance from the site center to the closest ligand center of mass
-site_R = None
+>
+>selection = []
+>
+>\# Ligands to exclude, specifying (pdb_id, chain_id, rename, res_id)
+>
+>exclude = []
+>
+>\# Ligands to exclude, only specifying resname
+>
+>exclude_resname = ['HOH']
+>
+>\# The minimum number of atoms in a ligand
+>
+>minimum_natoms = 8
+>
+>\# Ligands will be clustered using hierarchical clustering with clustering_method = (method, number_of_clusters) or not clustered at all. If clustering is None, then a plot will be generated showing a number of possible clusterings. If is specified, then colors of the clusters will be shown.
+>
+> clustering_method = None
+>
+>\# If site_R is None, the site radius will come from rounding up the distance from the site center to the closest ligand center of mass
+>
+>site_R = None
 
 From $TARGET/receptor/2-binding_site/, run
 
