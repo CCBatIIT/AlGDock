@@ -1,3 +1,4 @@
+# _external_paths in Pipeline directory
 import os, inspect
 dir_external_paths = os.path.dirname(os.path.abspath(\
   inspect.getfile(inspect.currentframe())))
@@ -102,12 +103,16 @@ search_paths = {
                # For initial ligand pose
        'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
                 '/Applications/dock6/dock6',
-                '/share/apps/dock/6/bin/dock6'],
+                '/share/apps/dock/6/bin/dock6',
+                '/home/dminh/software/dock6/bin/dock6',
+                '/home/daveminh/software/dock6/bin/dock6',
+                '/g/g19/minh1/software/dock6/bin/dock6'],
                # Submits a command to the queue
 'qsub_command':['/Users/dminh/scripts/qsub_command.py',
                 '~/scripts/qsub_command.py',
                 '/home/dminh/scripts/qsub_command.py',
-                '/home/daveminh/scripts/qsub_command.py'],
+                '/home/daveminh/scripts/qsub_command.py',
+                '/g/g19/minh1/scripts/qsub_command.py'],
                # Spheres for UCSF DOCK 6
   'sphgen_cpp':['/Users/dminh/Applications/sphgen_cpp.1.2/sphgen_cpp',
                 '/Applications/dock6/sphgen',

@@ -32,25 +32,21 @@ for run_type in run_types:
     complex_inpcrd='prmtopcrd/complex.trans.inpcrd', \
     complex_fixed_atoms='prmtopcrd/complex.pdb', \
     score = 'prmtopcrd/xtal_plus_dock6_scored.mol2', \
-    temperature_scaling = 'Quadratic', \
-    pose = 0, \
+    pose = -1, \
     rmsd=True, \
     dir_grid='grids', \
-    protocol='Adaptive', cool_therm_speed=25.0, dock_therm_speed=0.25, \
-    T_HIGH=450.0, T_SIMMIN=300.0, T_TARGET=300.0, \
+    protocol='Adaptive', cool_therm_speed=15.0, dock_therm_speed=1.0, \
     sampler='HMC', \
-    MCMC_moves=1, \
-    sampling_importance_resampling = True, \
-    solvation = 'Full', \
+    solvation = 'Desolvated', \
     seeds_per_state=10, steps_per_seed=200, darts_per_seed=0, \
-    sweeps_per_cycle=50, snaps_per_cycle=25, attempts_per_sweep=100, \
+    sweeps_per_cycle=50, snaps_per_cycle=10, attempts_per_sweep=100, \
     steps_per_sweep=50, darts_per_sweep=0, \
     cool_repX_cycles=3, dock_repX_cycles=4, \
     site='Sphere', site_center=[1.7416, 1.7416, 1.7416], \
     site_max_R=1.0, \
     site_density=10., \
     phases=phases, \
-    cores=-1, \
+    cores=1, \
     random_seed=-1, \
     max_time=240, \
     keep_intermediate=True)
@@ -74,6 +70,3 @@ for run_type in run_types:
 # Reasonable testing protocols:
 # protocol='Geometric', cool_therm_speed=0.05, dock_therm_speed=0.013,\
 # protocol='Adaptive', cool_therm_speed=0.5, dock_therm_speed=0.5
-
-# Reasonable sampler options:
-# sampler='HMC', \

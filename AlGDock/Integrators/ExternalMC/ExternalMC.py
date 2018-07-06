@@ -36,7 +36,8 @@ def random_rotate():
 # External Monte Carlo move integrator
 #
 class ExternalMCIntegrator(Dynamics.Integrator):
-  def __init__(self, universe, molecule, step_size, **options):
+  def __init__(self, universe, molecule, step_size, sampling_universe=None, \
+      **options):
     """
     confs - configurations to dart to
     extended - whether or not to use external coordinates
@@ -47,6 +48,7 @@ class ExternalMCIntegrator(Dynamics.Integrator):
 
     self.molecule = molecule
     self.step_size = step_size
+    self.sampling_universe = sampling_universe
 
   def __call__(self, **options):
     # Process the keyword arguments
@@ -56,11 +58,16 @@ class ExternalMCIntegrator(Dynamics.Integrator):
   
     RT = R*self.getOption('T')
     ntrials = self.getOption('ntrials')
+    natoms = self.universe.numberOfAtoms()
 
     acc = 0
     xo = np.copy(self.universe.configuration().array)
-    eo = self.universe.energy()
     com = self.universe.centerOfMass().array
+    if self.sampling_universe is None:
+      eo = self.universe.energy()
+    else:
+      self.sampling_universe.configuration().array[-natoms:,:] = xo
+      eo = self.sampling_universe.energy() # <- Using sampling Hamiltonian
     
     for c in range(ntrials):
       step = np.random.randn(3)*self.step_size
@@ -70,8 +77,12 @@ class ExternalMCIntegrator(Dynamics.Integrator):
       else:
         # Random translation
         xn = xo + step
-      self.universe.setConfiguration(Configuration(self.universe,xn))
-      en = self.universe.energy()
+      if self.sampling_universe is None:
+        self.universe.setConfiguration(Configuration(self.universe,xn))
+        en = self.universe.energy()
+      else:
+        self.sampling_universe.configuration().array[-natoms:,:] = xn
+        en = self.sampling_universe.energy() # <- Using sampling Hamiltonian
       if ((en<eo) or (np.random.random()<np.exp(-(en-eo)/RT))):
         acc += 1
         xo = xn

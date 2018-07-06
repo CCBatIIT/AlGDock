@@ -169,7 +169,24 @@ class BPMF_plots(BPMF):
       save_image, image_labels, execute, \
       principal_axes_alignment, clear_files, quit, view_args)
 
-  def show_poses(self, confs, prefix,
+  def show_pose_prediction(self, score='OpenMM_OBC2_fe_u', \
+        show_ref_ligand=True, show_starting_pose=False, show_receptor=True, \
+        save_image=False, image_labels=None, execute=True, \
+        principal_axes_alignment=False, clear_files=True, quit=False, \
+        view_args={}):
+    ws = np.exp(-self.stats_RL['scores'][score]/self.RT_TARGET)
+    ws = ws/sum(ws)
+    toShow = np.arange(len(ws))[ws>0.001]
+
+    confs = [self.confs['dock']['samples'][-1][cycle][n] for (cycle,n) in self.stats_RL['pose_inds']]
+    confs = [confs[n] for n in np.arange(len(ws))[toShow]]
+    return self.show_poses(confs, 'prediction-'+score, ws[toShow], \
+      show_ref_ligand, show_starting_pose, show_receptor, \
+      save_image, image_labels, execute, \
+      principal_axes_alignment, clear_files, quit, view_args)
+  
+  def show_poses(self, confs, prefix, \
+        thickness=None,
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
         save_image=False, image_labels=None, execute=True, \
         principal_axes_alignment=False, clear_files=True, quit=False, \
@@ -247,12 +264,21 @@ class BPMF_plots(BPMF):
       molid_receptor = None
 
     # Show samples
-    script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-    script += 'mol addfile '+ligand_dcd_FN+' type dcd waitfor all\n'
-    script += 'mol drawframes $ligand 0 {0:%d}\n'%len(confs)
-    if len(self.dir[process].split('/'))>3:
-      label = '/'.join(self.dir[process].split('/')[-3:])
-      script += 'mol rename $ligand {%s}\n'%(label)
+    if thickness is None:
+      script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+      script += 'mol addfile '+ligand_dcd_FN+' type dcd waitfor all\n'
+      script += 'mol drawframes $ligand 0 {0:%d}\n'%len(confs)
+      if len(self.dir[process].split('/'))>3:
+        label = '/'.join(self.dir[process].split('/')[-3:])
+        script += 'mol rename $ligand {%s}\n'%(label)
+    else:
+      for n in range(len(confs)):
+        script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+        script += 'mol addfile ' + ligand_dcd_FN + \
+          ' type dcd first %d last %d waitfor all\n'%(n,n)
+        script += 'mol modstyle 0 $ligand CPK ' + \
+          '%.6f %.6f 10.000000 10.000000\n'%(thickness[n]+0.2, thickness[n]+0.1)
+        script += 'mol rename $ligand {%s}\n'%(n)
     molids.append('Samples')
 
     # Use the reference ligand structure as a basis for setting the view
@@ -320,6 +346,7 @@ class BPMF_plots(BPMF):
       import PIL.ImageDraw
       draw = PIL.ImageDraw.Draw(im)
       import PIL.ImageFont
+      self._FNs['font'] = a.findPaths(['font'])['font']
       if self._FNs['font'] is not None:
         font = PIL.ImageFont.truetype(self._FNs['font'],size=84)
         textsize = draw.textsize(image_labels[0], font=font)
@@ -381,7 +408,12 @@ class BPMF_plots(BPMF):
         for s in np.linspace(0,len(self.dock_protocol)-1,nframes)]
     else:
       state_inds = range(0,len(self.confs[process]['samples']),stride)
-
+    
+    # Confirm that intermediate conformations exist
+    for state_ind in state_inds:
+      if self.confs['dock']['samples'][state_ind]==[]:
+        raise Exception('No snapshots in state %d'%state_ind)
+    
     # Generate each snapshot
     view_args['render'] = 'TachyonInternal' # This works without the vmd display
     for s in range(len(state_inds)):
@@ -393,13 +425,14 @@ class BPMF_plots(BPMF):
         labels = []
       labels.append('T = %4.1f K'%lambda_s['T'])
       # Generate the snapshot
-      self.show_samples(process, state=state_inds[s], show_replicas=False, \
+      self.show_samples(process, state=state_inds[s], \
         show_ref_ligand=True, show_starting_pose=False, show_receptor=True, \
         save_image=True, image_labels=labels, execute=True, quit=True, \
         view_args=view_args)
-
+  
     # Make a movie
     if movie_name is not None:
+      self._FNs['convert'] = a.findPaths(['convert'])['convert']
       if self._FNs['convert'] is not None:
         import subprocess
         subprocess.call([self._FNs['convert'],'-delay','15',\

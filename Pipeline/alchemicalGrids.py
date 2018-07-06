@@ -17,10 +17,14 @@ class gridCalculation:
     prmtop_FN='apo.prmtop', inpcrd_FN=None, pqr_FN=None, \
     header_FN=None, site_FN=None, \
     PB_FN=None, ele_FN=None, LJa_FN=None, LJr_FN=None, \
-    spacing=None, counts=None, PB_spacing=None):
+    spacing=None, counts=None, PB_spacing=None,
+    calcType='All'):
   
     ### Parse parameters
-    self.FNs = {'prmtop':prmtop_FN, 'inpcrd':inpcrd_FN, 'header':header_FN, \
+    self.FNs = {\
+      'prmtop':prmtop_FN, \
+      'inpcrd':inpcrd_FN, \
+      'header':header_FN, \
       'pqr':{True:'receptor.pqr',False:pqr_FN}[pqr_FN is None], \
       'site':{True:'../2-binding_site/measured_binding_site.py', \
               False:site_FN}[site_FN is None], \
@@ -29,9 +33,10 @@ class gridCalculation:
       'LJa':{True:'LJa.nc',False:LJa_FN}[LJa_FN is None], \
       'LJr':{True:'LJr.nc',False:LJr_FN}[LJr_FN is None]}
     del prmtop_FN, inpcrd_FN, header_FN, ele_FN, LJa_FN, LJr_FN
-    
+
     for key in self.FNs.keys():
-      self.FNs[key] = os.path.abspath(self.FNs[key])
+      if self.FNs[key] is not None:
+        self.FNs[key] = os.path.abspath(self.FNs[key])
   
     # Check that input files are available
     for FN in [self.FNs['prmtop'],self.FNs['inpcrd']]:
@@ -109,20 +114,22 @@ class gridCalculation:
     print
 
     if not os.path.isfile(self.FNs['PB']):
-      print 'Calculating Poisson-Boltzmann grid'
-      self.PB_grid(PB_spacing*counts, PB_spacing)
+      if calcType in ['All','PB']:
+        print 'Calculating Poisson-Boltzmann grid'
+        self.PB_grid(PB_spacing*counts, PB_spacing)
     else:
       print 'Poisson-Boltzmann grid already calculated'
     
     if not (os.path.isfile(self.FNs['ele']) and \
             os.path.isfile(self.FNs['LJa']) and \
             os.path.isfile(self.FNs['LJr'])):
-      print 'Calculating direct alchemical grids'
-      self.direct_grids(spacing, counts)
+      if calcType in ['All','Direct']:
+        print 'Calculating direct alchemical grids'
+        self.direct_grids(spacing, counts)
     else:
       print 'Direct alchemical grids already calculated'
 
-  def direct_grids(self, spacing, counts, no_ele=False):
+  def direct_grids(self, spacing, counts, no_ele=True):
     """
     Calculates direct grids (Lennard Jones and electrostatic)
     """
@@ -251,6 +258,7 @@ class gridCalculation:
     dirs = {'current':os.getcwd()}
 
     # Sets up pqr file
+    added_pqr = False
     if not os.path.exists(self.FNs['pqr']):
       command_paths = _external_paths.findPaths(['sander'])
       dirs['amber'] = os.path.abspath(\
@@ -259,6 +267,7 @@ class gridCalculation:
       command = 'cat {0} | {1}/bin/ambpdb -p {2} -pqr > {3}'.format(\
         self.FNs['inpcrd'],dirs['amber'],self.FNs['prmtop'],self.FNs['pqr'])
       os.system(command)
+      added_pqr = True
 
     os.chdir(os.path.dirname(self.FNs['PB']))
     tempdir = 'APBS-'+os.path.basename(self.FNs['PB'])
@@ -379,7 +388,10 @@ END'''.format(self.FNs['pqr'], \
         final_dims, multiplier=0.596)
 
     # Remove intermediate files
-    for FN in [self.FNs['pqr'], 'io.mc', 'apbs.in', 'apbs.out','apbs_focus.dx']:
+    toClear = ['io.mc', 'apbs.in', 'apbs.out','apbs_focus.dx']
+    if added_pqr:
+      toClear += [self.FNs['pqr']]
+    for FN in toClear:
       if os.path.isfile(FN):
         os.remove(FN)
 
@@ -412,6 +424,8 @@ if __name__ == '__main__':
       help='Number of point in each direction (overrides header)')
     parser.add_argument('--PB_spacing', type=float, \
       help='PB Grid spacing (equal in all dimensions)')
+    parser.add_argument('--calcType', choices=['All','PB','Direct'],
+      help='Type of calculation to perform')
     args = parser.parse_args()
   except:
     import optparse
@@ -430,6 +444,8 @@ if __name__ == '__main__':
     parser.add_option('--counts', nargs=3, type="float", help='Grid dimensions')
     parser.add_option('--PB_spacing', type="float", \
       help='PB Grid spacing (equal in all dimensions)')
+    parser.add_argument('--calcType', choices=['All','PB','Direct'],
+      help='Type of calculation to perform')
     (args,options) = parser.parse_args()
 
   calc = gridCalculation(**vars(args))

@@ -206,10 +206,13 @@ last modified {1}
             FN = os.path.abspath(kwargs[key])
             if not os.path.isfile(FN):
               seekFNs.append(os.path.basename(FN))
+      if kwargs['score']!='default':
+        seekFNs.append(kwargs['score'])
       # From files in a previous instance
       for p in ['cool','dock']:
         if p in FNs.keys():
-          for level1 in ['ligand_database','prmtop','inpcrd','fixed_atoms']:
+          for level1 in ['ligand_database','receptor_database', \
+              'prmtop','inpcrd','fixed_atoms']:
             if level1 in FNs[p].keys():
               if isinstance(FNs[p][level1],dict):
                 for level2 in ['L','R','RL']:
@@ -220,6 +223,9 @@ last modified {1}
       seekFNs = set(seekFNs)
     seek_frcmod = (kwargs['frcmodList'] is None) or \
       (not os.path.isfile(kwargs['frcmodList'][0]))
+      
+    if kwargs['keep_tar']:
+      print 'Files extracted from tarballs will be kept\n'
 
     # Decompress tarballs into self.dir['dock']
     self._toClear = []
@@ -239,14 +245,16 @@ last modified {1}
           for seekFN in seekFNs:
             if member.name.endswith(seekFN):
               tarF.extract(member, path = self.dir['dock'])
-              self._toClear.append(os.path.join(self.dir['dock'],seekFN))
+              if not kwargs['keep_tar']:
+                self._toClear.append(os.path.join(self.dir['dock'],seekFN))
               print '  extracted '+seekFN
           if seek_frcmod and member.name.endswith('frcmod'):
             FN = os.path.abspath(os.path.join(self.dir['dock'],member.name))
             if not os.path.isfile(FN):
               tarF.extract(member, path = self.dir['dock'])
               kwargs['frcmodList'] = [FN]
-              self._toClear.append(FN)
+              if not kwargs['keep_tar']:
+                self._toClear.append(FN)
               print '  extracted '+FN
       print
 
@@ -273,11 +281,18 @@ last modified {1}
         kwargs['frcmodList'] = [kwargs['frcmodList']]
       kwargs['frcmodList'] = [cdir_or_dir_dock(FN) \
         for FN in kwargs['frcmodList']]
+    
+    if 'score' in kwargs.keys() and \
+        (kwargs['score'] is not None) and \
+        (kwargs['score'] != 'default'):
+      kwargs['score'] = a.findPath([kwargs['score'], \
+        os.path.join(self.dir['dock'],kwargs['score'])])
   
     FFpath = a.search_paths['gaff'] \
       if 'gaff' in a.search_paths.keys() else []
     FNs['new'] = OrderedDict([
       ('ligand_database',cdir_or_dir_dock(kwargs['ligand_database'])),
+      ('receptor_database',cdir_or_dir_dock(kwargs['receptor_database'])),
       ('forcefield',a.findPath(\
         [kwargs['forcefield'],'../Data/gaff2.dat'] + FFpath)),
       ('frcmodList',kwargs['frcmodList']),
@@ -307,20 +322,20 @@ last modified {1}
           os.path.join(kwargs['dir_grid'],'LJa.nc'),
           os.path.join(kwargs['dir_grid'],'LJa.dx'),
           os.path.join(kwargs['dir_grid'],'LJa.dx.gz')])),
-        ('ELE',a.findPath([kwargs['grid_ELE'],
-          os.path.join(kwargs['dir_grid'],'electrostatic.nc'),
-          os.path.join(kwargs['dir_grid'],'electrostatic.dx'),
-          os.path.join(kwargs['dir_grid'],'electrostatic.dx.gz'),
+        ('sELE',a.findPath([kwargs['grid_sELE'],
+          kwargs['grid_ELE'],
           os.path.join(kwargs['dir_grid'],'pb.nc'),
-          os.path.join(kwargs['dir_grid'],'pb.dx'),
-          os.path.join(kwargs['dir_grid'],'pb.dx.gz'),
+          os.path.join(kwargs['dir_grid'],'pbsa.nc'),
+          os.path.join(kwargs['dir_grid'],'direct_ELE.nc')])),
+        ('ELE',a.findPath([kwargs['grid_ELE'],
+          os.path.join(kwargs['dir_grid'],'direct_ELE.nc'),
+          os.path.join(kwargs['dir_grid'],'pb.nc'),
           os.path.join(kwargs['dir_grid'],'pbsa.nc')])),
         ('desolv',a.findPath([kwargs['grid_desolv'],
           os.path.join(kwargs['dir_grid'],'desolv.nc'),
           os.path.join(kwargs['dir_grid'],'desolv.dx'),
           os.path.join(kwargs['dir_grid'],'desolv.dx.gz')]))])),
-      ('score','default' if kwargs['score']=='default' \
-                            else a.findPath([kwargs['score']])),
+      ('score',kwargs['score']),
       ('dir_cool',self.dir['cool'])])
 
     if not (FNs['cool']=={} and FNs['dock']=={}):
@@ -496,7 +511,7 @@ last modified {1}
       
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
-  
+    
     # Set up the system
     original_stderr = sys.stderr
     sys.stderr = NullDevice()
@@ -504,6 +519,11 @@ last modified {1}
       os.path.dirname(self._FNs['ligand_database'])
     self.molecule = MMTK.Molecule(\
       os.path.basename(self._FNs['ligand_database']))
+    if self._FNs['receptor_database'] is not None:
+      self.molecule_in_RL = MMTK.Molecule(\
+        os.path.basename(self._FNs['ligand_database']))
+      self.receptor_molecule_in_RL = MMTK.Molecule(\
+        os.path.basename(self._FNs['receptor_database']))
     sys.stderr = original_stderr
     
     # Hydrogen Mass Repartitioning
@@ -529,6 +549,15 @@ last modified {1}
     # Create universe and add molecule to universe
     self.universe = MMTK.Universe.InfiniteUniverse()
     self.universe.addObject(self.molecule)
+    
+    # Create sampling universe and add molecules to universe
+    if self._FNs['receptor_database'] is not None:
+      self.bonusE_universe = MMTK.Universe.InfiniteUniverse()
+      self.bonusE_universe.addObject(self.receptor_molecule_in_RL)
+      self.bonusE_universe.addObject(self.molecule_in_RL)
+    else:
+      self.bonusE_universe = None
+    
     self._evaluators = {} # Store evaluators
     self._OpenMM_sims = {} # Store OpenMM simulations
     self._ligand_natoms = self.universe.numberOfAtoms()
@@ -591,6 +620,10 @@ last modified {1}
       self.confs['ligand'] = lig_crd[self.molecule.inv_prmtop_atom_order,:]
       self.universe.setConfiguration(\
         Configuration(self.universe,self.confs['ligand']))
+      if self.bonusE_universe is not None:
+        self.bonusE_universe.setConfiguration(\
+          Configuration(self.bonusE_universe, \
+          np.vstack((self.confs['receptor'],self.confs['ligand']))))
 
     if self.params['dock']['rmsd'] is not False:
       if self.params['dock']['rmsd'] is True:
@@ -641,7 +674,8 @@ last modified {1}
       self.universe, self.molecule, True)
     from AlGDock.Integrators.ExternalMC.ExternalMC import ExternalMCIntegrator
     self.sampler['ExternalMC'] = ExternalMCIntegrator(\
-      self.universe, self.molecule, step_size=0.25*MMTK.Units.Ang)
+      self.universe, self.molecule, step_size=0.25*MMTK.Units.Ang, \
+      bonusE_universe=self.bonusE_universe)
 
     for p in ['cool', 'dock']:
       if self.params[p]['sampler'] == 'MixedHMC':
@@ -719,6 +753,18 @@ last modified {1}
             pp_complete = self._postprocess()
             if pp_complete:
               self.calc_f_RL()
+    elif run_type=='timed_cool': # Timed cooling only
+      cool_complete = self.sim_process('cool')
+      if cool_complete:
+        pp_complete = self._postprocess([('cool',-1,-1,'L')])
+        if pp_complete:
+          self.calc_f_L()
+    elif run_type=='timed_dock': # Timed docking only
+      dock_complete = self.sim_process('dock')
+      if dock_complete:
+        pp_complete = self._postprocess()
+        if pp_complete:
+          self.calc_f_RL()
     elif run_type=='postprocess': # Postprocessing
       self._postprocess()
     elif run_type=='redo_postprocess':
@@ -734,21 +780,26 @@ last modified {1}
       self._postprocess()
       self.calc_f_RL()
     elif run_type=='render_docked':
-      view_args = {'axes_off':True, 'size':[1008,1008], 'scale_by':0.80, \
+      view_args = {'axes_off':True, 'size':[1002,1002], 'scale_by':0.80, \
                    'render':'TachyonInternal'}
       if hasattr(self, '_view_args_rotate_matrix'):
         view_args['rotate_matrix'] = getattr(self, '_view_args_rotate_matrix')
       self.show_samples(show_ref_ligand=True, show_starting_pose=True, \
         show_receptor=True, save_image=True, execute=True, quit=True, \
         view_args=view_args)
+#       self.show_pose_prediction(show_ref_ligand=True, \
+#         show_starting_pose=False, \
+#         show_receptor=True, \
+#         save_image=True, execute=True, quit=True, \
+#         view_args=view_args)
     elif run_type=='render_intermediates':
-      view_args = {'axes_off':True, 'size':[1008,1008], 'scale_by':0.80, \
+      view_args = {'axes_off':True, 'size':[1002,1002], 'scale_by':0.80, \
                    'render':'TachyonInternal'}
       if hasattr(self, '_view_args_rotate_matrix'):
         view_args['rotate_matrix'] = getattr(self, '_view_args_rotate_matrix')
-      self.render_intermediates(\
-        movie_name=os.path.join(self.dir['dock'],'dock-intermediates.gif'), \
-        view_args=view_args)
+#      self.render_intermediates(\
+#        movie_name=os.path.join(self.dir['dock'],'dock-intermediates.gif'), \
+#        view_args=view_args)
       self.render_intermediates(nframes=8, view_args=view_args)
     elif run_type=='clear_intermediates':
       for process in ['cool','dock']:
@@ -938,7 +989,7 @@ last modified {1}
       else:
         saved = False
 
-      if self._run_type=='timed':
+      if self._run_type.startswith('timed'):
         remaining_time = self.timings['max']*60 - \
           (time.time()-self.start_times['run'])
         if remaining_time<0:
@@ -1043,7 +1094,7 @@ last modified {1}
 
     if not do_solvation:
       if updated:
-        if not self._run_type=='timed':
+        if not self._run_type.startswith('timed'):
           self._write_pkl_gz(f_L_FN, (self.stats_L,self.f_L), quiet=True)
         self._clear_lock('cool')
       return True
@@ -1509,7 +1560,7 @@ last modified {1}
       else:
         saved = False
 
-      if self._run_type=='timed':
+      if self._run_type.startswith('timed'):
         remaining_time = self.timings['max']*60 - \
           (time.time()-self.start_times['run'])
         if remaining_time<0:
@@ -1573,13 +1624,14 @@ last modified {1}
     start_string = "\n>>> Complex free energy calculations, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n"
     self.start_times['BPMF'] = time.time()
-
+    
     updated = False
-    def set_updated_to_True(updated, quiet=False):
-      if (updated is False) and (not quiet):
-        self.tee(start_string)
-      updated = True
-      return updated
+    def set_updated_to_True(updated, start_string, quiet=False):
+      if (updated is False):
+        self._set_lock('dock')
+        if not quiet:
+          self.tee(start_string)
+      return True
 
     K = len(self.dock_protocol)
     
@@ -1599,13 +1651,13 @@ last modified {1}
           (self.dock_Es[-1][c]['LJr'] + \
            self.dock_Es[-1][c]['LJa'] + \
            self.dock_Es[-1][c]['ELE'])/self.RT_SIMMIN)
-      updated = set_updated_to_True(updated, quiet=~do_solvation)
+      updated = set_updated_to_True(updated, start_string, quiet=not do_solvation)
 
     # Estimate cycle at which simulation has equilibrated
     eqc_o = self.stats_RL['equilibrated_cycle']
     self.stats_RL['equilibrated_cycle'] = self._get_equilibrated_cycle('dock')
     if self.stats_RL['equilibrated_cycle']!=eqc_o:
-      updated = set_updated_to_True(updated, quiet=~do_solvation)
+      updated = set_updated_to_True(updated, start_string, quiet=not do_solvation)
 
     # Store rmsd values
     if redo and (self.params['dock']['rmsd'] is not False):
@@ -1645,7 +1697,7 @@ last modified {1}
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
       MBAR = self._run_MBAR(u_kln,N_k)[0]
       self.f_RL['grid_MBAR'][c] = MBAR
-      updated = set_updated_to_True(updated, quiet=~do_solvation)
+      updated = set_updated_to_True(updated, start_string, quiet=not do_solvation)
       
       self.tee("  calculated grid scaling free energy of %.2f RT "%(\
                   self.f_RL['grid_MBAR'][c][-1])+\
@@ -1662,7 +1714,7 @@ last modified {1}
 
     if not do_solvation:
       if updated:
-        if not self._run_type=='timed':
+        if not self._run_type.startswith('timed'):
           self._write_pkl_gz(f_RL_FN, \
             (self.f_L, self.stats_RL, self.f_RL, self.B))
         self._clear_lock('dock')
@@ -1720,7 +1772,7 @@ last modified {1}
       f_R_solv = self.original_Es[0][0]['R'+phase][:,-1]/self.RT_TARGET
 
       for c in range(len(self.B[phase+'_MBAR']), self._dock_cycle):
-        updated = set_updated_to_True(updated)
+        updated = set_updated_to_True(updated, start_string)
         extractCycles = range(self.stats_RL['equilibrated_cycle'][c], c+1)
 
         # From the full grid to the fully bound complex in phase
@@ -1977,13 +2029,13 @@ last modified {1}
     if not 'MM' in Es.keys():
       Es = self._energyTerms(confs, Es)
       solvation_o = self.params['dock']['solvation']
-      self.params['dock']['solvation'] = 'Fractional'
-      if 'OBC' in self._forceFields.keys():
-        del self._forceFields['OBC']
-      self._evaluators = {}
-      self._set_universe_evaluator(lambda_o)
-      Es = self._energyTerms(confs, Es)
-      Es['OBC_Fractional'] = Es['OBC']
+#       self.params['dock']['solvation'] = 'Fractional'
+#       if 'OBC' in self._forceFields.keys():
+#         del self._forceFields['OBC']
+#       self._evaluators = {}
+#       self._set_universe_evaluator(lambda_o)
+#       Es = self._energyTerms(confs, Es)
+#       Es['OBC_Fractional'] = Es['OBC']
       self.params['dock']['solvation'] = 'Full'
       if 'OBC' in self._forceFields.keys():
         del self._forceFields['OBC']
@@ -2015,7 +2067,7 @@ last modified {1}
       updated = True
 
     if updated:
-      self.tee("\nElapsed time for ligand MM, OBC, and grid energies was " + \
+      self.tee("\nElapsed time for ligand MM, OBC, and grid energies: " + \
         HMStime(time.time() - self.start_times['configuration_energies']), \
         process='dock')
     self._clear_lock('dock')
@@ -2072,7 +2124,7 @@ last modified {1}
               self._write_pkl_gz(energyFN,(confs,Es))
               break
     for FN in toClear:
-      if os.path.isfile(FN):
+      if (FN is not None) and os.path.isfile(FN):
         os.remove(FN)
 
     for key in Es.keys():
@@ -2081,7 +2133,7 @@ last modified {1}
 
     if updated:
       self._set_lock('dock')
-      self.tee("\nElapsed time for energies was " + \
+      self.tee("\nElapsed time for energies: " + \
         HMStime(time.time() - self.start_times['configuration_energies']), \
         process='dock')
       self._clear_lock('dock')
@@ -2138,8 +2190,9 @@ last modified {1}
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
       fflist.append(self._forceFields['gaff'])
     if ('site' in lambda_n.keys()) and lambda_n['site']:
+      # Set up the binding site in the force field
+      append_site = True # Whether to append the binding site to the force field
       if not 'site' in self._forceFields.keys():
-        # Set up the binding site in the force field
         if (self.params['dock']['site']=='Measure'):
           self.params['dock']['site'] = 'Sphere'
           if self.params['dock']['site_measured'] is not None:
@@ -2192,8 +2245,11 @@ last modified {1}
             max_Z=self.params['dock']['site_max_Z'],
             max_R=self.params['dock']['site_max_R'], name='site')
         else:
-          raise Exception('Binding site type not recognized!')
-      fflist.append(self._forceFields['site'])
+          # Do not append the site if it is not defined
+          print 'Binding site not defined!'
+          append_site = False
+      if append_site:
+        fflist.append(self._forceFields['site'])
 
     # Add scalable terms
     for scalable in self._scalables:
@@ -2204,6 +2260,7 @@ last modified {1}
             from AlGDock.ForceFields.OBC.OBC import OBCForceField
             if self.params['dock']['solvation']=='Fractional' and \
                 ('ELE' in lambda_n.keys()):
+              self.start_times['grid_loading'] = time.time()
               self._forceFields['OBC'] = OBCForceField(\
                 desolvationGridFN=self._FNs['grids']['desolv'])
               self.tee('  %s grid loaded from %s in %s'%(scalable, \
@@ -2319,6 +2376,15 @@ last modified {1}
       compoundFF += ff
     self.universe.setForceField(compoundFF)
 
+    if self.bonusE_universe is not None:
+      if 'OBC_RL' in lambda_n.keys():
+        if not 'OBC_RL' in self._forceFields.keys():
+          from AlGDock.ForceFields.OBC.OBC import OBCForceField
+          self._forceFields['OBC_RL'] = OBCForceField()
+        self._forceFields['OBC_RL'].set_strength(lambda_n['OBC_RL'])
+        if (lambda_n['OBC_RL']>0):
+          self.bonusE_universe.setForceField(self._forceFields['OBC_RL'])
+
     eval = ForceField.EnergyEvaluator(\
       self.universe, self.universe._forcefield, None, None, None, None)
     eval.key = evaluator_key
@@ -2404,7 +2470,7 @@ last modified {1}
   def _initial_sim_state(self, seeds, process, lambda_k):
     """
     Initializes a state, returning the configurations and potential energy.
-    Attempts simulation up to 5 times, adjusting the time step.
+    Attempts simulation up to 12 times, adjusting the time step.
     """
     
     if not 'delta_t' in lambda_k.keys():
@@ -3029,14 +3095,14 @@ last modified {1}
         cycle_times.append(time.time()-self.start_times['repX cycle'])
         if process=='dock':
           self._insert_dock_state_between_low_acc()
-        if self._run_type=='timed':
+        if self._run_type.startswith('timed'):
           remaining_time = self.timings['max']*60 - (time.time()-self.start_times['run'])
           cycle_time = np.mean(cycle_times)
           self.tee("  projected cycle time: %s, remaining time: %s"%(\
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
           if cycle_time>remaining_time:
             return False
-      self.tee("\nElapsed time for %d cycles of replica exchange was %s"%(\
+      self.tee("Elapsed time for %d cycles of replica exchange: %s"%(\
          (getattr(self,'_%s_cycle'%process) - start_cycle), \
           HMStime(time.time() - self.start_times[process+'_repX_start'])), \
           process=process)
@@ -3051,7 +3117,7 @@ last modified {1}
         self.tee("More samples from high temperature ligand simulation needed", process='cool')
         self._replica_exchange('cool')
         cycle_times.append(time.time()-self.start_times['repX cycle'])
-        if self._run_type=='timed':
+        if self._run_type.startswith('timed'):
           remaining_time = self.timings['max']*60 - (time.time()-self.start_times['run'])
           cycle_time = np.mean(cycle_times)
           self.tee("  projected cycle time: %s, remaining time: %s"%(\
@@ -3245,6 +3311,14 @@ last modified {1}
         reorder=self.molecule.inv_prmtop_atom_order,
         multiplier=0.1) # to convert Angstroms to nanometers
       count['dock6'] = len(confs)
+    elif self._FNs['score'].endswith('.mdcrd'):
+      import AlGDock.IO
+      IO_crd = AlGDock.IO.crd()
+      lig_crds = IO_crd.read(self._FNs['score'], \
+        multiplier=0.1) # to convert Angstroms to nanometers
+      confs = np.array_split(lig_crds, lig_crds.shape[0]/self._ligand_natoms)
+      confs = [conf[self.molecule.inv_prmtop_atom_order,:] for conf in confs]
+      Es = {}
     elif self._FNs['score'].endswith('.nc'):
       from netCDF4 import Dataset
       dock6_nc = Dataset(self._FNs['score'],'r')
@@ -3263,6 +3337,7 @@ last modified {1}
       raise Exception('Input configuration format not recognized')
 
     # based on the seeds
+    # TODO: Use dock seeds for cooling
     if (self.confs['dock']['seeds'] is not None) and \
        (self.params['dock']['pose']==-1):
       confs = confs + self.confs['dock']['seeds']
@@ -3618,11 +3693,15 @@ last modified {1}
       da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(\
         1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
-    
+        
       # Psi_g are terms thar are scaled in with a_g
       # OBC is the strength of the OBC scaling in the current state
+      s_ELE = 0.2 if self.params['dock']['solvation']=='Reduced' else 1.0
       if self.params['dock']['solvation']=='Desolvated':
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1}], noBeta=True)
+        OBC = 0.0
+      elif self.params['dock']['solvation']=='Reduced':
+        Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':0.2}], noBeta=True)
         OBC = 0.0
       elif self.params['dock']['solvation']=='Fractional':
         Psi_g = self._u_kln([E], [{'LJr':1,'LJa':1,'ELE':1,'OBC':1}], noBeta=True)
@@ -3646,14 +3725,20 @@ last modified {1}
         return np.abs(da_r_da)*U_r.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
                deltaT*U_RL_g.std()/(R*T*T)
-      else:
-        # BPMF
+      else: # BPMF
         a_sg = 1.-4.*(a-0.5)**2
         da_sg_da = -8*(a-0.5)
-        Psi_sg = self._u_kln([E], [{'sLJr':1,'sELE':1}], noBeta=True)
-        U_RL_g = self._u_kln([E],
-          [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
-          'sLJr':a_sg, 'sELE':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
+        if self.params['dock']['solvation']=='Reduced':
+          Psi_sg = self._u_kln([E], [{'sLJr':1}], noBeta=True)
+          U_RL_g = self._u_kln([E],
+            [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
+            'sLJr':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':s_ELE*a_g}], noBeta=True)
+        else:
+          Psi_sg = self._u_kln([E], [{'sLJr':1,'sELE':1}], noBeta=True)
+          U_RL_g = self._u_kln([E],
+            [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
+            'sLJr':a_sg, 'sELE':a_sg, \
+            'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
                deltaT*U_RL_g.std()/(R*T*T)
@@ -3688,7 +3773,8 @@ last modified {1}
       a_g = 4.*(a-0.5)**2/(1+np.exp(-100*(a-0.5)))
       if a_g<1E-10:
         a_g=0
-      if self.params['dock']['solvation']=='Desolvated':
+      if self.params['dock']['solvation']=='Desolvated' or \
+         self.params['dock']['solvation']=='Reduced':
         lambda_n['OBC'] = 0
       elif self.params['dock']['solvation']=='Fractional':
         lambda_n['OBC'] = a_g # Scales the solvent with the grid
@@ -3710,10 +3796,12 @@ last modified {1}
         a_sg = 1.-4.*(a-0.5)**2
         lambda_n['a'] = a
         lambda_n['sLJr'] = a_sg
-        lambda_n['sELE'] = a_sg
+        if self.params['dock']['solvation']!='Reduced':
+          lambda_n['sELE'] = a_sg
         lambda_n['LJr'] = a_g
         lambda_n['LJa'] = a_g
-        lambda_n['ELE'] = a_g
+        lambda_n['ELE'] = a_g \
+          if self.params['dock']['solvation']!='Reduced' else 0.2*a_g
         if site is not None:
           lambda_n['site'] = site
         if self.params['dock']['temperature_scaling']=='Linear':
@@ -3724,6 +3812,8 @@ last modified {1}
       lambda_n['a'] = a
       lambda_n['T'] = self.T_HIGH - a*(self.T_HIGH-self.T_SIMMIN)
       if self.params['cool']['solvation']=='Desolvated':
+        lambda_n['OBC'] = a
+      elif self.params['cool']['solvation']=='Reduced':
         lambda_n['OBC'] = a
       elif self.params['cool']['solvation']=='Fractional':
         lambda_n['OBC'] = a
@@ -3962,9 +4052,9 @@ last modified {1}
       self._save('dock')
 
     if len(updated_processes)>0:
-      self._clear_lock('dock' if 'dock' in updated_processes else 'cool')
-      self.tee("\nElapsed time for postprocessing was " + \
+      self.tee("\nElapsed time for postprocessing: " + \
         HMStime(time.time()-self.start_times['postprocess']))
+      self._clear_lock('dock' if 'dock' in updated_processes else 'cool')
       return len(incomplete)==len(results)
 
   def _energy_worker(self, input, output, time_per_snap):
@@ -3974,7 +4064,7 @@ last modified {1}
       nsnaps = len(confs)
       
       # Make sure there is enough time remaining
-      if self._run_type=='timed':
+      if self._run_type.startswith('timed'):
         remaining_time = self.timings['max']*60 - \
           (time.time()-self.start_times['run'])
         if len(time_per_snap[moiety+phase])>0:
@@ -4614,11 +4704,13 @@ END
     ref_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd_reference.mol2'))
     if not os.path.isfile(ref_FN):
       ref_conf = self.confs['rmsd'][self.molecule.prmtop_atom_order,:]*10.
-      IO_dock6_mol2.write(self._FNs['score'], [ref_conf], ref_FN)
+      IO_dock6_mol2.write(self._FNs['mol2']['L'], [ref_conf], ref_FN)
     target_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd_target.mol2'))
-    IO_dock6_mol2.write(self._FNs['score'], confs, target_FN)
+    IO_dock6_mol2.write(self._FNs['mol2']['L'], confs, target_FN)
 
-    self._FNs['dock6'] = a.findPaths(['dock6'])['dock6']
+    if not ('dock6' in self._FNs.keys()) or \
+        (not os.path.isfile(self._FNs['dock6'])):
+      self._FNs['dock6'] = a.findPaths(['dock6'])['dock6']
     in_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd.in'))
     in_F = open(in_FN,'w')
     in_F.write('''
@@ -4851,7 +4943,7 @@ rank_ligands                                                 no
     else:
       f_RL_FN = os.path.join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
-    if hasattr(self,'run_type') and (not self._run_type=='timed'):
+    if hasattr(self,'run_type') and (not self._run_type.startswith('timed')):
       self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
 
   def _save(self, p, keys=['progress','data']):

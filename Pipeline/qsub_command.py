@@ -42,6 +42,14 @@ sh_FN = os.path.join(curdir,'jobs','%s-%d.sh'%(args.name,n))
 out_FN = os.path.join(curdir,'jobs','%s-%d.out'%(args.name,n))
 err_FN = os.path.join(curdir,'jobs','%s-%d.err'%(args.name,n))
 
+# Looks for maximum job time, in minutes
+max_time = 168*60
+arg_list = args.command.split(' ')
+try:
+  max_time = int(arg_list[arg_list.index('--max_time')+1])
+except ValueError:
+  pass
+
 # Sets up the submission and execution scripts
 submit_script = ''
 execute_script = ''
@@ -56,7 +64,6 @@ if os.path.exists('/share/apps/algdock'): # CCB Cluster
   if command.find('python')>-1:
     modules = 'module load miniconda/2\n'
     modules += 'module load gcc/6.2\n'
-    modules += 'module load openeye/2016\n'
   else:
     modules = ''
 
@@ -73,8 +80,8 @@ if os.path.exists('/share/apps/algdock'): # CCB Cluster
     if cores!='':
       args.ppn = int(cores)
 
-  if args.ambertools:
-    modules += 'module load ambertools/16\n'
+#  if args.ambertools:
+#    modules += 'module load ambertools/16\n'
   
   email_specified = ''
   if args.email == '':
@@ -86,26 +93,28 @@ if os.path.exists('/share/apps/algdock'): # CCB Cluster
 #  import numpy as np
 #  args.nodes = nodeslist[np.random.randint(0,len(nodeslist))]
 
+  max_time = '%02d:%02d:00'%(int(max_time/60), max_time%60)
+
   # Write script
   submit_script = '''#!/bin/bash
 #
 #PBS -S /bin/bash
 #PBS -N {0}
-#PBS -l mem={1}GB,nodes={2}:ppn={3},walltime=168:00:00
-#PBS -d {4}
-#PBS -o {5}
-#PBS -e {6}
+#PBS -l mem={1}GB,nodes={2}:ppn={3},walltime={4}
+#PBS -d {5}
+#PBS -o {6}
+#PBS -e {7}
 #PBS -q default
-{10}#PBS -M {11}
-{10}#PBS -m {12}
+{11}#PBS -M {12}
+{11}#PBS -m {13}
 
 hostname
 
-{7}
 {8}
+{9}
 
-# {9}
-'''.format(args.name, args.mem, args.nodes, args.ppn, \
+# {10}
+'''.format(args.name, args.mem, args.nodes, args.ppn, max_time, \
            curdir, out_FN, err_FN, \
            modules, command, args.comment, \
            email_specified, args.email, args.email_options)
@@ -129,7 +138,10 @@ elif os.path.exists('/pylon2') or os.path.exists('/oasis/projects/nsf'): # Bridg
   email_specified = ''
   if args.email == '':
     email_specified = '#'
-  
+
+  max_time = min(max_time, 48*60)
+  max_time = '%02d:%02d:00'%(int(max_time/60), max_time%60)
+
   # Write script
   submit_script = '''#!/bin/bash
 #
@@ -137,22 +149,61 @@ elif os.path.exists('/pylon2') or os.path.exists('/oasis/projects/nsf'): # Bridg
 #SBATCH --mem={1}
 #SBATCH --nodes={2}
 #SBATCH --ntasks-per-node={3}
-#SBATCH -t 48:00:00
-#SBATCH --partition={4}
-#SBATCH --workdir={5}
-#SBATCH -o {6}
-#SBATCH -e {7}
+#SBATCH -t {4}
+#SBATCH --partition={5}
+#SBATCH --workdir={6}
+#SBATCH -o {7}
+#SBATCH -e {8}
 
 hostname
 
-{8}
+{9}
 
-# {9}
-'''.format(args.name, args.mem*1000, args.nodes, args.ppn, \
+# {10}
+'''.format(args.name, args.mem*1000, args.nodes, args.ppn, max_time, \
   {'Bridges':'RM-shared', 'Comet':'shared'}[cluster], \
   curdir, out_FN, err_FN, command, args.comment)
-elif os.path.exists('/stash'): # Open Science Grid Connect
-  cluster = 'OSG'
+elif os.path.exists('/g/g19/minh1'): # LLNL cab
+  cluster = 'cab'
+
+  # Split the command onto multiple lines
+  command_list = [c.strip() for c in args.command.strip().split(';')]
+  command = '\n'.join([('srun -n 1 ' + c) for c in command_list if c!=''])
+
+  if command.find('cores')>-1:
+    cores = command[command.find('cores')+5:]
+    cores = cores[:cores.find('\n')].strip()
+    cores = cores.split(' ')[0]
+    if cores!='':
+      args.ppn = int(cores)
+
+  max_time = min(max_time, 16*60)
+  max_time = '%02d:%02d:00'%(int(max_time/60), max_time%60)
+
+  submit_script = '''#!/bin/bash
+#SBATCH -J {0}
+#SBATCH -N {1}
+#SBATCH -n {2}
+#SBATCH -t {3}
+#SBATCH -p pbatch
+#SBATCH -D {4}
+#SBATCH -o {5}
+#SBATCH -e {6}
+
+hostname
+
+{7}
+
+wait
+'''.format(args.name, args.nodes, args.ppn, max_time, \
+           curdir, out_FN, err_FN, command)
+# weekday queue
+#SBATCH -t 16:00:00
+# for debugging:
+#SBATCH -t 30:00
+#SBATCH -p pdebug
+elif os.path.exists('/stash') or os.path.exists('/home/dminh/perl5'):
+  cluster = 'OSG' # OSG connect or OTSGrid
   
   # Split the command onto multiple lines
   command_list = args.command.split(';')
@@ -161,9 +212,9 @@ elif os.path.exists('/stash'): # Open Science Grid Connect
   # Determine the input files
   #   All specified input files
   input_files = set([os.path.abspath(FN) for FN in args.input_files])
-  #   The _external_paths.py script
-  input_files = input_files.union(\
-    ['/home/daveminh/public/AlGDock-0.0.1/Pipeline/_external_paths.py'])
+  #   The _external_paths.py script (6/13/2018 - this may not be necessary)
+#  input_files = input_files.union(\
+#    ['/home/daveminh/public/AlGDock-0.0.1/Pipeline/_external_paths.py'])
   #   Any files mentioned in the command
   command_list = command.split(' ')
   input_files = input_files.union(\
@@ -240,7 +291,7 @@ wget --no-verbose --no-check-certificate http://stash.osgconnect.net/+daveminh/a
 # wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=0ByidOA_rkLLSbXl3WnZ3MmtWbnc' -O google_drive_downloader.tar.gz
 # tar -xvf google_drive_downloader.tar.gz
 # ./google_drive_downloader/google_drive_downloader
-# tar xzf algdock.tar.gz
+tar xzf algdock.tar.gz
 
 # Modify paths
 echo "
@@ -283,7 +334,8 @@ if [ ! -s {0} ]
 fi""".format(dock_result)
 else:
   cluster = None
-  submit_script = args.command
+  commands = args.command.split(';')
+  submit_script = '\n'.join([c.strip() for c in commands])
 
 # Write and submit scripts
 if submit_script!='':
@@ -308,7 +360,7 @@ print('Job name: ' + args.name)
 if not args.dry:
   if cluster=='CCB':
     os.system('qsub %s'%submit_FN)
-  elif cluster=='Bridges' or cluster=='Comet':
+  elif cluster in ['Bridges','Comet','cab']:
     os.system('sbatch %s'%submit_FN)
   elif cluster=='OSG':
     os.system('condor_submit %s'%submit_FN)

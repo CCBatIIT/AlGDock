@@ -48,6 +48,7 @@ arguments = {
   'ligand_rb':{'help':'rigid body specification for the ligand'},
   #   Stored in dir_dock
   'receptor_tarball':{'help':'tar file that contains prmtop, inpcrd, and fixed_atoms files for the receptor'},
+  'receptor_database':{'help':'MMTK molecule definition for receptor'},
   'receptor_prmtop':{'help':'AMBER prmtop for the receptor'},
   'receptor_inpcrd':{'help':'AMBER coordinates for the receptor'},
   'receptor_fixed_atoms':{'help':'PDB file with fixed atoms labeled by 1 in the occupancy column'},
@@ -58,6 +59,7 @@ arguments = {
   'dir_grid':{'help':'Directory containing potential energy grids'},
   'grid_LJr':{'help':'file for Lennard-Jones repulsive grid'},
   'grid_LJa':{'help':'file for Lennard-Jones attractive grid'},
+  'grid_sELE':{'help':'file for soft electrostatic grid'},
   'grid_ELE':{'help':'file for electrostatic grid'},
   'grid_desolv':{'help':'file for fractional desolvation grid'},
   'score':{'help':"Starting configuration(s) for replica exchange. Can be a mol2 file, .pkl.gz file, or 'default'"},
@@ -67,15 +69,19 @@ arguments = {
     'help':'Number of replica exchange cycles for cooling'},
   'dock_repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for docking'},
-  'run_type':{'choices':['configuration_energies','minimized_configuration_energies',
+  'run_type':{'choices':['configuration_energies', \
+              'minimized_configuration_energies',
               'store_params', 'initial_cool', 'cool', \
-              'initial_dock', 'dock','timed','postprocess',\
+              'initial_dock', 'dock' ,'postprocess', \
               'redo_postprocess','free_energies','redo_free_energies', 'all', \
+              'timed', 'timed_cool', 'timed_dock', \
               'render_docked', 'render_intermediates', \
               'clear_intermediates', None],
     'help':'Type of calculation to run'},
   'max_time':{'type':int, 'default':180, \
     'help':'For timed calculations, the maximum amount of wall clock time, in minutes'},
+  'keep_tar':{'action':'store_true',
+    'help':'Keep files extracted from tar input'},
   'cores':{'type':int, 'help':'Number of CPU cores to use'},
   'rotate_matrix':{'help':'Rotation matrix for viewing'},
   'random_seed':{'type':int, 'help':'Random number seed'},
@@ -127,10 +133,11 @@ arguments = {
     'help':'Number of snapshots to save per cycle'},
   'sampling_importance_resampling':{'action':'store_true',
     'help':'perfom sampling importance resampling'},
-  'solvation':{'choices':['Desolvated','Full','Fractional'], \
+  'solvation':{'choices':['Desolvated','Reduced','Full','Fractional'], \
     'default':'Desolvated',
     'help':'Specify how OBC implicit solvent is used during sampling.\n' + \
-    '\tWith Desolvated, OBC is scaled out during cooling.\t' + \
+    '\tWith Desolvated, OBC is scaled out during cooling.\n' + \
+    '\tWith Reduced, OBC is scaled out during cooling. Also, electrostatics are scaled by 0.2.\n' +
     '\tWith Full, OBC is at full strength.\n' + \
     '\tWith Fractional, OBC is scaled out during cooling and scaled in during docking.'},
   'keep_intermediate':{'action':'store_true',

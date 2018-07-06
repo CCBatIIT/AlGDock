@@ -1,3 +1,4 @@
+# _external_paths in AlGDock directory
 import os, inspect
 dir_external_paths = os.path.dirname(os.path.abspath(\
   inspect.getfile(inspect.currentframe())))
@@ -72,8 +73,9 @@ def findPaths(keys):
           print 'Downloading and installing '+key
           os.system('wget --no-verbose --no-check-certificate ' + \
             'http://stash.osgconnect.net/+daveminh/%s'%(FN))
-          if not os.path.isfile(FN):
-            download_file_from_google_drive(google_drive_hash[FN], FN)
+# Commented out to not have to update the folder.
+#           if not os.path.isfile(FN):
+#             download_file_from_google_drive(google_drive_hash[FN], FN)
           os.system('tar xzf %s'%FN)
           if command != '':
             os.system(command)
@@ -110,11 +112,16 @@ search_paths = {
              # For getting rmsds
        'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
                 '/Applications/dock6/dock6',
-                '/share/apps/dock/6/bin/dock6'],
+                '/share/apps/dock/6/bin/dock6',
+                '/home/dminh/software/dock6/bin/dock6',
+                '/home/daveminh/software/dock6/bin/dock6',
+                '/g/g19/minh1/software/dock6/bin/dock6'],
              # For postprocessing snapshots with NAMD
       'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
               '/home/dminh/software/namd2',
+              '/home/daveminh/software/namd2',
+              '/g/g19/minh1/software/namd2',
               'namd2'],
              # For postprocessing snapshots with sander
     'sander':['/Users/dminh/Installers/amber16/bin/sander',
@@ -171,16 +178,16 @@ download_paths = {
     'molsurf/molsurf'),
   'apbs':('APBS-1.4-linux-static-x86_64.tar.gz','','APBS-1.4-linux-static-x86_64/bin/apbs')}
 
-google_drive_hash = {
-  'namd.tar.gz':'0ByidOA_rkLLSSXZzbURFbWdxNkU', \
-  'sander.tar.gz':'0ByidOA_rkLLSejFDMnh4TFlFNFU', \
-  'elsize.tar.gz':'0ByidOA_rkLLSb0tHZ0w2SFJPSmc', \
-  'gbnsr6.tar.gz':'0ByidOA_rkLLSLWpGb0FUd1J4dms', \
-  'ambpdb.tar.gz':'0ByidOA_rkLLSNklqdFp6cU9rWVE', \
-  'molsurf.tar.gz':'0ByidOA_rkLLSeVhMdlRHN1RqdHc', \
-  'APBS-1.4-linux-static-x86_64.tar.gz':'0ByidOA_rkLLSa3BYcmpOZlNONGM',
-  'balloon.tar.gz':'0ByidOA_rkLLSQjItRzVUQXVXYmc', \
-  'chimera.tar.gz':'0ByidOA_rkLLSbE1oNUFmZll6VEU', \
-  'dock6.tar.gz':'0ByidOA_rkLLScXE0a0w2MXptOGc', \
-  'algdock.tar.gz':'0ByidOA_rkLLSV29xTUtWcUVIVnM'
-}
+# google_drive_hash = {
+#   'namd.tar.gz':'0ByidOA_rkLLSSXZzbURFbWdxNkU', \
+#   'sander.tar.gz':'0ByidOA_rkLLSejFDMnh4TFlFNFU', \
+#   'elsize.tar.gz':'0ByidOA_rkLLSb0tHZ0w2SFJPSmc', \
+#   'gbnsr6.tar.gz':'0ByidOA_rkLLSLWpGb0FUd1J4dms', \
+#   'ambpdb.tar.gz':'0ByidOA_rkLLSNklqdFp6cU9rWVE', \
+#   'molsurf.tar.gz':'0ByidOA_rkLLSeVhMdlRHN1RqdHc', \
+#   'APBS-1.4-linux-static-x86_64.tar.gz':'0ByidOA_rkLLSa3BYcmpOZlNONGM',
+#   'balloon.tar.gz':'0ByidOA_rkLLSQjItRzVUQXVXYmc', \
+#   'chimera.tar.gz':'0ByidOA_rkLLSbE1oNUFmZll6VEU', \
+#   'dock6.tar.gz':'0ByidOA_rkLLScXE0a0w2MXptOGc', \
+#   'algdock.tar.gz':'0ByidOA_rkLLSV29xTUtWcUVIVnM'
+# }

@@ -359,14 +359,16 @@ class dock6_mol2:
       mol2F = gzip.open(templateFN,'r')
     else:
       raise Exception('Template for mol2 is unknown file type')
-    
-    template = mol2F.read().strip().split('########## Name:')[1]
-    template = template[template.find('@<TRIPOS>'):]
+    template = mol2F.read().strip()
     mol2F.close()
+
+    if template.find('########## Name:')>-1:
+      template = template.split('########## Name:')[1]
+    template = template[template.find('@<TRIPOS>'):]
 
     header = template[template.find('@<TRIPOS>MOLECULE'):template.find('@<TRIPOS>ATOM')+14]
     body = template[template.find('@<TRIPOS>ATOM')+14:template.find('\n@<TRIPOS>BOND')].split('\n')
-    footer = template[template.find('\n@<TRIPOS>BOND'):]
+    footer = template[template.find('\n@<TRIPOS>BOND'):] + '\n'
     F = open(FN,'w')
     for conf in confs:
       F.write(header + \

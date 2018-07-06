@@ -17,6 +17,12 @@ varnames = ['POINTERS','TITLE','ATOM_NAME','AMBER_ATOM_TYPE','CHARGE','MASS',\
 mass2symbols = {12.01:'C',1.008:'H',19.00:'F',35.45:'Cl',79.90:'Br',126.9:'I',\
                 14.01:'N',16.00:'O',30.97:'P',32.06:'S', 65.4:'Zn'}
 
+# TODO: Look up symbols for these masses
+# 22.99
+# 24.305
+# 39.1
+# 40.08
+
 ############
 ### MAIN ###
 ############
