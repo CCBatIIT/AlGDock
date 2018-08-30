@@ -780,20 +780,31 @@ last modified {1}
       self._postprocess()
       self.calc_f_RL()
     elif run_type=='render_docked':
-      view_args = {'axes_off':True, 'size':[1002,1002], 'scale_by':0.80, \
+      # For 4 figures
+      # 1002*4/600. = 6.68 in at 600 dpi
+      #  996*4/600. = 6.64 in at 600 dpi
+      view_args = {'axes_off':True, 'size':[996,996], 'scale_by':0.80, \
                    'render':'TachyonInternal'}
       if hasattr(self, '_view_args_rotate_matrix'):
         view_args['rotate_matrix'] = getattr(self, '_view_args_rotate_matrix')
-      self.show_samples(show_ref_ligand=True, show_starting_pose=True, \
+      self.show_samples(prefix='docked', \
+        show_ref_ligand=True, show_starting_pose=True, \
         show_receptor=True, save_image=True, execute=True, quit=True, \
         view_args=view_args)
-#       self.show_pose_prediction(show_ref_ligand=True, \
-#         show_starting_pose=False, \
-#         show_receptor=True, \
-#         save_image=True, execute=True, quit=True, \
-#         view_args=view_args)
+      if self.params['dock']['pose']==-1:
+        (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
+          self._get_pose_prediction('dock', \
+          self.stats_RL['equilibrated_cycle'][-1])
+        self.show_pose_prediction(score='grid_fe_u',
+          show_ref_ligand=True, show_starting_pose=False, \
+          show_receptor=True, save_image=True, execute=True, quit=True, \
+          view_args=view_args)
+        self.show_pose_prediction(score='OpenMM_OBC2_fe_u',
+          show_ref_ligand=True, show_starting_pose=False, \
+          show_receptor=True, save_image=True, execute=True, quit=True, \
+          view_args=view_args)
     elif run_type=='render_intermediates':
-      view_args = {'axes_off':True, 'size':[1002,1002], 'scale_by':0.80, \
+      view_args = {'axes_off':True, 'size':[996,996], 'scale_by':0.80, \
                    'render':'TachyonInternal'}
       if hasattr(self, '_view_args_rotate_matrix'):
         view_args['rotate_matrix'] = getattr(self, '_view_args_rotate_matrix')
@@ -1903,7 +1914,7 @@ last modified {1}
     import scipy.cluster
     Z = scipy.cluster.hierarchy.linkage(rmsd_matrix, method='complete')
     assignments = np.array(\
-      scipy.cluster.hierarchy.fcluster(Z, 0.1, criterion='distance'))
+      scipy.cluster.hierarchy.fcluster(Z, 0.2, criterion='distance'))
 
     # Reindexes the assignments in order of appearance
     new_index = 0

@@ -134,11 +134,19 @@ class BPMF_plots(BPMF):
     confs = self.confs['dock']['replicas']
     prefix = 'replicas'
     return self.show_poses(confs, prefix, \
-      show_ref_ligand, show_starting_pose, show_receptor, \
-      save_image, image_labels, execute, \
-      principal_axes_alignment, clear_files, quit, view_args)
+      thickness=None,
+      show_ref_ligand=show_ref_ligand, \
+      show_starting_pose=show_starting_pose,
+      show_receptor=show_receptor, \
+      save_image=save_image, \
+      image_labels=image_labels,
+      execute=execute, \
+      principal_axes_alignment=principal_axes_alignment, \
+      clear_files=clear_files, \
+      quit=quit, \
+      view_args=view_args)
 
-  def show_samples(self, process='dock', state=-1, \
+  def show_samples(self, prefix=None, process='dock', state=-1, \
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
         save_image=False, image_labels=None, execute=True, \
         principal_axes_alignment=False, clear_files=True, quit=False, \
@@ -148,9 +156,11 @@ class BPMF_plots(BPMF):
     """
     if state==-1:
       state = len(self.confs[process]['samples'])-1
-      prefix = '%s-last'%(process)
+      if prefix is None:
+        prefix = '%s-last'%(process)
     else:
-      prefix = '%s-%05d'%(process,state)
+      if prefix is None:
+        prefix = '%s-%05d'%(process,state)
 
     if process == 'dock':
       first_cycle = self.stats_RL['equilibrated_cycle'][-1]
@@ -165,9 +175,17 @@ class BPMF_plots(BPMF):
             [self.confs[process]['samples'][state][c]]
         confs += self.confs[process]['samples'][state][c]
     return self.show_poses(confs, prefix, \
-      show_ref_ligand, show_starting_pose, show_receptor, \
-      save_image, image_labels, execute, \
-      principal_axes_alignment, clear_files, quit, view_args)
+      thickness=None,
+      show_ref_ligand=show_ref_ligand, \
+      show_starting_pose=show_starting_pose,
+      show_receptor=show_receptor, \
+      save_image=save_image, \
+      image_labels=image_labels,
+      execute=execute, \
+      principal_axes_alignment=principal_axes_alignment, \
+      clear_files=clear_files, \
+      quit=quit, \
+      view_args=view_args)
 
   def show_pose_prediction(self, score='OpenMM_OBC2_fe_u', \
         show_ref_ligand=True, show_starting_pose=False, show_receptor=True, \
@@ -178,12 +196,21 @@ class BPMF_plots(BPMF):
     ws = ws/sum(ws)
     toShow = np.arange(len(ws))[ws>0.001]
 
-    confs = [self.confs['dock']['samples'][-1][cycle][n] for (cycle,n) in self.stats_RL['pose_inds']]
+    confs = [self.confs['dock']['samples'][-1][cycle][n] \
+      for (cycle,n) in self.stats_RL['pose_inds']]
     confs = [confs[n] for n in np.arange(len(ws))[toShow]]
-    return self.show_poses(confs, 'prediction-'+score, ws[toShow], \
-      show_ref_ligand, show_starting_pose, show_receptor, \
-      save_image, image_labels, execute, \
-      principal_axes_alignment, clear_files, quit, view_args)
+    return self.show_poses(confs, 'prediction-'+score,
+      thickness=ws[toShow], \
+      show_ref_ligand=show_ref_ligand, \
+      show_starting_pose=show_starting_pose,
+      show_receptor=show_receptor, \
+      save_image=save_image, \
+      image_labels=image_labels,
+      execute=execute, \
+      principal_axes_alignment=principal_axes_alignment, \
+      clear_files=clear_files, \
+      quit=quit, \
+      view_args=view_args)
   
   def show_poses(self, confs, prefix, \
         thickness=None,
@@ -425,7 +452,7 @@ class BPMF_plots(BPMF):
         labels = []
       labels.append('T = %4.1f K'%lambda_s['T'])
       # Generate the snapshot
-      self.show_samples(process, state=state_inds[s], \
+      self.show_samples(prefix=None, process=process, state=state_inds[s], \
         show_ref_ligand=True, show_starting_pose=False, show_receptor=True, \
         save_image=True, image_labels=labels, execute=True, quit=True, \
         view_args=view_args)
