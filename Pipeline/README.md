@@ -1,4 +1,5 @@
 The required files for running AlGDock are summarized in this spreadsheet: https://docs.google.com/spreadsheets/d/1KtO6mAUvGdnT1MyYZyLgerwiEUFGAhs4j2DzOL0k3aY/edit?usp=sharing
+
 This pipeline will prepare the required files and additional files.
 
 Presently, the system preparation pipeline includes two overall stages: calculations with UCSF DOCK 6 and then with AlGDock.
