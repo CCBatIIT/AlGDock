@@ -2,6 +2,12 @@ The required files for running AlGDock are summarized in this spreadsheet: https
 
 This pipeline will prepare the required files and additional files.
 
+# Workflow
+
+![workflow](/images/workflow.jpeg)
+
+# THE PIPELINE
+
 Presently, the system preparation pipeline includes two overall stages: calculations with UCSF DOCK 6 and then with AlGDock.
 
 To go through this pipeline, it is helpful to define the environment variable $ALGDOCKHOME
