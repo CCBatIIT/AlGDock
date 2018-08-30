@@ -4,7 +4,7 @@ This pipeline will prepare the required files and additional files.
 
 # Workflow
 
-![workflow](/images/workflow.jpeg)
+![workflow](https://github.com/CCBatIIT/AlGDock/blob/master/Pipeline/images/workflow.jpeg)
 
 # THE PIPELINE
 
