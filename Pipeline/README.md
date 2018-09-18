@@ -1,8 +1,14 @@
-The required files for running AlGDock are summarized in this spreadsheet: https://docs.google.com/spreadsheets/d/1KtO6mAUvGdnT1MyYZyLgerwiEUFGAhs4j2DzOL0k3aY/edit?usp=sharing
+# THE PIPELINE
 
-This pipeline will prepare the required files and additional files.
+Running AlGDock requires files that describe the receptor, ligand, and complex. The required files are summarized in this spreadsheet: https://docs.google.com/spreadsheets/d/1KtO6mAUvGdnT1MyYZyLgerwiEUFGAhs4j2DzOL0k3aY/edit?usp=sharing
 
-Presently, the system preparation pipeline includes two overall stages: calculations with UCSF DOCK 6 and then with AlGDock.
+This directory contains scripts useful for setting up AlGDock calculations. The workflow can be summarized as follows:
+
+![workflow](https://github.com/CCBatIIT/AlGDock/blob/master/Pipeline/images/workflow.jpeg)
+
+Depending on the desired BPMFs, there are multiple possible entry points to the workflow. The instructions below assume minimal available information about the system.
+
+The system preparation pipeline may be divided into two overall stages: calculations with UCSF DOCK 6 and then with AlGDock.
 
 To go through this pipeline, it is helpful to define the environment variable $ALGDOCKHOME
 
