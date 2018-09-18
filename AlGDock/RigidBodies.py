@@ -126,11 +126,15 @@ class identifier(converter):
       list(self.extended_coordinates(p1,p2,p3))
     
     # Restraints on internal torsions
+    # Specifications are atom indices, actual torsion values, and half widths
     TorsionRestraintSpecs = []
     for ind in self._softTorsionInd:
       t = self._torsionIndL[ind]
+      max_nbonded = max(len(self.molecule.atoms[t[1]].bondedTo()), \
+                        len(self.molecule.atoms[t[2]].bondedTo()))
+      hwidth = 2*np.pi/(max_nbonded-1)/2.
       TorsionRestraintSpecs.append(self._torsionIndL[ind]
-        + [dihedral(XYZ[t[0]],XYZ[t[1]],XYZ[t[2]],XYZ[t[3]])])
+        + [dihedral(XYZ[t[0]],XYZ[t[1]],XYZ[t[2]],XYZ[t[3]]), hwidth])
 
     return [TorsionRestraintSpecs, ExternalRestraintSpecs]
 

@@ -32,7 +32,7 @@ for run_type in run_types:
     complex_inpcrd='prmtopcrd/complex.trans.inpcrd', \
     complex_fixed_atoms='prmtopcrd/complex.pdb', \
     score = 'prmtopcrd/xtal_plus_dock6_scored.mol2', \
-    pose = -1, \
+    pose = 0, \
     rmsd=True, \
     dir_grid='grids', \
     protocol='Adaptive', cool_therm_speed=15.0, dock_therm_speed=1.0, \

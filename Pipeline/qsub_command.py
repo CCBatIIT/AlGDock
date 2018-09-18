@@ -163,8 +163,8 @@ hostname
 '''.format(args.name, args.mem*1000, args.nodes, args.ppn, max_time, \
   {'Bridges':'RM-shared', 'Comet':'shared'}[cluster], \
   curdir, out_FN, err_FN, command, args.comment)
-elif os.path.exists('/g/g19/minh1'): # LLNL cab
-  cluster = 'cab'
+elif os.path.exists('/g/g19/minh1'): # LLNL syrah
+  cluster = 'syrah'
 
   # Split the command onto multiple lines
   command_list = [c.strip() for c in args.command.strip().split(';')]
@@ -360,7 +360,7 @@ print('Job name: ' + args.name)
 if not args.dry:
   if cluster=='CCB':
     os.system('qsub %s'%submit_FN)
-  elif cluster in ['Bridges','Comet','cab']:
+  elif cluster in ['Bridges','Comet','syrah']:
     os.system('sbatch %s'%submit_FN)
   elif cluster=='OSG':
     os.system('condor_submit %s'%submit_FN)

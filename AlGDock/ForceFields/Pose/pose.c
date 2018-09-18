@@ -123,20 +123,27 @@ pose_dihedral_evaluator(PyFFEnergyTermObject *self,
     n = (int)param[0];
     if (n == 0) {
       phi = acos(cos_phi)*sign_phi;
-      dphi = phi-param[1];
-      dphi = fmod(dphi+2.*M_PI, 2.*M_PI);
-      if (dphi > M_PI)
-	dphi -= 2*M_PI;
-      // Flat bottom
-      if(fabs(dphi) < param[2]){
-        e += .0;
-      }else{
-        if(phi < param[1]){
-          e += param[3] * sqr(dphi + param[2]);
-        }else{
-          e += param[3] * sqr(dphi - param[2]);
+      
+      dphi = phi - param[1];
+      // Adjust dphi based on minimum image convention
+      if (dphi > M_PI) {
+          dphi -= 2.*M_PI;
+      }
+      else {
+        if (dphi < -M_PI) {
+          dphi += 2.*M_PI;
         }
       }
+      // Add energy, accounting for flat bottom
+      if (dphi > param[2]) {
+        e += param[3] * sqr(dphi - param[2]);
+      }
+      else {
+        if (dphi < -param[2]) {
+          e += param[3] * sqr(dphi + param[2]);
+        }
+      }
+    
       // initialize some variables used only for n > 0, to make gc happy
       sin_phase = cos_phase = sin_n_phi_ratio = 
         sin_phi = cos_n_phi = sqr_cos_phi = 0.;
@@ -199,14 +206,17 @@ pose_dihedral_evaluator(PyFFEnergyTermObject *self,
       double deriv;
       vector3 di, dj, dk, dl, ds;
       if (n == 0){
-        // Flat bottom
-        if(fabs(dphi) < param[2]){
-          deriv = .0;
-        }else{
-          if(phi < param[1]){
-	    deriv = 2. * param[3] * (dphi + param[2]);
-          }else{
-	    deriv = 2. * param[3] * (dphi - param[2]);
+        // Calculate derivative, accounting for flat bottom
+        if (dphi > param[2]) {
+          deriv = 2. * param[3] * (dphi - param[2]);
+//          printf("phi= %lf, param[1]= %lf,dphi= %lf, e=%lf, deriv=%lf\n", phi, param[1], dphi, e, deriv);
+        }
+        else {
+          if (dphi < -param[2]) {
+            deriv = 2. * param[3] * (dphi + param[2]);
+//            printf("phi= %lf, param[1]= %lf,dphi= %lf, e=%lf, deriv=%lf\n", phi, param[1], dphi, e, deriv);
+          } else {
+            deriv = 0.;
           }
         }
       }
@@ -650,6 +660,10 @@ pose_ext_angl_evaluator(PyFFEnergyTermObject *self,
     int i = index[0];
     int j = index[1];
     int k = index[2];
+    
+    extx[0] = x[j][0];
+    extx[1] = x[j][1];
+    extx[2] = x[j][2] + 1.;
 
     //printf("pose_ext_angl_evaluator: data[0]=ijk= %d %d %d\ndata[1]=param= %lf %lf %lf \ndata[2]=extx %lf %lf %lf \nx[j]= %lf %lf %lf\nx[k]= %lf %lf %lf \n",\
       i, j, k,\
@@ -677,30 +691,39 @@ pose_ext_angl_evaluator(PyFFEnergyTermObject *self,
     dtheta = (theta-param[0]);
     // printf("theta= %lf\n", theta); // EU
 
-    //Harmonic: e += param[1]*sqr(dtheta);
-    // Flat bottom:
-    if(fabs(dtheta) < param[2]){
-      e += .0;
-    }else{
-      if(theta < param[0]){
+    // Adjust dtheta based on minimum image convention
+    if (dtheta > M_PI/2.) {
+      dtheta -= M_PI;
+    }
+    else {
+      if (dtheta < -M_PI/2.) {
+        dtheta += M_PI;
+      }
+    }
+    // Add energy, accounting for flat bottom
+    if (dtheta > param[2]) {
+      e += param[1] * sqr(dtheta - param[2]);
+    }
+    else {
+      if (dtheta < -param[2]) {
         e += param[1] * sqr(dtheta + param[2]);
-      }else{
-        e += param[1] * sqr(dtheta - param[2]);
       }
     }
 
     if (energy->gradients != NULL || energy->force_constants != NULL) {
       // First derivative of angle potential
       //double deriv = -2.*param[1]*dtheta/sin_theta; // harmonic
+      
       // Flat bottom:
       double deriv;
-      if(fabs(dtheta) < param[2]){
-        deriv = .0;
-      }else{
-        if(theta < param[0]){
+      if (dtheta > param[2]) {
+        deriv = -2. * param[1] * (dtheta - param[2])/sin_theta;
+      }
+      else {
+        if (dtheta < -param[2]) {
           deriv = -2. * param[1] * (dtheta + param[2])/sin_theta;
-        }else{
-          deriv = -2. * param[1] * (dtheta - param[2])/sin_theta;
+        } else {
+          deriv = 0.;
         }
       }
 
@@ -930,6 +953,11 @@ pose_ext_dihe_evaluator(PyFFEnergyTermObject *self,
     int j = index[1];
     int k = index[2];
     int l = index[3];
+    
+    extx[0] = x[j][0];
+    extx[1] = x[j][1];
+    extx[2] = x[j][2] - 1.;
+    
     int n;
     vector3 rij, rkj, rlk, rkj_cross_rkl, rij_cross_rkj, r, s;
     double lrij, lrkj, lrlk, lm, ln, lr, ls;
@@ -971,20 +999,27 @@ pose_ext_dihe_evaluator(PyFFEnergyTermObject *self,
     n = (int)param[0];
     if (n == 0) {
       phi = acos(cos_phi)*sign_phi;
-      dphi = phi-param[1];
-      dphi = fmod(dphi+2.*M_PI, 2.*M_PI);
-      if (dphi > M_PI)
-	dphi -= 2*M_PI;
-      // Flat bottom
-      if(fabs(dphi) < param[2]){
-        e += .0;
-      }else{
-        if(phi < param[1]){
-          e += param[3] * sqr(dphi + param[2]);
-        }else{
-          e += param[3] * sqr(dphi - param[2]);
+      
+      dphi = phi - param[1];
+      // Adjust dphi based on minimum image convention
+      if (dphi > M_PI) {
+          dphi -= 2.*M_PI;
+      }
+      else {
+        if (dphi < -M_PI) {
+          dphi += 2.*M_PI;
         }
       }
+      // Add energy, accounting for flat bottom
+      if (dphi > param[2]) {
+        e += param[3] * sqr(dphi - param[2]);
+      }
+      else {
+        if (dphi < -param[2]) {
+          e += param[3] * sqr(dphi + param[2]);
+        }
+      }
+      
       // initialize some variables used only for n > 0, to make gc happy
       sin_phase = cos_phase = sin_n_phi_ratio = 
         sin_phi = cos_n_phi = sqr_cos_phi = 0.;
@@ -1047,14 +1082,15 @@ pose_ext_dihe_evaluator(PyFFEnergyTermObject *self,
       double deriv;
       vector3 di, dj, dk, dl, ds;
       if (n == 0){
-        // Flat bottom
-        if(fabs(dphi) < param[2]){
-          deriv = .0;
-        }else{
-          if(phi < param[1]){
-	    deriv = 2. * param[3] * (dphi + param[2]);
-          }else{
-	    deriv = 2. * param[3] * (dphi - param[2]);
+        // Calculate derivative, accounting for flat bottom
+        if (dphi > param[2]) {
+          deriv = 2. * param[3] * (dphi - param[2]);
+        }
+        else {
+          if (dphi < -param[2]) {
+            deriv = 2. * param[3] * (dphi + param[2]);
+          } else {
+            deriv = 0.;
           }
         }
       }
@@ -1392,6 +1428,14 @@ pose_ext_dihe2_evaluator(PyFFEnergyTermObject *self,
     int k = index[2];
     int l = index[3];
 
+    extx1[0] = x[k][0] + 1.;
+    extx1[1] = x[k][1];
+    extx1[2] = x[k][2] - 1.;
+
+    extx2[0] = x[k][0];
+    extx2[1] = x[k][1];
+    extx2[2] = x[k][2] - 1.;
+
     //printf("pose_ext_dihe2_evaluator: data[0]=ij= %d %d \ndata[1]=param= %lf %lf %lf \ndata[2]=extx1 %lf %lf %lf \ndata[3]=extx2= %lf %lf %lf\nx[k]= %lf %lf %lf \nx[l]= %lf %lf %lf\n", \
       i, j, \
       param[0], param[1], param[2], \
@@ -1441,20 +1485,27 @@ pose_ext_dihe2_evaluator(PyFFEnergyTermObject *self,
     n = (int)param[0];
     if (n == 0) {
       phi = acos(cos_phi)*sign_phi;
-      dphi = phi-param[1];
-      dphi = fmod(dphi+2.*M_PI, 2.*M_PI);
-      if (dphi > M_PI)
-	dphi -= 2*M_PI;
-      // Flat bottom
-      if(fabs(dphi) < param[2]){
-        e += .0;
-      }else{
-        if(phi < param[1]){
-          e += param[3] * sqr(dphi + param[2]);
-        }else{
-          e += param[3] * sqr(dphi - param[2]);
+      
+      dphi = phi - param[1];
+      // Adjust dphi based on minimum image convention
+      if (dphi > M_PI) {
+          dphi -= 2.*M_PI;
+      }
+      else {
+        if (dphi < -M_PI) {
+          dphi += 2.*M_PI;
         }
       }
+      // Add energy, accounting for flat bottom
+      if (dphi > param[2]) {
+        e += param[3] * sqr(dphi - param[2]);
+      }
+      else {
+        if (dphi < -param[2]) {
+          e += param[3] * sqr(dphi + param[2]);
+        }
+      }
+
       // initialize some variables used only for n > 0, to make gc happy
       sin_phase = cos_phase = sin_n_phi_ratio = 
         sin_phi = cos_n_phi = sqr_cos_phi = 0.;
@@ -1517,14 +1568,15 @@ pose_ext_dihe2_evaluator(PyFFEnergyTermObject *self,
       double deriv;
       vector3 di, dj, dk, dl, ds;
       if (n == 0){
-        // Flat bottom
-        if(fabs(dphi) < param[2]){
-          deriv = .0;
-        }else{
-          if(phi < param[1]){
-	    deriv = 2. * param[3] * (dphi + param[2]);
-          }else{
-	    deriv = 2. * param[3] * (dphi - param[2]);
+        // Calculate derivative, accounting for flat bottom
+        if (dphi > param[2]) {
+          deriv = 2. * param[3] * (dphi - param[2]);
+        }
+        else {
+          if (dphi < -param[2]) {
+            deriv = 2. * param[3] * (dphi + param[2]);
+          } else {
+            deriv = 0.;
           }
         }
       }
@@ -1816,4 +1868,3 @@ pose_ext_dihe2_evaluator(PyFFEnergyTermObject *self,
   }
   energy->energy_terms[self->index] = e;
 }
-

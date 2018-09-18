@@ -17,7 +17,6 @@ class InternalRestraintForceField(ForceField):
   """
 
   def __init__(self, torsions, \
-               hwidth = 0., \
                k = 200.0):
     """
     Internal torsional dofs:
@@ -26,7 +25,7 @@ class InternalRestraintForceField(ForceField):
                     MMTK.ChemicalObjects.Atom.index,
                     MMTK.ChemicalObjects.Atom.index,
                     MMTK.ChemicalObjects.Atom.index,
-                    dobule} x # of internal dofs}
+                    double} x # of internal dofs}
     """
     
     # Initialize the ForceField class, giving a name to this one.
@@ -34,12 +33,8 @@ class InternalRestraintForceField(ForceField):
 
     # Store the parameters for later use
     self.params = OrderedDict()
-    for key in [\
-      'torsions', 'hwidth', 'k']:
+    for key in ['torsions', 'k']:
       self.params[key] = locals()[key]
-
-  def set_hwidth(self, hwidth):
-    self.params['hwidth'] = hwidth
 
   def set_k(self, k):
     self.params['k'] = k
@@ -67,7 +62,8 @@ class InternalRestraintForceField(ForceField):
     # intDiheParams[1] = gamma: reference angle
     # intDiheParams[2] = b: flat bottom range (it gets halfed below)
     # intDiheParams[3] = k: force constant
-    intDiheParams = np.array([[0, t[4], self.params['hwidth'], self.params['k']] \
+    intDiheParams = np.array([\
+      [0, np.fmod(t[4],np.pi), t[5], self.params['k']] \
       for t in self.params['torsions']])
 
     return [PoseDihedralTerm(universe._spec, intDiheIs, intDiheParams)]
@@ -78,9 +74,9 @@ class ExternalRestraintForceField(ForceField):
   """
 
   def __init__(self, ind1, ind2, ind3, X1, Y1, Z1, phi, theta, omega, \
-               hwidth_spatial = 0.0, \
+               hwidth_spatial = 0.1, \
                k_spatial = 200.0, \
-               hwidth_angular = 0.0, \
+               hwidth_angular = np.pi/4., \
                k_angular = 200.0):
     """
     @param input: [index1, index2, index3, X1, Y1, Z1, phi, theta, omega]
@@ -143,9 +139,11 @@ class ExternalRestraintForceField(ForceField):
     ind1 = self.params['ind1']
     ind2 = self.params['ind2']
     ind3 = self.params['ind3']
-    phi  = self.params['phi']
-    theta = self.params['theta']
-    omega = self.params['omega']
+
+    phi  = np.fmod(self.params['phi'],np.pi)
+    theta = np.fmod(self.params['theta'],np.pi)
+    omega = np.fmod(self.params['omega'],np.pi)
+    
     hwidth_spatial = self.params['hwidth_spatial']
     k_spatial = self.params['k_spatial']
     hwidth_angular = self.params['hwidth_angular']
@@ -167,7 +165,8 @@ class ExternalRestraintForceField(ForceField):
 
     ThetaDummy = np.array([[0.0, 0.0, offset]]) + extXYZ
     extAnglIs  = np.array([[-1, ind1, ind2]]);
-    extAnglParams  = np.array([[theta, k_angular, hwidth_angular]]);
+    extAnglParams  = np.array([[theta, k_angular, hwidth_angular/2.]]);
+    # extAnglParams  = np.array([[theta, k_angular, 0.]]);
 
     OmegaDummy = np.array([[0.0, 0.0, -1.0]]) + extXYZ
     extDiheIs  = np.array([[-1, ind1, ind2, ind3]]);
@@ -175,6 +174,9 @@ class ExternalRestraintForceField(ForceField):
 
     # Here we pass all the parameters to the code
     # that handles energy calculations.
+
+    # The dummy atom needs to shift with the position of the central atom
+    # This will be done in pose.c
 
     return [PoseExtDistTerm(universe._spec, extDistIs, extDistParams, extXYZ), \
             PoseExtDihe2Term(universe._spec, extDihe2Is, extDihe2Params, PhiDummy1, PhiDummy2), \

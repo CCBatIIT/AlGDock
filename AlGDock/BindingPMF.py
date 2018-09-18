@@ -1355,7 +1355,7 @@ last modified {1}
             # Simulate
             (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
               self._initial_sim_state(seeds, 'dock', lambda_o)
-            
+          
             attempts += 1
             if attempts == 5:
               self._store_infinite_f_RL()
@@ -2176,11 +2176,8 @@ last modified {1}
       LJr - scaling of the Lennard-Jones repulsive grid
       LJa - scaling of the Lennard-Jones attractive grid
       ELE - scaling of the electrostatic grid
-      hwidth_angular_int - half width of flat-bottom wells for angular internal degrees of freedom (radians)
       k_angular_int - spring constant of flat-bottom wells for angular internal degrees of freedom (kJ/nm)
-      hwidth_spatial_ext - half width of flat-bottom wells for spatial external degrees of freedom (nm)
       k_spatial_ext - spring constant of flat-bottom wells for spatial external degrees of freedom (kJ/nm)
-      hwidth_angular_ext - half width of flat-bottom wells for angular external degrees of freedom (radians)
       k_angular_ext - spring constant of flat-bottom wells for angular external degrees of freedom (kJ/nm)
       T - the temperature in K
     """
@@ -2349,7 +2346,7 @@ last modified {1}
         rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
         (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
         self.universe.setConfiguration(Configuration(self.universe, Xo))
-
+        
         # Create force fields
         from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
         self._forceFields['InternalRestraint'] = \
@@ -2359,25 +2356,16 @@ last modified {1}
           ExternalRestraintForceField(*ExternalRestraintSpecs)
 
       # Set parameter values
-      if ('hwidth_angular_int' in lambda_n.keys()):
-        self._forceFields['InternalRestraint'].set_hwidth(\
-          lambda_n['hwidth_angular_int'])
       if ('k_angular_int' in lambda_n.keys()):
         self._forceFields['InternalRestraint'].set_k(\
           lambda_n['k_angular_int'])
         fflist.append(self._forceFields['InternalRestraint'])
 
-      if ('hwidth_spatial_exp' in lambda_n.keys()):
-        self._forceFields['ExternalRestraint'].set_hwidth_spatial(\
-          lambda_n['hwidth_spatial_exp'])
       if ('k_spatial_ext' in lambda_n.keys()):
         self._forceFields['ExternalRestraint'].set_k_spatial(\
           lambda_n['k_spatial_ext'])
         fflist.append(self._forceFields['ExternalRestraint'])
 
-      if ('hwidth_angular_exp' in lambda_n.keys()):
-        self._forceFields['ExternalRestraint'].set_hwidth_angular(\
-          lambda_n['hwidth_angular_exp'])
       if ('k_angular_ext' in lambda_n.keys()):
         self._forceFields['ExternalRestraint'].set_k_angular(\
           lambda_n['k_angular_ext'])
@@ -2469,6 +2457,8 @@ last modified {1}
           delta_t = 0.1*MMTK.Units.fs
           steps_per_trial = max(int(steps_per_trial/2), 1)
       fmt = "  T = %d, delta_t = %.3f fs, steps_per_trial = %d, acc_rate = %.3f"
+      if acc_rate<0.01:
+        print self.universe.energyTerms()
       self.tee(fmt%(T, delta_t*1000, steps_per_trial, acc_rate))
     if normalize:
       self.universe.normalizePosition()
