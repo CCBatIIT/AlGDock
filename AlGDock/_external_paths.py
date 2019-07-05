@@ -19,7 +19,7 @@ def download_file_from_google_drive(id, destination):
         params = { 'id' : id, 'confirm' : token }
         response = session.get(URL, params = params, stream = True)
 
-    save_response_content(response, destination)    
+    save_response_content(response, destination)
 
 def get_confirm_token(response):
     for key, value in response.cookies.items():
@@ -106,34 +106,34 @@ def loadModules(programs):
 search_paths = {
 # These files/programs are used in BindingPMF.py
              # Generalized AMBER force field
-      'gaff':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+      'gaff':['/Users/dminh/Documents/Code/AlGDock-0.0.1/Data/gaff2.dat',
               '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
               '/home/daveminh/algdock_data/gaff2.dat'],
              # For getting rmsds
-       'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
+       'dock6':['/Users/dminh/Documents/Code/dock6/bin/dock6',
                 '/Applications/dock6/dock6',
                 '/share/apps/dock/6/bin/dock6',
                 '/home/dminh/software/dock6/bin/dock6',
                 '/home/daveminh/software/dock6/bin/dock6',
                 '/g/g19/minh1/software/dock6/bin/dock6'],
              # For postprocessing snapshots with NAMD
-      'namd':['/Users/dminh/Applications/NAMD_2.10/namd2',
+      'namd':['/Applications/NAMD_2.13_MacOSX-x86_64-multicore/namd2',
               '/share/apps/namd/2.9/Linux-x86_64-g++/namd2',
               '/home/dminh/software/namd2',
               '/home/daveminh/software/namd2',
               '/g/g19/minh1/software/namd2',
               'namd2'],
              # For postprocessing snapshots with sander
-    'sander':['/Users/dminh/Installers/amber16/bin/sander',
+    'sander':['/Users/dminh/Documents/Code/amber16/bin/sander',
               '/share/apps/amber/16/bin/sander',
               '/home/dminh/software/sander',
               'sander'],
-    'elsize':['/Users/dminh/Installers/amber16/bin/elsize',
+    'elsize':['/Users/dminh/Documents/Code/amber16/bin/elsize',
               '/share/apps/amber/16/bin/elsize',
               '/home/dminh/software/elsize',
               'elsize'],
              # For postprocessing snapshots with gbnsr6
-    'gbnsr6':['/Users/dminh/Installers/amber16/bin/gbnsr6',
+    'gbnsr6':['/Users/dminh/Documents/Code/amber16/bin/gbnsr6',
               '/share/apps/amber/16/bin/gbnsr6',
               '/home/dminh/software/gbnsr6',
               'gbnsr6'],
@@ -142,16 +142,16 @@ search_paths = {
               '/share/apps/apbs/1.4/bin/apbs',
               '/home/dminh/software/APBS-1.4-linux-static-x86_64/bin/apbs',
               'apbs'],
-    'ambpdb':['/Users/dminh/Installers/amber16/bin/ambpdb',
+    'ambpdb':['/Users/dminh/Documents/Code/amber16/bin/ambpdb',
               '/share/apps/amber/16/bin/ambpdb',
               '/home/dminh/software/ambpdb',
               'ambpdb'],
-   'molsurf':['/Users/dminh/Installers/amber16/bin/molsurf',
+   'molsurf':['/Users/dminh/Documents/Code/amber16/bin/molsurf',
               '/share/apps/amber/16/bin/molsurf',
               '/home/dminh/software/molsurf',
               'molsurf'],
              # BindingPMF.py is built on MMTK (not essential)
-      'MMTK':['/Users/dminh/Installers/MMTK-2.7.9',
+      'MMTK':['/Users/dminh/Documents/Code/MMTK-2.7.9',
               '/home/dminh/Installers/MMTK-2.7.9'],
              # For visualizing (not essential)
        'vmd':['/Applications/VMD.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',

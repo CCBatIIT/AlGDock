@@ -64,7 +64,7 @@ arguments = {
   'grid_desolv':{'help':'file for fractional desolvation grid'},
   'score':{'help':"Starting configuration(s) for replica exchange. Can be a mol2 file, .pkl.gz file, or 'default'"},
   # Simulation settings and constants
-  #   Run-dependent 
+  #   Run-dependent
   'cool_repX_cycles':{'type':int,
     'help':'Number of replica exchange cycles for cooling'},
   'dock_repX_cycles':{'type':int,
@@ -73,7 +73,8 @@ arguments = {
               'minimized_configuration_energies',
               'store_params', 'initial_cool', 'cool', \
               'initial_dock', 'dock' ,'postprocess', \
-              'redo_postprocess','free_energies','redo_free_energies', 'all', \
+              'redo_postprocess','free_energies','redo_free_energies', \
+              'redo_pose_prediction', 'all', \
               'timed', 'timed_cool', 'timed_dock', \
               'render_docked', 'render_intermediates', \
               'clear_intermediates', None],

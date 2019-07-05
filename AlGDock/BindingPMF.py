@@ -23,7 +23,7 @@ try:
   from Scientific._vector import Vector
 except:
   from Scientific.Geometry.VectorModule import Vector
-  
+
 import AlGDock as a
 # Define allowed_phases list and arguments dictionary
 from AlGDock.BindingPMF_arguments import *
@@ -105,7 +105,7 @@ class NullDevice():
 class BPMF:
   def __init__(self, **kwargs):
     """Parses the input arguments and runs the requested docking calculation"""
-    
+
     # Set undefined keywords to None
     for key in arguments.keys():
       if not key in kwargs.keys():
@@ -122,12 +122,12 @@ Molecular docking with adaptively scaled alchemical interaction grids
 in {0}
 last modified {1}
     """.format(mod_path, time.ctime(os.path.getmtime(mod_path)))
-    
+
     # Multiprocessing options.
     # Default is to use 1 core.
     # If cores is a number, then that number (or the maximum number)
     # of cores will be used.
-    
+
     # Default
     available_cores = multiprocessing.cpu_count()
     if kwargs['cores'] is None:
@@ -148,21 +148,21 @@ last modified {1}
       print 'using random number seed of %d'%self._random_seed
 
     self.confs = {'cool':{}, 'dock':{}}
-    
+
     self.dir = {}
     self.dir['start'] = os.getcwd()
-    
+
     if kwargs['dir_dock'] is not None:
       self.dir['dock'] = os.path.abspath(kwargs['dir_dock'])
     else:
       self.dir['dock'] = os.path.abspath('.')
-    
+
     if kwargs['dir_cool'] is not None:
       self.dir['cool'] = os.path.abspath(kwargs['dir_cool'])
     else:
       self.dir['cool'] = self.dir['dock'] # Default that may be
                                           # overwritten by stored directory
-    
+
     # Load previously stored file names and arguments
     FNs = OrderedDict()
     args = OrderedDict()
@@ -180,10 +180,10 @@ last modified {1}
       else:
         FNs[p] = OrderedDict()
         args[p] = OrderedDict()
-  
+
     print '\n*** Directories ***'
     print dict_view(self.dir)
-  
+
     # Identify tarballs
     tarFNs = [kwargs[prefix + '_tarball'] \
       for prefix in ['ligand','receptor','complex'] \
@@ -223,7 +223,7 @@ last modified {1}
       seekFNs = set(seekFNs)
     seek_frcmod = (kwargs['frcmodList'] is None) or \
       (not os.path.isfile(kwargs['frcmodList'][0]))
-      
+
     if kwargs['keep_tar']:
       print 'Files extracted from tarballs will be kept\n'
 
@@ -281,13 +281,13 @@ last modified {1}
         kwargs['frcmodList'] = [kwargs['frcmodList']]
       kwargs['frcmodList'] = [cdir_or_dir_dock(FN) \
         for FN in kwargs['frcmodList']]
-    
+
     if 'score' in kwargs.keys() and \
         (kwargs['score'] is not None) and \
         (kwargs['score'] != 'default'):
       kwargs['score'] = a.findPath([kwargs['score'], \
         os.path.join(self.dir['dock'],kwargs['score'])])
-  
+
     FFpath = a.search_paths['gaff'] \
       if 'gaff' in a.search_paths.keys() else []
     FNs['new'] = OrderedDict([
@@ -344,7 +344,7 @@ last modified {1}
 
     self._FNs = merge_dictionaries(
       [FNs[src] for src in ['new','cool','dock']])
-  
+
     # Default: a force field modification is in the same directory as the ligand
     if (self._FNs['frcmodList'] is None):
       if self._FNs['prmtop']['L'] is not None:
@@ -395,7 +395,7 @@ last modified {1}
           print 'Receptor coordinates needed for docking!'
 
     print dict_view(self._FNs, relpath=self.dir['start'], show_None=True)
-    
+
     args['default_cool'] = OrderedDict([
         ('protocol','Adaptive'),
         ('therm_speed',30.0),
@@ -468,7 +468,7 @@ last modified {1}
     for phase in (self.params['cool']['phases'] + self.params['dock']['phases']):
       if phase not in allowed_phases:
         raise Exception(phase + ' phase is not supported!')
-        
+
     # Make sure prerequistite phases are included:
     #   sander_Gas is necessary for any sander or gbnsr6 phase
     #   NAMD_Gas is necessary for APBS_PBSA
@@ -480,7 +480,7 @@ last modified {1}
         phase_list.append('sander_Gas')
       if (not 'NAMD_Gas' in phase_list) and ('APBS_PBSA' in phase_list):
         phase_list.append('NAMD_Gas')
-  
+
     self._scalables = ['OBC','sLJr','sELE','LJr','LJa','ELE']
 
     # Variables dependent on the parameters
@@ -491,7 +491,7 @@ last modified {1}
           np.atleast_2d(self.params['dock']['receptor_'+phase])
       else:
         self.original_Es[0][0]['R'+phase] = None
-        
+
     self.T_HIGH = self.params['cool']['T_HIGH']
     self.T_SIMMIN = self.params['cool']['T_SIMMIN']
     self.RT_SIMMIN = R * self.params['cool']['T_SIMMIN']
@@ -508,10 +508,10 @@ last modified {1}
     self.timings = {'max':kwargs['max_time']}
     self.start_times = {}
     self._run(kwargs['run_type'])
-      
+
   def _setup_universe(self, do_dock=True):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
-    
+
     # Set up the system
     original_stderr = sys.stderr
     sys.stderr = NullDevice()
@@ -525,7 +525,7 @@ last modified {1}
       self.receptor_molecule_in_RL = MMTK.Molecule(\
         os.path.basename(self._FNs['receptor_database']))
     sys.stderr = original_stderr
-    
+
     # Hydrogen Mass Repartitioning
     # (sets hydrogen mass to H_mass and scales other masses down)
     if self.params['cool']['H_mass']>0.:
@@ -546,10 +546,15 @@ last modified {1}
     for i in range(len(self.molecule.prmtop_atom_order)):
       self.molecule.inv_prmtop_atom_order[self.molecule.prmtop_atom_order[i]] = i
 
+    # Initialize rmsd calculation function
+    from AlGDock.RMSD import hRMSD
+    self.get_rmsds = hRMSD(self._FNs['prmtop']['L'], \
+      self.molecule.inv_prmtop_atom_order)
+
     # Create universe and add molecule to universe
     self.universe = MMTK.Universe.InfiniteUniverse()
     self.universe.addObject(self.molecule)
-    
+
     # Create sampling universe and add molecules to universe
     if self._FNs['receptor_database'] is not None:
       self.bonusE_universe = MMTK.Universe.InfiniteUniverse()
@@ -557,14 +562,14 @@ last modified {1}
       self.bonusE_universe.addObject(self.molecule_in_RL)
     else:
       self.bonusE_universe = None
-    
+
     self._evaluators = {} # Store evaluators
     self._OpenMM_sims = {} # Store OpenMM simulations
     self._ligand_natoms = self.universe.numberOfAtoms()
 
     # Force fields
     self._forceFields = {}
-    
+
     # Molecular mechanics force fields
     from MMTK.ForceFields import Amber12SBForceField
     self._forceFields['gaff'] = Amber12SBForceField(
@@ -585,8 +590,8 @@ last modified {1}
         print '  possible ligand residue labels: '+\
           ', '.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
       print 'ligand residue name: ' + \
-        prmtop_RL['RESIDUE_LABEL'][ligand_ind[-1]].strip()
-      self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[-1]] - 1
+        prmtop_RL['RESIDUE_LABEL'][ligand_ind[0]].strip()
+      self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[0]] - 1
     else:
       self._ligand_first_atom = 0
       if do_dock:
@@ -636,6 +641,7 @@ last modified {1}
           natoms=self.universe.numberOfAtoms(), multiplier=0.1)
         rmsd_crd = rmsd_crd[self.molecule.inv_prmtop_atom_order,:]
       self.confs['rmsd'] = rmsd_crd
+      self.get_rmsds.set_ref_configuration(self.confs['rmsd'])
 
     # Locate programs for postprocessing
     all_phases = self.params['dock']['phases'] + self.params['cool']['phases']
@@ -742,6 +748,7 @@ last modified {1}
       self.sim_process('dock')
       self._postprocess()
       self.calc_f_RL()
+      # self.targeted_FEP()
     elif run_type=='timed': # Timed replica exchange sampling
       cool_complete = self.sim_process('cool')
       if cool_complete:
@@ -753,6 +760,7 @@ last modified {1}
             pp_complete = self._postprocess()
             if pp_complete:
               self.calc_f_RL()
+              # self.targeted_FEP()
     elif run_type=='timed_cool': # Timed cooling only
       cool_complete = self.sim_process('cool')
       if cool_complete:
@@ -765,13 +773,24 @@ last modified {1}
         pp_complete = self._postprocess()
         if pp_complete:
           self.calc_f_RL()
+          # self.targeted_FEP()
     elif run_type=='postprocess': # Postprocessing
       self._postprocess()
     elif run_type=='redo_postprocess':
       self._postprocess(redo_dock=True)
+    elif run_type=='redo_pose_prediction':
+      self.calc_f_RL(readOnly=True)
+      # Predict native pose
+      if self.params['dock']['pose']==-1:
+        (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
+          self._get_pose_prediction()
+        f_RL_FN = os.path.join(self.dir['dock'],'f_RL.pkl.gz')
+        self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
+      # self.targeted_FEP()
     elif (run_type=='free_energies') or (run_type=='redo_free_energies'):
       self.calc_f_L(redo=(run_type=='redo_free_energies'))
       self.calc_f_RL(redo=(run_type=='redo_free_energies'))
+      # self.targeted_FEP()
     elif run_type=='all':
       self.sim_process('cool')
       self._postprocess([('cool',-1,-1,'L')])
@@ -779,6 +798,7 @@ last modified {1}
       self.sim_process('dock')
       self._postprocess()
       self.calc_f_RL()
+      # self.targeted_FEP()
     elif run_type=='render_docked':
       # For 4 figures
       # 1002*4/600. = 6.68 in at 600 dpi
@@ -793,8 +813,7 @@ last modified {1}
         view_args=view_args)
       if self.params['dock']['pose']==-1:
         (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
-          self._get_pose_prediction('dock', \
-          self.stats_RL['equilibrated_cycle'][-1])
+          self._get_pose_prediction()
         self.show_pose_prediction(score='grid_fe_u',
           show_ref_ligand=True, show_starting_pose=False, \
           show_receptor=True, save_image=True, execute=True, quit=True, \
@@ -830,7 +849,7 @@ last modified {1}
     """
     Warms the ligand from self.T_SIMMIN to self.T_HIGH, or
     cools the ligand from self.T_HIGH to self.T_SIMMIN
-    
+
     Intermediate thermodynamic states are chosen such that
     thermodynamic length intervals are approximately constant.
     Configurations from each state are subsampled to seed the next simulation.
@@ -838,7 +857,7 @@ last modified {1}
 
     if (len(self.cool_protocol)>0) and (self.cool_protocol[-1]['crossed']):
       return # Initial cooling is already complete
-    
+
     self._set_lock('cool')
     self.start_times['cool'] = time.time()
     self.start_times['cool_save'] = time.time()
@@ -852,7 +871,7 @@ last modified {1}
       lambda_o = self._lambda(1.0 if warm else 0., 'cool', site=False)
       self.cool_protocol = [lambda_o]
       self._set_universe_evaluator(lambda_o)
-      
+
       # Get starting configurations
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
       # initializes smart darting for cooling
@@ -864,7 +883,7 @@ last modified {1}
       elif len(seeds)>0:
         self.universe.setConfiguration(Configuration(self.universe,seeds[-1]))
       self.confs['cool']['starting_poses'] = seeds
-      
+
       # Ramp the temperature from 0 to the desired starting temperature using HMC
       self._ramp_T(lambda_o['T'], normalize=True)
 
@@ -911,11 +930,11 @@ last modified {1}
         size = self.params['cool']['seeds_per_state'], \
         p = weights/sum(weights))
       seeds = [np.copy(confs[s]) for s in seedIndicies]
-      
+
       # Store old data
       confs_o = confs
       E_o = E
-      
+
       # Simulate
       self.start_times['cool_state'] = time.time()
       self._set_universe_evaluator(lambda_n)
@@ -989,7 +1008,7 @@ last modified {1}
         if (not self.params['cool']['keep_intermediate']):
           for k in range(1,len(self.cool_protocol)-1):
             self.confs['cool']['samples'][k] = []
-            
+
         self._cool_cycle += 1
 
       # Save progress every 5 minutes
@@ -1068,7 +1087,7 @@ last modified {1}
           for c in range(self._cool_cycle)]
 
     self.stats_L['equilibrated_cycle'] = self._get_equilibrated_cycle('cool')
-    
+
     # Calculate cooling free energies that have not already been calculated,
     # in units of RT
     updated = False
@@ -1078,7 +1097,7 @@ last modified {1}
         if do_solvation:
           self.tee(start_string)
         updated = True
-      
+
       fromCycle = self.stats_L['equilibrated_cycle'][c]
       toCycle = c + 1
 
@@ -1121,10 +1140,6 @@ last modified {1}
         [self.cool_Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
           for c in range(self._cool_cycle)]
 
-    # Get predicted pose (not really needed for cooling)
-    (self.stats_L['pose_inds'], self.stats_L['scores']) = \
-      self._get_pose_prediction('cool', self.stats_L['equilibrated_cycle'][-1])
-
     # Calculate solvation free energies that have not already been calculated,
     # in units of RT
     for phase in self.params['cool']['phases']:
@@ -1141,10 +1156,10 @@ last modified {1}
 
         fromCycle = self.stats_L['equilibrated_cycle'][c]
         toCycle = c + 1
-        
+
         if not ('L'+phase) in self.cool_Es[-1][c].keys():
           raise Exception('L%s energies not found in cycle %d'%(phase, c))
-        
+
         # Arbitrarily, solvation is the
         # 'forward' direction and desolvation the 'reverse'
         u_L = np.concatenate([self.cool_Es[-1][n]['L'+phase] \
@@ -1177,7 +1192,7 @@ last modified {1}
   def random_dock(self):
     """
       Randomly places the ligand into the receptor and evaluates energies
-      
+
       The first state of docking is sampled by randomly placing configurations
       from the high temperature ligand simulation into the binding site.
     """
@@ -1283,7 +1298,7 @@ last modified {1}
 
     if self._n_trans != n_trans_n:
       self._n_trans = n_trans_n
-      
+
     self.tee("  %d ligand configurations "%len(cool0_Es_MM) + \
              "were randomly docked into the binding site using "+ \
              "%d translations and %d rotations "%(n_trans_n,self._n_rot))
@@ -1302,28 +1317,30 @@ last modified {1}
   def initial_dock(self, randomOnly=False):
     """
       Docks the ligand into the receptor
-      
+
       Intermediate thermodynamic states are chosen such that
       thermodynamic length intervals are approximately constant.
       Configurations from each state are subsampled to seed the next simulation.
     """
-    
+
     if (len(self.dock_protocol)>0) and (self.dock_protocol[-1]['crossed']):
       return # Initial docking already complete
 
     self._set_lock('dock')
     self.start_times['initial_dock'] = time.time()
     self.start_times['dock_save'] = time.time()
-    
+
     if self.dock_protocol==[]:
-      self.tee("\n>>> Initial docking, starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
       undock = True
+      # undock = (self.params['dock']['pose'] == -1)
       if undock:
+        self.tee("\n>>> Initial undocking, starting at " + \
+          time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+
         lambda_o = self._lambda(1.0, 'dock')
         self.dock_protocol = [lambda_o]
         self._set_universe_evaluator(lambda_o)
-        
+
         if (self.params['dock']['pose'] == -1):
           seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
           self.confs['dock']['starting_poses'] = seeds
@@ -1355,7 +1372,7 @@ last modified {1}
             # Simulate
             (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
               self._initial_sim_state(seeds, 'dock', lambda_o)
-          
+
             attempts += 1
             if attempts == 5:
               self._store_infinite_f_RL()
@@ -1372,8 +1389,11 @@ last modified {1}
           self.tee("    dt=%.2f fs, tL_tensor=%.3e"%(\
             lambda_o['delta_t']*1000., \
             self._tL_tensor(E,lambda_o)))
-    
+
       if not undock:
+        self.tee("\n>>> Initial docking, starting at " + \
+          time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+
         # Select samples from the high T unbound state and ensure there are enough
         confs_HT = []
         for k in range(1,len(self.cool_Es[0])):
@@ -1387,13 +1407,23 @@ last modified {1}
           for k in range(1,len(self.cool_Es[0])):
             confs_HT += list(self.confs['cool']['samples'][0][k])
         confs_HT = confs_HT[:self.params['dock']['seeds_per_state']]
-        
-        (confs, E) = self.random_dock()
-        self.tee("  random docking complete in " + \
-                 HMStime(time.time()-self.start_times['initial_dock']))
-        if randomOnly:
-          self._clear_lock('dock')
-          return
+
+        if (self.params['dock']['pose'] == -1):
+          (confs, E) = self.random_dock()
+          self.tee("  random docking complete in " + \
+                   HMStime(time.time()-self.start_times['initial_dock']))
+          if randomOnly:
+            self._clear_lock('dock')
+            return
+        else:
+          lambda_o = self._lambda(0, 'dock')
+          self._set_universe_evaluator(lambda_o)
+          confs = confs_HT
+          E = self._energyTerms(confs)
+          self.confs['dock']['replicas'] = [confs[np.random.randint(len(confs))]]
+          self.confs['dock']['samples'] = [confs]
+          self.dock_Es = [[E]]
+          self.dock_protocol = [lambda_o]
     else:
       # Continuing from a previous docking instance
       undock = self.dock_protocol[0]['a']>self.dock_protocol[1]['a']
@@ -1594,7 +1624,7 @@ last modified {1}
   def calc_f_RL(self, readOnly=False, do_solvation=True, redo=False):
     """
     Calculates the binding potential of mean force
-    redo recalculates f_RL and B except grid_MBAR 
+    redo recalculates f_RL and B except grid_MBAR
     """
     if self.dock_protocol==[]:
       return # Initial docking is incomplete
@@ -1605,7 +1635,7 @@ last modified {1}
     else:
       f_RL_FN = os.path.join(self.dir['dock'], \
         'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
-    
+
     dat = self._load_pkl_gz(f_RL_FN)
     if (dat is not None):
       (self.f_L, self.stats_RL, self.f_RL, self.B) = dat
@@ -1635,7 +1665,7 @@ last modified {1}
     start_string = "\n>>> Complex free energy calculations, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n"
     self.start_times['BPMF'] = time.time()
-    
+
     updated = False
     def set_updated_to_True(updated, start_string, quiet=False):
       if (updated is False):
@@ -1645,7 +1675,7 @@ last modified {1}
       return True
 
     K = len(self.dock_protocol)
-    
+
     # Store stats_RL
     # Internal energies
     self.stats_RL['u_K_sampled'] = \
@@ -1674,8 +1704,7 @@ last modified {1}
     if redo and (self.params['dock']['rmsd'] is not False):
       k = len(self.dock_protocol) - 1
       for c in range(self._dock_cycle):
-        confs = [conf[self.molecule.prmtop_atom_order,:]*10. \
-          for conf in self.confs['dock']['samples'][k][c]]
+        confs = [conf for conf in self.confs['dock']['samples'][k][c]]
         self.dock_Es[k][c]['rmsd'] = self.get_rmsds(confs)
     self.stats_RL['rmsd'] = [(np.hstack([self.dock_Es[k][c]['rmsd']
       if 'rmsd' in self.dock_Es[k][c].keys() else [] \
@@ -1688,7 +1717,7 @@ last modified {1}
       self.f_RL['grid_MBAR'].append([])
     while len(self.stats_RL['mean_acc'])<self._dock_cycle:
       self.stats_RL['mean_acc'].append([])
-    
+
     for c in range(self._dock_cycle):
       # If solvation free energies are not being calculated,
       # only calculate the grid free energy for the current cycle
@@ -1699,17 +1728,17 @@ last modified {1}
 
       fromCycle = self.stats_RL['equilibrated_cycle'][c]
       extractCycles = range(fromCycle, c+1)
-      
+
       # Extract relevant energies
       dock_Es = [Es[fromCycle:c+1] \
         for Es in self.dock_Es]
-      
+
       # Use MBAR for the grid scaling free energy estimate
       (u_kln,N_k) = self._u_kln(dock_Es,self.dock_protocol)
       MBAR = self._run_MBAR(u_kln,N_k)[0]
       self.f_RL['grid_MBAR'][c] = MBAR
       updated = set_updated_to_True(updated, start_string, quiet=not do_solvation)
-      
+
       self.tee("  calculated grid scaling free energy of %.2f RT "%(\
                   self.f_RL['grid_MBAR'][c][-1])+\
                "using cycles %d to %d"%(fromCycle, c))
@@ -1764,7 +1793,7 @@ last modified {1}
     # Predict native pose
     if self.params['dock']['pose']==-1:
       (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
-        self._get_pose_prediction('dock', self.stats_RL['equilibrated_cycle'][-1])
+        self._get_pose_prediction()
 
     # BPMF assuming receptor and complex solvation cancel
     self.B['MMTK_MBAR'] = [-self.f_L['cool_MBAR'][-1][-1] + \
@@ -1813,16 +1842,16 @@ last modified {1}
           for c in extractCycles])
         min_Psi = min(Psi)
         max_Psi = max(Psi)
-    
+
         # Complex solvation
         self.f_RL[phase+'_solv'].append(f_RL_solv)
-        
+
         # Various BPMF estimates
         self.B[phase+'_min_Psi'].append(min_Psi)
         self.B[phase+'_mean_Psi'].append(np.sum(weights*Psi))
         self.B[phase+'_EXP'].append(\
           np.log(sum(weights*np.exp(Psi-max_Psi))) + max_Psi)
-        
+
         self.B[phase+'_MBAR'].append(\
           - self.f_L[phase+'_solv'][-1] - self.f_L['cool_MBAR'][-1][-1] \
           + self.f_RL['grid_MBAR'][-1][-1] + f_RL_solv)
@@ -1836,7 +1865,162 @@ last modified {1}
       self.tee("\nElapsed time for binding PMF estimation: " + \
         HMStime(time.time()-self.start_times['BPMF']))
     self._clear_lock('dock')
-    
+
+  def targeted_FEP(self):
+    start_string = "\n>>> Targeted FEP calculations, starting at " + \
+      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n"
+    self.start_times['targeted_FEP'] = time.time()
+
+    # Cluster poses
+    if self.params['dock']['pose']==-1:
+      (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
+        self._get_pose_prediction()
+    confs = [self.confs['dock']['samples'][-1][cycle][n] \
+      for (cycle,n) in self.stats_RL['pose_inds']]
+
+    # Set up OpenMM
+    process = 'dock'
+    moiety = 'RL'
+    phase = 'OpenMM_OBC2'
+    key = moiety+phase
+    self._setup_OpenMM(moiety, phase)
+
+    # Minimize each pose
+    import simtk.unit
+
+    receptor_0 = self.confs['receptor'][:self._ligand_first_atom,:]
+    receptor_1 = self.confs['receptor'][self._ligand_first_atom:,:]
+
+    confs_min = []
+    for conf in confs:
+      full_conf = np.vstack((receptor_0, conf[self.molecule.prmtop_atom_order,:], receptor_1))
+      self._OpenMM_sims[key].context.setPositions(full_conf)
+      s = self._OpenMM_sims[key].context.getState(getEnergy=True)
+      Eo = s.getPotentialEnergy()/simtk.unit.kilojoule*simtk.unit.mole
+      self._OpenMM_sims[key].minimizeEnergy()
+      s = self._OpenMM_sims[key].context.getState(getPositions=True, getEnergy=True)
+      confs_min.append(s.getPositions(asNumpy=True) \
+                       [self._ligand_first_atom:self._ligand_first_atom+self._ligand_natoms,:] \
+                       [self.molecule.inv_prmtop_atom_order,:]/simtk.unit.nanometer)
+
+    # Define mappings to minimized poses
+    import AlGDock.BAT
+    BAT_converter = AlGDock.BAT.converter(self.universe, self.molecule)
+    self.stats_RL['mappings'] = []
+    for (conf_o, conf_min) in zip(confs, confs_min):
+      BAT_o = BAT_converter.BAT(conf_o, extended=True)
+      BAT_min = BAT_converter.BAT(conf_min, extended=True)
+      mapping = BAT_min-BAT_o
+      # Don't change bond length or bond angles
+      mapping[6::3] = 0.
+      mapping[7::3] = 0.
+      self.stats_RL['mappings'].append(mapping)
+
+    # If relevant, store the rmsd of the mapped cluster poses
+    if self.params['dock']['rmsd']:
+      self.stats_RL['mapped_rmsd'] = []
+      for mapping in self.stats_RL['mappings']:
+        # RMSD of mapped configurations
+        confs_map = []
+        for conf_o in confs:
+          BAT_o = BAT_converter.BAT(conf_o, extended=True)
+          confs_map.append(BAT_converter.Cartesian(BAT_o + mapping))
+        self.stats_RL['mapped_rmsd'].append(self.get_rmsds(confs_map))
+
+    # Gather all snapshots in milestone D
+    for k in range(self.stats_RL['equilibrated_cycle'][-1],getattr(self,'_%s_cycle'%process)):
+      if not isinstance(self.confs[process]['samples'][-1][k], list):
+        self.confs[process]['samples'][-1][k] = [self.confs[process]['samples'][-1][k]]
+    import itertools
+    confs = np.array([conf for conf in itertools.chain.from_iterable(\
+      [self.confs[process]['samples'][-1][c] \
+        for c in range(self.stats_RL['equilibrated_cycle'][-1], getattr(self,'_%s_cycle'%process))])])
+
+    extractCycles = range(self.stats_RL['equilibrated_cycle'][-1], getattr(self,'_%s_cycle'%process))
+    u_sampled = np.concatenate([\
+              self.stats_RL['u_K_sampled'][c] for c in extractCycles])
+    f_R_solv = self.original_Es[0][0]['R'+phase][:,-1]/self.RT_TARGET
+
+    # For each mapping, map all samples and evalulate energies
+    self.stats_RL['u_K_mapped_OpenMM_OBC2'] = []
+    for mapping in self.stats_RL['mappings']:
+      # Energy of mapped configurations
+      umap = []
+      for conf_o in confs:
+        BAT_o = BAT_converter.BAT(conf_o, extended=True)
+        conf_map = BAT_converter.Cartesian(BAT_o + mapping)
+        full_conf = np.vstack((receptor_0, \
+          conf_map[self.molecule.prmtop_atom_order,:], receptor_1))
+        self._OpenMM_sims[key].context.setPositions(full_conf)
+        s = self._OpenMM_sims[key].context.getState(getEnergy=True)
+        umap.append(s.getPotentialEnergy()/simtk.unit.kilojoule*simtk.unit.mole/self.RT_TARGET)
+      umap = np.array(umap)
+      self.stats_RL['u_K_mapped_OpenMM_OBC2'].append(umap)
+
+    # For each mapping, calculate the free energy
+    self.f_RL['mapped_OpenMM_OBC2_solv'] = []
+    for umap in self.stats_RL['u_K_mapped_OpenMM_OBC2']:
+      # Targeted FEP
+      du = umap - u_sampled
+      min_du = min(du)
+      weights = np.exp(-du+min_du)
+
+      # Filter outliers
+      if self.params['dock']['pose']>-1:
+        toKeep = du > (np.mean(du) - 3*np.std(du))
+        du = du[toKeep]
+        weights[~toKeep] = 0.
+
+      weights = weights/sum(weights)
+
+      # Exponential average
+      f_RL_solv = -np.log(np.exp(-du+min_du).mean()) + min_du - f_R_solv
+      self.f_RL['mapped_OpenMM_OBC2_solv'].append(f_RL_solv)
+
+    # Select mapping that leads to the lowest free energy
+    selected_mapping = np.argmin(self.f_RL['mapped_OpenMM_OBC2_solv'])
+
+    # Calculate BPMF based on targeted FEP with the selected mapping
+    self.B['mapped_OpenMM_OBC2_MBAR'] = self.B['OpenMM_OBC2_MBAR'][-1] \
+      - self.f_RL['OpenMM_OBC2_solv'][-1] \
+      + self.f_RL['mapped_OpenMM_OBC2_solv'][selected_mapping]
+
+    # Score poses based on selected mapping
+    if self.params['dock']['rmsd']:
+      self.stats_RL['scores']['mapped_rmsd'] = self.stats_RL['mapped_rmsd'][selected_mapping]
+
+    un = self.stats_RL['u_K_mapped_OpenMM_OBC2'][selected_mapping]
+    du = un-u_sampled
+    min_du = min(du)
+    weights = np.exp(-du+min_du)
+
+    rmsd_matrix = self._get_rmsd_matrix()
+    assignments = self._cluster_samples(rmsd_matrix)
+    cluster_counts = np.histogram(assignments, \
+      bins=np.arange(len(set(assignments))+1)-0.5,
+      weights=weights)[0]
+
+    cluster_fe = -np.log(cluster_counts)
+    cluster_fe -= np.min(cluster_fe)
+    self.stats_RL['scores']['mapped_'+phase+'_fe_u'] = cluster_fe
+    # by minimum and mean energy
+    self.stats_RL['scores']['mapped_'+phase+'_min_u'] = []
+    self.stats_RL['scores']['mapped_'+phase+'_mean_u'] = []
+    for n in range(max(assignments)+1):
+      un_n = [un[i] for i in range(len(assignments)) if assignments[i]==n]
+      self.stats_RL['scores']['mapped_'+phase+'_min_u'].append(np.min(un_n))
+      self.stats_RL['scores']['mapped_'+phase+'_mean_u'].append(np.mean(un_n))
+
+    # Store data
+    if self.params['dock']['pose']==-1:
+      f_RL_FN = os.path.join(self.dir['dock'],'f_RL.pkl.gz')
+    else:
+      f_RL_FN = os.path.join(self.dir['dock'], \
+        'f_RL_pose%03d.pkl.gz'%self.params['dock']['pose'])
+    self._write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B))
+    self.tee("\nElapsed time for targeted FEP: " + \
+      HMStime(time.time()-self.start_times['targeted_FEP']))
+
   def _store_infinite_f_RL(self):
     if self.params['dock']['pose']==-1:
       f_RL_FN = os.path.join(self.dir['dock'],'f_RL.pkl.gz')
@@ -1879,42 +2063,72 @@ last modified {1}
       nsamples_ind = nsamples_tot/g
       equilibrated_cycle_last_c = max(np.argmax(nsamples_ind),1)
       equilibrated_cycle.append(equilibrated_cycle_last_c)
-      
+
     return equilibrated_cycle
 
-  def _get_pose_prediction(self, process, equilibrated_cycle):
-    if process=='dock':
-      stats = self.stats_RL
-      compareToRef = self.params['dock']['rmsd']
-    else:
-      stats = self.stats_L
-      compareToRef = False
+  def _get_rmsd_matrix(self):
+    process = 'dock'
+    equilibrated_cycle = self.stats_RL['equilibrated_cycle'][-1]
+    stats = self.stats_RL
 
     # Gather snapshots
     for k in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process)):
       if not isinstance(self.confs[process]['samples'][-1][k], list):
         self.confs[process]['samples'][-1][k] = [self.confs[process]['samples'][-1][k]]
     import itertools
-    confs = np.array([conf[self.molecule.heavy_atoms,:] \
-      for conf in itertools.chain.from_iterable(\
+    confs = np.array([conf for conf in itertools.chain.from_iterable(\
       [self.confs[process]['samples'][-1][c] \
         for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])])
-    cum_Nk = np.cumsum([0] + [len(self.confs[process]['samples'][-1][c]) \
-      for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
 
-    # RMSD matrix
-    from pyRMSD.matrixHandler import MatrixHandler
-    rmsd_matrix_handler = MatrixHandler().createMatrix(confs, \
-      {'cool':'QCP_SERIAL_CALCULATOR', \
-       'dock':'NOSUP_SERIAL_CALCULATOR'}[process])
-    rmsd_matrix = rmsd_matrix_handler.get_data()
+    cum_Nk = np.cumsum([0] + [len(self.confs['dock']['samples'][-1][c]) \
+      for c in range(self._dock_cycle)])
+    nsamples = cum_Nk[-1]
+
+    # Create a new matrix
+    rmsd_matrix = []
+    for c in range(len(confs)):
+      rmsd_matrix.extend(self.get_rmsds(confs[c+1:], confs[c]))
     rmsd_matrix = np.clip(rmsd_matrix, 0., None)
+    self.stats_RL['rmsd_matrix'] = rmsd_matrix
 
+    # # Obtain a full rmsd matrix
+    # if (not 'rmsd_matrix' in self.stats_RL.keys()):
+    #   # Create a new matrix
+    #   rmsd_matrix = []
+    #   for c in range(len(confs)):
+    #     rmsd_matrix.extend(self.get_rmsds(confs[c+1:], confs[c]))
+    #   rmsd_matrix = np.clip(rmsd_matrix, 0., None)
+    #   self.stats_RL['rmsd_matrix'] = rmsd_matrix
+    # elif len(self.stats_RL['rmsd_matrix'])<(nsamples*(len(nsamples)-1)/2):
+    #   rmsd_matrix = []
+    #   for c in range(len(confs)):
+    #     rmsd_matrix.extend(self.get_rmsds(confs[c+1:], confs[c]))
+    #   rmsd_matrix = np.clip(rmsd_matrix, 0., None)
+    #   self.stats_RL['rmsd_matrix'] = rmsd_matrix
+    #
+    #   # TODO: Write this code
+    #   # Extend a previous matrix
+    #   # rmsd_matrix = self.stats_RL['rmsd_matrix']
+    #   # from scipy.spatial.distance import squareform
+    #   # rmsd_matrix_sq = squareform(rmsd_matrix)
+    #   #
+    #   # for c in range(len(confs)):
+    #   #   rmsd_matrix.extend(self.get_rmsds(confs[c+1:], confs[c]))
+    #   # rmsd_matrix = np.clip(rmsd_matrix, 0., None)
+    #   # self.stats_RL['rmsd_matrix'] = rmsd_matrix
+    # else:
+    #   # Load the old matrix
+    #   rmsd_matrix = stats_RL['rmsd_matrix']
+
+    # TODO: Truncate the full matrix
+    return rmsd_matrix
+
+  def _cluster_samples(self, rmsd_matrix):
     # Clustering
     import scipy.cluster
     Z = scipy.cluster.hierarchy.linkage(rmsd_matrix, method='complete')
     assignments = np.array(\
-      scipy.cluster.hierarchy.fcluster(Z, 0.2, criterion='distance'))
+      scipy.cluster.hierarchy.fcluster(Z, 0.1, criterion='distance'))
 
     # Reindexes the assignments in order of appearance
     new_index = 0
@@ -1924,27 +2138,53 @@ last modified {1}
         mapping_to_new_index[assignment] = new_index
         new_index += 1
     assignments = [mapping_to_new_index[a] for a in assignments]
+    return assignments
 
-    # Gets the medoid of every cluster and store rmsd if relevant
+  def _get_pose_prediction(self, representative='medoid'):
+    process = 'dock'
+    equilibrated_cycle = self.stats_RL['equilibrated_cycle'][-1]
+    stats = self.stats_RL
+
+    rmsd_matrix = self._get_rmsd_matrix()
+    assignments = self._cluster_samples(rmsd_matrix)
+
+    cum_Nk = np.cumsum([0] + [len(self.confs[process]['samples'][-1][c]) \
+      for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
     def linear_index_to_pair(ind):
       cycle = list(ind<cum_Nk).index(True)-1
       n = ind-cum_Nk[cycle]
       return (cycle + equilibrated_cycle,n)
 
-    from scipy.spatial.distance import squareform
-    rmsd_matrix = squareform(rmsd_matrix)
+    # Select a representative of each cluster
     pose_inds = []
     scores = {}
-    if compareToRef:
+
+    if representative=='medoid':
+      # based on the medoid
+      from scipy.spatial.distance import squareform
+      rmsd_matrix_sq = squareform(rmsd_matrix)
+      for n in range(max(assignments)+1):
+        inds = [i for i in range(len(assignments)) if assignments[i]==n]
+        rmsd_matrix_n = rmsd_matrix_sq[inds][:,inds]
+        (cycle,n) = linear_index_to_pair(inds[np.argmin(np.mean(rmsd_matrix_n,0))])
+        pose_inds.append((cycle,n))
+    else:
+      if 'Psi_'+representative in stats.keys():
+      # based on the lowest interaction energy in specified phase
+        phase = representative
+        Psi_n = np.concatenate([stats['Psi_'+phase][c] \
+                  for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
+        for n in range(max(assignments)+1):
+          inds = [i for i in range(len(assignments)) if assignments[i]==n]
+          (cycle,n) = linear_index_to_pair(inds[np.argmin(Psi_n[inds])])
+          pose_inds.append((cycle,n))
+
+    # If relevant, store the rmsd of the representatives
+    if self.params['dock']['rmsd']:
       scores['rmsd'] = []
-    for n in range(max(assignments)+1):
-      inds = [i for i in range(len(assignments)) if assignments[i]==n]
-      rmsd_matrix_n = rmsd_matrix[inds][:,inds]
-      (cycle,n) = linear_index_to_pair(inds[np.argmin(np.mean(rmsd_matrix_n,0))])
-      pose_inds.append((cycle,n))
-      if compareToRef:
+      for (cycle,n) in pose_inds:
         scores['rmsd'].append(self.dock_Es[-1][cycle]['rmsd'][n])
-        
+
     # Score clusters based on total energy
     uo = np.concatenate([stats['u_K_sampled'][c] \
       for c in range(equilibrated_cycle,getattr(self,'_%s_cycle'%process))])
@@ -1962,7 +2202,7 @@ last modified {1}
         bins=np.arange(len(set(assignments))+1)-0.5,
         weights=weights)[0]
       # by free energy
-      cluster_fe = -self.RT_TARGET*np.log(cluster_counts)
+      cluster_fe = -np.log(cluster_counts)
       cluster_fe -= np.min(cluster_fe)
       scores[phase+'_fe_u'] = cluster_fe
       # by minimum and mean energy
@@ -1972,7 +2212,7 @@ last modified {1}
         un_n = [un[i] for i in range(len(assignments)) if assignments[i]==n]
         scores[phase+'_min_u'].append(np.min(un_n))
         scores[phase+'_mean_u'].append(np.mean(un_n))
-    
+
     if process=='dock':
       # Score clusters based on interaction energy
       Psi_o = np.concatenate([stats['Psi_grid'][c] \
@@ -1991,7 +2231,7 @@ last modified {1}
           bins=np.arange(len(set(assignments))+1)-0.5,
           weights=weights)[0]
         # by free energy
-        cluster_fe = -self.RT_TARGET*np.log(cluster_counts)
+        cluster_fe = -np.log(cluster_counts)
         cluster_fe -= np.min(cluster_fe)
         scores[phase+'_fe_Psi'] = cluster_fe
         # by minimum and mean energy
@@ -2000,13 +2240,13 @@ last modified {1}
         for n in range(max(assignments)+1):
           Psi_n_n = [Psi_n[i] for i in range(len(assignments)) if assignments[i]==n]
           scores[phase+'_min_Psi'].append(np.min(Psi_n_n))
-          scores[phase+'_mean_Psi'].append(np.mean(Psi_n_n))     
+          scores[phase+'_mean_Psi'].append(np.mean(Psi_n_n))
 
     for key in scores.keys():
       scores[key] = np.array(scores[key])
-    
+
     return (pose_inds, scores)
-    
+
   def configuration_energies(self, minimize=False, max_confs=None):
     """
     Calculates the energy for configurations from self._FNs['score']
@@ -2019,8 +2259,8 @@ last modified {1}
     energyFN = os.path.join(self.dir['dock'],prefix+'.pkl.gz')
 
     # Set the force field to fully interacting
-    lambda_o = self._lambda(1.0, 'dock')
-    self._set_universe_evaluator(lambda_o)
+    lambda_full = self._lambda(1.0, 'dock')
+    self._set_universe_evaluator(lambda_full)
 
     # Load the configurations
     if os.path.isfile(energyFN):
@@ -2044,18 +2284,18 @@ last modified {1}
 #       if 'OBC' in self._forceFields.keys():
 #         del self._forceFields['OBC']
 #       self._evaluators = {}
-#       self._set_universe_evaluator(lambda_o)
+#       self._set_universe_evaluator(lambda_full)
 #       Es = self._energyTerms(confs, Es)
 #       Es['OBC_Fractional'] = Es['OBC']
       self.params['dock']['solvation'] = 'Full'
       if 'OBC' in self._forceFields.keys():
         del self._forceFields['OBC']
       self._evaluators = {}
-      self._set_universe_evaluator(lambda_o)
+      self._set_universe_evaluator(lambda_full)
       Es = self._energyTerms(confs, Es)
       self.params['dock']['solvation'] = solvation_o
       updated = True
-  
+
     # Direct electrostatic energy
     FN = os.path.join(os.path.dirname(self._FNs['grids']['ELE']), 'direct_ele.nc')
     if not 'direct_ELE' in Es.keys() and os.path.isfile(FN):
@@ -2071,10 +2311,8 @@ last modified {1}
       updated = True
 
     # Calculate symmetry-corrected RMSD
-    if (not 'rmsd' in Es.keys()) and (self.params['dock']['rmsd'] is not False):
-      confs_prmtop_order = [conf[self.molecule.prmtop_atom_order,:]*10. \
-        for conf in confs]
-      Es['rmsd'] = self.get_rmsds(confs_prmtop_order)
+    if not 'rmsd' in Es.keys() and (self.params['dock']['rmsd'] is not False):
+      Es['rmsd'] = self.get_rmsds(confs)
       updated = True
 
     if updated:
@@ -2184,7 +2422,7 @@ last modified {1}
 
     self.T = lambda_n['T']
     self.RT = R*lambda_n['T']
-    
+
     # Reuse evaluators that have been stored
     evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
       for k in sorted(lambda_n.keys())])
@@ -2192,7 +2430,7 @@ last modified {1}
       self.universe._evaluator[(None,None,None)] = \
         self._evaluators[evaluator_key]
       return
-    
+
     # Otherwise create a new evaluator
     fflist = []
     if ('MM' in lambda_n.keys()) and lambda_n['MM']:
@@ -2322,7 +2560,7 @@ last modified {1}
     if ('k_angular_int' in lambda_n.keys()) or \
        ('k_spatial_ext' in lambda_n.keys()) or \
        ('k_angular_ext' in lambda_n.keys()):
-       
+
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
         # Obtain reference pose
@@ -2346,7 +2584,7 @@ last modified {1}
         rb = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
         (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
         self.universe.setConfiguration(Configuration(self.universe, Xo))
-        
+
         # Create force fields
         from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
         self._forceFields['InternalRestraint'] = \
@@ -2401,14 +2639,14 @@ last modified {1}
 
   def _ramp_T(self, T_START, T_LOW = 20., normalize=False):
     self.start_times['T_ramp'] = time.time()
-  
+
     # First minimize the energy
     from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
     minimizer = SteepestDescentMinimizer(self.universe)
 
     original_stderr = sys.stderr
     sys.stderr = NullDevice() # Suppresses warnings for minimization
-    
+
     x_o = np.copy(self.universe.configuration().array)
     e_o = self.universe.energy()
     for rep in range(5000):
@@ -2422,7 +2660,7 @@ last modified {1}
       else:
         x_o = x_n
         e_o = e_n
-  
+
     sys.stderr = original_stderr
     self.tee("  minimized to %.3g kcal/mol over %d steps"%(e_o, 10*(rep+1)))
 
@@ -2448,7 +2686,7 @@ last modified {1}
           sampler(steps = 2500, steps_per_trial = 10, T=T,\
                   delta_t=delta_t, random_seed=random_seed)
         attempts_left -= 1
-        acc_rate = float(acc)/ntrials  
+        acc_rate = float(acc)/ntrials
         if acc_rate<0.4:
           delta_t -= 0.25*MMTK.Units.fs
         else:
@@ -2473,7 +2711,7 @@ last modified {1}
     Initializes a state, returning the configurations and potential energy.
     Attempts simulation up to 12 times, adjusting the time step.
     """
-    
+
     if not 'delta_t' in lambda_k.keys():
       lambda_k['delta_t'] = 1.*self.params[process]['delta_t']*MMTK.Units.fs
     lambda_k['steps_per_trial'] = self.params[process]['steps_per_sweep']
@@ -2486,7 +2724,7 @@ last modified {1}
         self.universe.setConfiguration(Configuration(self.universe, seed))
         Es_o.append(self.universe.energy())
       Es_o = np.array(Es_o)
-    
+
       # Perform simulation
       results = []
       if self._cores>1:
@@ -2549,7 +2787,7 @@ last modified {1}
           delta_t -= 0.25*MMTK.Units.fs
         else:
           attempts_left = 0
-        
+
       if delta_t<0.1*MMTK.Units.fs:
         delta_t = 0.1*MMTK.Units.fs
 
@@ -2565,7 +2803,7 @@ last modified {1}
           sampler_metrics += '%s %d/%d=%.2f (%.1f s); '%(\
             s,acc,att,float(acc)/att,time)
     return (seeds, Es_n-Es_o, delta_t, sampler_metrics)
-  
+
   def _replica_exchange(self, process):
     """
     Performs a cycle of replica exchange
@@ -2721,7 +2959,7 @@ last modified {1}
     # before multiple processes are spawned
     for k in range(K):
       self._set_universe_evaluator(lambdas[k])
-    
+
     # If it has not been set up, set up Smart Darting
     if self.params[process]['darts_per_sweep']>0:
       if self.sampler[process+'_SmartDarting'].confs==[]:
@@ -2729,13 +2967,13 @@ last modified {1}
           self.confs[process]['SmartDarting']))
         self.confs[process]['SmartDarting'] = \
           self.sampler[process+'_SmartDarting'].confs
-  
+
     # storage[key][sweep_index][state_index] will contain data
     # from the replica exchange sweeps
     storage = {}
     for var in ['confs','state_inds','energies']:
       storage[var] = []
-    
+
     self.start_times['repX cycle'] = time.time()
 
     if self._cores>1:
@@ -2763,7 +3001,7 @@ last modified {1}
       att[move_type] = np.zeros(K, dtype=int)
       self.timings[move_type] = 0.
     self.timings['repX'] = 0.
-    
+
     mean_energies = []
 
     # Do replica exchange
@@ -2832,9 +3070,7 @@ last modified {1}
       # Store data in local variables
       if (sweep+1)%self.params[process]['snaps_per_cycle']==0:
         if (process=='dock') and (self.params['dock']['rmsd'] is not False):
-          confs_prmtop_order = [conf[self.molecule.prmtop_atom_order,:]*10. \
-            for conf in confs]
-          E['rmsd'] = self.get_rmsds(confs_prmtop_order)
+          E['rmsd'] = self.get_rmsds(confs)
         storage['confs'].append(list(confs))
         storage['state_inds'].append(list(state_inds))
         storage['energies'].append(copy.deepcopy(E))
@@ -2886,10 +3122,10 @@ last modified {1}
       for k in range(K):
         inv_state_inds[snap][state_inds[k]] = k
 
-    # Sort energies and conformations by thermodynamic state 
-    # and store in global variables 
+    # Sort energies and conformations by thermodynamic state
+    # and store in global variables
     #   self.process_Es and self.confs[process]['samples']
-    # and also local variables 
+    # and also local variables
     #   Es_repX and confs_repX
     if (process=='dock') and (self.params['dock']['rmsd'] is not False):
       terms.append('rmsd') # Make sure to save the rmsd
@@ -2922,7 +3158,7 @@ last modified {1}
     self.confs[process]['replicas'] = \
       [np.copy(storage['confs'][-1][inv_state_inds[-1][k]]) \
        for k in range(K)]
-        
+
     if self.params[process]['darts_per_sweep']>0:
       self._set_universe_evaluator(getattr(self,process+'_protocol')[-1])
       confs_SmartDarting = [np.copy(conf) \
@@ -2989,9 +3225,9 @@ last modified {1}
 
   def _sim_one_state(self, seed, process, lambda_k, \
       initialize=False, reference=0):
-    
+
     self.universe.setConfiguration(Configuration(self.universe, seed))
-    
+
     self._set_universe_evaluator(lambda_k)
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
@@ -3008,15 +3244,15 @@ last modified {1}
     else:
       steps = self.params[process]['steps_per_sweep']
       ndarts = self.params[process]['darts_per_sweep']
-    
+
     random_seed = reference*reference + int(abs(seed[0][0]*10000))
     if self._random_seed>0:
       random_seed += self._random_seed
     else:
       random_seed += int(time.time()*1000)
-    
+
     results = {}
-    
+
     # Execute external MCMC moves
     if (process == 'dock') and (self.params['dock']['MCMC_moves']>0) \
         and (lambda_k['a'] < 0.1) and (self.params['dock']['pose']==-1):
@@ -3056,7 +3292,7 @@ last modified {1}
   def sim_process(self, process):
     """
     Simulate and analyze a cooling or docking process.
-    
+
     As necessary, first conduct an initial cooling or docking
     and then run a desired number of replica exchange cycles.
     """
@@ -3128,7 +3364,7 @@ last modified {1}
         E_MM = []
         for k in range(len(self.cool_Es[0])):
           E_MM += list(self.cool_Es[0][k]['MM'])
-    
+
     # Clear evaluators to save memory
     self._clear_evaluators()
 
@@ -3179,13 +3415,13 @@ last modified {1}
     # Determine SIR weights
     weights = self._run_MBAR(u_kln, N_k, augmented=True)[1][:,-1]
     weights = weights/sum(weights)
-    
+
     # Resampling
     # Convert linear indices to 3 indicies: state, cycle, and snapshot
     cum_N_state = np.cumsum([0] + list(N_k))
     cum_N_cycle = [np.cumsum([0] + [self.dock_Es[k][c]['MM'].shape[0] \
       for c in range(len(self.dock_Es[k]))]) for k in range(len(self.dock_Es))]
- 
+
     def linear_index_to_snapshot_index(ind):
       state_index = list(ind<cum_N_state).index(True)-1
       nis_index = ind-cum_N_state[state_index]
@@ -3230,7 +3466,7 @@ last modified {1}
         dock_Es_c[term] = np.array(dock_Es_c[term])
       dock_Es_s.append(dock_Es_c)
       confs_s.append(confs_c)
-      
+
     # Insert resampled values
     self.dock_protocol.insert(neighbor_ind+1, lambda_n)
     self.dock_Es.insert(neighbor_ind+1, dock_Es_s)
@@ -3244,7 +3480,7 @@ last modified {1}
   def _insert_dock_state_between_low_acc(self):
     # Insert thermodynamic states between those with low acceptance probabilities
     eq_c = self._get_equilibrated_cycle('dock')[-1]
-        
+
     def calc_mean_acc(k):
       dock_Es = [Es[eq_c:self._dock_cycle] for Es in self.dock_Es]
       (u_kln,N_k) = self._u_kln(dock_Es[k:k+2],\
@@ -3282,18 +3518,18 @@ last modified {1}
 
   def _get_confs_to_rescore(self, nconfs=None, site=False, minimize=True, sort=True):
     """
-    Returns configurations to rescore and their corresponding energies 
+    Returns configurations to rescore and their corresponding energies
     as a tuple of lists, ordered by DECREASING energy.
     It is either the default configuration, or from dock6 and initial docking.
     If nconfs is None, then all configurations will be unique.
-    If nconfs is smaller than the number of unique configurations, 
+    If nconfs is smaller than the number of unique configurations,
     then the lowest energy configurations will be retained.
-    If nconfs is larger than the number of unique configurations, 
+    If nconfs is larger than the number of unique configurations,
     then the lowest energy configuration will be duplicated.
     """
     # Get configurations
     count = {'xtal':0, 'dock6':0, 'initial_dock':0, 'duplicated':0}
-    
+
     # based on the score option
     if self._FNs['score']=='default':
       confs = [np.copy(self.confs['ligand'])]
@@ -3366,7 +3602,7 @@ last modified {1}
         self.universe._evaluator[(None,None,None)] = old_eval
       confs = confs_in_site
       Es = Es_in_site
-      
+
     try:
       self.universe.energy()
     except ValueError:
@@ -3401,9 +3637,9 @@ last modified {1}
         if not np.isnan(e_o):
           minimized_confs.append(x_o)
           minimized_energies.append(e_o)
-    
+
       sys.stderr = original_stderr # Restores error reporting
-      
+
       confs = minimized_confs
       energies = minimized_energies
       self.tee("  minimized %d configurations in "%len(confs) + \
@@ -3486,15 +3722,15 @@ last modified {1}
   def _u_kln(self,eTs,lambdas,noBeta=False):
     """
     Computes a reduced potential energy matrix.  k is the sampled state.  l is the state for which energies are evaluated.
-    
+
     Input:
-    eT is a 
+    eT is a
       -dictionary (of mapped energy terms) of numpy arrays (over states)
       -list (over states) of dictionaries (of mapped energy terms) of numpy arrays (over configurations), or a
       -list (over states) of lists (over cycles) of dictionaries (of mapped energy terms) of numpy arrays (over configurations)
     lambdas is a list of thermodynamic states
     noBeta means that the energy will not be divided by RT
-    
+
     Output: u_kln or (u_kln, N_k)
     u_kln is the matrix (as a numpy array)
     N_k is an array of sample sizes
@@ -3506,7 +3742,7 @@ last modified {1}
     probe_keys = ['MM','k_angular_ext','k_spatial_ext','k_angular_int'] + \
       self._scalables
     probe_key = [key for key in lambdas[0].keys() if key in probe_keys][0]
-    
+
     if isinstance(eTs,dict):
       # There is one configuration per state
       K = len(eTs[probe_key])
@@ -3539,7 +3775,7 @@ last modified {1}
         if addMM:
           E_base += eTs[k]['MM']
         if addSite:
-          E_base += eTs[k]['site']          
+          E_base += eTs[k]['site']
         for l in range(L):
           E = 1.*E_base
           for scalable in self._scalables:
@@ -3631,13 +3867,13 @@ last modified {1}
     """
     Determines the parameters for the next docking state
     """
-    
+
     if E is None:
       E = self.dock_Es[-1]
 
     if lambda_o is None:
       lambda_o = self.dock_protocol[-1]
-    
+
     if self.params['dock']['protocol']=='Adaptive':
       # Change grid scaling and temperature simultaneously
       tL_tensor = self._tL_tensor(E,lambda_o)
@@ -3694,8 +3930,8 @@ last modified {1}
       da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(\
         1+np.exp(-100.*(a-0.5)))**2 + \
         (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
-        
-      # Psi_g are terms thar are scaled in with a_g
+
+      # Psi_g are terms that are scaled in with a_g
       # OBC is the strength of the OBC scaling in the current state
       s_ELE = 0.2 if self.params['dock']['solvation']=='Reduced' else 1.0
       if self.params['dock']['solvation']=='Desolvated':
@@ -3713,16 +3949,17 @@ last modified {1}
 
       if self.params['dock']['pose'] > -1: # Pose BPMF
         a_r = np.tanh(16*a*a)
-        da_r_da = 38.*a/np.cosh(16.*a*a)**2
-        U_r = self._u_kln([E], [{'k_angular_ext':self.params['dock']['k_pose'], \
-          'k_spatial_ext':self.params['dock']['k_pose'], \
-          'k_angular_int':self.params['dock']['k_pose']}], noBeta=True)
+        da_r_da = 32.*a/np.cosh(16.*a*a)**2
+        # Scaled in with a_r
+        U_r = self._u_kln([E], \
+          [{'k_angular_int':self.params['dock']['k_pose']}], noBeta=True)
+        # Total potential energy
         U_RL_g = self._u_kln([E],
           [{'MM':True, 'OBC':OBC, 'T':T, \
             'k_angular_ext':lambda_c['k_angular_ext'], \
             'k_spatial_ext':lambda_c['k_spatial_ext'], \
             'k_angular_int':lambda_c['k_angular_int'], \
-            'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
+            'sLJr':a_g, 'sLJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_r_da)*U_r.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
                deltaT*U_RL_g.std()/(R*T*T)
@@ -3735,7 +3972,9 @@ last modified {1}
             [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
             'sLJr':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':s_ELE*a_g}], noBeta=True)
         else:
+          # Scaled in with soft grid
           Psi_sg = self._u_kln([E], [{'sLJr':1,'sELE':1}], noBeta=True)
+          # Total potential energy
           U_RL_g = self._u_kln([E],
             [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
             'sLJr':a_sg, 'sELE':a_sg, \
@@ -3788,8 +4027,8 @@ last modified {1}
         lambda_n['k_angular_int'] = self.params['dock']['k_pose']*a_r
         lambda_n['k_angular_ext'] = self.params['dock']['k_pose']
         lambda_n['k_spatial_ext'] = self.params['dock']['k_pose']
-        lambda_n['LJr'] = a_g
-        lambda_n['LJa'] = a_g
+        lambda_n['sLJr'] = a_g
+        lambda_n['sLJa'] = a_g
         lambda_n['ELE'] = a_g
         lambda_n['T'] = a_r*(self.T_SIMMIN-self.T_HIGH) + self.T_HIGH
       else:
@@ -3852,16 +4091,16 @@ last modified {1}
       phases=None,
       readOnly=False, redo_dock=False, debug=DEBUG):
     """
-    Obtains the NAMD energies of all the conditions using all the phases.  
+    Obtains the NAMD energies of all the conditions using all the phases.
     Saves both MMTK and NAMD energies after NAMD energies are estimated.
-    
+
     state == -1 means the last state
     cycle == -1 means all cycles
 
     """
     # Clear evaluators to save memory
     self._evaluators = {}
-    
+
     if phases is None:
       phases = list(set(self.params['cool']['phases'] + \
         self.params['dock']['phases']))
@@ -3889,7 +4128,7 @@ last modified {1}
       for c in cycles:
         for phase in phases:
           label = moiety+phase
-          
+
           # Skip postprocessing
           # if the function is NOT being rerun in redo_dock mode
           # and one of the following:
@@ -3910,9 +4149,9 @@ last modified {1}
 
     if incomplete==[]:
       return True
-    
+
     del p, state, c, moiety, phase, cycles, label
-    
+
     self._load_programs([val[-1] for val in incomplete])
 
     # Write trajectories and queue calculations
@@ -3955,7 +4194,7 @@ last modified {1}
       p_dir = {'cool':self.dir['cool'],
          'original':self.dir['dock'],
          'dock':self.dir['dock']}[p]
-      
+
       if phase.startswith('NAMD'):
         traj_FN = os.path.join(p_dir,'%s.%s.dcd'%(prefix,moiety))
       elif phase.startswith('sander'):
@@ -4063,7 +4302,7 @@ last modified {1}
       (confs, moiety, phase, traj_FN, outputname, debug, reference) = args
       (p, state, c, label) = reference
       nsnaps = len(confs)
-      
+
       # Make sure there is enough time remaining
       if self._run_type.startswith('timed'):
         remaining_time = self.timings['max']*60 - \
@@ -4078,7 +4317,7 @@ last modified {1}
             HMStime(projected_time), HMStime(remaining_time)), process=p)
           if projected_time > remaining_time:
             return
-    
+
       # Calculate the energy
       self.start_times['energy'] = time.time()
       for program in ['NAMD','sander','gbnsr6','OpenMM','APBS']:
@@ -4090,7 +4329,7 @@ last modified {1}
       if not np.isinf(E).any():
         self.tee("  postprocessed %s, state %d, cycle %d, %s in %s"%(\
           p,state,c,label,HMStime(wall_time)))
-          
+
         # Store output and timings
         output.put((E, reference, wall_time))
 
@@ -4150,7 +4389,7 @@ last modified {1}
             print 'Keys in E', E.keys()
             raise Exception('key not found in term map or E')
     return E
-  
+
   def _NAMD_Energy(self, confs, moiety, phase, dcd_FN, outputname,
       debug=DEBUG, reference=None):
     """
@@ -4163,7 +4402,7 @@ last modified {1}
     # The saved fields are energyFields=[1, 2, 3, 4, 5, 6, 8, 12],
     # and thus the new indicies are
     # 0. BOND 1. ANGLE 2. DIHED 3. IMPRP 4. ELECT 5. VDW 6. MISC 7. POTENTIAL
-    
+
     # Run NAMD
     import AlGDock.NAMD
     energyCalc = AlGDock.NAMD.NAMD(\
@@ -4230,7 +4469,7 @@ last modified {1}
 /
 '''%(igb))
     script_F.close()
-    
+
     os.chdir(self.dir['out'])
     import subprocess
     args_list = [self._FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
@@ -4240,7 +4479,7 @@ last modified {1}
       print ' '.join(args_list)
     p = subprocess.Popen(args_list)
     p.wait()
-    
+
     F = open(out_FN,'r')
     dat = F.read().strip().split(' BOND')
     F.close()
@@ -4287,13 +4526,13 @@ last modified {1}
     pqr_FN = os.path.join(self.dir['dock'], 'receptor.pqr')
     if not os.path.isdir(self.dir['dock']):
       os.system('mkdir -p '+self.dir['dock'])
-    
+
     import AlGDock.IO
     IO_crd = AlGDock.IO.crd()
     factor = 1.0/MMTK.Units.Ang
     IO_crd.write(self._FNs['inpcrd']['R'], factor*self.confs['receptor'], \
       'title', trajectory=False)
-    
+
     # Converts the coordinates to a pqr file
     inpcrd_F = open(self._FNs['inpcrd']['R'],'r')
     cdir = os.getcwd()
@@ -4314,7 +4553,7 @@ last modified {1}
       print 'stdout:\n' + stdoutdata_ambpdb
       print 'stderr:\n' + stderrdata_ambpdb
     inpcrd_F.close()
-    
+
     pqr_F = open(pqr_FN,'w')
     pqr_F.write(stdoutdata_ambpdb)
     pqr_F.close()
@@ -4325,7 +4564,7 @@ last modified {1}
       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdoutdata_elsize, stderrdata_elsize) = p.communicate()
     p.wait()
-    
+
     for FN in [pqr_FN]:
       if os.path.isfile(FN):
         os.remove(FN)
@@ -4341,7 +4580,7 @@ last modified {1}
   def _gbnsr6_Energy(self, confs, moiety, phase, inpcrd_FN, outputname,
       debug=DEBUG, reference=None):
     """
-    Uses gbnsr6 (part of AmberTools) 
+    Uses gbnsr6 (part of AmberTools)
     to calculate the energy of a set of configurations
     """
     # Prepare configurations for writing to crd file
@@ -4352,7 +4591,7 @@ last modified {1}
 
     if not isinstance(confs,list):
       confs = [confs]
-    
+
     if (moiety.find('R')>-1):
       if (moiety.find('L')>-1):
         full_confs = [np.vstack((receptor_0, \
@@ -4370,7 +4609,7 @@ last modified {1}
     os.system('mkdir -p '+gbnsr6_dir)
     os.chdir(gbnsr6_dir)
     cdir = os.getcwd()
-    
+
     # Write gbnsr6 script
     chagb = 0 if phase.find('Still')>-1 else 1
     alpb = 1 if moiety.find('R')>-1 else 0 # ALPB ineffective with small solutes
@@ -4404,7 +4643,7 @@ last modified {1}
     for full_conf in full_confs:
       # Writes the coordinates in AMBER format
       IO_crd.write(inpcrd_FN, full_conf, 'title', trajectory=False)
-      
+
       # Runs gbnsr6
       import subprocess
       p = subprocess.Popen(args_list, \
@@ -4423,10 +4662,10 @@ last modified {1}
         self.tee(stdoutdata)
         self.tee("  --- stderr:")
         self.tee(stderrdata)
-      
+
     E = np.array(E, dtype=float)*MMTK.Units.kcal/MMTK.Units.mol
     E = np.hstack((E,np.ones((E.shape[0],1))*np.nan))
-    
+
     os.chdir(self.dir['start'])
     if not debug:
       os.system('rm -rf '+gbnsr6_dir)
@@ -4434,14 +4673,12 @@ last modified {1}
     # For gbnsr6 phases:
     # 0. BOND 1. ANGLE 2. DIHED 3. 1-4 NB 4. 1-4 EEL
     # 5. VDWAALS 6. EELEC 7. EGB 8. RESTRAINT 9. ESURF
-    
-  def _OpenMM_Energy(self, confs, moiety, phase, traj_FN=None, \
-      outputname=None, debug=DEBUG, reference=None):
-    import simtk.openmm
-    import simtk.openmm.app as OpenMM_app
-    # Set up the simulation
+
+  def _setup_OpenMM(self, moiety, phase):
     key = moiety+phase
     if not key in self._OpenMM_sims.keys():
+      import simtk.openmm
+      import simtk.openmm.app as OpenMM_app
       prmtop = OpenMM_app.AmberPrmtopFile(self._FNs['prmtop'][moiety])
       inpcrd = OpenMM_app.AmberInpcrdFile(self._FNs['inpcrd'][moiety])
       OMM_system = prmtop.createSystem(nonbondedMethod=OpenMM_app.NoCutoff, \
@@ -4452,11 +4689,23 @@ last modified {1}
           'OpenMM_HCT':OpenMM_app.HCT,
           'OpenMM_OBC1':OpenMM_app.OBC1,
           'OpenMM_OBC2':OpenMM_app.OBC2}[phase])
+      # Set receptor atom mass to zero to facilitate future minimization
+      if moiety=='R':
+        for i in range(OMM_system.getNumParticles()):
+          OMM_system.setParticleMass(i, 0)
+      elif moiety=='RL':
+        for i in range(self._ligand_first_atom) + \
+            range(self._ligand_first_atom + self._ligand_natoms, \
+            OMM_system.getNumParticles()):
+          OMM_system.setParticleMass(i, 0)
       dummy_integrator = simtk.openmm.LangevinIntegrator(300*simtk.unit.kelvin, \
         1/simtk.unit.picosecond, 0.002*simtk.unit.picoseconds)
-      # platform = simtk.openmm.Platform.getPlatformByName('CPU')
       self._OpenMM_sims[key] = OpenMM_app.Simulation(prmtop.topology, \
         OMM_system, dummy_integrator)
+
+  def _OpenMM_Energy(self, confs, moiety, phase, traj_FN=None, \
+      outputname=None, debug=DEBUG, reference=None):
+    self._setup_OpenMM(self, moiety, phase) # Set up the simulation
 
     # Prepare the conformations by combining with the receptor if necessary
     if (moiety.find('R')>-1):
@@ -4473,7 +4722,7 @@ last modified {1}
         confs = [self.confs['receptor']]
     else:
       confs = [conf[self.molecule.prmtop_atom_order,:] for conf in confs]
-    
+
     # Calculate the energies
     E = []
     for conf in confs:
@@ -4496,7 +4745,7 @@ last modified {1}
 
     if not isinstance(confs,list):
       confs = [confs]
-    
+
     if (moiety.find('R')>-1):
       if (moiety.find('L')>-1):
         full_confs = [np.vstack((receptor_0, \
@@ -4523,7 +4772,7 @@ last modified {1}
       # Writes the coordinates in AMBER format
       inpcrd_FN = pqr_FN[:-4]+'.crd'
       IO_crd.write(inpcrd_FN, full_conf, 'title', trajectory=False)
-      
+
       # Converts the coordinates to a pqr file
       inpcrd_F = open(inpcrd_FN,'r')
       cdir = os.getcwd()
@@ -4535,11 +4784,11 @@ last modified {1}
       (stdoutdata_ambpdb, stderrdata_ambpdb) = p.communicate()
       p.wait()
       inpcrd_F.close()
-      
+
       pqr_F = open(pqr_FN,'w')
       pqr_F.write(stdoutdata_ambpdb)
       pqr_F.close()
-      
+
       # Writes APBS script
       apbs_in_FN = moiety+'apbs-mg-manual.in'
       apbs_in_F = open(apbs_in_FN,'w')
@@ -4551,10 +4800,10 @@ last modified {1}
           max_xyz = np.array([max(full_conf[a,:]) for a in range(3)])
           mol_range = max_xyz - min_xyz
           mol_center = (min_xyz + max_xyz)/2.
-          
+
           def roundUpDime(x):
             return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
-          
+
           focus_spacing = 0.5
           focus_dims = roundUpDime(mol_range*LFILLRATIO/focus_spacing)
           args = zip(['mdh'],[focus_dims],[mol_center],[focus_spacing])
@@ -4613,7 +4862,7 @@ END
         self.tee(stdoutdata)
         self.tee("  --- APBS stderr:")
         self.tee(stderrdata)
-      
+
       # Runs molsurf to calculate Connolly surface
       apolar_energy = np.inf
       p = subprocess.Popen([self._FNs['molsurf'], pqr_FN, '1.4'], \
@@ -4634,7 +4883,7 @@ END
       else:
         for FN in [inpcrd_FN, pqr_FN, apbs_in_FN, 'io.mc']:
           os.remove(FN)
-      
+
       E.append([polar_energy, apolar_energy, np.nan])
 
       if np.isinf(polar_energy) or np.isinf(apolar_energy):
@@ -4647,7 +4896,7 @@ END
 
   def _get_APBS_grid_spacing(self, RFILLRATIO=RFILLRATIO):
     factor = 1.0/MMTK.Units.Ang
-    
+
     def roundUpDime(x):
       return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
 
@@ -4698,83 +4947,12 @@ END
           E[key] = np.hstack((E[key],totalMM))
         E[key] = np.hstack((E[key],np.sum(E[key],1)[...,None]))
 
-  def get_rmsds(self, confs):
-    import AlGDock.IO
-    IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
-
-    ref_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd_reference.mol2'))
-    if not os.path.isfile(ref_FN):
-      ref_conf = self.confs['rmsd'][self.molecule.prmtop_atom_order,:]*10.
-      IO_dock6_mol2.write(self._FNs['mol2']['L'], [ref_conf], ref_FN)
-    target_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd_target.mol2'))
-    IO_dock6_mol2.write(self._FNs['mol2']['L'], confs, target_FN)
-
-    if not ('dock6' in self._FNs.keys()) or \
-        (not os.path.isfile(self._FNs['dock6'])):
-      self._FNs['dock6'] = a.findPaths(['dock6'])['dock6']
-    in_FN = os.path.abspath(os.path.join(self.dir['dock'],'rmsd.in'))
-    in_F = open(in_FN,'w')
-    in_F.write('''
-ligand_atom_file                                             {1}
-limit_max_ligands                                            no
-skip_molecule                                                no
-read_mol_solvation                                           no
-calculate_rmsd                                               yes
-use_rmsd_reference_mol                                       yes
-rmsd_reference_filename                                      {2}
-use_database_filter                                          no
-orient_ligand                                                no
-use_internal_energy                                          no
-flexible_ligand                                              no
-bump_filter                                                  no
-score_molecules                                              no
-atom_model                                                   all
-vdw_defn_file                                                {0}/parameters/vdw_AMBER_parm99.defn
-flex_defn_file                                               {0}/parameters/flex.defn
-flex_drive_file                                              {0}/parameters/flex_drive.tbl
-ligand_outfile_prefix                                        rmsd
-write_orientations                                           no
-num_scored_conformers                                        1000
-write_conformations                                          no
-cluster_conformations                                        no
-rank_ligands                                                 no
-'''.format(self._FNs['dock6'][:-10], target_FN, ref_FN))
-    in_F.close()
-
-    dir_o = os.getcwd()
-    os.chdir(self.dir['dock'])
-    import subprocess
-    p = subprocess.Popen(\
-      [self._FNs['dock6'], '-i',in_FN], \
-      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (stdoutdata, stderrdata) = p.communicate()
-    p.wait()
-    os.chdir(dir_o)
-    
-    scored_FN = os.path.abspath(\
-      os.path.join(self.dir['dock'],'rmsd_scored.mol2'))
-    if not os.path.isfile(scored_FN):
-      raise Exception('DOCK 6 failed to calculate rmsd')
-
-    F = open(scored_FN,'r')
-    rmsds = [float(line.split('\t')[-1]) for line in F.read().split('\n') \
-      if line.startswith('########## HA_RMSDh:')]
-    F.close()
-
-    os.remove(target_FN)
-    os.remove(in_FN)
-    os.remove(scored_FN)
-    if not ref_FN in self._toClear:
-      self._toClear.append(ref_FN)
-    
-    return np.array(rmsds)/10.
-
   def _write_traj(self, traj_FN, confs, moiety, \
       title='', factor=1.0/MMTK.Units.Ang):
     """
     Writes a trajectory file
     """
-    
+
     if traj_FN is None:
       return
     if traj_FN.endswith('.pqr'):
@@ -4783,7 +4961,7 @@ rank_ligands                                                 no
       return
     if os.path.isfile(traj_FN):
       return
-    
+
     traj_dir = os.path.dirname(os.path.abspath(traj_FN))
     if not os.path.isdir(traj_dir):
       os.system('mkdir -p '+traj_dir)
@@ -4814,7 +4992,7 @@ rank_ligands                                                 no
       else:
         confs = [conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang \
           for conf in confs]
-      
+
       import AlGDock.IO
       IO_crd = AlGDock.IO.crd()
       IO_crd.write(traj_FN, confs, title, trajectory=True)
@@ -4875,7 +5053,7 @@ rank_ligands                                                 no
       else:
         print '  using stored progress and data in %s'%p
     self._clear(p)
-    
+
     params = None
     if saved['progress'] is not None:
       params = saved['progress'][0]
@@ -4911,7 +5089,7 @@ rank_ligands                                                 no
     self.confs[p]['SmartDarting'] = []
     self.confs[p]['samples'] = None
     setattr(self,'%s_Es'%p,None)
-  
+
   def _clear_f_RL(self):
     # stats_RL will include internal energies, interaction energies,
     # the cycle by which the bound state is equilibrated,
@@ -4949,7 +5127,7 @@ rank_ligands                                                 no
 
   def _save(self, p, keys=['progress','data']):
     """
-    Saves the protocol, 
+    Saves the protocol,
     cycle counts,
     random orientation parameters (for docking),
     replica configurations,
@@ -4960,7 +5138,7 @@ rank_ligands                                                 no
     if p=='dock' and hasattr(self,'_n_trans'):
         random_orient = (self._n_trans, self._max_n_trans, self._random_trans, \
            self._n_rot, self._max_n_rot, self._random_rotT)
-  
+
     arg_dict = dict([tp for tp in self.params[p].items() \
                       if not tp[0] in ['repX_cycles']])
     if p=='cool':
@@ -4976,7 +5154,7 @@ rank_ligands                                                 no
       fn_dict = convert_dictionary_relpath(
           dict(self._FNs.items()), relpath_o=None, relpath_n=self.dir['dock'])
     params = (fn_dict,arg_dict)
-    
+
     saved = {
       'progress': (params,
                    getattr(self,'%s_protocol'%p),
@@ -4988,7 +5166,7 @@ rank_ligands                                                 no
                self.confs[p]['SmartDarting'],
                self.confs[p]['samples'],
                getattr(self,'%s_Es'%p))}
-    
+
     for key in keys:
       if p=='dock' and self.params['dock']['pose']>-1:
         saved_FN = os.path.join(self.dir[p],'%s_%s_pose%03d.pkl.gz'%(\
@@ -5066,7 +5244,7 @@ if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(
     description='Molecular docking with adaptively scaled alchemical interaction grids')
-  
+
   for key in arguments.keys():
     parser.add_argument('--'+key, **arguments[key])
   args = parser.parse_args()

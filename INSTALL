@@ -1,8 +1,8 @@
 --- Requirements ---
 
 AlGDock is a third-party python extension.
-The required programs and extensions should be installed and tested prior to AlGDock. 
-It is recommended to use a scientific distribution of python. 
+The required programs and extensions should be installed and tested prior to AlGDock.
+It is recommended to use a scientific distribution of python.
 
 These include:
 
@@ -14,43 +14,42 @@ or
 Anaconda Scientific Python
 https://store.continuum.io/cshop/anaconda/
 
-Unfortunately, due to the issue with a dependency, Scientific Python, 
-AlGDock requires that numpy is prior to 1.9. 
+Unfortunately, due to the issue with a dependency, Scientific Python,
+AlGDock requires that numpy is prior to 1.9.
 This means that the latest versions of other packages cannot be used.
 Here are versions of packages in a working version of AlGDock.
 
 algdock                   0.0.1                     <pip>
-curl                      7.30.0                        2  
-cython                    0.24                     py27_0  
-dateutil                  2.4.1                    py27_0  
-freetype                  2.4.10                        1  
-hdf5                      1.8.9                         2  
-jpeg                      8d                            1  
-lcms                      1.19                          0  
-libnetcdf                 4.2.1.1                       2  
-libpng                    1.5.13                        1  
-matplotlib                1.4.0                np18py27_0  
+curl                      7.30.0                        2
+cython                    0.24                     py27_0
+dateutil                  2.4.1                    py27_0
+freetype                  2.4.10                        1
+hdf5                      1.8.9                         2
+jpeg                      8d                            1
+lcms                      1.19                          0
+libnetcdf                 4.2.1.1                       2
+libpng                    1.5.13                        1
+matplotlib                1.4.0                np18py27_0
 mmtk                      2.7.9                     <pip>
-netcdf4                   1.1.1                np18py27_0  
-numpy                     1.8.2                    py27_0  
-openssl                   1.0.2h                        1  
-pil                       1.1.7                    py27_1  
-pip                       8.1.2                    py27_0  
+netcdf4                   1.1.1                np18py27_0
+numpy                     1.8.2                    py27_0
+openssl                   1.0.2h                        1
+pil                       1.1.7                    py27_1
+pip                       8.1.2                    py27_0
 pymbar                    3.0.0.dev0                <pip>
-pyparsing                 2.0.1                    py27_0  
-pyrmsd                    4.2.1                     <pip>
-python                    2.7.11                        0  
+pyparsing                 2.0.1                    py27_0
+python                    2.7.11                        0
 python-dateutil           2.4.1                     <pip>
-pytz                      2016.4                   py27_0  
-readline                  6.2                           2  
+pytz                      2016.4                   py27_0
+readline                  6.2                           2
 scientificpython          2.9.4                     <pip>
-scipy                     0.14.0               np18py27_0  
-setuptools                23.0.0                   py27_0  
-six                       1.10.0                   py27_0  
-sqlite                    3.13.0                        0  
-tk                        8.5.18                        0  
-wheel                     0.29.0                   py27_0  
-zlib                      1.2.8                         3  
+scipy                     0.14.0               np18py27_0
+setuptools                23.0.0                   py27_0
+six                       1.10.0                   py27_0
+sqlite                    3.13.0                        0
+tk                        8.5.18                        0
+wheel                     0.29.0                   py27_0
+zlib                      1.2.8                         3
 
 After installing a scientific python distribution, the following extensions are also required:
 
@@ -62,8 +61,6 @@ http://dirac.cnrs-orleans.fr/MMTK
 
 pymbar (tested with version 2.0beta)
 https://github.com/choderalab/pymbar
-
-pyrmsd
 
 OpenMM (tested with version 7.0)
 
@@ -81,27 +78,28 @@ python setup.py install
 
 --- Complete installation of AlGDock and associated packages with miniconda/anaconda ---
 
-To install AlGDock with conda, follow these steps: 
+To install AlGDock with conda, follow these steps:
 
 1. Create a conda environment
-conda create --name algdock numpy=1.8.1 netcdf4 six cython scipy
+conda create --name algdock numpy=1.8.1 netcdf4 six cython scipy requests munkres
 source activate algdock
 
-2. Install OpenMM. This can be done with conda.
+2. Install OpenMM and pymbar. This can be done with conda.
 
 conda install -c omnia openmm
+conda install -c omnia pymbar
 
 3. Install Scientific python
 
 Identify the NETCDF_PREFIX.
 (algdock) Minh-IIT-MBP:ScientificPython-2.9.4 dminh$ which python
-/Users/dminh/Applications/miniconda2/envs/algdock/bin/python
-export NETCDF_PREFIX=/Users/dminh/Applications/miniconda2/envs/algdock/
+/miniconda2/envs/algdock/bin/python
+export NETCDF_PREFIX=/miniconda2/envs/algdock/
 
 Download, extract, and change to the scientific python directory. Then enter:
 python setup.py install
 
-After changing the directory again, 
+After changing the directory again,
 python -c 'import Scientific.IO.NetCDF'
 should work.
 
@@ -109,25 +107,21 @@ If not, you might need a symbolic link to the netcdf dynamic library. Here is an
 sudo mkdir -p /opt/anaconda1anaconda2anaconda3/lib/
 sudo ln -s /Users/dminh/Applications/miniconda2/envs/algdock/lib/libnetcdf.7.dylib /opt/anaconda1anaconda2anaconda3/lib/libnetcdf.7.dylib
 
-4. Install MMTK, pyRMSD, and pymbar
+4. Install MMTK and pymbar
 
 Download, extract, and change to the MMTK directory. Then enter:
 python setup.py install
-
-Similarly, download, extract, and change to the pymbar directory. Then enter:
-python setup.py install
-
-pyrmsd can be installed with:
-pip install pyrmsd
 
 5. Install AlGDock
 
 Download, extract, and change to the AlGDock directory. Then enter:
 python setup.py install
 
-6. (Optional) Install packages for analysis tools. 
+6. (Optional) Install packages for analysis tools.
 
-conda install matplotlib PIL numpy=1.8
+conda install matplotlib numpy=1.8
+TODO: The following may mess up NetCDF compatibility
+conda install PIL numpy=1.8
 
 7. (Optional) To prepare a binary with DistTools/Distribute.sh, you will need
 pyinstaller, setuptools. Fortunately they can all be installed with conda.
