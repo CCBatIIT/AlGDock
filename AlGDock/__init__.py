@@ -7,8 +7,8 @@ sys.path.append(os.path.join(pkg_loc, sys.platform))
 
 # Load external path search routine
 
-execfile(os.path.join(pkg_loc,'__pkginfo__.py'))
-execfile(os.path.join(pkg_loc,'_external_paths.py'))
+execfile(os.path.join(pkg_loc, '__pkginfo__.py'))
+execfile(os.path.join(pkg_loc, '_external_paths.py'))
 
 del os
 del sys

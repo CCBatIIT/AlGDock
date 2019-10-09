@@ -1,6 +1,7 @@
 import numpy as np
 from munkres import Munkres
 
+
 class hRMSD():
   """
   A class to compute the Hungarian symmetry-corrected heavy-atom
@@ -49,7 +50,7 @@ class hRMSD():
       for (nelements, atom_set) in self.atom_sets_to_compare:
         if nelements == 1:
           j = atom_set[0]
-          ssd += np.sum(np.square(conf[j,:]-ref_conf[j,:]))
+          ssd += np.sum(np.square(conf[j, :] - ref_conf[j, :]))
         else:
           cost_matrix = np.array([[\
             np.sum(np.square(conf[atom_set[j],:]-ref_conf[atom_set[k],:])) \
@@ -58,7 +59,7 @@ class hRMSD():
           path = self.munkres.compute(cost_matrix)
           ssd += np.sum([np.sum(np.square(\
             conf[atom_set[j],:]-ref_conf[atom_set[k],:])) for (j,k) in path])
-      rmsds.append(np.sqrt(ssd/self.nheavy_atoms))
+      rmsds.append(np.sqrt(ssd / self.nheavy_atoms))
     return rmsds
 
   def set_ref_configuration(self, ref_conf):

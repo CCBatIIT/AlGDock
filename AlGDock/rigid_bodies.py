@@ -138,8 +138,8 @@ class identifier(converter):
                         len(self.molecule.atoms[t[2]].bondedTo()))
       hwidth = 2 * np.pi / (max_nbonded - 1) / 2.
       TorsionRestraintSpecs.append(
-          self._torsionIndL[ind] +
-          [dihedral(XYZ[t[0]], XYZ[t[1]], XYZ[t[2]], XYZ[t[3]]), hwidth])
+        self._torsionIndL[ind] +
+        [dihedral(XYZ[t[0]], XYZ[t[1]], XYZ[t[2]], XYZ[t[3]]), hwidth])
 
     return [TorsionRestraintSpecs, ExternalRestraintSpecs]
 
@@ -168,9 +168,9 @@ if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(description='Bond-Angle-Torsion converter')
   parser.add_argument(
-      '--database',
-      help='MMTK database that describes the molecule of interest',
-      default='ligand.db')
+    '--database',
+    help='MMTK database that describes the molecule of interest',
+    default='ligand.db')
   args = parser.parse_args()
 
   import os.path

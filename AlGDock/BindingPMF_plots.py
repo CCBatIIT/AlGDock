@@ -63,6 +63,7 @@ if {[expr [lindex [center_of_mass $sel] 2]>0]} {
 
 '''
 
+
 class BPMF_plots(BPMF):
   def plot_energies(self, process='cool', firstCycle=0, toCycle=None):
     """
@@ -74,38 +75,42 @@ class BPMF_plots(BPMF):
     except:
       print 'plot_energies requires matplotlib'
       return
-    
-    K = len(getattr(self,process+'_protocol'))
-    
+
+    K = len(getattr(self, process + '_protocol'))
+
     if toCycle is None:
-      toCycle = getattr(self,'_%s_cycle'%process)
+      toCycle = getattr(self, '_%s_cycle' % process)
     Es = [getattr(self,process+'_Es')[k][firstCycle:toCycle] \
       for k in range(len(getattr(self,process+'_Es')))]
-    (u_kln,N_k) = self._u_kln(Es, getattr(self,process+'_protocol'), noBeta=True)
-    
+    (u_kln, N_k) = self._u_kln(Es,
+                               getattr(self, process + '_protocol'),
+                               noBeta=True)
+
     plt.figure(0)
-    for k in range(K-1):
-      plt.plot(u_kln[k,k,:N_k[k]],'.-')
-    
+    for k in range(K - 1):
+      plt.plot(u_kln[k, k, :N_k[k]], '.-')
+
     plt.figure(1)
-    for k in range(K-1):
-      (p_k,x_k) = np.histogram(u_kln[k,k,:N_k[k]], bins=20)
-      x_c = x_k[:-1]+(x_k[1]-x_k[0])/2.
-      plt.plot(x_c,p_k,'.-')
+    for k in range(K - 1):
+      (p_k, x_k) = np.histogram(u_kln[k, k, :N_k[k]], bins=20)
+      x_c = x_k[:-1] + (x_k[1] - x_k[0]) / 2.
+      plt.plot(x_c, p_k, '.-')
 
     plt.figure(2)
-    for k in range(K-1):
+    for k in range(K - 1):
       i1 = k
-      i2 = k+1
-      min_N_k = min(N_k[i1],N_k[i2])
-      e1 = u_kln[i1,i1,:min_N_k]
-      e2 = u_kln[i2,i2,:min_N_k]
-      Erange = (max(min(e1),min(e2)),min(max(e1),max(e2)))
+      i2 = k + 1
+      min_N_k = min(N_k[i1], N_k[i2])
+      e1 = u_kln[i1, i1, :min_N_k]
+      e2 = u_kln[i2, i2, :min_N_k]
+      Erange = (max(min(e1), min(e2)), min(max(e1), max(e2)))
 
-      (p_h,x_h) = np.histogram(e1, bins=20, range=Erange)
-      (p_l,x_l) = np.histogram(e2, bins=20, range=Erange)
-      x_c = x_h[:-1]+(x_h[1]-x_h[0])/2.
-      plt.plot(x_c,np.log(np.array(p_h,dtype=float)/np.array(p_l,dtype=float)),'.-')
+      (p_h, x_h) = np.histogram(e1, bins=20, range=Erange)
+      (p_l, x_l) = np.histogram(e2, bins=20, range=Erange)
+      x_c = x_h[:-1] + (x_h[1] - x_h[0]) / 2.
+      plt.plot(x_c,
+               np.log(np.array(p_h, dtype=float) / np.array(p_l, dtype=float)),
+               '.-')
 
   def plot_energy_ratio(self):
     try:
@@ -119,10 +124,12 @@ class BPMF_plots(BPMF):
     for k in range(K):
       e_ratio_k = np.array([])
       for c in range(len(self.dock_Es[k])):
-        e_ratio_k = np.hstack((e_ratio_k,np.abs(self.dock_Es[k][c]['ELE']/self.dock_Es[k][c]['sLJr'])))
+        e_ratio_k = np.hstack(
+          (e_ratio_k,
+           np.abs(self.dock_Es[k][c]['ELE'] / self.dock_Es[k][c]['sLJr'])))
       e_ratio.append(e_ratio_k)
     plt.plot(np.transpose(e_ratio))
-    
+
   def show_replicas(self, process='dock', \
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
         save_image=False, image_labels=None, execute=True, \
@@ -154,13 +161,13 @@ class BPMF_plots(BPMF):
     """
     Show samples from replica exchange
     """
-    if state==-1:
-      state = len(self.confs[process]['samples'])-1
+    if state == -1:
+      state = len(self.confs[process]['samples']) - 1
       if prefix is None:
-        prefix = '%s-last'%(process)
+        prefix = '%s-last' % (process)
     else:
       if prefix is None:
-        prefix = '%s-%05d'%(process,state)
+        prefix = '%s-%05d' % (process, state)
 
     if process == 'dock':
       first_cycle = self.stats_RL['equilibrated_cycle'][-1]
@@ -169,8 +176,8 @@ class BPMF_plots(BPMF):
 
     confs = []
     for c in range(first_cycle, len(self.confs[process]['samples'][state])):
-      if len(self.confs[process]['samples'][state][c])>0:
-        if not isinstance(self.confs[process]['samples'][state][c],list):
+      if len(self.confs[process]['samples'][state][c]) > 0:
+        if not isinstance(self.confs[process]['samples'][state][c], list):
           self.confs[process]['samples'][state][c] = \
             [self.confs[process]['samples'][state][c]]
         confs += self.confs[process]['samples'][state][c]
@@ -192,9 +199,9 @@ class BPMF_plots(BPMF):
         save_image=False, image_labels=None, execute=True, \
         principal_axes_alignment=False, clear_files=True, quit=False, \
         view_args={}):
-    ws = np.exp(-self.stats_RL['scores'][score]/self.RT_TARGET)
-    ws = ws/sum(ws)
-    toShow = np.arange(len(ws))[ws>0.001]
+    ws = np.exp(-self.stats_RL['scores'][score] / self.RT_TARGET)
+    ws = ws / sum(ws)
+    toShow = np.arange(len(ws))[ws > 0.001]
 
     confs = [self.confs['dock']['samples'][-1][cycle][n] \
       for (cycle,n) in self.stats_RL['pose_inds']]
@@ -211,7 +218,7 @@ class BPMF_plots(BPMF):
       clear_files=clear_files, \
       quit=quit, \
       view_args=view_args)
-  
+
   def show_poses(self, confs, prefix, \
         thickness=None,
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
@@ -230,21 +237,25 @@ class BPMF_plots(BPMF):
 
     rep = 0
     import os
-    while os.path.isfile('%s-%d.dcd'%(prefix,rep)):
+    while os.path.isfile('%s-%d.dcd' % (prefix, rep)):
       rep += 1
-    ligand_dcd_FN = os.path.join(self.dir[process],'%s-%d.dcd'%(prefix,rep))
-    IO_dcd.write(ligand_dcd_FN, confs, includeLigand=True, includeReceptor=False)
-    
+    ligand_dcd_FN = os.path.join(self.dir[process],
+                                 '%s-%d.dcd' % (prefix, rep))
+    IO_dcd.write(ligand_dcd_FN,
+                 confs,
+                 includeLigand=True,
+                 includeReceptor=False)
+
     script = ''
     molids = []
-    
+
     # Show the reference ligand position
-    ref_ligand_dcd_FN = os.path.join(self.dir[process],'L.dcd')
+    ref_ligand_dcd_FN = os.path.join(self.dir[process], 'L.dcd')
     if show_ref_ligand:
       IO_dcd.write(ref_ligand_dcd_FN, self.confs['ligand'], \
         includeLigand=True, includeReceptor=False)
-      script += 'set ref_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-      script += 'mol addfile '+ref_ligand_dcd_FN+' type dcd waitfor all\n'
+      script += 'set ref_ligand [mol new ' + self._FNs['prmtop']['L'] + ']\n'
+      script += 'mol addfile ' + ref_ligand_dcd_FN + ' type dcd waitfor all\n'
       script += 'mol modstyle 0 $ref_ligand ' + \
                 'Licorice 0.250000 10.000000 10.000000\n'
       script += 'mol rename $ref_ligand {Reference Pose}\n'
@@ -254,58 +265,59 @@ class BPMF_plots(BPMF):
       script += 'color Type J purple\n'
       script += 'mol modcolor 0 $ref_ligand Type\n'
       molids.append('Reference Pose')
-      
+
     # Show the starting pose
-    start_ligand_dcd_FN = os.path.join(self.dir[process],'L_start.dcd')
+    start_ligand_dcd_FN = os.path.join(self.dir[process], 'L_start.dcd')
     if show_starting_pose:
       if self.confs['dock']['starting_poses'] is not None:
         IO_dcd.write(start_ligand_dcd_FN, \
           self.confs['dock']['starting_poses'][-1], \
           includeLigand=True, includeReceptor=False)
-        script += 'set start_ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-        script += 'mol addfile '+start_ligand_dcd_FN+' type dcd waitfor all\n'
+        script += 'set start_ligand [mol new ' + self._FNs['prmtop'][
+          'L'] + ']\n'
+        script += 'mol addfile ' + start_ligand_dcd_FN + ' type dcd waitfor all\n'
         script += 'mol modstyle 0 $start_ligand ' + \
                   'Licorice 0.250000 10.000000 10.000000\n'
         # Change atom type to change coloring
         script += 'set sel [atomselect $start_ligand carbon]\n'
         script += '$sel set type R\n'
         script += 'color Type R green2\n'
-        script += 'mol modcolor 0 $start_ligand Type\n' # green
+        script += 'mol modcolor 0 $start_ligand Type\n'  # green
         script += 'mol rename $start_ligand {Starting Pose}\n'
         molids.append('Starting Pose')
-    
+
     # For docking, write complex coordinates
-    complex_dcd_FN = os.path.join(self.dir[process],'RL.dcd')
+    complex_dcd_FN = os.path.join(self.dir[process], 'RL.dcd')
     if show_receptor:
       IO_dcd.write(complex_dcd_FN, self.confs['ligand'], \
         includeLigand=True, includeReceptor=True)
-      script += 'set complex [mol new '+self._FNs['prmtop']['RL']+']\n'
-      script += 'mol addfile '+complex_dcd_FN+' type dcd waitfor all\n'
+      script += 'set complex [mol new ' + self._FNs['prmtop']['RL'] + ']\n'
+      script += 'mol addfile ' + complex_dcd_FN + ' type dcd waitfor all\n'
       script += 'mol modstyle 0 $complex Ribbons 0.200000 25.000000 2.000000\n'
-      script += 'mol modcolor 0 $complex ColorID 9\n' # Pink backbone
+      script += 'mol modcolor 0 $complex ColorID 9\n'  # Pink backbone
       script += 'mol modmaterial 0 $complex MetallicPastel\n'
       script += 'mol rename $complex {Complex}\n'
       molids.append('Receptor')
-      molid_receptor = len(molids)-1
+      molid_receptor = len(molids) - 1
     else:
       molid_receptor = None
 
     # Show samples
     if thickness is None:
-      script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
-      script += 'mol addfile '+ligand_dcd_FN+' type dcd waitfor all\n'
-      script += 'mol drawframes $ligand 0 {0:%d}\n'%len(confs)
-      if len(self.dir[process].split('/'))>3:
+      script += 'set ligand [mol new ' + self._FNs['prmtop']['L'] + ']\n'
+      script += 'mol addfile ' + ligand_dcd_FN + ' type dcd waitfor all\n'
+      script += 'mol drawframes $ligand 0 {0:%d}\n' % len(confs)
+      if len(self.dir[process].split('/')) > 3:
         label = '/'.join(self.dir[process].split('/')[-3:])
-        script += 'mol rename $ligand {%s}\n'%(label)
+        script += 'mol rename $ligand {%s}\n' % (label)
     else:
       for n in range(len(confs)):
-        script +=  'set ligand [mol new '+self._FNs['prmtop']['L']+']\n'
+        script += 'set ligand [mol new ' + self._FNs['prmtop']['L'] + ']\n'
         script += 'mol addfile ' + ligand_dcd_FN + \
           ' type dcd first %d last %d waitfor all\n'%(n,n)
         script += 'mol modstyle 0 $ligand CPK ' + \
           '%.6f %.6f 10.000000 10.000000\n'%(thickness[n]+0.2, thickness[n]+0.1)
-        script += 'mol rename $ligand {%s}\n'%(n)
+        script += 'mol rename $ligand {%s}\n' % (n)
     molids.append('Samples')
 
     # Use the reference ligand structure as a basis for setting the view
@@ -320,17 +332,17 @@ class BPMF_plots(BPMF):
       nmolecules=len(molids), molid_receptor=molid_receptor)
 
     if save_image:
-      image_path = os.path.join(self.dir['dock'],prefix+'.tga')
+      image_path = os.path.join(self.dir['dock'], prefix + '.tga')
       if 'render' in view_args.keys():
         render = view_args['render']
       else:
         render = 'snapshot'
-      script += 'render %s %s\n'%(render,image_path)
+      script += 'render %s %s\n' % (render, image_path)
     if quit:
       script += 'quit\n'
     if execute:
-      script_FN = os.path.join(self.dir[process],'show_samples.vmd')
-      script_F = open(script_FN,'w')
+      script_FN = os.path.join(self.dir[process], 'show_samples.vmd')
+      script_F = open(script_FN, 'w')
       script_F.write(script)
       script_F.close()
 
@@ -340,7 +352,7 @@ class BPMF_plots(BPMF):
       import subprocess
       if not 'vmd' in self._FNs.keys():
         self._FNs['vmd'] = a.findPaths(['vmd'])['vmd']
-      
+
       vmd_args = [self._FNs['vmd']]
       if quit:
         vmd_args.extend(['-dispdev', 'text'])
@@ -360,14 +372,15 @@ class BPMF_plots(BPMF):
       print vmd_stdout
       print 'stderr:'
       print vmd_stderr
-      
+
       if clear_files:
         for FN in [ligand_dcd_FN, ref_ligand_dcd_FN, start_ligand_dcd_FN, \
                    complex_dcd_FN, script_FN]:
           if os.path.isfile(FN):
             os.remove(FN)
 
-    if save_image and os.path.isfile(image_path) and (image_labels is not None):
+    if save_image and os.path.isfile(image_path) and (image_labels is
+                                                      not None):
       import PIL.Image
       im = PIL.Image.open(image_path)
       import PIL.ImageDraw
@@ -375,54 +388,54 @@ class BPMF_plots(BPMF):
       import PIL.ImageFont
       self._FNs['font'] = a.findPaths(['font'])['font']
       if self._FNs['font'] is not None:
-        font = PIL.ImageFont.truetype(self._FNs['font'],size=84)
+        font = PIL.ImageFont.truetype(self._FNs['font'], size=84)
         textsize = draw.textsize(image_labels[0], font=font)
         ytop = im.size[1] - textsize[1] - 20
         draw.rectangle((5, ytop-5, 15+textsize[0], im.size[1] - 5), \
           fill='Black', outline='White')
-        draw.text((10,ytop),image_labels[0],font=font)
+        draw.text((10, ytop), image_labels[0], font=font)
         textsize = draw.textsize(image_labels[1], font=font)
         draw.rectangle((im.size[0]/2.+5, ytop-5, \
           im.size[0]/2.+15+textsize[0], im.size[1] - 5), \
           fill='Black', outline='White')
-        draw.text((im.size[0]/2.+10,ytop),image_labels[1],font=font)
+        draw.text((im.size[0] / 2. + 10, ytop), image_labels[1], font=font)
       else:
         textsize = draw.textsize(image_labels[0])
         ytop = im.size[1] - textsize[1] - 20
         draw.rectangle((5, ytop-5, 15+textsize[0], im.size[1] - 5), \
           fill='Black', outline='White')
-        draw.text((10,ytop),image_labels[0])
+        draw.text((10, ytop), image_labels[0])
         textsize = draw.textsize(image_labels[1])
         draw.rectangle((im.size[0]/2.+5, ytop-5, \
           im.size[0]/2.+15+textsize[0], im.size[1] - 5), \
           fill='Black', outline='White')
-        draw.text((im.size[0]/2.+10,ytop),image_labels[0])
+        draw.text((im.size[0] / 2. + 10, ytop), image_labels[0])
       im.save(image_path)
 
     return script
-  
+
   def parse_view_args(self, view_args, principal_axes_alignment=False, \
       nmolecules=None, molid_receptor=None):
     script = 'display projection Orthographic\n'
-    
+
     if ('rotate_matrix' in view_args.keys()) or principal_axes_alignment:
       if ('rotate_matrix' in view_args.keys()):
-        script += 'set view_rotate_matrix %s\n'%view_args['rotate_matrix']
+        script += 'set view_rotate_matrix %s\n' % view_args['rotate_matrix']
       elif principal_axes_alignment and (nmolecules is not None):
-        script += vmd_principal_axes_procedure%nmolecules
+        script += vmd_principal_axes_procedure % nmolecules
         if molid_receptor is not None:
-          script += vmd_unblock_procedure%molid_receptor
+          script += vmd_unblock_procedure % molid_receptor
     elif 'rotate_by' in view_args.keys():
-      script += 'rotate x by %d\n'%(view_args['rotate_by'][0])
-      script += 'rotate y by %d\n'%(view_args['rotate_by'][1])
-      script += 'rotate z by %d\n'%(view_args['rotate_by'][2])
+      script += 'rotate x by %d\n' % (view_args['rotate_by'][0])
+      script += 'rotate y by %d\n' % (view_args['rotate_by'][1])
+      script += 'rotate z by %d\n' % (view_args['rotate_by'][2])
 
     if 'scale_by' in view_args.keys():
-      script += 'scale by %f\n'%view_args['scale_by']
+      script += 'scale by %f\n' % view_args['scale_by']
     if 'scale_to' in view_args.keys():
-      script += 'scale to %f\n'%view_args['scale_to']
+      script += 'scale to %f\n' % view_args['scale_to']
     if 'nearclip' in view_args.keys():
-      script += 'display nearclip set %f\n'%view_args['nearclip']
+      script += 'display nearclip set %f\n' % view_args['nearclip']
     if ('axes_off' in view_args.keys()) and (view_args['axes_off'] is True):
       script += 'axes location Off\n'
     return script
@@ -434,29 +447,30 @@ class BPMF_plots(BPMF):
       state_inds = [int(s) \
         for s in np.linspace(0,len(self.dock_protocol)-1,nframes)]
     else:
-      state_inds = range(0,len(self.confs[process]['samples']),stride)
-    
+      state_inds = range(0, len(self.confs[process]['samples']), stride)
+
     # Confirm that intermediate conformations exist
     for state_ind in state_inds:
-      if self.confs['dock']['samples'][state_ind]==[]:
-        raise Exception('No snapshots in state %d'%state_ind)
-    
+      if self.confs['dock']['samples'][state_ind] == []:
+        raise Exception('No snapshots in state %d' % state_ind)
+
     # Generate each snapshot
-    view_args['render'] = 'TachyonInternal' # This works without the vmd display
+    view_args[
+      'render'] = 'TachyonInternal'  # This works without the vmd display
     for s in range(len(state_inds)):
       # Format label for snapshot
-      lambda_s = getattr(self,'%s_protocol'%process)[state_inds[s]]
-      if process=='dock':
-        labels = [u'\u03B1 = %-8.2g'%lambda_s['a']]
+      lambda_s = getattr(self, '%s_protocol' % process)[state_inds[s]]
+      if process == 'dock':
+        labels = [u'\u03B1 = %-8.2g' % lambda_s['a']]
       else:
         labels = []
-      labels.append('T = %4.1f K'%lambda_s['T'])
+      labels.append('T = %4.1f K' % lambda_s['T'])
       # Generate the snapshot
       self.show_samples(prefix=None, process=process, state=state_inds[s], \
         show_ref_ligand=True, show_starting_pose=False, show_receptor=True, \
         save_image=True, image_labels=labels, execute=True, quit=True, \
         view_args=view_args)
-  
+
     # Make a movie
     if movie_name is not None:
       self._FNs['convert'] = a.findPaths(['convert'])['convert']
@@ -466,8 +480,8 @@ class BPMF_plots(BPMF):
           os.path.join(self.dir[process],'dock*.tga'), movie_name])
       else:
         raise Exception('ImageMagick convert required to make movies')
-    
+
       import glob
-      tga_FNs = glob.glob(os.path.join(self.dir[process],'dock*.tga'))
+      tga_FNs = glob.glob(os.path.join(self.dir[process], 'dock*.tga'))
       for tga_FN in tga_FNs:
         os.remove(tga_FN)

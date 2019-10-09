@@ -51,25 +51,25 @@ except:
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
 
 term_map = {
-    'cosine dihedral angle': 'MM',
-    'electrostatic/pair sum': 'MM',
-    'harmonic bond': 'MM',
-    'harmonic bond angle': 'MM',
-    'Lennard-Jones': 'MM',
-    'OpenMM': 'MM',
-    'OBC': 'OBC',
-    'OBC_desolv': 'OBC',
-    'site': 'site',
-    'sLJr': 'sLJr',
-    'sELE': 'sELE',
-    'sLJa': 'sLJa',
-    'LJr': 'LJr',
-    'LJa': 'LJa',
-    'ELE': 'ELE',
-    'pose dihedral angle': 'k_angular_int',
-    'pose external dihedral': 'k_angular_ext',
-    'pose external distance': 'k_spatial_ext',
-    'pose external angle': 'k_angular_ext'
+  'cosine dihedral angle': 'MM',
+  'electrostatic/pair sum': 'MM',
+  'harmonic bond': 'MM',
+  'harmonic bond angle': 'MM',
+  'Lennard-Jones': 'MM',
+  'OpenMM': 'MM',
+  'OBC': 'OBC',
+  'OBC_desolv': 'OBC',
+  'site': 'site',
+  'sLJr': 'sLJr',
+  'sELE': 'sELE',
+  'sLJa': 'sLJa',
+  'LJr': 'LJr',
+  'LJa': 'LJa',
+  'ELE': 'ELE',
+  'pose dihedral angle': 'k_angular_int',
+  'pose external dihedral': 'k_angular_ext',
+  'pose external distance': 'k_spatial_ext',
+  'pose external angle': 'k_angular_ext'
 }
 
 scalables = ['OBC', 'sLJr', 'sELE', 'LJr', 'LJa', 'ELE']
@@ -79,10 +79,6 @@ LFILLRATIO = 4.0  # For the ligand
 RFILLRATIO = 2.0  # For the receptor/complex
 
 DEBUG = False
-
-########################
-# Auxilliary functions #
-########################
 
 
 def HMStime(s):
@@ -134,10 +130,7 @@ class BPMF:
       max_time=kwargs['max_time'], run_type=kwargs['run_type'])
 
     self.T_HIGH = self.args.params['BC']['T_HIGH']
-    self.T_SIMMIN = self.args.params['BC']['T_SIMMIN']
-    self.RT_SIMMIN = R * self.args.params['BC']['T_SIMMIN']
     self.T_TARGET = self.args.params['BC']['T_TARGET']
-    self.RT_TARGET = R * self.args.params['BC']['T_TARGET']
 
     self._setup()
 
@@ -160,17 +153,70 @@ class BPMF:
     self.get_rmsds = hRMSD(self.args.FNs['prmtop']['L'], \
       self.top.inv_prmtop_atom_order_L)
 
-    self._evaluators = {}  # Store evaluators
-    self._ligand_natoms = self.top.universe.numberOfAtoms()
+    # Obtain reference pose
+    if self.data['CD'].pose > -1:
+      if ('starting_poses' in self.data['CD'].confs.keys()) and \
+         (self.data['CD'].confs['starting_poses'] is not None):
+        starting_pose = np.copy(self.data['CD'].confs['starting_poses'][0])
+      else:
+        (confs, Es) = self._get_confs_to_rescore(site=False, \
+          minimize=False, sort=False)
+        if self.args.params['CD']['pose'] < len(confs):
+          starting_pose = np.copy(confs[self.args.params['CD']['pose']])
+          self.data['CD'].confs['starting_poses'] = [np.copy(starting_pose)]
+        else:
+          self._clear('CD')
+          self._store_infinite_f_RL()
+          raise Exception('Pose index greater than number of poses')
+    else:
+      starting_pose = None
 
-    # Force fields
-    self._forceFields = {}
+    from AlGDock.system import System
+    self.system = System(self.args,
+                         self.log,
+                         self.top,
+                         self.top_RL,
+                         starting_pose=starting_pose)
 
-    # Molecular mechanics force fields
-    from MMTK.ForceFields import Amber12SBForceField
-    self._forceFields['gaff'] = Amber12SBForceField(
-        parameter_file=self.args.FNs['forcefield'],
-        mod_files=self.args.FNs['frcmodList'])
+    # Measure the binding site
+    if (self.args.params['CD']['site'] == 'Measure'):
+      self.args.params['CD']['site'] = 'Sphere'
+      if self.args.params['CD']['site_measured'] is not None:
+        (self.args.params['CD']['site_max_R'],self.args.params['CD']['site_center']) = \
+          self.args.params['CD']['site_measured']
+      else:
+        print '\n*** Measuring the binding site ***'
+        self.system.set_lambda(self._lambda(1.0, 'CD', site=False))
+        (confs, Es) = self._get_confs_to_rescore(site=False, minimize=True)
+        if len(confs) > 0:
+          # Use the center of mass for configurations
+          # within 20 RT of the lowest energy
+          cutoffE = Es['total'][-1] + 20 * (R * self.T)
+          coms = []
+          for (conf, E) in reversed(zip(confs, Es['total'])):
+            if E <= cutoffE:
+              self.top.universe.setConfiguration(
+                Configuration(self.top.universe, conf))
+              coms.append(np.array(self.top.universe.centerOfMass()))
+            else:
+              break
+          print '  %d configurations fit in the binding site' % len(coms)
+          coms = np.array(coms)
+          center = (np.min(coms, 0) + np.max(coms, 0)) / 2
+          max_R = max(
+            np.ceil(np.max(np.sqrt(np.sum(
+              (coms - center)**2, 1))) * 10.) / 10., 0.6)
+          self.args.params['CD']['site_max_R'] = max_R
+          self.args.params['CD']['site_center'] = center
+          self.top.universe.setConfiguration(
+            Configuration(self.top.universe, confs[-1]))
+        if ((self.args.params['CD']['site_max_R'] is None) or \
+            (self.args.params['CD']['site_center'] is None)):
+          raise Exception('No binding site parameters!')
+        else:
+          self.args.params['CD']['site_measured'] = \
+            (self.args.params['CD']['site_max_R'], \
+             self.args.params['CD']['site_center'])
 
     # Read the reference ligand and receptor coordinates
     import AlGDock.IO
@@ -183,10 +229,10 @@ class BPMF:
     elif self.args.FNs['inpcrd']['RL'] is not None:
       complex_crd = IO_crd.read(self.args.FNs['inpcrd']['RL'], multiplier=0.1)
       lig_crd = complex_crd[self.top_RL.L_first_atom:self.top_RL.L_first_atom + \
-        self._ligand_natoms,:]
+        self.top.universe.numberOfAtoms(),:]
       self.data['CD'].confs['receptor'] = np.vstack(\
         (complex_crd[:self.top_RL.L_first_atom,:],\
-         complex_crd[self.top_RL.L_first_atom + self._ligand_natoms:,:]))
+         complex_crd[self.top_RL.L_first_atom + self.top.universe.numberOfAtoms():,:]))
     elif self.args.FNs['inpcrd']['L'] is not None:
       self.data['CD'].confs['receptor'] = None
       if os.path.isfile(self.args.FNs['inpcrd']['L']):
@@ -195,7 +241,8 @@ class BPMF:
       lig_crd = None
 
     if lig_crd is not None:
-      self.data['CD'].confs['ligand'] = lig_crd[self.top.inv_prmtop_atom_order_L, :]
+      self.data['CD'].confs['ligand'] = lig_crd[self.top.
+                                                inv_prmtop_atom_order_L, :]
       self.top.universe.setConfiguration(\
         Configuration(self.top.universe,self.data['CD'].confs['ligand']))
       if self.top_RL.universe is not None:
@@ -219,7 +266,7 @@ class BPMF:
     # TODO: Remove after postprocessin
     # Locate programs for postprocessing
     all_phases = self.args.params['CD']['phases'] + self.args.params['BC'][
-        'phases']
+      'phases']
     self._load_programs(all_phases)
 
     # Determine APBS grid spacing
@@ -234,7 +281,8 @@ class BPMF:
     # If configurations are being rescored, start with a docked structure
     (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
     if len(confs) > 0:
-      self.top.universe.setConfiguration(Configuration(self.top.universe, confs[-1]))
+      self.top.universe.setConfiguration(
+        Configuration(self.top.universe, confs[-1]))
 
     # Samplers may accept the following options:
     # steps - number of MD steps
@@ -268,7 +316,7 @@ class BPMF:
           os.path.dirname(self.args.FNs['ligand_database']), \
           os.path.dirname(self.args.FNs['forcefield'])))
         self.mixed_samplers.append(
-            HamiltonianMonteCarloIntegrator(self.top.universe))
+          HamiltonianMonteCarloIntegrator(self.top.universe))
         self.sampler[p] = self._mixed_sampler2  #EU END
 #        from AlGDock.Integrators.CDHMC import CDHMC
 #        from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
@@ -302,7 +350,7 @@ class BPMF:
       np.random.seed(self.args.random_seed)
 
   def _run(self, run_type):
-    self.log.start_times['run'] = time.time()
+    self.log.recordStart('run')
     self._run_type = run_type
     if run_type=='configuration_energies' or \
        run_type=='minimized_configuration_energies':
@@ -361,7 +409,8 @@ class BPMF:
         (self.stats_RL['pose_inds'], self.stats_RL['scores']) = \
           self._get_pose_prediction()
         f_RL_FN = os.path.join(self.args.dir['CD'], 'f_RL.pkl.gz')
-        self.log.tee(write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B)))
+        self.log.tee(
+          write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B)))
       # self.targeted_FEP()
     elif (run_type == 'free_energies') or (run_type == 'redo_free_energies'):
       self.calc_f_L(redo=(run_type == 'redo_free_energies'))
@@ -418,15 +467,15 @@ class BPMF:
         self._save(process)
     if run_type is not None:
       print "\nElapsed time for execution of %s: %s" % (
-          run_type, HMStime(time.time() - self.log.start_times['run']))
+        run_type, HMStime(self.log.timeSince('run')))
 
   ###########
   # BC #
   ###########
   def initial_BC(self, warm=True):
     """
-    Warms the ligand from self.T_SIMMIN to self.T_HIGH, or
-    BCs the ligand from self.T_HIGH to self.T_SIMMIN
+    Warms the ligand from self.T_TARGET to self.T_HIGH, or
+    BCs the ligand from self.T_HIGH to self.T_TARGET
 
     Intermediate thermodynamic states are chosen such that
     thermodynamic length intervals are approximately constant.
@@ -438,8 +487,8 @@ class BPMF:
       return  # Initial BC is already complete
 
     self.log.set_lock('BC')
-    self.log.start_times['BC'] = time.time()
-    self.log.start_times['BC_save'] = time.time()
+    self.log.recordStart('BC')
+    self.log.recordStart('BC_save')
 
     direction_name = 'warm' if warm else 'BC'
     if self.data['BC'].protocol == []:
@@ -449,7 +498,7 @@ class BPMF:
       # Set up the force field
       lambda_o = self._lambda(1.0 if warm else 0., 'BC', site=False)
       self.data['BC'].protocol = [lambda_o]
-      self._set_universe_evaluator(lambda_o)
+      self.system.set_lambda(lambda_o)
 
       # Get starting configurations
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
@@ -460,29 +509,29 @@ class BPMF:
         self.data['BC'].confs['SmartDarting'] = \
           self.sampler['BC_SmartDarting'].confs
       elif len(seeds) > 0:
-        self.top.universe.setConfiguration(Configuration(self.top.universe, seeds[-1]))
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, seeds[-1]))
       self.data['BC'].confs['starting_poses'] = seeds
 
       # Ramp the temperature from 0 to the desired starting temperature using HMC
       self._ramp_T(lambda_o['T'], normalize=True)
 
       # Run at starting temperature
-      self.log.start_times['BC_state'] = time.time()
+      self.log.recordStart('BC_state')
       seeds = [np.copy(self.top.universe.configuration().array) \
         for n in range(self.args.params['BC']['seeds_per_state'])]
       (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'BC', lambda_o)
       E = self._energyTerms(confs, process='BC')
       self.data['BC'].confs['replicas'] = [
-          confs[np.random.randint(len(confs))]
+        confs[np.random.randint(len(confs))]
       ]
       self.data['BC'].confs['samples'] = [[confs]]
       self.data['BC'].Es = [[E]]
 
-      self.log.tee(
-          "  at %d K in %s: %s" %
-          (lambda_o['T'], HMStime(time.time() - self.log.start_times['BC_state']),
-           sampler_metrics))
+      self.log.tee("  at %d K in %s: %s" %
+                   (lambda_o['T'], HMStime(
+                     self.log.timeSince('BC_state')), sampler_metrics))
       self.log.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
         lambda_o['delta_t']*1000., self._tL_tensor(E,lambda_o,process='BC')))
     else:
@@ -519,13 +568,13 @@ class BPMF:
       E_o = E
 
       # Simulate
-      self.log.start_times['BC_state'] = time.time()
-      self._set_universe_evaluator(lambda_n)
+      self.log.recordStart('BC_state')
+      self.system.set_lambda(lambda_n)
       if self.args.params['BC']['darts_per_seed'] > 0:
         self.log.tee(self.sampler['BC_SmartDarting'].set_confs(\
           self.data['BC'].confs['SmartDarting']))
         self.data['BC'].confs['SmartDarting'] = self.sampler[
-            'BC_SmartDarting'].confs
+          'BC_SmartDarting'].confs
       (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'BC', lambda_n)
 
@@ -544,7 +593,7 @@ class BPMF:
       mean_acc = np.mean(np.minimum(acc, np.ones(acc.shape)))
 
       self.log.tee("  at %d K in %s: %s"%(\
-        lambda_n['T'], HMStime(time.time()-self.log.start_times['BC_state']), sampler_metrics))
+        lambda_n['T'], HMStime(self.log.timeSince('BC_state')), sampler_metrics))
       self.log.tee("    dt=%.2f fs; tL_tensor=%.2e; <acc>=%.2f"%(\
         lambda_n['delta_t']*1000., \
         self._tL_tensor(E,lambda_o,process='BC'), mean_acc))
@@ -564,7 +613,7 @@ class BPMF:
         # If the acceptance probability is too high,
         # reject the previous state and restart
         self.data['BC'].confs['replicas'][-1] = confs[np.random.randint(
-            len(confs))]
+          len(confs))]
         self.data['BC'].protocol.pop()
         self.data['BC'].protocol[-1] = copy.deepcopy(lambda_n)
         rejectStage -= 1
@@ -573,7 +622,7 @@ class BPMF:
       else:
         # Store data and continue with initialization
         self.data['BC'].confs['replicas'].append(confs[np.random.randint(
-            len(confs))])
+          len(confs))])
         self.data['BC'].confs['samples'].append([confs])
         self.data['BC'].Es.append([E])
         self.data['BC'].protocol[-1] = copy.deepcopy(lambda_n)
@@ -599,9 +648,9 @@ class BPMF:
         self.data['BC'].cycle += 1
 
       # Save progress every 5 minutes
-      if ((time.time() - self.log.start_times['BC_save']) > 5 * 60):
+      if (self.log.timeSince('BC_save') > 5 * 60):
         self._save('BC')
-        self.log.start_times['BC_save'] = time.time()
+        self.log.recordStart('BC_save')
         saved = True
       else:
         saved = False
@@ -624,7 +673,7 @@ class BPMF:
 
     self.log.tee("Elapsed time for initial %sing of "%direction_name + \
       "%d states: "%len(self.data['BC'].protocol) + \
-      HMStime(time.time()-self.log.start_times['BC']))
+      HMStime(self.log.timeSince('BC')))
     self.log.clear_lock('BC')
     self.sampler['BC_SmartDarting'].confs = []
     return True
@@ -633,7 +682,7 @@ class BPMF:
     """
     Calculates ligand-specific free energies:
     1. reduced free energy of BC the ligand
-       from self.T_HIGH to self.T_SIMMIN
+       from self.T_HIGH to self.T_TARGET
     2. solvation free energy of the ligand using single-step
        free energy perturbation
     redo does not do anything now; it is an option for debugging
@@ -662,7 +711,7 @@ class BPMF:
 
     start_string = "\n>>> Ligand free energy calculations, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n"
-    self.log.start_times['free energy'] = time.time()
+    self.log.recordStart('free energy')
 
     # Store stats_L internal energies
     self.stats_L['u_K_sampled'] = \
@@ -726,7 +775,7 @@ class BPMF:
     # Store stats_L internal energies
     for phase in self.args.params['BC']['phases']:
       self.stats_L['u_K_'+phase] = \
-        [self.data['BC'].Es[-1][c]['L'+phase][:,-1]/self.RT_SIMMIN \
+        [self.data['BC'].Es[-1][c]['L'+phase][:,-1]/(R*self.T_TARGET) \
           for c in range(self.data['BC'].cycle)]
 
     # Calculate solvation free energies that have not already been calculated,
@@ -752,7 +801,7 @@ class BPMF:
         # Arbitrarily, solvation is the
         # 'forward' direction and desolvation the 'reverse'
         u_L = np.concatenate([self.data['BC'].Es[-1][n]['L'+phase] \
-          for n in range(fromCycle,toCycle)])/self.RT_TARGET
+          for n in range(fromCycle,toCycle)])/(R*self.T_TARGET)
         u_sampled = np.concatenate(\
           [self._u_kln([self.data['BC'].Es[-1][c]],[self.data['BC'].protocol[-1]]) \
             for c in range(fromCycle,toCycle)])
@@ -771,7 +820,7 @@ class BPMF:
     if updated:
       self.log.tee(write_pkl_gz(f_L_FN, (self.stats_L, self.f_L)))
       self.log.tee("\nElapsed time for free energy calculation: " + \
-        HMStime(time.time()-self.log.start_times['free energy']))
+        HMStime(self.log.timeSince('free energy')))
       self.log.clear_lock('BC')
     return True
 
@@ -809,22 +858,23 @@ class BPMF:
     self.data['CD'].protocol = [lambda_o]
 
     # Set up the force field with full interaction grids
-    self._set_universe_evaluator(self._lambda(1.0, 'CD'))
+    self.system.set_lambda(self._lambda(1.0, 'CD'))
 
     # Either loads or generates the random translations and rotations for the first state of CD
     if not (hasattr(self, '_random_trans') and hasattr(self, '_random_rotT')):
       self.data['CD']._max_n_trans = 10000
       # Default density of points is 50 per nm**3
       self.data['CD']._n_trans = max(
-          min(
-              np.int(
-                  np.ceil(self._forceFields['site'].volume *
-                          self.args.params['CD']['site_density'])),
-              self.data['CD']._max_n_trans), 5)
-      self.data['CD']._random_trans = np.ndarray((self.data['CD']._max_n_trans), dtype=Vector)
+        min(
+          np.int(
+            np.ceil(self._forceFields['site'].volume *
+                    self.args.params['CD']['site_density'])),
+          self.data['CD']._max_n_trans), 5)
+      self.data['CD']._random_trans = np.ndarray(
+        (self.data['CD']._max_n_trans), dtype=Vector)
       for ind in range(self.data['CD']._max_n_trans):
         self.data['CD']._random_trans[ind] = Vector(
-            self._forceFields['site'].randomPoint())
+          self._forceFields['site'].randomPoint())
       self.data['CD']._max_n_rot = 100
       self._n_rot = 100
       self._random_rotT = np.ndarray((self.data['CD']._max_n_rot, 3, 3))
@@ -857,7 +907,8 @@ class BPMF:
             np.dot(BC0_confs[c], self._random_rotT[i_rot,:,:]))
           for i_trans in range(n_trans_o, n_trans_n):
             self.top.universe.setConfiguration(conf_rot)
-            self.top.universe.translateTo(self.data['CD']._random_trans[i_trans])
+            self.top.universe.translateTo(
+              self.data['CD']._random_trans[i_trans])
             eT = self.top.universe.energyTerms()
             for (key, value) in eT.iteritems():
               if key != 'electrostatic':  # For some reason, MMTK double-counts electrostatic energies
@@ -901,11 +952,11 @@ class BPMF:
              " first and second CD states is " + \
              "%.5g (%.5g)"%(f_grid0.mean(),f_grid0_std))
 
-    self.log.start_times['ravel'] = time.time()
+    self.log.recordStart('ravel')
     for term in E.keys():
       E[term] = np.ravel(E[term][:, :self._n_rot, :self.data['CD']._n_trans])
     self.log.tee("  raveled energy terms in " + \
-      HMStime(time.time()-self.log.start_times['ravel']))
+      HMStime(self.log.timeSince('ravel')))
 
     return (BC0_confs, E)
 
@@ -923,8 +974,8 @@ class BPMF:
       return  # Initial CD already complete
 
     self.log.set_lock('CD')
-    self.log.start_times['initial_CD'] = time.time()
-    self.log.start_times['CD_save'] = time.time()
+    self.log.recordStart('initial_CD')
+    self.log.recordStart('CD_save')
 
     if self.data['CD'].protocol == []:
       unCD = True
@@ -935,7 +986,7 @@ class BPMF:
 
         lambda_o = self._lambda(1.0, 'CD')
         self.data['CD'].protocol = [lambda_o]
-        self._set_universe_evaluator(lambda_o)
+        self.system.set_lambda(lambda_o)
 
         if (self.args.params['CD']['pose'] == -1):
           seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
@@ -961,7 +1012,7 @@ class BPMF:
           DeltaEs = np.array([0.])
           while np.std(DeltaEs) < 1E-7:
             # Ramp up the temperature using HMC
-            self._ramp_T(self.T_SIMMIN, normalize=False)
+            self._ramp_T(self.T_TARGET, normalize=False)
 
             seeds = [np.copy(self.top.universe.configuration().array) \
               for n in range(self.args.params['CD']['seeds_per_state'])]
@@ -977,13 +1028,13 @@ class BPMF:
           # Get state energies
           E = self._energyTerms(confs)
           self.data['CD'].confs['replicas'] = [
-              confs[np.random.randint(len(confs))]
+            confs[np.random.randint(len(confs))]
           ]
           self.data['CD'].confs['samples'] = [[confs]]
           self.data['CD'].Es = [[E]]
 
           self.log.tee("\n  at a=%.3e in %s: %s"%(\
-            lambda_o['a'], HMStime(time.time()-self.log.start_times['initial_CD']), sampler_metrics))
+            lambda_o['a'], HMStime(self.log.timeSince('initial_CD')), sampler_metrics))
           self.log.tee("    dt=%.2f fs, tL_tensor=%.3e"%(\
             lambda_o['delta_t']*1000., \
             self._tL_tensor(E,lambda_o)))
@@ -998,7 +1049,7 @@ class BPMF:
           confs_HT += list(self.data['BC'].confs['samples'][0][k])
         while len(confs_HT) < self.args.params['CD']['seeds_per_state']:
           self.log.tee(
-              "More samples from high temperature ligand simulation needed")
+            "More samples from high temperature ligand simulation needed")
           self.log.clear_lock('CD')
           self._replica_exchange('BC')
           self.log.set_lock('CD')
@@ -1009,18 +1060,18 @@ class BPMF:
 
         if (self.args.params['CD']['pose'] == -1):
           (confs, E) = self.random_CD()
-          self.log.tee("  random CD complete in " + \
-                   HMStime(time.time()-self.log.start_times['initial_CD']))
+          self.log.tee("  random CD complete in " +
+                       HMStime(self.log.timeSince('initial_CD')))
           if randomOnly:
             self.log.clear_lock('CD')
             return
         else:
           lambda_o = self._lambda(0, 'CD')
-          self._set_universe_evaluator(lambda_o)
+          self.system.set_lambda(lambda_o)
           confs = confs_HT
           E = self._energyTerms(confs)
           self.data['CD'].confs['replicas'] = [
-              confs[np.random.randint(len(confs))]
+            confs[np.random.randint(len(confs))]
           ]
           self.data['CD'].confs['samples'] = [confs]
           self.data['CD'].Es = [[E]]
@@ -1100,13 +1151,13 @@ class BPMF:
       E_o = E
 
       # Simulate
-      self.log.start_times['CD_state'] = time.time()
-      self._set_universe_evaluator(lambda_n)
+      self.log.recordStart('CD_state')
+      self.system.set_lambda(lambda_n)
       if self.args.params['CD']['darts_per_seed'] > 0 and lambda_n['a'] > 0.1:
         self.log.tee(self.sampler['CD_SmartDarting'].set_confs(\
           self.data['CD'].confs['SmartDarting']))
         self.data['CD'].confs['SmartDarting'] = self.sampler[
-            'CD_SmartDarting'].confs
+          'CD_SmartDarting'].confs
       (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'CD', lambda_n)
       if np.std(DeltaEs) < 1E-7:
@@ -1123,7 +1174,7 @@ class BPMF:
       # between the previous and new state
       self.log.tee("  at a=%.3e in %s: %s"%(\
         lambda_n['a'], \
-        HMStime(time.time()-self.log.start_times['CD_state']), sampler_metrics))
+        HMStime(self.log.timeSince('CD_state')), sampler_metrics))
 
       if E_o != {}:
         (u_kln, N_k) = self._u_kln([[E_o], [E]], self.data['CD'].protocol[-2:])
@@ -1148,23 +1199,25 @@ class BPMF:
           confs = confs_o
           E = E_o
           rejectStage += 1
-          self.log.tee("  rejected new state with low estimated acceptance rate")
+          self.log.tee(
+            "  rejected new state with low estimated acceptance rate")
         elif len(self.data['CD'].protocol)>(2+(not unCD)) and \
             (mean_acc>0.99) and (not lambda_n['crossed']) and \
             (self.args.params['CD']['protocol']=='Adaptive'):
           # If the acceptance probability is too high,
           # reject the previous state and restart
           self.data['CD'].confs['replicas'][-1] = confs[np.random.randint(
-              len(confs))]
+            len(confs))]
           self.data['CD'].protocol.pop()
           self.data['CD'].protocol[-1] = copy.deepcopy(lambda_n)
           rejectStage -= 1
           lambda_o = lambda_n
-          self.log.tee("  rejected past state with high estimated acceptance rate")
+          self.log.tee(
+            "  rejected past state with high estimated acceptance rate")
         else:
           # Store data and continue with initialization
           self.data['CD'].confs['replicas'].append(confs[np.random.randint(
-              len(confs))])
+            len(confs))])
           self.data['CD'].confs['samples'].append([confs])
           self.data['CD'].Es.append([E])
           self.data['CD'].protocol[-1] = copy.deepcopy(lambda_n)
@@ -1173,7 +1226,7 @@ class BPMF:
       else:
         # Store data and continue with initialization (first time)
         self.data['CD'].confs['replicas'].append(confs[np.random.randint(
-            len(confs))])
+          len(confs))])
         self.data['CD'].confs['samples'].append([confs])
         self.data['CD'].Es.append([E])
         self.data['CD'].protocol[-1] = copy.deepcopy(lambda_n)
@@ -1200,9 +1253,9 @@ class BPMF:
         self.data['CD'].cycle += 1
 
       # Save progress every 10 minutes
-      if ((time.time() - self.log.start_times['CD_save']) > (10 * 60)):
+      if (self.log.timeSince('CD_save') > (10 * 60)):
         self._save('CD')
-        self.log.start_times['CD_save'] = time.time()
+        self.log.recordStart('CD_save')
         saved = True
       else:
         saved = False
@@ -1222,7 +1275,7 @@ class BPMF:
 
     self.log.tee("\nElapsed time for initial CD of " + \
       "%d states: "%len(self.data['CD'].protocol) + \
-      HMStime(time.time()-self.log.start_times['initial_CD']))
+      HMStime(self.log.timeSince('initial_CD')))
     self.log.clear_lock('CD')
     self.sampler['CD_SmartDarting'].confs = []
     return True
@@ -1270,7 +1323,7 @@ class BPMF:
 
     start_string = "\n>>> Complex free energy calculations, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n"
-    self.log.start_times['BPMF'] = time.time()
+    self.log.recordStart('BPMF')
 
     updated = False
 
@@ -1298,7 +1351,7 @@ class BPMF:
       self.stats_RL['Psi_grid'].append(
           (self.data['CD'].Es[-1][c]['LJr'] + \
            self.data['CD'].Es[-1][c]['LJa'] + \
-           self.data['CD'].Es[-1][c]['ELE'])/self.RT_SIMMIN)
+           self.data['CD'].Es[-1][c]['ELE'])/(R*self.T_TARGET))
       updated = set_updated_to_True(updated,
                                     start_string,
                                     quiet=not do_solvation)
@@ -1392,7 +1445,7 @@ class BPMF:
     # Store stats_RL internal energies for phases
     for phase in self.args.params['CD']['phases']:
       self.stats_RL['u_K_'+phase] = \
-        [self.data['CD'].Es[-1][c]['RL'+phase][:,-1]/self.RT_SIMMIN \
+        [self.data['CD'].Es[-1][c]['RL'+phase][:,-1]/(R*self.T_TARGET) \
           for c in range(self.data['CD'].cycle)]
 
     # Interaction energies
@@ -1404,7 +1457,7 @@ class BPMF:
         self.stats_RL['Psi_'+phase].append(
           (self.data['CD'].Es[-1][c]['RL'+phase][:,-1] - \
            self.data['CD'].Es[-1][c]['L'+phase][:,-1] - \
-           self.args.original_Es[0][0]['R'+phase][:,-1])/self.RT_SIMMIN)
+           self.args.original_Es[0][0]['R'+phase][:,-1])/(R*self.T_TARGET))
 
     # Predict native pose
     if self.args.params['CD']['pose'] == -1:
@@ -1425,8 +1478,8 @@ class BPMF:
           self.B[phase + '_' + method] = []
 
       # Receptor solvation
-      f_R_solv = self.args.original_Es[0][0]['R' +
-                                             phase][:, -1] / self.RT_TARGET
+      f_R_solv = self.args.original_Es[0][0]['R' + phase][:, -1] / (
+        R * self.T_TARGET)
 
       for c in range(len(self.B[phase + '_MBAR']), self.data['CD'].cycle):
         updated = set_updated_to_True(updated, start_string)
@@ -1434,7 +1487,7 @@ class BPMF:
 
         # From the full grid to the fully bound complex in phase
         u_RL = np.concatenate([\
-          self.data['CD'].Es[-1][c]['RL'+phase][:,-1]/self.RT_TARGET \
+          self.data['CD'].Es[-1][c]['RL'+phase][:,-1]/(R*self.T_TARGET) \
           for c in extractCycles])
         u_sampled = np.concatenate([\
           self.stats_RL['u_K_sampled'][c] for c in extractCycles])
@@ -1478,9 +1531,10 @@ class BPMF:
           self.stats_RL['equilibrated_cycle'][c], c))
 
     if updated:
-      self.log.tee(write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B)))
+      self.log.tee(
+        write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B)))
       self.log.tee("\nElapsed time for binding PMF estimation: " + \
-        HMStime(time.time()-self.log.start_times['BPMF']))
+        HMStime(self.log.timeSince('BPMF')))
     self.log.clear_lock('CD')
 
   def _store_infinite_f_RL(self):
@@ -1534,7 +1588,7 @@ class BPMF:
     for k in range(equilibrated_cycle, self.data[process].cycle):
       if not isinstance(self.data[process].confs['samples'][-1][k], list):
         self.data[process].confs['samples'][-1][k] = [
-            self.data[process].confs['samples'][-1][k]
+          self.data[process].confs['samples'][-1][k]
         ]
     import itertools
     confs = np.array([conf for conf in itertools.chain.from_iterable(\
@@ -1689,7 +1743,7 @@ class BPMF:
         scores[phase + '_mean_Psi'] = []
         for n in range(max(assignments) + 1):
           Psi_n_n = [
-              Psi_n[i] for i in range(len(assignments)) if assignments[i] == n
+            Psi_n[i] for i in range(len(assignments)) if assignments[i] == n
           ]
           scores[phase + '_min_Psi'].append(np.min(Psi_n_n))
           scores[phase + '_mean_Psi'].append(np.mean(Psi_n_n))
@@ -1712,7 +1766,7 @@ class BPMF:
 
     # Set the force field to fully interacting
     lambda_full = self._lambda(1.0, 'CD')
-    self._set_universe_evaluator(lambda_full)
+    self.system.set_lambda(lambda_full)
 
     # Load the configurations
     if os.path.isfile(energyFN):
@@ -1725,25 +1779,18 @@ class BPMF:
     self.log.tee("\n>>> Calculating energies for %d configurations, "%len(confs) + \
       "starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-    self.log.start_times['configuration_energies'] = time.time()
+    self.log.recordStart('configuration_energies')
 
     updated = False
     # Calculate MM and OBC energies
     if not 'MM' in Es.keys():
       Es = self._energyTerms(confs, Es)
       solvation_o = self.args.params['CD']['solvation']
-      #       self.args.params['CD']['solvation'] = 'Fractional'
-      #       if 'OBC' in self._forceFields.keys():
-      #         del self._forceFields['OBC']
-      #       self._evaluators = {}
-      #       self._set_universe_evaluator(lambda_full)
-      #       Es = self._energyTerms(confs, Es)
-      #       Es['OBC_Fractional'] = Es['OBC']
       self.args.params['CD']['solvation'] = 'Full'
-      if 'OBC' in self._forceFields.keys():
+      if self.system.isForce('OBC'):
         del self._forceFields['OBC']
-      self._evaluators = {}
-      self._set_universe_evaluator(lambda_full)
+      self.system.clear_evaluators()
+      self.system.set_lambda(lambda_full)
       Es = self._energyTerms(confs, Es)
       self.args.params['CD']['solvation'] = solvation_o
       updated = True
@@ -1759,7 +1806,8 @@ class BPMF:
         scaling_property='scaling_factor_electrostatic')
       self.top.universe.setForceField(FF)
       for c in range(len(confs)):
-        self.top.universe.setConfiguration(Configuration(self.top.universe, confs[c]))
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, confs[c]))
         Es[key][c] = self.top.universe.energy()
       updated = True
 
@@ -1771,7 +1819,7 @@ class BPMF:
 
     if updated:
       self.log.tee("\nElapsed time for ligand MM, OBC, and grid energies: " + \
-        HMStime(time.time() - self.log.start_times['configuration_energies']), \
+        HMStime(self.log.timeSince('configuration_energies')), \
         process='CD')
     self.log.clear_lock('CD')
 
@@ -1841,7 +1889,7 @@ class BPMF:
     if updated:
       self.log.set_lock('CD')
       self.log.tee("\nElapsed time for energies: " + \
-        HMStime(time.time() - self.log.start_times['configuration_energies']), \
+        HMStime(self.log.timeSince('configuration_energies')), \
         process='CD')
       self.log.clear_lock('CD')
 
@@ -1860,260 +1908,8 @@ class BPMF:
   # Internal Functions #
   ######################
 
-  def _set_universe_evaluator(self, lambda_n):
-    """
-    Sets the universe evaluator to values appropriate for the given lambda_n dictionary.
-    The elements in the dictionary lambda_n can be:
-      MM - True, to turn on the Generalized AMBER force field
-      site - True, to turn on the binding site
-      sLJr - scaling of the soft Lennard-Jones repulsive grid
-      sLJa - scaling of the soft Lennard-Jones attractive grid
-      sELE - scaling of the soft electrostatic grid
-      LJr - scaling of the Lennard-Jones repulsive grid
-      LJa - scaling of the Lennard-Jones attractive grid
-      ELE - scaling of the electrostatic grid
-      k_angular_int - spring constant of flat-bottom wells for angular internal degrees of freedom (kJ/nm)
-      k_spatial_ext - spring constant of flat-bottom wells for spatial external degrees of freedom (kJ/nm)
-      k_angular_ext - spring constant of flat-bottom wells for angular external degrees of freedom (kJ/nm)
-      T - the temperature in K
-    """
-
-    self.T = lambda_n['T']
-    self.RT = R * lambda_n['T']
-
-    # Reuse evaluators that have been stored
-    evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
-      for k in sorted(lambda_n.keys())])
-    if evaluator_key in self._evaluators.keys():
-      self.top.universe._evaluator[(None,None,None)] = \
-        self._evaluators[evaluator_key]
-      return
-
-    # Otherwise create a new evaluator
-    fflist = []
-    if ('MM' in lambda_n.keys()) and lambda_n['MM']:
-      fflist.append(self._forceFields['gaff'])
-    if ('site' in lambda_n.keys()) and lambda_n['site']:
-      # Set up the binding site in the force field
-      append_site = True  # Whether to append the binding site to the force field
-      if not 'site' in self._forceFields.keys():
-        if (self.args.params['CD']['site'] == 'Measure'):
-          self.args.params['CD']['site'] = 'Sphere'
-          if self.args.params['CD']['site_measured'] is not None:
-            (self.args.params['CD']['site_max_R'],self.args.params['CD']['site_center']) = \
-              self.args.params['CD']['site_measured']
-          else:
-            print '\n*** Measuring the binding site ***'
-            self._set_universe_evaluator(self._lambda(1.0, 'CD', site=False))
-            (confs, Es) = self._get_confs_to_rescore(site=False, minimize=True)
-            if len(confs) > 0:
-              # Use the center of mass for configurations
-              # within 20 RT of the lowest energy
-              cutoffE = Es['total'][-1] + 20 * self.RT_SIMMIN
-              coms = []
-              for (conf, E) in reversed(zip(confs, Es['total'])):
-                if E <= cutoffE:
-                  self.top.universe.setConfiguration(
-                      Configuration(self.top.universe, conf))
-                  coms.append(np.array(self.top.universe.centerOfMass()))
-                else:
-                  break
-              print '  %d configurations fit in the binding site' % len(coms)
-              coms = np.array(coms)
-              center = (np.min(coms, 0) + np.max(coms, 0)) / 2
-              max_R = max(
-                  np.ceil(
-                      np.max(np.sqrt(np.sum(
-                          (coms - center)**2, 1))) * 10.) / 10., 0.6)
-              self.args.params['CD']['site_max_R'] = max_R
-              self.args.params['CD']['site_center'] = center
-              self.top.universe.setConfiguration(
-                  Configuration(self.top.universe, confs[-1]))
-            if ((self.args.params['CD']['site_max_R'] is None) or \
-                (self.args.params['CD']['site_center'] is None)):
-              raise Exception('No binding site parameters!')
-            else:
-              self.args.params['CD']['site_measured'] = \
-                (self.args.params['CD']['site_max_R'], \
-                 self.args.params['CD']['site_center'])
-
-        if (self.args.params['CD']['site']=='Sphere') and \
-           (self.args.params['CD']['site_center'] is not None) and \
-           (self.args.params['CD']['site_max_R'] is not None):
-          from AlGDock.ForceFields.Sphere.Sphere import SphereForceField
-          self._forceFields['site'] = SphereForceField(
-              center=self.args.params['CD']['site_center'],
-              max_R=self.args.params['CD']['site_max_R'],
-              name='site')
-        elif (self.args.params['CD']['site']=='Cylinder') and \
-             (self.args.params['CD']['site_center'] is not None) and \
-             (self.args.params['CD']['site_direction'] is not None):
-          from AlGDock.ForceFields.Cylinder.Cylinder import CylinderForceField
-          self._forceFields['site'] = CylinderForceField(
-              origin=self.args.params['CD']['site_center'],
-              direction=self.args.params['CD']['site_direction'],
-              max_Z=self.args.params['CD']['site_max_Z'],
-              max_R=self.args.params['CD']['site_max_R'],
-              name='site')
-        else:
-          # Do not append the site if it is not defined
-          print 'Binding site not defined!'
-          append_site = False
-      if append_site:
-        fflist.append(self._forceFields['site'])
-
-    # Add scalable terms
-    for scalable in scalables:
-      if (scalable in lambda_n.keys()) and lambda_n[scalable] > 0:
-        # Load the force field if it has not been loaded
-        if not scalable in self._forceFields.keys():
-          if scalable == 'OBC':
-            from AlGDock.ForceFields.OBC.OBC import OBCForceField
-            if self.args.params['CD']['solvation']=='Fractional' and \
-                ('ELE' in lambda_n.keys()):
-              self.log.start_times['grid_loading'] = time.time()
-              self._forceFields['OBC'] = OBCForceField(\
-                desolvationGridFN=self.args.FNs['grids']['desolv'])
-              self.log.tee('  %s grid loaded from %s in %s'%(scalable, \
-                os.path.basename(self.args.FNs['grids']['desolv']), \
-                HMStime(time.time()-self.log.start_times['grid_loading'])))
-            else:
-              self._forceFields['OBC'] = OBCForceField()
-          else:  # Grids
-            self.log.start_times['grid_loading'] = time.time()
-            grid_FN = self.args.FNs['grids'][{
-                'sLJr': 'LJr',
-                'sLJa': 'LJa',
-                'sELE': 'ELE',
-                'LJr': 'LJr',
-                'LJa': 'LJa',
-                'ELE': 'ELE'
-            }[scalable]]
-            grid_scaling_factor = 'scaling_factor_' + \
-              {'sLJr':'LJr','sLJa':'LJa','sELE':'electrostatic', \
-               'LJr':'LJr','LJa':'LJa','ELE':'electrostatic'}[scalable]
-
-            # Determine the grid threshold
-            if scalable == 'sLJr':
-              grid_thresh = 10.0
-            elif scalable == 'sELE':
-              # The maximum value is set so that the electrostatic energy
-              # less than or equal to the Lennard-Jones repulsive energy
-              # for every heavy atom at every grid point
-              # TODO: For conversion to OpenMM, get ParticleProperties from the Force object
-              scaling_factors_ELE = np.array([ \
-                self.top.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
-                  for a in self.top.molecule.atomList()],dtype=float)
-              scaling_factors_LJr = np.array([ \
-                self.top.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
-                  for a in self.top.molecule.atomList()],dtype=float)
-              toKeep = np.logical_and(scaling_factors_LJr > 10.,
-                                      abs(scaling_factors_ELE) > 0.1)
-              scaling_factors_ELE = scaling_factors_ELE[toKeep]
-              scaling_factors_LJr = scaling_factors_LJr[toKeep]
-              grid_thresh = min(
-                  abs(scaling_factors_LJr * 10.0 / scaling_factors_ELE))
-            else:
-              grid_thresh = -1  # There is no threshold for grid points
-
-            from AlGDock.ForceFields.Grid.Interpolation \
-              import InterpolationForceField
-            self._forceFields[scalable] = InterpolationForceField(grid_FN, \
-              name=scalable, interpolation_type='Trilinear', \
-              strength=lambda_n[scalable], scaling_property=grid_scaling_factor,
-              inv_power=4 if scalable=='LJr' else None, \
-              grid_thresh=grid_thresh)
-            self.log.tee('  %s grid loaded from %s in %s'%(scalable, \
-              os.path.basename(grid_FN), \
-              HMStime(time.time()-self.log.start_times['grid_loading'])))
-
-        # Set the force field strength to the desired value
-        self._forceFields[scalable].set_strength(lambda_n[scalable])
-        fflist.append(self._forceFields[scalable])
-
-    if ('k_angular_int' in lambda_n.keys()) or \
-       ('k_spatial_ext' in lambda_n.keys()) or \
-       ('k_angular_ext' in lambda_n.keys()):
-
-      # Load the force field if it has not been loaded
-      if not ('ExternalRestraint' in self._forceFields.keys()):
-        # Obtain reference pose
-        if ('starting_poses' in self.data['CD'].confs.keys()) and \
-           (self.data['CD'].confs['starting_poses'] is not None):
-          starting_pose = np.copy(self.data['CD'].confs['starting_poses'][0])
-        else:
-          (confs, Es) = self._get_confs_to_rescore(site=False, \
-            minimize=False, sort=False)
-          if self.args.params['CD']['pose'] < len(confs):
-            starting_pose = np.copy(confs[self.args.params['CD']['pose']])
-            self.data['CD'].confs['starting_poses'] = [np.copy(starting_pose)]
-          else:
-            self._clear('CD')
-            self._store_infinite_f_RL()
-            raise Exception('Pose index greater than number of poses')
-
-        Xo = np.copy(self.top.universe.configuration().array)
-        self.top.universe.setConfiguration(
-            Configuration(self.top.universe, starting_pose))
-        import AlGDock.rigid_bodies
-        rb = AlGDock.rigid_bodies.identifier(self.top.universe, self.top.molecule)
-        (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
-        self.top.universe.setConfiguration(Configuration(self.top.universe, Xo))
-
-        # Create force fields
-        from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
-        self._forceFields['InternalRestraint'] = \
-          InternalRestraintForceField(TorsionRestraintSpecs)
-        from AlGDock.ForceFields.Pose.PoseFF import ExternalRestraintForceField
-        self._forceFields['ExternalRestraint'] = \
-          ExternalRestraintForceField(*ExternalRestraintSpecs)
-
-      # Set parameter values
-      if ('k_angular_int' in lambda_n.keys()):
-        self._forceFields['InternalRestraint'].set_k(\
-          lambda_n['k_angular_int'])
-        fflist.append(self._forceFields['InternalRestraint'])
-
-      if ('k_spatial_ext' in lambda_n.keys()):
-        self._forceFields['ExternalRestraint'].set_k_spatial(\
-          lambda_n['k_spatial_ext'])
-        fflist.append(self._forceFields['ExternalRestraint'])
-
-      if ('k_angular_ext' in lambda_n.keys()):
-        self._forceFields['ExternalRestraint'].set_k_angular(\
-          lambda_n['k_angular_ext'])
-
-    compoundFF = fflist[0]
-    for ff in fflist[1:]:
-      compoundFF += ff
-    self.top.universe.setForceField(compoundFF)
-
-    if self.top_RL.universe is not None:
-      if 'OBC_RL' in lambda_n.keys():
-        if not 'OBC_RL' in self._forceFields.keys():
-          from AlGDock.ForceFields.OBC.OBC import OBCForceField
-          self._forceFields['OBC_RL'] = OBCForceField()
-        self._forceFields['OBC_RL'].set_strength(lambda_n['OBC_RL'])
-        if (lambda_n['OBC_RL'] > 0):
-          self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
-
-    eval = ForceField.EnergyEvaluator(\
-      self.top.universe, self.top.universe._forcefield, None, None, None, None)
-    eval.key = evaluator_key
-    self.top.universe._evaluator[(None, None, None)] = eval
-    self._evaluators[evaluator_key] = eval
-
-  def _clear_evaluators(self):
-    """
-    Deletes the stored evaluators and grids to save memory
-    """
-    self._evaluators = {}
-    for scalable in scalables:
-      if (scalable in self._forceFields.keys()):
-        del self._forceFields[scalable]
-
   def _ramp_T(self, T_START, T_LOW=20., normalize=False):
-    self.log.start_times['T_ramp'] = time.time()
+    self.log.recordStart('T_ramp')
 
     # First minimize the energy
     from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
@@ -2130,7 +1926,8 @@ class BPMF:
       e_n = self.top.universe.energy()
       diff = abs(e_o - e_n)
       if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
-        self.top.universe.setConfiguration(Configuration(self.top.universe, x_o))
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, x_o))
         break
       else:
         x_o = x_n
@@ -2138,7 +1935,7 @@ class BPMF:
 
     sys.stderr = original_stderr
     self.log.tee("  minimized to %.3g kcal/mol over %d steps" % (e_o, 10 *
-                                                             (rep + 1)))
+                                                                 (rep + 1)))
 
     # Then ramp the energy to the starting temperature
     from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
@@ -2179,7 +1976,7 @@ class BPMF:
     e_f = self.top.universe.energy()
 
     self.log.tee("  ramped temperature from %d to %d K in %s, "%(\
-      T_LOW, T_START, HMStime(time.time()-self.log.start_times['T_ramp'])) + \
+      T_LOW, T_START, HMStime(self.log.timeSince('T_ramp'))) + \
       "changing energy to %.3g kcal/mol"%(e_f))
 
   def _initial_sim_state(self, seeds, process, lambda_k):
@@ -2189,8 +1986,8 @@ class BPMF:
     """
 
     if not 'delta_t' in lambda_k.keys():
-      lambda_k['delta_t'] = 1. * self.args.params[process][
-          'delta_t'] * MMTK.Units.fs
+      lambda_k[
+        'delta_t'] = 1. * self.args.params[process]['delta_t'] * MMTK.Units.fs
     lambda_k['steps_per_trial'] = self.args.params[process]['steps_per_sweep']
 
     attempts_left = 12
@@ -2198,7 +1995,8 @@ class BPMF:
       # Get initial potential energy
       Es_o = []
       for seed in seeds:
-        self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, seed))
         Es_o.append(self.top.universe.energy())
       Es_o = np.array(Es_o)
 
@@ -2252,7 +2050,7 @@ class BPMF:
         elif acc_rate < 0.4:
           if delta_t < 2.0 * MMTK.Units.fs:
             lambda_k['steps_per_trial'] = max(
-                int(lambda_k['steps_per_trial'] / 2.), 1)
+              int(lambda_k['steps_per_trial'] / 2.), 1)
           delta_t -= 0.25 * MMTK.Units.fs
           if acc_rate < 0.1:
             delta_t -= 0.25 * MMTK.Units.fs
@@ -2306,8 +2104,8 @@ class BPMF:
       BAT = BAT_converter.BAT(extended=True)
       # this assumes that the torsional angles are stored in the tail of BAT
       softTorsionId = [
-          i + len(BAT) - BAT_converter.ntorsions
-          for i in BAT_converter._softTorsionInd
+        i + len(BAT) - BAT_converter.ntorsions
+        for i in BAT_converter._softTorsionInd
       ]
       torsions_to_crossover = []
       for i in range(1, len(softTorsionId)):
@@ -2350,9 +2148,9 @@ class BPMF:
       for c_ind in range(K):
         s_ind = state_inds[c_ind]
         self.top.universe.setConfiguration(
-            Configuration(self.top.universe, confs[c_ind]))
+          Configuration(self.top.universe, confs[c_ind]))
         BATs.append(np.array(BAT_converter.BAT(extended=True), dtype=float))
-        self._set_universe_evaluator(lambdas[s_ind])
+        self.system.set_lambda(lambdas[s_ind])
         reduced_e = self.top.universe.energy() / (R * lambdas[s_ind]['T'])
         energies[c_ind] = reduced_e
       #
@@ -2364,7 +2162,7 @@ class BPMF:
         sweep_count += 1
         if (sweep_count * K) > (1000 * nr_attempts):
           self.log.tee(
-              '  GMC Sweep too many times, but few attempted. Consider reducing torsion_threshold.'
+            '  GMC Sweep too many times, but few attempted. Consider reducing torsion_threshold.'
           )
           return attempt_count, acc_count
         #
@@ -2373,10 +2171,10 @@ class BPMF:
           conf_ind_k1 = inv_state_inds[state_pair[1]]
           # check if it should attempt for this pair of states
           ran_set_torsions = BAT_converter.BAT_to_crossover[randrange(
-              nr_sets_of_torsions)]
+            nr_sets_of_torsions)]
           do_crossover = np.any(
-              np.abs(BATs[conf_ind_k0][ran_set_torsions] -
-                     BATs[conf_ind_k1][ran_set_torsions]) >= torsion_threshold)
+            np.abs(BATs[conf_ind_k0][ran_set_torsions] -
+                   BATs[conf_ind_k1][ran_set_torsions]) >= torsion_threshold)
           if do_crossover:
             attempt_count += 1
             # BAT and reduced energies before crossover
@@ -2393,15 +2191,15 @@ class BPMF:
               BAT_k1_af[index] = tmp
             # Cartesian coord and reduced energies after crossover.
             BAT_converter.Cartesian(BAT_k0_af)
-            self._set_universe_evaluator(lambdas[state_pair[0]])
-            e_k0_af = self.top.universe.energy() / (R *
-                                                lambdas[state_pair[0]]['T'])
+            self.system.set_lambda(lambdas[state_pair[0]])
+            e_k0_af = self.top.universe.energy() / (
+              R * lambdas[state_pair[0]]['T'])
             conf_k0_af = copy.deepcopy(self.top.universe.configuration().array)
             #
             BAT_converter.Cartesian(BAT_k1_af)
-            self._set_universe_evaluator(lambdas[state_pair[1]])
-            e_k1_af = self.top.universe.energy() / (R *
-                                                lambdas[state_pair[1]]['T'])
+            self.system.set_lambda(lambdas[state_pair[1]])
+            e_k1_af = self.top.universe.energy() / (
+              R * lambdas[state_pair[1]]['T'])
             conf_k1_af = copy.deepcopy(self.top.universe.configuration().array)
             #
             de = (e_k0_be - e_k0_af) + (e_k1_be - e_k1_af)
@@ -2452,7 +2250,7 @@ class BPMF:
     # Setting the force field will load grids
     # before multiple processes are spawned
     for k in range(K):
-      self._set_universe_evaluator(lambdas[k])
+      self.system.set_lambda(lambdas[k])
 
     # If it has not been set up, set up Smart Darting
     if self.args.params[process]['darts_per_sweep'] > 0:
@@ -2468,7 +2266,7 @@ class BPMF:
     for var in ['confs', 'state_inds', 'energies']:
       storage[var] = []
 
-    self.log.start_times['repX cycle'] = time.time()
+    self.log.recordStart('repX cycle')
 
     if self.args.cores > 1:
       # Multiprocessing setup
@@ -2580,7 +2378,7 @@ class BPMF:
 
     # Report
     self.log.tee("  completed cycle %d in %s"%(self.data[process].cycle, \
-      HMStime(time.time()-self.log.start_times['repX cycle'])))
+      HMStime(self.log.timeSince('repX cycle'))))
     MC_report = " "
     for move_type in ['ExternalMC', 'SmartDarting', 'Sampler']:
       total_acc = np.sum(acc[move_type])
@@ -2604,7 +2402,7 @@ class BPMF:
         elif acc_rate < 0.4:
           if lambdas[k]['delta_t'] < 2.0 * MMTK.Units.fs:
             lambdas[k]['steps_per_trial'] = max(
-                int(lambdas[k]['steps_per_trial'] / 2.), 1)
+              int(lambdas[k]['steps_per_trial'] / 2.), 1)
           lambdas[k]['delta_t'] -= 0.25 * MMTK.Units.fs
           if acc_rate < 0.1:
             lambdas[k]['delta_t'] -= 0.25 * MMTK.Units.fs
@@ -2656,7 +2454,7 @@ class BPMF:
        for k in range(K)]
 
     if self.args.params[process]['darts_per_sweep'] > 0:
-      self._set_universe_evaluator(self.data[process].protocol[-1])
+      self.system.set_lambda(self.data[process].protocol[-1])
       confs_SmartDarting = [np.copy(conf) \
         for conf in self.data[process].confs['samples'][k][-1]]
       self.log.tee(self.sampler[process+'_SmartDarting'].set_confs(\
@@ -2724,7 +2522,7 @@ class BPMF:
 
     self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
 
-    self._set_universe_evaluator(lambda_k)
+    self.system.set_lambda(lambda_k)
     if 'delta_t' in lambda_k.keys():
       delta_t = lambda_k['delta_t']
     else:
@@ -2810,7 +2608,7 @@ class BPMF:
          (self.args.FNs['score']!='default'):
         self.log.set_lock('CD')
         self.log.tee("\n>>> Reinitializing replica exchange configurations")
-        self._set_universe_evaluator(self._lambda(1.0, 'CD'))
+        self.system.set_lambda(self._lambda(1.0, 'CD'))
         confs = self._get_confs_to_rescore(\
           nconfs=len(self.data['CD'].protocol), site=True, minimize=True)[0]
         self.log.clear_lock('CD')
@@ -2820,18 +2618,18 @@ class BPMF:
       self.log.tee("\n>>> Replica exchange for {0}, starting at {1}\n".format(\
         process, time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime())), \
         process=process)
-      self.log.start_times[process + '_repX_start'] = time.time()
+      self.log.recordStart(process + '_repX_start')
       start_cycle = self.data[process].cycle
       cycle_times = []
       while (self.data[process].cycle <
              self.args.params[process]['repX_cycles']):
         self._replica_exchange(process)
-        cycle_times.append(time.time() - self.log.start_times['repX cycle'])
+        cycle_times.append(self.log.timeSince('repX cycle'))
         if process == 'CD':
           self._insert_CD_state_between_low_acc()
         if self._run_type.startswith('timed'):
-          remaining_time = self.log.max_time * 60 - (time.time() -
-                                                       self.log.start_times['run'])
+          remaining_time = self.log.max_time * 60 - (
+            time.time() - self.log.start_times['run'])
           cycle_time = np.mean(cycle_times)
           self.log.tee("  projected cycle time: %s, remaining time: %s"%(\
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
@@ -2839,7 +2637,7 @@ class BPMF:
             return False
       self.log.tee("Elapsed time for %d cycles of replica exchange: %s"%(\
          (self.data[process].cycle - start_cycle), \
-          HMStime(time.time() - self.log.start_times[process+'_repX_start'])), \
+          HMStime(self.log.timeSince(process+'_repX_start'))), \
           process=process)
 
     # If there are insufficient configurations,
@@ -2849,13 +2647,14 @@ class BPMF:
       for k in range(len(self.data['BC'].Es[0])):
         E_MM += list(self.data['BC'].Es[0][k]['MM'])
       while len(E_MM) < self.args.params['CD']['seeds_per_state']:
-        self.log.tee("More samples from high temperature ligand simulation needed",
-                 process='BC')
+        self.log.tee(
+          "More samples from high temperature ligand simulation needed",
+          process='BC')
         self._replica_exchange('BC')
-        cycle_times.append(time.time() - self.log.start_times['repX cycle'])
+        cycle_times.append(self.log.timeSince('repX cycle'))
         if self._run_type.startswith('timed'):
-          remaining_time = self.log.max_time * 60 - (time.time() -
-                                                       self.log.start_times['run'])
+          remaining_time = self.log.max_time * 60 - (
+            time.time() - self.log.start_times['run'])
           cycle_time = np.mean(cycle_times)
           self.log.tee("  projected cycle time: %s, remaining time: %s"%(\
             HMStime(cycle_time), HMStime(remaining_time)), process=process)
@@ -2866,7 +2665,7 @@ class BPMF:
           E_MM += list(self.data['BC'].Es[0][k]['MM'])
 
     # Clear evaluators to save memory
-    self._clear_evaluators()
+    self.system.clear_evaluators()
 
     return True  # The process has completed
 
@@ -2939,7 +2738,7 @@ class BPMF:
 
     def snapshot_index_to_linear_index(state_index, cycle_index, nic_index):
       return cum_N_state[state_index] + cum_N_cycle[state_index][
-          cycle_index] + nic_index
+        cycle_index] + nic_index
 
     # Terms to copy
     if self.args.params['CD']['pose'] > -1:
@@ -3068,15 +2867,16 @@ class BPMF:
       IO_crd = AlGDock.IO.crd()
       lig_crds = IO_crd.read(self.args.FNs['score'], \
         multiplier=0.1) # to convert Angstroms to nanometers
-      confs = np.array_split(lig_crds, lig_crds.shape[0] / self._ligand_natoms)
+      confs = np.array_split(
+        lig_crds, lig_crds.shape[0] / self.top.universe.numberOfAtoms())
       confs = [conf[self.top.inv_prmtop_atom_order_L, :] for conf in confs]
       Es = {}
     elif self.args.FNs['score'].endswith('.nc'):
       from netCDF4 import Dataset
       dock6_nc = Dataset(self.args.FNs['score'], 'r')
       confs = [
-          dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :]
-          for n in range(dock6_nc.variables['confs'].shape[0])
+        dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :]
+        for n in range(dock6_nc.variables['confs'].shape[0])
       ]
       Es = dict([(key, dock6_nc.variables[key][:])
                  for key in dock6_nc.variables.keys() if key != 'confs'])
@@ -3110,9 +2910,10 @@ class BPMF:
       old_eval = None
       if (None, None, None) in self.top.universe._evaluator.keys():
         old_eval = self.top.universe._evaluator[(None, None, None)]
-      self._set_universe_evaluator({'site': True, 'T': self.T_SIMMIN})
+      self.system.set_lambda({'site': True, 'T': self.T_TARGET})
       for n in range(len(confs)):
-        self.top.universe.setConfiguration(Configuration(self.top.universe, confs[n]))
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, confs[n]))
         if self.top.universe.energy() < 1.:
           confs_in_site.append(confs[n])
           for label in Es.keys():
@@ -3137,9 +2938,10 @@ class BPMF:
 
       minimized_confs = []
       minimized_energies = []
-      self.log.start_times['minimization'] = time.time()
+      self.log.recordStart('minimization')
       for conf in confs:
-        self.top.universe.setConfiguration(Configuration(self.top.universe, conf))
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, conf))
         x_o = np.copy(self.top.universe.configuration().array)
         e_o = self.top.universe.energy()
         for rep in range(50):
@@ -3148,7 +2950,8 @@ class BPMF:
           e_n = self.top.universe.energy()
           diff = abs(e_o - e_n)
           if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
-            self.top.universe.setConfiguration(Configuration(self.top.universe, x_o))
+            self.top.universe.setConfiguration(
+              Configuration(self.top.universe, x_o))
             break
           else:
             x_o = x_n
@@ -3162,14 +2965,15 @@ class BPMF:
       confs = minimized_confs
       energies = minimized_energies
       self.log.tee("  minimized %d configurations in "%len(confs) + \
-        HMStime(time.time()-self.log.start_times['minimization']) + \
+        HMStime(self.log.timeSince('minimization')) + \
         "\n  the first %d energies are:\n  "%min(len(confs),10) + \
         ', '.join(['%.2f'%e for e in energies[:10]]))
     else:
       # Evaluate energies
       energies = []
       for conf in confs:
-        self.top.universe.setConfiguration(Configuration(self.top.universe, conf))
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, conf))
         energies.append(self.top.universe.energy())
 
     if sort and len(confs) > 0:
@@ -3192,8 +2996,8 @@ class BPMF:
     Es['total'] = np.array(energies)
 
     self.log.tee(
-        "  keeping {nconfs}{minimized} configurations out of\n  {xtal} from xtal, {dock6} from dock6, {initial_CD} from initial CD, and {duplicated} duplicated"
-        .format(**count))
+      "  keeping {nconfs}{minimized} configurations out of\n  {xtal} from xtal, {dock6} from dock6, {initial_CD} from initial CD, and {duplicated} duplicated"
+      .format(**count))
     return (confs, Es)
 
   def _run_MBAR(self, u_kln, N_k, augmented=False):
@@ -3366,23 +3170,23 @@ class BPMF:
             crossed = True
         else:
           T = lambda_o['T'] - dL
-          if T < self.T_SIMMIN:
-            T = self.T_SIMMIN
+          if T < self.T_TARGET:
+            T = self.T_TARGET
             crossed = True
       else:
         raise Exception('No variance in configuration energies')
     elif self.args.params['BC']['protocol'] == 'Geometric':
       T_GEOMETRIC = np.exp(
-          np.linspace(np.log(self.T_SIMMIN), np.log(self.T_HIGH),
-                      int(1 / self.args.params['BC']['therm_speed'])))
+        np.linspace(np.log(self.T_TARGET), np.log(self.T_HIGH),
+                    int(1 / self.args.params['BC']['therm_speed'])))
       if warm:
-        T_START, T_END = self.T_SIMMIN, self.T_HIGH
+        T_START, T_END = self.T_TARGET, self.T_HIGH
       else:
-        T_START, T_END = self.T_HIGH, self.T_SIMMIN
+        T_START, T_END = self.T_HIGH, self.T_TARGET
         T_GEOMETRIC = T_GEOMETRIC[::-1]
       T = T_GEOMETRIC[len(self.data['BC'].protocol)]
       crossed = (len(self.data['BC'].protocol) == (len(T_GEOMETRIC) - 1))
-    a = (self.T_HIGH - T) / (self.T_HIGH - self.T_SIMMIN)
+    a = (self.T_HIGH - T) / (self.T_HIGH - self.T_TARGET)
     return self._lambda(a, process='BC', lambda_o=lambda_o, crossed=crossed)
 
   def _next_CD_state(self, E=None, lambda_o=None, pow=None, unCD=False):
@@ -3406,8 +3210,8 @@ class BPMF:
       else:
         # If there have been rejected stages, reduce dL
         dL = min(
-            self.args.params['CD']['therm_speed'] / tL_tensor / (1.25**pow),
-            0.05)
+          self.args.params['CD']['therm_speed'] / tL_tensor / (1.25**pow),
+          0.05)
       if unCD:
         a = lambda_o['a'] - dL
         if (self.args.params['CD']['pose'] > -1) and \
@@ -3435,9 +3239,9 @@ class BPMF:
       return self._lambda(a, process='CD', lambda_o=lambda_o, crossed=crossed)
     elif self.args.params['CD']['protocol'] == 'Geometric':
       A_GEOMETRIC = [0.] + list(
-          np.exp(
-              np.linspace(np.log(1E-10), np.log(1.0),
-                          int(1 / self.args.params['CD']['therm_speed']))))
+        np.exp(
+          np.linspace(np.log(1E-10), np.log(1.0),
+                      int(1 / self.args.params['CD']['therm_speed']))))
       if unCD:
         A_GEOMETRIC.reverse()
       a = A_GEOMETRIC[len(self.data['CD'].protocol)]
@@ -3447,7 +3251,7 @@ class BPMF:
   def _tL_tensor(self, E, lambda_c, process='CD'):
     # Metric tensor for the thermodynamic length
     T = lambda_c['T']
-    deltaT = np.abs(self.T_HIGH - self.T_SIMMIN)
+    deltaT = np.abs(self.T_HIGH - self.T_TARGET)
     if process == 'CD':
       a = lambda_c['a']
       a_g = 4. * (a - 0.5)**2 / (1 + np.exp(-100 * (a - 0.5)))
@@ -3465,18 +3269,18 @@ class BPMF:
         OBC = 0.0
       elif self.args.params['CD']['solvation'] == 'Reduced':
         Psi_g = self._u_kln([E], [{
-            'LJr': 1,
-            'LJa': 1,
-            'ELE': 0.2
+          'LJr': 1,
+          'LJa': 1,
+          'ELE': 0.2
         }],
                             noBeta=True)
         OBC = 0.0
       elif self.args.params['CD']['solvation'] == 'Fractional':
         Psi_g = self._u_kln([E], [{
-            'LJr': 1,
-            'LJa': 1,
-            'ELE': 1,
-            'OBC': 1
+          'LJr': 1,
+          'LJa': 1,
+          'ELE': 1,
+          'OBC': 1
         }],
                             noBeta=True)
         OBC = a_g
@@ -3523,8 +3327,8 @@ class BPMF:
       if self.args.params['BC']['solvation'] == 'Full':
         # OBC is always on
         return deltaT * self._u_kln([E], [{
-            'MM': True,
-            'OBC': 1.0
+          'MM': True,
+          'OBC': 1.0
         }],
                                     noBeta=True).std() / (R * T * T)
       else:
@@ -3541,12 +3345,12 @@ class BPMF:
     if (lambda_o is not None):
       lambda_n = copy.deepcopy(lambda_o)
       if 'steps_per_trial' not in lambda_o.keys():
-        lambda_n['steps_per_trial'] = 1 * self.args.params[process][
-            'steps_per_sweep']
+        lambda_n[
+          'steps_per_trial'] = 1 * self.args.params[process]['steps_per_sweep']
     else:
       lambda_n = {}
       lambda_n[
-          'steps_per_trial'] = 1 * self.args.params[process]['steps_per_sweep']
+        'steps_per_trial'] = 1 * self.args.params[process]['steps_per_sweep']
 
     lambda_n['MM'] = True
     if crossed is not None:
@@ -3573,7 +3377,7 @@ class BPMF:
         lambda_n['sLJr'] = a_g
         lambda_n['sLJa'] = a_g
         lambda_n['ELE'] = a_g
-        lambda_n['T'] = a_r * (self.T_SIMMIN - self.T_HIGH) + self.T_HIGH
+        lambda_n['T'] = a_r * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
       else:
         # BPMF
         a_sg = 1. - 4. * (a - 0.5)**2
@@ -3588,12 +3392,12 @@ class BPMF:
         if site is not None:
           lambda_n['site'] = site
         if self.args.params['CD']['temperature_scaling'] == 'Linear':
-          lambda_n['T'] = a * (self.T_SIMMIN - self.T_HIGH) + self.T_HIGH
+          lambda_n['T'] = a * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
         elif self.args.params['CD']['temperature_scaling'] == 'Quadratic':
-          lambda_n['T'] = a_g * (self.T_SIMMIN - self.T_HIGH) + self.T_HIGH
+          lambda_n['T'] = a_g * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
     elif process == 'BC':
       lambda_n['a'] = a
-      lambda_n['T'] = self.T_HIGH - a * (self.T_HIGH - self.T_SIMMIN)
+      lambda_n['T'] = self.T_HIGH - a * (self.T_HIGH - self.T_TARGET)
       if self.args.params['BC']['solvation'] == 'Desolvated':
         lambda_n['OBC'] = a
       elif self.args.params['BC']['solvation'] == 'Reduced':
@@ -3642,7 +3446,7 @@ class BPMF:
 
     """
     # Clear evaluators to save memory
-    self._evaluators = {}
+    self.system.clear_evaluators()
 
     if phases is None:
       phases = list(set(self.args.params['BC']['phases'] + \
@@ -3738,9 +3542,9 @@ class BPMF:
         prefix = '%s%d_%d' % (p, state, c)
 
       p_dir = {
-          'BC': self.args.dir['BC'],
-          'original': self.args.dir['CD'],
-          'CD': self.args.dir['CD']
+        'BC': self.args.dir['BC'],
+        'original': self.args.dir['CD'],
+        'CD': self.args.dir['CD']
       }[p]
 
       if phase.startswith('NAMD'):
@@ -3769,7 +3573,7 @@ class BPMF:
     # self.log.set_lock('CD' if 'CD' in [loc[0] for loc in incomplete] else 'BC')
     self.log.tee("\n>>> Postprocessing, starting at " + \
       time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-    self.log.start_times['postprocess'] = time.time()
+    self.log.recordStart('postprocess')
 
     done_queue = m.Queue()
     processes = [multiprocessing.Process(target=self._energy_worker, \
@@ -3842,7 +3646,7 @@ class BPMF:
 
     if len(updated_processes) > 0:
       self.log.tee("\nElapsed time for postprocessing: " + \
-        HMStime(time.time()-self.log.start_times['postprocess']))
+        HMStime(self.log.timeSince('postprocess')))
       self.log.clear_lock('CD' if 'CD' in updated_processes else 'BC')
       return len(incomplete) == len(results)
 
@@ -3868,12 +3672,12 @@ class BPMF:
             return
 
       # Calculate the energy
-      self.log.start_times['energy'] = time.time()
+      self.log.recordStart('energy')
       for program in ['NAMD', 'sander', 'gbnsr6', 'OpenMM', 'APBS']:
         if phase.startswith(program):
           E = getattr(self, '_%s_Energy' % program)(*args)
           break
-      wall_time = time.time() - self.log.start_times['energy']
+      wall_time = self.log.timeSince('energy')
 
       if not np.isinf(E).any():
         self.log.tee("  postprocessed %s, state %d, cycle %d, %s in %s"%(\
@@ -3902,7 +3706,7 @@ class BPMF:
     if process == 'CD':
       for scalable in scalables:
         lambda_full[scalable] = 1
-    self._set_universe_evaluator(lambda_full)
+    self.system.set_lambda(lambda_full)
 
     # Molecular mechanics and grid interaction energies
     E['MM'] = np.zeros(len(confs), dtype=float)
@@ -3912,15 +3716,16 @@ class BPMF:
     if process == 'CD':
       for term in (scalables):
         E[term] = np.zeros(len(confs), dtype=float)
-      if 'site' in self._forceFields.keys():
+      if self.system.isForce('site'):
         E['site'] = np.zeros(len(confs), dtype=float)
-      if 'InternalRestraint' in self._forceFields.keys():
+      if self.system.isForce('InternalRestraint'):
         E['k_angular_int'] = np.zeros(len(confs), dtype=float)
-      if 'ExternalRestraint' in self._forceFields.keys():
+      if self.system.isForce('ExternalRestraint'):
         E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
         E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
     for c in range(len(confs)):
-      self.top.universe.setConfiguration(Configuration(self.top.universe, confs[c]))
+      self.top.universe.setConfiguration(
+        Configuration(self.top.universe, confs[c]))
       eT = self.top.universe.energyTerms()
       for (key, value) in eT.iteritems():
         if key == 'electrostatic':
@@ -4046,8 +3851,8 @@ class BPMF:
       # ESURF versus ECAVITY + EDISPER
       # EEL (ALPB versus not)
       E = np.array([
-          rec[:rec.find('\nminimization')].replace('1-4 ', '1-4').split()[1::3]
-          for rec in dat
+        rec[:rec.find('\nminimization')].replace('1-4 ', '1-4').split()[1::3]
+        for rec in dat
       ],
                    dtype=float) * MMTK.Units.kcal / MMTK.Units.mol
       if phase == 'sander_Gas':
@@ -4151,10 +3956,10 @@ class BPMF:
     # Prepare configurations for writing to crd file
     factor = 1.0 / MMTK.Units.Ang
     if (moiety.find('R') > -1):
-      receptor_0 = factor * self.data['CD'].confs[
-          'receptor'][:self.top_RL.L_first_atom, :]
-      receptor_1 = factor * self.data['CD'].confs['receptor'][
-          self.top_RL.L_first_atom:, :]
+      receptor_0 = factor * self.data['CD'].confs['receptor'][:self.top_RL.
+                                                              L_first_atom, :]
+      receptor_1 = factor * self.data['CD'].confs['receptor'][self.top_RL.
+                                                              L_first_atom:, :]
 
     if not isinstance(confs, list):
       confs = [confs]
@@ -4180,7 +3985,7 @@ class BPMF:
     # Write gbnsr6 script
     chagb = 0 if phase.find('Still') > -1 else 1
     alpb = 1 if moiety.find(
-        'R') > -1 else 0  # ALPB ineffective with small solutes
+      'R') > -1 else 0  # ALPB ineffective with small solutes
     gbnsr6_in_FN = moiety + 'gbnsr6.in'
     gbnsr6_in_F = open(gbnsr6_in_FN, 'w')
     gbnsr6_in_F.write("""gbnsr6
@@ -4225,7 +4030,8 @@ class BPMF:
         E.append(rec[:rec.find('\n -----')].replace('1-4 ',
                                                     '1-4').split()[1::3])
       else:
-        self.log.tee("  error has occured in gbnsr6 after %d snapshots" % len(E))
+        self.log.tee("  error has occured in gbnsr6 after %d snapshots" %
+                     len(E))
         self.log.tee("  prmtop was " + self.args.FNs['prmtop'][moiety])
         self.log.tee("  --- stdout:")
         self.log.tee(stdoutdata)
@@ -4266,7 +4072,7 @@ class BPMF:
           OMM_system.setParticleMass(i, 0)
       elif moiety == 'RL':
         for i in range(self.top_RL.L_first_atom) + \
-            range(self.top_RL.L_first_atom + self._ligand_natoms, \
+            range(self.top_RL.L_first_atom + self.top.universe.numberOfAtoms(), \
             OMM_system.getNumParticles()):
           OMM_system.setParticleMass(i, 0)
       dummy_integrator = simtk.openmm.LangevinIntegrator(300*simtk.unit.kelvin, \
@@ -4281,8 +4087,10 @@ class BPMF:
 
     # Prepare the conformations by combining with the receptor if necessary
     if (moiety.find('R') > -1):
-      receptor_0 = self.data['CD'].confs['receptor'][:self.top_RL.L_first_atom, :]
-      receptor_1 = self.data['CD'].confs['receptor'][self.top_RL.L_first_atom:, :]
+      receptor_0 = self.data['CD'].confs['receptor'][:self.top_RL.
+                                                     L_first_atom, :]
+      receptor_1 = self.data['CD'].confs['receptor'][self.top_RL.
+                                                     L_first_atom:, :]
     if not isinstance(confs, list):
       confs = [confs]
     if (moiety.find('R') > -1):
@@ -4301,10 +4109,9 @@ class BPMF:
     for conf in confs:
       self._OpenMM_sims[key].context.setPositions(conf)
       s = self._OpenMM_sims[key].context.getState(getEnergy=True)
-      E.append([
-          0.,
-          s.getPotentialEnergy() / simtk.unit.kilojoule * simtk.unit.mole
-      ])
+      E.append(
+        [0.,
+         s.getPotentialEnergy() / simtk.unit.kilojoule * simtk.unit.mole])
     return np.array(E, dtype=float) * MMTK.Units.kJ / MMTK.Units.mol
 
   def _APBS_Energy(self,
@@ -4322,10 +4129,10 @@ class BPMF:
     # Prepare configurations for writing to crd file
     factor = 1.0 / MMTK.Units.Ang
     if (moiety.find('R') > -1):
-      receptor_0 = factor * self.data['CD'].confs[
-          'receptor'][:self.top_RL.L_first_atom, :]
-      receptor_1 = factor * self.data['CD'].confs['receptor'][
-          self.top_RL.L_first_atom:, :]
+      receptor_0 = factor * self.data['CD'].confs['receptor'][:self.top_RL.
+                                                              L_first_atom, :]
+      receptor_1 = factor * self.data['CD'].confs['receptor'][self.top_RL.
+                                                              L_first_atom:, :]
 
     if not isinstance(confs, list):
       confs = [confs]
@@ -4483,17 +4290,17 @@ END
     def roundUpDime(x):
       return (np.ceil((x.astype(float) - 1) / 32) * 32 + 1).astype(int)
 
-    self._set_universe_evaluator({'MM': True, 'ELE': 1})
+    self.system.set_lambda({'MM': True, 'ELE': 1})
     gd = self._forceFields['ELE'].grid_data
     focus_dims = roundUpDime(gd['counts'])
     focus_center = factor * (gd['counts'] * gd['spacing'] / 2. + gd['origin'])
     focus_spacing = factor * gd['spacing'][0]
 
     min_xyz = np.array([
-        min(factor * self.data['CD'].confs['receptor'][a, :]) for a in range(3)
+      min(factor * self.data['CD'].confs['receptor'][a, :]) for a in range(3)
     ])
     max_xyz = np.array([
-        max(factor * self.data['CD'].confs['receptor'][a, :]) for a in range(3)
+      max(factor * self.data['CD'].confs['receptor'][a, :]) for a in range(3)
     ])
     mol_range = max_xyz - min_xyz
     mol_center = (min_xyz + max_xyz) / 2.
@@ -4567,9 +4374,9 @@ END
     elif traj_FN.endswith('.mdcrd'):
       if (moiety.find('R') > -1):
         receptor_0 = factor * self.data['CD'].confs[
-            'receptor'][:self.top_RL.L_first_atom, :]
+          'receptor'][:self.top_RL.L_first_atom, :]
         receptor_1 = factor * self.data['CD'].confs['receptor'][
-            self.top_RL.L_first_atom:, :]
+          self.top_RL.L_first_atom:, :]
 
       if not isinstance(confs, list):
         confs = [confs]
@@ -4624,7 +4431,8 @@ END
       f_RL_FN = os.path.join(self.args.dir['CD'], \
         'f_RL_pose%03d.pkl.gz'%self.args.params['CD']['pose'])
     if hasattr(self, 'run_type') and (not self._run_type.startswith('timed')):
-      self.log.tee(write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B)))
+      self.log.tee(
+        write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B)))
 
   def _save(self, p, keys=['progress', 'data']):
     """Saves results
@@ -4655,8 +4463,8 @@ END
 if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(
-      description=
-      'Molecular docking with adaptively scaled alchemical interaction grids')
+    description=
+    'Molecular docking with adaptively scaled alchemical interaction grids')
 
   for key in arguments.keys():
     parser.add_argument('--' + key, **arguments[key])

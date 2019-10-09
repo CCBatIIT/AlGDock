@@ -81,6 +81,7 @@ coalesce_brackets=False
 
 # The column limit.
 column_limit=79
+# column_limit=500
 
 # The style for continuation alignment. Possible values are:
 #
@@ -97,7 +98,8 @@ column_limit=79
 continuation_align_style=SPACE
 
 # Indent width used for line continuations.
-continuation_indent_width=4
+# Changed from PEP8
+continuation_indent_width=2
 
 # Put closing brackets on a separate line, dedented, if the bracketed
 # expression can't fit in a single line. Applies to all kinds of brackets,

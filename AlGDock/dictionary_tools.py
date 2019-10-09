@@ -19,11 +19,8 @@ def merge_dictionaries(dicts, required_consistency=[]):
     for key in dicts[a].keys():
       if isinstance(dicts[a][key], dict):  # item is a dictionary
         merged[key] = merge_dictionaries(
-            [
-                dicts[n][key]
-                for n in range(len(dicts)) if key in dicts[n].keys()
-            ],
-            required_consistency=required_consistency)
+          [dicts[n][key] for n in range(len(dicts)) if key in dicts[n].keys()],
+          required_consistency=required_consistency)
       elif (key not in merged.keys()):
         # Merged dictionary will contain value from
         # first dictionary where key appears

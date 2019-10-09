@@ -2,6 +2,7 @@
 LFILLRATIO = 4.0  # For the ligand
 RFILLRATIO = 2.0  # For the receptor/complex
 
+
 # TODO: Pass more necessary parameters
 # TODO: Transfer code from BindingPMF.py once other encapsulation is complete
 class Postprocess:
@@ -32,7 +33,7 @@ class Postprocess:
 
     # Locate programs for postprocessing
     all_phases = self.args.params['CD']['phases'] + self.args.params['BC'][
-        'phases']
+      'phases']
     self._load_programs(all_phases)
 
     # Determine APBS grid spacing

@@ -4,13 +4,14 @@ import numpy as np
 import cPickle as pickle
 import gzip
 
+
 def load_pkl_gz(FN):
-  if os.path.isfile(FN) and os.path.getsize(FN)>0:
-    F = gzip.open(FN,'r')
+  if os.path.isfile(FN) and os.path.getsize(FN) > 0:
+    F = gzip.open(FN, 'r')
     try:
       data = pickle.load(F)
     except:
-      print('  error loading '+FN)
+      print('  error loading ' + FN)
       F.close()
       return None
     F.close()
@@ -18,11 +19,13 @@ def load_pkl_gz(FN):
   else:
     return None
 
+
 def write_pkl_gz(FN, data):
-  F = gzip.open(FN,'w')
-  pickle.dump(data,F)
+  F = gzip.open(FN, 'w')
+  pickle.dump(data, F)
   F.close()
-  return("  wrote to "+os.path.basename(FN))
+  return ("  wrote to " + os.path.basename(FN))
+
 
 class Grid:
   """
@@ -51,8 +54,8 @@ class Grid:
     else:
       raise Exception('File type not supported')
     if multiplier is not None:
-      data['origin'] = multiplier*data['origin']
-      data['spacing'] = multiplier*data['spacing']
+      data['origin'] = multiplier * data['origin']
+      data['spacing'] = multiplier * data['spacing']
     return data
 
   def _read_dx(self, FN):
@@ -60,18 +63,18 @@ class Grid:
     Reads a grid in dx format
     """
     if FN.endswith('.dx'):
-      F = open(FN,'r')
+      F = open(FN, 'r')
     else:
       import gzip
-      F = gzip.open(FN,'r')
+      F = gzip.open(FN, 'r')
 
     # Read the header
     line = F.readline()
-    while line.find('object')==-1:
+    while line.find('object') == -1:
       line = F.readline()
     header = {}
     header['counts'] = [int(x) for x in line.split(' ')[-3:]]
-    for name in ['origin','d0','d1','d2']:
+    for name in ['origin', 'd0', 'd1', 'd2']:
       header[name] = [float(x) for x in F.readline().split(' ')[-3:]]
     F.readline()
     header['npts'] = int(F.readline().split(' ')[-3])
@@ -79,20 +82,21 @@ class Grid:
     # Test to make sure the grid type is okay.
     # These conditions are not absolultely essential,
     #   but they reduce the number of subtraction operations.
-    if not (header['d0'][1]==0 and header['d0'][2]==0 and
-            header['d1'][0]==0 and header['d1'][2]==0 and
-            header['d2'][0]==0 and header['d2'][1]==0):
+    if not (header['d0'][1] == 0 and header['d0'][2] == 0
+            and header['d1'][0] == 0 and header['d1'][2] == 0
+            and header['d2'][0] == 0 and header['d2'][1] == 0):
       raise Exception('Trilinear grid must be in original basis')
-    if not (header['d0'][0]>0 and header['d1'][1]>0 and header['d2'][2]>0):
+    if not (header['d0'][0] > 0 and header['d1'][1] > 0
+            and header['d2'][2] > 0):
       raise Exception('Trilinear grid must have positive coordinates')
 
     # Read the data
     vals = np.ndarray(shape=header['npts'], dtype=float)
     index = 0
-    while index<header['npts']:
+    while index < header['npts']:
       line = F.readline()[:-1]
       items = [float(item) for item in line.split()]
-      vals[index:index+len(items)] = items
+      vals[index:index + len(items)] = items
       index = index + len(items)
     F.close()
 
@@ -108,7 +112,7 @@ class Grid:
     Reads a grid in netcdf format
     """
     from netCDF4 import Dataset
-    grid_nc = Dataset(FN,'r')
+    grid_nc = Dataset(FN, 'r')
     data = {}
     for key in list(grid_nc.variables):
       data[key] = np.array(grid_nc.variables[key][:][0][:])
@@ -122,10 +126,12 @@ class Grid:
 
     """
     if multiplier is not None:
-      data_n = {'origin':multiplier*data['origin'],
-                'counts':data['counts'],
-                'spacing':multiplier*data['spacing'],
-                'vals':data['vals']}
+      data_n = {
+        'origin': multiplier * data['origin'],
+        'counts': data['counts'],
+        'spacing': multiplier * data['spacing'],
+        'vals': data['vals']
+      }
     else:
       data_n = data
     if FN.endswith('.nc'):
@@ -139,12 +145,12 @@ class Grid:
     """
     Writes a grid in dx format
     """
-    n_points = data['counts'][0]*data['counts'][1]*data['counts'][2]
+    n_points = data['counts'][0] * data['counts'][1] * data['counts'][2]
     if FN.endswith('.dx'):
-      F = open(FN,'w')
+      F = open(FN, 'w')
     else:
       import gzip
-      F = gzip.open(FN,'w')
+      F = gzip.open(FN, 'w')
 
     F.write("""object 1 class gridpositions counts {0[0]} {0[1]} {0[2]}
 origin {1[0]} {1[1]} {1[2]}
@@ -153,10 +159,11 @@ delta 0.0 {2[1]} 0.0
 delta 0.0 0.0 {2[2]}
 object 2 class gridconnections counts {0[0]} {0[1]} {0[2]}
 object 3 class array type double rank 0 items {3} data follows
-""".format(data['counts'],data['origin'],data['spacing'],n_points))
+""".format(data['counts'], data['origin'], data['spacing'], n_points))
 
-    for start_n in range(0,len(data['vals']),3):
-      F.write(' '.join(['%6e'%c for c in data['vals'][start_n:start_n+3]]) + '\n')
+    for start_n in range(0, len(data['vals']), 3):
+      F.write(' '.join(['%6e' % c
+                        for c in data['vals'][start_n:start_n + 3]]) + '\n')
 
     F.write('object 4 class field\n')
     F.write('component "positions" value 1\n')
@@ -168,16 +175,16 @@ object 3 class array type double rank 0 items {3} data follows
     """
     Writes a grid in netcdf format
     """
-    n_points = data['counts'][0]*data['counts'][1]*data['counts'][2]
+    n_points = data['counts'][0] * data['counts'][1] * data['counts'][2]
     from netCDF4 import Dataset
-    grid_nc = Dataset(FN,'w',format='NETCDF4')
+    grid_nc = Dataset(FN, 'w', format='NETCDF4')
     grid_nc.createDimension('one', 1)
     grid_nc.createDimension('n_cartesian', 3)
     grid_nc.createDimension('n_points', n_points)
-    grid_nc.createVariable('origin','f8',('one','n_cartesian'))
-    grid_nc.createVariable('counts','i8',('one','n_cartesian'))
-    grid_nc.createVariable('spacing','f8',('one','n_cartesian'))
-    grid_nc.createVariable('vals','f8',('one','n_points'), zlib=True)
+    grid_nc.createVariable('origin', 'f8', ('one', 'n_cartesian'))
+    grid_nc.createVariable('counts', 'i8', ('one', 'n_cartesian'))
+    grid_nc.createVariable('spacing', 'f8', ('one', 'n_cartesian'))
+    grid_nc.createVariable('vals', 'f8', ('one', 'n_points'), zlib=True)
     for key in data.keys():
       grid_nc.variables[key][:] = data[key]
     grid_nc.close()
@@ -190,31 +197,31 @@ object 3 class array type double rank 0 items {3} data follows
     multiplier is for the values, not the grid scaling
     """
     data_o = self.read(in_FN)
-    nyz_o = data_o['counts'][1]*data_o['counts'][2]
+    nyz_o = data_o['counts'][1] * data_o['counts'][2]
     nz_o = data_o['counts'][2]
 
-    min_i = int(-data_o['origin'][0]/data_o['spacing'][0])
-    min_j = int(-data_o['origin'][1]/data_o['spacing'][1])
-    min_k = int(-data_o['origin'][2]/data_o['spacing'][2])
+    min_i = int(-data_o['origin'][0] / data_o['spacing'][0])
+    min_j = int(-data_o['origin'][1] / data_o['spacing'][1])
+    min_k = int(-data_o['origin'][2] / data_o['spacing'][2])
 
-#    vals = np.ndarray(shape=tuple(counts), dtype=float)
-#    for i in range(counts[0]):
-#      for j in range(counts[1]):
-#        for k in range(counts[2]):
-#          vals[i,j,k] = data_o['vals'][(i+min_i)*nyz_o + (j+min_j)*nz_o + (k+min_k)]
+    #    vals = np.ndarray(shape=tuple(counts), dtype=float)
+    #    for i in range(counts[0]):
+    #      for j in range(counts[1]):
+    #        for k in range(counts[2]):
+    #          vals[i,j,k] = data_o['vals'][(i+min_i)*nyz_o + (j+min_j)*nz_o + (k+min_k)]
 
-    vals = np.array(
-      [[[data_o['vals'][(i+min_i)*nyz_o + (j+min_j)*nz_o + (k+min_k)]
-        for k in range(counts[2])]
-          for j in range(counts[1])]
-            for i in range(counts[0])])
+    vals = np.array([[[
+      data_o['vals'][(i + min_i) * nyz_o + (j + min_j) * nz_o + (k + min_k)]
+      for k in range(counts[2])
+    ] for j in range(counts[1])] for i in range(counts[0])])
 
     if multiplier is not None:
-      vals = vals*multiplier
+      vals = vals * multiplier
 
     data_n = {'origin':np.array([0., 0., 0.]), \
       'counts':counts, 'spacing':data_o['spacing'], 'vals':vals.flatten()}
-    self.write(out_FN,data_n)
+    self.write(out_FN, data_n)
+
 
 class crd:
   """
@@ -233,44 +240,44 @@ class crd:
     The coordinates will be multiplied by multiplier.
     """
     if not os.path.isfile(FN):
-      raise Exception('Coordinate file %s does not exist!'%FN)
+      raise Exception('Coordinate file %s does not exist!' % FN)
     if FN.endswith('.gz'):
       import gzip
       F = gzip.open(FN, 'r')
     else:
-      F = open(FN,'r')
+      F = open(FN, 'r')
     dat = F.read().strip().split('\n')
     F.close()
 
-    title = dat.pop(0) # Title
+    title = dat.pop(0)  # Title
 
-    if len(dat[0].split())>1:
+    if len(dat[0].split()) > 1:
       # VMD format (does not specify number of atoms)
       crd = []
       for line in dat:
         crd = crd + [float(x) for x in line.split()]
-      crd = np.resize(crd,(len(crd)/3,3))
+      crd = np.resize(crd, (len(crd) / 3, 3))
     else:
       # AMBER format
-      file_natoms = int(dat.pop(0)) # Number of atoms
-      if (natoms is not None) and (file_natoms!=natoms):
+      file_natoms = int(dat.pop(0))  # Number of atoms
+      if (natoms is not None) and (file_natoms != natoms):
         print "Incorrect number of atoms in crd file"
         return np.array([])
 
       if trajectory:
-        w = 8   # For mdcrd
+        w = 8  # For mdcrd
       else:
         w = 12  # For inpcrd
       crd = []
       for line in dat:
-        crd = crd + [float(line[x:x+w]) for x in range(0,len(line),w)]
-      crd = np.resize(crd,(len(crd)/3,3))
+        crd = crd + [float(line[x:x + w]) for x in range(0, len(line), w)]
+      crd = np.resize(crd, (len(crd) / 3, 3))
 
     if multiplier is not None:
-      crd = multiplier*crd
+      crd = multiplier * crd
     if (natoms is not None):
-      crd = np.vsplit(crd,crd.shape[0]/natoms)
-      print "  read %d configurations from %s"%(len(crd), FN)
+      crd = np.vsplit(crd, crd.shape[0] / natoms)
+      print "  read %d configurations from %s" % (len(crd), FN)
 
     if return_title:
       return (crd, title)
@@ -285,37 +292,39 @@ class crd:
     if (append and os.path.isfile(FN)):
       if FN.endswith('.gz'):
         import gzip
-        F = gzip.open(FN,'a')
+        F = gzip.open(FN, 'a')
       else:
-        F = open(FN,'a')
+        F = open(FN, 'a')
     else:
       if os.path.isfile(FN):
-        os.rename(FN,FN+'.BAK')
+        os.rename(FN, FN + '.BAK')
       if FN.endswith('.gz'):
         import gzip
-        F = gzip.open(FN,'w')
+        F = gzip.open(FN, 'w')
       else:
-        F = open(FN,'w')
+        F = open(FN, 'w')
       # Write the header
-      F.write(title+'\n') # Title
+      F.write(title + '\n')  # Title
       if not trajectory:
-        F.write('%d\n'%crd.shape[0])
+        F.write('%d\n' % crd.shape[0])
 
     if not trajectory:
       flattened = np.vstack(crd).flatten()
       if multiplier is not None:
-        flattened = multiplier*flattened
-      for n in range(0,len(flattened),6):
-        F.write(''.join(['%12.7f'%val for val in flattened[n:n+6]]) + '\n')
+        flattened = multiplier * flattened
+      for n in range(0, len(flattened), 6):
+        F.write(''.join(['%12.7f' % val for val in flattened[n:n + 6]]) + '\n')
     else:
       for c in crd:
         flattened = c.flatten()
         if multiplier is not None:
-          flattened = multiplier*flattened
-        for n in range(0,len(flattened),10):
-          F.write(''.join(['%8.3f'%val for val in flattened[n:n+10]]) + '\n')
+          flattened = multiplier * flattened
+        for n in range(0, len(flattened), 10):
+          F.write(''.join(['%8.3f' % val
+                           for val in flattened[n:n + 10]]) + '\n')
 
     F.close()
+
 
 class dock6_mol2:
   """
@@ -329,14 +338,14 @@ class dock6_mol2:
     E = {}
 
     if (FN is None) or (not os.path.isfile(FN)):
-      return (crds,E)
+      return (crds, E)
 
     # Specifically to read output from UCSF dock6
     if FN.endswith('.mol2'):
-      mol2F = open(FN,'r')
+      mol2F = open(FN, 'r')
     elif FN.endswith('.mol2.gz'):
       import gzip
-      mol2F = gzip.open(FN,'r')
+      mol2F = gzip.open(FN, 'r')
     else:
       raise Exception('Unknown file type')
 
@@ -344,7 +353,7 @@ class dock6_mol2:
     mol2F.close()
     models.pop(0)
 
-    if len(models)>0:
+    if len(models) > 0:
       for line in models[0].split('\n'):
         if line.startswith('##########'):
           label = line[11:line.find(':')].strip()
@@ -354,21 +363,21 @@ class dock6_mol2:
         fields = model.split('<TRIPOS>')
 
         crd = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
-          dtype=float)
+                       dtype=float)
         if multiplier is not None:
-          crd = multiplier*crd
+          crd = multiplier * crd
         if reorder is not None:
-          crd = crd[reorder,:]
+          crd = crd[reorder, :]
 
         for line in fields[0].split('\n'):
           if line.startswith('##########'):
             label = line[11:line.find(':')].strip()
             if not label in E.keys():
-              E[label] = [0]*len(crds)
+              E[label] = [0] * len(crds)
             E[label].append(float(line.split()[-1]))
 
         crds.append(crd)
-    return (crds,E)
+    return (crds, E)
 
   def write(self, templateFN, confs, FN):
     if (templateFN is None) or not os.path.isfile(templateFN):
@@ -376,23 +385,25 @@ class dock6_mol2:
 
     # Read the first model from the template
     if templateFN.endswith('.mol2'):
-      mol2F = open(templateFN,'r')
+      mol2F = open(templateFN, 'r')
     elif templateFN.endswith('.mol2.gz'):
       import gzip
-      mol2F = gzip.open(templateFN,'r')
+      mol2F = gzip.open(templateFN, 'r')
     else:
       raise Exception('Template for mol2 is unknown file type')
     template = mol2F.read().strip()
     mol2F.close()
 
-    if template.find('########## Name:')>-1:
+    if template.find('########## Name:') > -1:
       template = template.split('########## Name:')[1]
     template = template[template.find('@<TRIPOS>'):]
 
-    header = template[template.find('@<TRIPOS>MOLECULE'):template.find('@<TRIPOS>ATOM')+14]
-    body = template[template.find('@<TRIPOS>ATOM')+14:template.find('\n@<TRIPOS>BOND')].split('\n')
+    header = template[template.find('@<TRIPOS>MOLECULE'
+                                    ):template.find('@<TRIPOS>ATOM') + 14]
+    body = template[template.find('@<TRIPOS>ATOM') +
+                    14:template.find('\n@<TRIPOS>BOND')].split('\n')
     footer = template[template.find('\n@<TRIPOS>BOND'):] + '\n'
-    F = open(FN,'w')
+    F = open(FN, 'w')
     for conf in confs:
       F.write(header + \
         '\n'.join([body[ind][:16] + \
@@ -400,6 +411,7 @@ class dock6_mol2:
                    body[ind][46:] for ind in range(len(body))]) \
         + footer)
     F.close()
+
 
 class dcd:
   """
@@ -416,9 +428,13 @@ class dcd:
       self.ligand_atom_order = ligand_atom_order
     pass
 
-  def write(self, FN, confs,
-      includeLigand=True, includeReceptor=False, factor=10.0,
-      delta_t=0.1):
+  def write(self,
+            FN,
+            confs,
+            includeLigand=True,
+            includeReceptor=False,
+            factor=10.0,
+            delta_t=0.1):
     """
     Writes a DCD file for a trajectory.
     If includeReceptor==True, the receptor coordinates are included.
@@ -427,7 +443,7 @@ class dcd:
     import MMTK_DCD  # @UnresolvedImport
     from Scientific import N
 
-    if not isinstance(confs,list):
+    if not isinstance(confs, list):
       confs = [confs]
 
     if includeReceptor and (self.receptorConf is None):
@@ -435,12 +451,12 @@ class dcd:
 
     n_atoms = 0
     if includeReceptor:
-      receptor_x0 = factor*self.receptorConf[:self.ligand_first_atom,0]
-      receptor_y0 = factor*self.receptorConf[:self.ligand_first_atom,1]
-      receptor_z0 = factor*self.receptorConf[:self.ligand_first_atom,2]
-      receptor_x1 = factor*self.receptorConf[self.ligand_first_atom:,0]
-      receptor_y1 = factor*self.receptorConf[self.ligand_first_atom:,1]
-      receptor_z1 = factor*self.receptorConf[self.ligand_first_atom:,2]
+      receptor_x0 = factor * self.receptorConf[:self.ligand_first_atom, 0]
+      receptor_y0 = factor * self.receptorConf[:self.ligand_first_atom, 1]
+      receptor_z0 = factor * self.receptorConf[:self.ligand_first_atom, 2]
+      receptor_x1 = factor * self.receptorConf[self.ligand_first_atom:, 0]
+      receptor_y1 = factor * self.receptorConf[self.ligand_first_atom:, 1]
+      receptor_z1 = factor * self.receptorConf[self.ligand_first_atom:, 2]
       n_atoms += self.receptorConf.shape[0]
     if includeLigand:
       n_atoms += len(self.molecule.atoms)
@@ -450,26 +466,33 @@ class dcd:
 
     if includeReceptor and includeLigand:
       for array in confs:
-        array = factor*array
-        x = N.concatenate((receptor_x0,N.take(array[:,0],self.ligand_atom_order),receptor_x1)).astype(N.Float16)
-        y = N.concatenate((receptor_y0,N.take(array[:,1],self.ligand_atom_order),receptor_y1)).astype(N.Float16)
-        z = N.concatenate((receptor_z0,N.take(array[:,2],self.ligand_atom_order),receptor_z1)).astype(N.Float16)
+        array = factor * array
+        x = N.concatenate(
+          (receptor_x0, N.take(array[:, 0], self.ligand_atom_order),
+           receptor_x1)).astype(N.Float16)
+        y = N.concatenate(
+          (receptor_y0, N.take(array[:, 1], self.ligand_atom_order),
+           receptor_y1)).astype(N.Float16)
+        z = N.concatenate(
+          (receptor_z0, N.take(array[:, 2], self.ligand_atom_order),
+           receptor_z1)).astype(N.Float16)
         MMTK_DCD.writeDCDStep(fd, x, y, z)
       MMTK_DCD.writeCloseDCD(fd)
     elif includeLigand:
       for array in confs:
-        array = factor*array
-        x = N.take(array[:,0], self.ligand_atom_order).astype(N.Float16)
-        y = N.take(array[:,1], self.ligand_atom_order).astype(N.Float16)
-        z = N.take(array[:,2], self.ligand_atom_order).astype(N.Float16)
+        array = factor * array
+        x = N.take(array[:, 0], self.ligand_atom_order).astype(N.Float16)
+        y = N.take(array[:, 1], self.ligand_atom_order).astype(N.Float16)
+        z = N.take(array[:, 2], self.ligand_atom_order).astype(N.Float16)
         MMTK_DCD.writeDCDStep(fd, x, y, z)
       MMTK_DCD.writeCloseDCD(fd)
     else:
-      x = N.concatenate((receptor_x0,receptor_x1)).astype(N.Float16)
-      y = N.concatenate((receptor_y0,receptor_y1)).astype(N.Float16)
-      z = N.concatenate((receptor_z0,receptor_z1)).astype(N.Float16)
+      x = N.concatenate((receptor_x0, receptor_x1)).astype(N.Float16)
+      y = N.concatenate((receptor_y0, receptor_y1)).astype(N.Float16)
+      z = N.concatenate((receptor_z0, receptor_z1)).astype(N.Float16)
       MMTK_DCD.writeDCDStep(fd, x, y, z)
       MMTK_DCD.writeCloseDCD(fd)
+
 
 class prmtop:
   """
@@ -478,17 +501,17 @@ class prmtop:
   def __init__(self):
     pass
 
-  def read(self, FN, varnames=['RESIDUE_LABEL','RESIDUE_POINTER']):
+  def read(self, FN, varnames=['RESIDUE_LABEL', 'RESIDUE_POINTER']):
     """
     Reads an AMBER prmtop file, returning a dictionary
     """
     if not os.path.isfile(FN):
-      raise Exception('prmtop file %s does not exist!'%FN)
+      raise Exception('prmtop file %s does not exist!' % FN)
     if FN.endswith('.gz'):
       import gzip
       F = gzip.open(FN, 'r')
     else:
-      F = open(FN,'r')
+      F = open(FN, 'r')
     data = F.read().split('%FLAG ')
     F.close()
 
@@ -502,20 +525,20 @@ class prmtop:
   def _load_record(self, record):
     items = []
     lines = record.split('\n')
-    lines.pop(0) # Name
-    FORMAT = lines.pop(0).strip()[8:-1] # Format
-    if FORMAT.find('a')>-1: # Text
-      w = int(FORMAT[FORMAT.find('a')+1:])
+    lines.pop(0)  # Name
+    FORMAT = lines.pop(0).strip()[8:-1]  # Format
+    if FORMAT.find('a') > -1:  # Text
+      w = int(FORMAT[FORMAT.find('a') + 1:])
       for line in lines:
-        items = items + [line[x:x+w] for x in range(0,len(line),w)]
+        items = items + [line[x:x + w] for x in range(0, len(line), w)]
       return np.array(items)
-    elif FORMAT.find('I')>-1: # Integer
-      w = int(FORMAT[FORMAT.find('I')+1:])
+    elif FORMAT.find('I') > -1:  # Integer
+      w = int(FORMAT[FORMAT.find('I') + 1:])
       for line in lines:
-        items = items + [int(line[x:x+w]) for x in range(0,len(line),w)]
+        items = items + [int(line[x:x + w]) for x in range(0, len(line), w)]
       return np.array(items, dtype=int)
-    elif FORMAT.find('E')>-1: # Scientific
-      w = int(FORMAT[FORMAT.find('E')+1:FORMAT.find('.')])
+    elif FORMAT.find('E') > -1:  # Scientific
+      w = int(FORMAT[FORMAT.find('E') + 1:FORMAT.find('.')])
       for line in lines:
-        items = items + [float(line[x:x+w]) for x in range(0,len(line),w)]
+        items = items + [float(line[x:x + w]) for x in range(0, len(line), w)]
       return np.array(items, dtype=float)

@@ -5,6 +5,7 @@ import MMTK
 
 from AlGDock.logger import NullDevice
 
+
 class Topology:
   """Describes the system to simulate
 
@@ -70,8 +71,7 @@ class Topology:
     self.inv_prmtop_atom_order_L = \
       np.zeros(shape=len(self.prmtop_atom_order_L), dtype=int)
     for i in range(len(self.prmtop_atom_order_L)):
-      self.inv_prmtop_atom_order_L[
-          self.prmtop_atom_order_L[i]] = i
+      self.inv_prmtop_atom_order_L[self.prmtop_atom_order_L[i]] = i
 
     # Create universe and add molecule to universe
     self.universe = MMTK.Universe.InfiniteUniverse()
@@ -88,8 +88,8 @@ class Topology:
         prmtop_R = IO_prmtop.read(args.FNs['prmtop']['R'])
         prmtop_RL = IO_prmtop.read(args.FNs['prmtop']['RL'])
         ligand_ind = [
-            ind for ind in range(len(prmtop_RL['RESIDUE_LABEL']))
-            if prmtop_RL['RESIDUE_LABEL'][ind] not in prmtop_R['RESIDUE_LABEL']
+          ind for ind in range(len(prmtop_RL['RESIDUE_LABEL']))
+          if prmtop_RL['RESIDUE_LABEL'][ind] not in prmtop_R['RESIDUE_LABEL']
         ]
         if len(ligand_ind) == 0:
           raise Exception('Ligand not found in complex prmtop')

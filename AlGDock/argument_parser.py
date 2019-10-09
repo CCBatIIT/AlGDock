@@ -15,6 +15,7 @@ from AlGDock import path_tools
 from AlGDock.IO import load_pkl_gz
 from AlGDock.IO import write_pkl_gz
 
+
 class SimulationArguments:
   """Stores simulation arguments
 
@@ -97,7 +98,7 @@ class SimulationArguments:
       if params is not None:
         (fn_dict, param_dict) = params
         FNs[p] = dictionary_tools.convert_dictionary_relpath(
-            fn_dict, relpath_o=self.dir[p], relpath_n=None)
+          fn_dict, relpath_o=self.dir[p], relpath_n=None)
         args[p] = param_dict
         if (p=='CD') and (kwargs['dir_BC'] is None) and \
            ('dir_BC' in FNs[p].keys()) and \
@@ -269,7 +270,7 @@ class SimulationArguments:
       print 'to be used:'
 
     self.FNs = dictionary_tools.merge_dictionaries(
-        [FNs[src] for src in ['new', 'BC', 'CD']])
+      [FNs[src] for src in ['new', 'BC', 'CD']])
 
     # Default: a force field modification is in the same directory as the ligand
     if (self.FNs['frcmodList'] is None):
@@ -325,17 +326,17 @@ class SimulationArguments:
                                      show_None=True)
 
     args['default_BC'] = OrderedDict([
-        ('protocol', 'Adaptive'), ('therm_speed', 30.0), ('T_HIGH', 600.),
-        ('T_SIMMIN', 300.), ('T_TARGET', 300.), ('H_mass', 4.0),
-        ('delta_t', 4.0), ('sampler', 'NUTS'), ('steps_per_seed', 1000),
-        ('seeds_per_state', 50), ('darts_per_seed', 0), ('repX_cycles', 20),
-        ('min_repX_acc', 0.4), ('sweeps_per_cycle', 1000),
-        ('snaps_per_cycle', 50), ('attempts_per_sweep', 25),
-        ('steps_per_sweep', 50), ('darts_per_sweep', 0),
-        ('phases', ['NAMD_Gas', 'NAMD_OBC']),
-        ('sampling_importance_resampling', False), ('solvation', 'Desolvated'),
-        ('keep_intermediate', False), ('GMC_attempts', 0),
-        ('GMC_tors_threshold', 0.0)
+      ('protocol', 'Adaptive'), ('therm_speed', 30.0), ('T_HIGH', 600.),
+      ('T_SIMMIN', 300.), ('T_TARGET', 300.),
+      ('H_mass', 4.0), ('delta_t', 4.0), ('sampler', 'NUTS'),
+      ('steps_per_seed', 1000), ('seeds_per_state', 50), ('darts_per_seed', 0),
+      ('repX_cycles', 20), ('min_repX_acc', 0.4), ('sweeps_per_cycle', 1000),
+      ('snaps_per_cycle', 50), ('attempts_per_sweep', 25),
+      ('steps_per_sweep', 50), ('darts_per_sweep', 0),
+      ('phases', ['NAMD_Gas', 'NAMD_OBC']),
+      ('sampling_importance_resampling', False), ('solvation', 'Desolvated'),
+      ('keep_intermediate', False), ('GMC_attempts', 0),
+      ('GMC_tors_threshold', 0.0)
     ])
 
     args['default_CD'] = OrderedDict(args['default_BC'].items() + [
@@ -375,7 +376,7 @@ class SimulationArguments:
     self.params = OrderedDict()
     for p in ['BC', 'CD']:
       self.params[p] = dictionary_tools.merge_dictionaries(
-          [args[src] for src in ['new_' + p, p, 'default_' + p]])
+        [args[src] for src in ['new_' + p, p, 'default_' + p]])
 
     # Check that phases are permitted
     for phase in (self.params['BC']['phases'] + self.params['CD']['phases']):
@@ -424,7 +425,7 @@ class SimulationArguments:
         os.remove(progress_FN)
       if p == 'CD' and pose > -1:
         progress_FN = os.path.join(
-            self.dir[p], '%s_progress_pose%03d.pkl.gz.BAK' % (p, pose))
+          self.dir[p], '%s_progress_pose%03d.pkl.gz.BAK' % (p, pose))
       else:
         progress_FN = os.path.join(self.dir[p], '%s_progress.pkl.gz.BAK' % (p))
 
@@ -460,31 +461,28 @@ class SimulationArguments:
                       if not tp[0] in ['repX_cycles']])
     if p == 'BC':
       fn_dict = dictionary_tools.convert_dictionary_relpath(
-          {
-              'ligand_database': self.FNs['ligand_database'],
-              'forcefield': self.FNs['forcefield'],
-              'frcmodList': self.FNs['frcmodList'],
-              'tarball': {
-                  'L': self.FNs['tarball']['L']
-              },
-              'prmtop': {
-                  'L': self.FNs['prmtop']['L']
-              },
-              'inpcrd': {
-                  'L': self.FNs['inpcrd']['L']
-              }
+        {
+          'ligand_database': self.FNs['ligand_database'],
+          'forcefield': self.FNs['forcefield'],
+          'frcmodList': self.FNs['frcmodList'],
+          'tarball': {
+            'L': self.FNs['tarball']['L']
           },
-          relpath_o=None,
-          relpath_n=self.dir['BC'])
+          'prmtop': {
+            'L': self.FNs['prmtop']['L']
+          },
+          'inpcrd': {
+            'L': self.FNs['inpcrd']['L']
+          }
+        },
+        relpath_o=None,
+        relpath_n=self.dir['BC'])
     elif p == 'CD':
-      fn_dict = dictionary_tools.convert_dictionary_relpath(dict(self.FNs.items()),
-                                           relpath_o=None,
-                                           relpath_n=self.dir['CD'])
+      fn_dict = dictionary_tools.convert_dictionary_relpath(
+        dict(self.FNs.items()), relpath_o=None, relpath_n=self.dir['CD'])
     params = (fn_dict, param_dict)
 
-    saved = {
-        'progress': (params, data.protocol, data.cycle)
-    }
+    saved = {'progress': (params, data.protocol, data.cycle)}
 
     key = 'progress'
     if p == 'CD' and self.params['CD']['pose'] > -1:
@@ -496,4 +494,4 @@ class SimulationArguments:
       os.system('mkdir -p ' + self.dir[p])
     if os.path.isfile(saved_FN):
       os.rename(saved_FN, saved_FN + '.BAK')
-    return write_pkl_gz(saved_FN, saved[key]) + '\n  saved %s progress'%p
+    return write_pkl_gz(saved_FN, saved[key]) + '\n  saved %s progress' % p

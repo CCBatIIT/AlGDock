@@ -28,7 +28,7 @@ allowed_phases = ['NAMD_Gas','NAMD_OBC'] + \
 try:
   import simtk.openmm
   allowed_phases += [
-      'OpenMM_' + p for p in ['Gas', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
+    'OpenMM_' + p for p in ['Gas', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
   ]
 except ImportError:
   pass
@@ -185,7 +185,7 @@ for process in ['BC', 'CD']:
 
 for phase in allowed_phases:
   args['receptor_' + phase] = {
-      'type': float,
-      'nargs': '+',
-      'help': 'Receptor potential energy in %s (kJ/mol)' % phase
+    'type': float,
+    'nargs': '+',
+    'help': 'Receptor potential energy in %s (kJ/mol)' % phase
   }

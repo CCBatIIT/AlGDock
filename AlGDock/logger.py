@@ -1,4 +1,6 @@
 import os
+import time
+
 
 class NullDevice():
   """A device to suppress output
@@ -8,6 +10,7 @@ class NullDevice():
 
   def flush(self):
     pass
+
 
 class Logger:
   """Handles log file, locks, and timers
@@ -33,8 +36,10 @@ class Logger:
   set_lock
   clear_lock
   tee
+  recordStart
+  timeSince
   """
-  def __init__(self, args, max_time = None, run_type = None):
+  def __init__(self, args, max_time=None, run_type=None):
     """
 
     Parameters
@@ -123,3 +128,31 @@ class Logger:
         self.log.write(repr(var) + '\n')
       self.log.flush()
       self.clear_lock(process)
+
+  def recordStart(self, event_key):
+    """Records the time at the beginning of an event
+
+    Parameters
+    ----------
+    event_key : str
+      Event description
+    """
+    self.start_times[event_key] = time.time()
+
+  def timeSince(self, event_key):
+    """Amount of time since an event
+
+    Parameters
+    ----------
+    event_key : str
+      Event description
+
+    Returns
+    -------
+    float
+      The amount of time since the event, in seconds
+    """
+    if event_key in self.start_times.keys():
+      return time.time() - self.start_times[event_key]
+    else:
+      raise Exception(event_key + ' has not started!')
