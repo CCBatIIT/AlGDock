@@ -1,10 +1,33 @@
 import os
 import numpy as np
 
+import cPickle as pickle
+import gzip
+
+def load_pkl_gz(FN):
+  if os.path.isfile(FN) and os.path.getsize(FN)>0:
+    F = gzip.open(FN,'r')
+    try:
+      data = pickle.load(F)
+    except:
+      print('  error loading '+FN)
+      F.close()
+      return None
+    F.close()
+    return data
+  else:
+    return None
+
+def write_pkl_gz(FN, data):
+  F = gzip.open(FN,'w')
+  pickle.dump(data,F)
+  F.close()
+  return("  wrote to "+os.path.basename(FN))
+
 class Grid:
   """
   Class to read and write alchemical grids.
-  
+
   Data is a dictionary with
   spacing - the grid spacing, in Angstroms.
   counts - the number of points in each dimension.
@@ -41,7 +64,7 @@ class Grid:
     else:
       import gzip
       F = gzip.open(FN,'r')
-        
+
     # Read the header
     line = F.readline()
     while line.find('object')==-1:
@@ -79,7 +102,7 @@ class Grid:
       'counts':np.array(header['counts']), \
       'vals':vals}
     return data
-    
+
   def _read_nc(self, FN):
     """
     Reads a grid in netcdf format
@@ -111,7 +134,7 @@ class Grid:
       self._write_dx(FN, data_n)
     else:
       raise Exception('File type not supported')
-  
+
   def _write_dx(self, FN, data):
     """
     Writes a grid in dx format
@@ -122,7 +145,7 @@ class Grid:
     else:
       import gzip
       F = gzip.open(FN,'w')
-    
+
     F.write("""object 1 class gridpositions counts {0[0]} {0[1]} {0[2]}
 origin {1[0]} {1[1]} {1[2]}
 delta {2[0]} 0.0 0.0
@@ -131,7 +154,7 @@ delta 0.0 0.0 {2[2]}
 object 2 class gridconnections counts {0[0]} {0[1]} {0[2]}
 object 3 class array type double rank 0 items {3} data follows
 """.format(data['counts'],data['origin'],data['spacing'],n_points))
-    
+
     for start_n in range(0,len(data['vals']),3):
       F.write(' '.join(['%6e'%c for c in data['vals'][start_n:start_n+3]]) + '\n')
 
@@ -140,7 +163,7 @@ object 3 class array type double rank 0 items {3} data follows
     F.write('component "connections" value 2\n')
     F.write('component "data" value 3\n')
     F.close()
-  
+
   def _write_nc(self, FN, data):
     """
     Writes a grid in netcdf format
@@ -161,15 +184,15 @@ object 3 class array type double rank 0 items {3} data follows
 
   def truncate(self, in_FN, out_FN, counts, multiplier=None):
     """
-    Truncates the grid at the origin and 
+    Truncates the grid at the origin and
     with a limited number of counts per dimension
-    
+
     multiplier is for the values, not the grid scaling
     """
     data_o = self.read(in_FN)
     nyz_o = data_o['counts'][1]*data_o['counts'][2]
     nz_o = data_o['counts'][2]
-    
+
     min_i = int(-data_o['origin'][0]/data_o['spacing'][0])
     min_j = int(-data_o['origin'][1]/data_o['spacing'][1])
     min_k = int(-data_o['origin'][2]/data_o['spacing'][2])
@@ -188,7 +211,7 @@ object 3 class array type double rank 0 items {3} data follows
 
     if multiplier is not None:
       vals = vals*multiplier
-    
+
     data_n = {'origin':np.array([0., 0., 0.]), \
       'counts':counts, 'spacing':data_o['spacing'], 'vals':vals.flatten()}
     self.write(out_FN,data_n)
@@ -202,10 +225,10 @@ class crd:
 
   def read(self, FN, natoms=None, return_title=False, \
       multiplier=None, trajectory=False):
-    """ 
+    """
     Reads an AMBER coordinate/restart or trajectory file.
-    
-    If natoms is not none, then the coordinates will be split 
+
+    If natoms is not none, then the coordinates will be split
       into a list of natoms X 3 arrays.
     The coordinates will be multiplied by multiplier.
     """
@@ -233,7 +256,7 @@ class crd:
       if (natoms is not None) and (file_natoms!=natoms):
         print "Incorrect number of atoms in crd file"
         return np.array([])
-      
+
       if trajectory:
         w = 8   # For mdcrd
       else:
@@ -277,7 +300,7 @@ class crd:
       F.write(title+'\n') # Title
       if not trajectory:
         F.write('%d\n'%crd.shape[0])
-  
+
     if not trajectory:
       flattened = np.vstack(crd).flatten()
       if multiplier is not None:
@@ -316,20 +339,20 @@ class dock6_mol2:
       mol2F = gzip.open(FN,'r')
     else:
       raise Exception('Unknown file type')
-    
+
     models = mol2F.read().strip().split('########## Name:')
     mol2F.close()
     models.pop(0)
-    
+
     if len(models)>0:
       for line in models[0].split('\n'):
         if line.startswith('##########'):
           label = line[11:line.find(':')].strip()
           E[label] = []
-      
+
       for model in models:
         fields = model.split('<TRIPOS>')
-        
+
         crd = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
           dtype=float)
         if multiplier is not None:
@@ -406,10 +429,10 @@ class dcd:
 
     if not isinstance(confs,list):
       confs = [confs]
-    
+
     if includeReceptor and (self.receptorConf is None):
       raise Exception("Missing receptor configuration")
-    
+
     n_atoms = 0
     if includeReceptor:
       receptor_x0 = factor*self.receptorConf[:self.ligand_first_atom,0]
@@ -456,7 +479,7 @@ class prmtop:
     pass
 
   def read(self, FN, varnames=['RESIDUE_LABEL','RESIDUE_POINTER']):
-    """ 
+    """
     Reads an AMBER prmtop file, returning a dictionary
     """
     if not os.path.isfile(FN):
@@ -468,7 +491,7 @@ class prmtop:
       F = open(FN,'r')
     data = F.read().split('%FLAG ')
     F.close()
-    
+
     prmtop = {}
     for record in data:
       name = record[:record.find('\n')].strip()

@@ -20,7 +20,7 @@ class Dummy:
     pass
 pkginfo = Dummy()
 execfile('AlGDock/__pkginfo__.py', pkginfo.__dict__)
-execfile('AlGDock/_external_paths.py')
+execfile('AlGDock/path_tools.py')
 
 from site import USER_BASE as userbase
 
@@ -29,7 +29,7 @@ from site import USER_BASE as userbase
 # Check for Cython
 try:
   from Cython.Distutils import build_ext
-  cython_ok = True  
+  cython_ok = True
 except ImportError:
   cython_ok = False
 if not cython_ok:
@@ -64,7 +64,7 @@ if not mmtk_ok:
 
 MMTK_source_path = findPath(search_paths['MMTK'])
 
-# Configure compile arguments and include directories 
+# Configure compile arguments and include directories
 compile_args = ['-fdiagnostics-color=always']
 include_dirs = ['Include',
                 os.path.join(MMTK_source_path,'Include'),
@@ -106,7 +106,7 @@ else:
       include_dirs.append(os.path.join(os.environ['NETCDF_PREFIX'],'include'))
 
 for user_include_path in [
-    os.path.join(userbase, 'include', 
+    os.path.join(userbase, 'include',
        'python%d.%d' % sys.version_info[:2])]:
   if os.path.exists(user_include_path):
     include_dirs.append(user_include_path)
@@ -281,7 +281,7 @@ if sphinx:
             try:
                 sphinx.setup_command.BuildDoc.run(self)
             except UnicodeDecodeError:
-                print >>sys.stderr, "ERROR: unable to build documentation because Sphinx do not handle source path with non-ASCII characters. Please try to move the source package to another location (path with *only* ASCII characters)."            
+                print >>sys.stderr, "ERROR: unable to build documentation because Sphinx do not handle source path with non-ASCII characters. Please try to move the source package to another location (path with *only* ASCII characters)."
             sys.path.pop(0)
 
     cmdclass['build_sphinx'] = BuildDoc
@@ -406,9 +406,9 @@ setup (name = package_name,
        description = "Molecular docking with an adaptive alchemical interaction grid",
        long_description=
 """
-AlGDock is an Open Source program for molecular docking. In addition to 
-low-energy poses, AlGDock also provides an estimate of the binding potential 
-of mean force, or free energy of binding between a (flexible) ligand and 
+AlGDock is an Open Source program for molecular docking. In addition to
+low-energy poses, AlGDock also provides an estimate of the binding potential
+of mean force, or free energy of binding between a (flexible) ligand and
 rigid receptor.
 """,
        author = "David Minh",
@@ -451,5 +451,5 @@ rigid receptor.
        command_options = {
            'build_sphinx': {
                'source_dir' : ('setup.py', 'Doc')}
-           },   
+           },
        )
