@@ -12,6 +12,8 @@ class NullDevice():
 class Logger:
   """Handles log file, locks, and timers
 
+  ...
+
   Attributes
   ----------
   args : argument_parser.SimulationArguments object

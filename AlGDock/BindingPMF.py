@@ -139,7 +139,7 @@ class BPMF:
     self.T_TARGET = self.args.params['BC']['T_TARGET']
     self.RT_TARGET = R * self.args.params['BC']['T_TARGET']
 
-    self._setup_universe()
+    self._setup()
 
     print '\n*** Simulation parameters and constants ***'
     for p in ['BC', 'CD']:
@@ -148,7 +148,7 @@ class BPMF:
 
     self._run(kwargs['run_type'])
 
-  def _setup_universe(self):
+  def _setup(self):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
 
     from AlGDock.topology import Topology
@@ -4281,10 +4281,8 @@ class BPMF:
 
     # Prepare the conformations by combining with the receptor if necessary
     if (moiety.find('R') > -1):
-      receptor_0 = self.data['CD'].confs['receptor'][:self.
-                                                     _ligand_first_atom, :]
-      receptor_1 = self.data['CD'].confs['receptor'][self.
-                                                     _ligand_first_atom:, :]
+      receptor_0 = self.data['CD'].confs['receptor'][:self.top_RL.L_first_atom, :]
+      receptor_1 = self.data['CD'].confs['receptor'][self.top_RL.L_first_atom:, :]
     if not isinstance(confs, list):
       confs = [confs]
     if (moiety.find('R') > -1):

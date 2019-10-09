@@ -15,7 +15,7 @@ class Topology:
   molecule : MMTK.Molecule
     Ligand molecule, like an OpenMM Chain
   molecule_R : MMTK.Molecule
-    Receptor molecule, like an OpenMM Chain
+    If includeReceptor, Receptor molecule, like an OpenMM Chain
   universe : MMTK.InfiniteUniverse
     A universe containing all the molecules
 
@@ -28,8 +28,14 @@ class Topology:
 
   """
   def __init__(self, args, includeReceptor=False):
-    """Creates object
+    """Initializes the class
 
+    Parameters
+    ----------
+    args : simulation_arguments.SimulationArguments
+      Simulation arguments
+    includeReceptor : bool
+      Includes the receptor in the topology
     """
 
     # Set up the system
