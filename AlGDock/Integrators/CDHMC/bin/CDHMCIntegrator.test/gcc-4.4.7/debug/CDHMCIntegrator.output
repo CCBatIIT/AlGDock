@@ -1,0 +1,10 @@
+Warning: multiple database entries for
+         /home/dminh/Installers/AlGDock-0.0.1/AlGDock/Integrators/TDHMC/2but/ligand.db,
+         using first one
+/home/dminh/Installers/AlGDock-0.0.1/AlGDock/Integrators/TDHMC/2but/ligand.db
+/home/dminh/Installers/AlGDock-0.0.1/AlGDock/Integrators/TDHMC/2but/ligand.db
+TDHMCIntegrator instance created 20160826
+/home/lspirido/Installers/molmodel/molmodel-3.0.0/src/Pdb.cpp:534 residues.size() : 0
+GC:  [-27.729226906735743, -25.385644596300846, -27.461091614532165]
+
+EXIT STATUS: 0
