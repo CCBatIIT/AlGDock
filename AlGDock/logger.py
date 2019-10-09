@@ -1,5 +1,14 @@
 import os
 
+class NullDevice():
+  """A device to suppress output
+  """
+  def write(self, s):
+    pass
+
+  def flush(self):
+    pass
+
 class Logger:
   """Handles log file, locks, and timers
 

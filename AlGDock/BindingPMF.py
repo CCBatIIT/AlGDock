@@ -9,6 +9,7 @@ import copy
 
 from AlGDock.IO import load_pkl_gz
 from AlGDock.IO import write_pkl_gz
+from AlGDock.logger import NullDevice
 
 import sys
 import time
@@ -96,14 +97,6 @@ def HMStime(s):
     return '%d:%d:%.2f' % (int(s / 3600), int(s / 60 % 60), s % 60)
 
 
-class NullDevice():
-  """
-  A device to suppress output
-  """
-  def write(self, s):
-    pass
-
-
 ##############
 # Main Class #
 ##############
@@ -158,60 +151,17 @@ class BPMF:
   def _setup_universe(self):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
 
-    # Set up the system
-    original_stderr = sys.stderr
-    sys.stderr = NullDevice()
-    MMTK.Database.molecule_types.directory = \
-      os.path.dirname(self.args.FNs['ligand_database'])
-    self.molecule = MMTK.Molecule(\
-      os.path.basename(self.args.FNs['ligand_database']))
-    if self.args.FNs['receptor_database'] is not None:
-      self.molecule_in_RL = MMTK.Molecule(\
-        os.path.basename(self.args.FNs['ligand_database']))
-      self.receptor_molecule_in_RL = MMTK.Molecule(\
-        os.path.basename(self.args.FNs['receptor_database']))
-    sys.stderr = original_stderr
-
-    # Hydrogen Mass Repartitioning
-    # (sets hydrogen mass to H_mass and scales other masses down)
-    if self.args.params['BC']['H_mass'] > 0.:
-      from AlGDock.HMR import hydrogen_mass_repartitioning
-      self.molecule = hydrogen_mass_repartitioning(self.molecule, \
-        self.args.params['BC']['H_mass'])
-
-    # Helpful variables for referencing and indexing atoms in the molecule
-    self.molecule.heavy_atoms = [ind for (atm,ind) in \
-      zip(self.molecule.atoms,range(self.molecule.numberOfAtoms())) \
-      if atm.type.name!='hydrogen']
-    self.molecule.nhatoms = len(self.molecule.heavy_atoms)
-
-    self.molecule.prmtop_atom_order = np.array([atom.number \
-      for atom in self.molecule.prmtop_order], dtype=int)
-    self.molecule.inv_prmtop_atom_order = \
-      np.zeros(shape=len(self.molecule.prmtop_atom_order), dtype=int)
-    for i in range(len(self.molecule.prmtop_atom_order)):
-      self.molecule.inv_prmtop_atom_order[
-          self.molecule.prmtop_atom_order[i]] = i
+    from AlGDock.topology import Topology
+    self.top = Topology(self.args)
+    self.top_RL = Topology(self.args, includeReceptor=True)
 
     # Initialize rmsd calculation function
     from AlGDock.RMSD import hRMSD
     self.get_rmsds = hRMSD(self.args.FNs['prmtop']['L'], \
-      self.molecule.inv_prmtop_atom_order)
-
-    # Create universe and add molecule to universe
-    self.universe = MMTK.Universe.InfiniteUniverse()
-    self.universe.addObject(self.molecule)
-
-    # Create sampling universe and add molecules to universe
-    if self.args.FNs['receptor_database'] is not None:
-      self.bonusE_universe = MMTK.Universe.InfiniteUniverse()
-      self.bonusE_universe.addObject(self.receptor_molecule_in_RL)
-      self.bonusE_universe.addObject(self.molecule_in_RL)
-    else:
-      self.bonusE_universe = None
+      self.top.inv_prmtop_atom_order_L)
 
     self._evaluators = {}  # Store evaluators
-    self._ligand_natoms = self.universe.numberOfAtoms()
+    self._ligand_natoms = self.top.universe.numberOfAtoms()
 
     # Force fields
     self._forceFields = {}
@@ -221,28 +171,6 @@ class BPMF:
     self._forceFields['gaff'] = Amber12SBForceField(
         parameter_file=self.args.FNs['forcefield'],
         mod_files=self.args.FNs['frcmodList'])
-
-    # Determine ligand atomic index
-    if (self.args.FNs['prmtop']['R'] is not None) and \
-       (self.args.FNs['prmtop']['RL'] is not None):
-      import AlGDock.IO
-      IO_prmtop = AlGDock.IO.prmtop()
-      prmtop_R = IO_prmtop.read(self.args.FNs['prmtop']['R'])
-      prmtop_RL = IO_prmtop.read(self.args.FNs['prmtop']['RL'])
-      ligand_ind = [
-          ind for ind in range(len(prmtop_RL['RESIDUE_LABEL']))
-          if prmtop_RL['RESIDUE_LABEL'][ind] not in prmtop_R['RESIDUE_LABEL']
-      ]
-      if len(ligand_ind) == 0:
-        raise Exception('Ligand not found in complex prmtop')
-      elif len(ligand_ind) > 1:
-        print '  possible ligand residue labels: '+\
-          ', '.join([prmtop_RL['RESIDUE_LABEL'][ind] for ind in ligand_ind])
-      print 'ligand residue name: ' + \
-        prmtop_RL['RESIDUE_LABEL'][ligand_ind[0]].strip()
-      self._ligand_first_atom = prmtop_RL['RESIDUE_POINTER'][ligand_ind[0]] - 1
-    else:
-      self._ligand_first_atom = 0
 
     # Read the reference ligand and receptor coordinates
     import AlGDock.IO
@@ -254,11 +182,11 @@ class BPMF:
         self.args.FNs['inpcrd']['R'], multiplier=0.1)
     elif self.args.FNs['inpcrd']['RL'] is not None:
       complex_crd = IO_crd.read(self.args.FNs['inpcrd']['RL'], multiplier=0.1)
-      lig_crd = complex_crd[self._ligand_first_atom:self._ligand_first_atom + \
+      lig_crd = complex_crd[self.top_RL.L_first_atom:self.top_RL.L_first_atom + \
         self._ligand_natoms,:]
       self.data['CD'].confs['receptor'] = np.vstack(\
-        (complex_crd[:self._ligand_first_atom,:],\
-         complex_crd[self._ligand_first_atom + self._ligand_natoms:,:]))
+        (complex_crd[:self.top_RL.L_first_atom,:],\
+         complex_crd[self.top_RL.L_first_atom + self._ligand_natoms:,:]))
     elif self.args.FNs['inpcrd']['L'] is not None:
       self.data['CD'].confs['receptor'] = None
       if os.path.isfile(self.args.FNs['inpcrd']['L']):
@@ -267,25 +195,24 @@ class BPMF:
       lig_crd = None
 
     if lig_crd is not None:
-      self.data['CD'].confs['ligand'] = lig_crd[self.molecule.
-                                                inv_prmtop_atom_order, :]
-      self.universe.setConfiguration(\
-        Configuration(self.universe,self.data['CD'].confs['ligand']))
-      if self.bonusE_universe is not None:
-        self.bonusE_universe.setConfiguration(\
-          Configuration(self.bonusE_universe, \
+      self.data['CD'].confs['ligand'] = lig_crd[self.top.inv_prmtop_atom_order_L, :]
+      self.top.universe.setConfiguration(\
+        Configuration(self.top.universe,self.data['CD'].confs['ligand']))
+      if self.top_RL.universe is not None:
+        self.top_RL.universe.setConfiguration(\
+          Configuration(self.top_RL.universe, \
           np.vstack((self.data['CD'].confs['receptor'],self.data['CD'].confs['ligand']))))
 
     if self.args.params['CD']['rmsd'] is not False:
       if self.args.params['CD']['rmsd'] is True:
         if lig_crd is not None:
-          rmsd_crd = lig_crd[self.molecule.inv_prmtop_atom_order, :]
+          rmsd_crd = lig_crd[self.top.inv_prmtop_atom_order_L, :]
         else:
           raise Exception('Reference structure for rmsd calculations unknown')
       else:
         rmsd_crd = IO_crd.read(self.args.params['CD']['rmsd'], \
-          natoms=self.universe.numberOfAtoms(), multiplier=0.1)
-        rmsd_crd = rmsd_crd[self.molecule.inv_prmtop_atom_order, :]
+          natoms=self.top.universe.numberOfAtoms(), multiplier=0.1)
+        rmsd_crd = rmsd_crd[self.top.inv_prmtop_atom_order_L, :]
       self.data['CD'].confs['rmsd'] = rmsd_crd
       self.get_rmsds.set_ref_configuration(self.data['CD'].confs['rmsd'])
 
@@ -307,7 +234,7 @@ class BPMF:
     # If configurations are being rescored, start with a docked structure
     (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
     if len(confs) > 0:
-      self.universe.setConfiguration(Configuration(self.universe, confs[-1]))
+      self.top.universe.setConfiguration(Configuration(self.top.universe, confs[-1]))
 
     # Samplers may accept the following options:
     # steps - number of MD steps
@@ -323,13 +250,13 @@ class BPMF:
     from AlGDock.Integrators.SmartDarting.SmartDarting \
       import SmartDartingIntegrator # @UnresolvedImport
     self.sampler['BC_SmartDarting'] = SmartDartingIntegrator(\
-      self.universe, self.molecule, False)
+      self.top.universe, self.top.molecule, False)
     self.sampler['CD_SmartDarting'] = SmartDartingIntegrator(\
-      self.universe, self.molecule, True)
+      self.top.universe, self.top.molecule, True)
     from AlGDock.Integrators.ExternalMC.ExternalMC import ExternalMCIntegrator
     self.sampler['ExternalMC'] = ExternalMCIntegrator(\
-      self.universe, self.molecule, step_size=0.25*MMTK.Units.Ang, \
-      bonusE_universe=self.bonusE_universe)
+      self.top.universe, self.top.molecule, step_size=0.25*MMTK.Units.Ang, \
+      bonusE_universe=self.top_RL.universe)
 
     for p in ['BC', 'CD']:
       if self.args.params[p]['sampler'] == 'MixedHMC':
@@ -337,32 +264,32 @@ class BPMF:
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
         self.mixed_samplers = []
-        self.mixed_samplers.append(CDHMC.CDHMCIntegrator(self.universe, \
+        self.mixed_samplers.append(CDHMC.CDHMCIntegrator(self.top.universe, \
           os.path.dirname(self.args.FNs['ligand_database']), \
           os.path.dirname(self.args.FNs['forcefield'])))
         self.mixed_samplers.append(
-            HamiltonianMonteCarloIntegrator(self.universe))
+            HamiltonianMonteCarloIntegrator(self.top.universe))
         self.sampler[p] = self._mixed_sampler2  #EU END
 #        from AlGDock.Integrators.CDHMC import CDHMC
 #        from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
-#        CDIntegrator = CDHMC.CDHMCIntegrator(self.universe, \
+#        CDIntegrator = CDHMC.CDHMCIntegrator(self.top.universe, \
 #          os.path.dirname(self.args.FNs['mol2']['L']), \
 #          os.path.dirname(self.args.FNs['forcefield']))
-#        self.sampler[p] = MixedHMCIntegrator(self.universe, CDIntegrator, \
+#        self.sampler[p] = MixedHMCIntegrator(self.top.universe, CDIntegrator, \
 #          fraction_CD=self.args.params[p]['fraction_CD'], \
 #          CD_steps_per_trial=self.args.params[p]['CD_steps_per_trial'], \
 #          delta_t_CD=self.args.params[p]['delta_t_CD'])
       elif self.args.params[p]['sampler'] == 'HMC':
         from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
           import HamiltonianMonteCarloIntegrator
-        self.sampler[p] = HamiltonianMonteCarloIntegrator(self.universe)
+        self.sampler[p] = HamiltonianMonteCarloIntegrator(self.top.universe)
       elif self.args.params[p]['sampler'] == 'NUTS':
         from NUTS import NUTSIntegrator  # @UnresolvedImport
-        self.sampler[p] = NUTSIntegrator(self.universe)
+        self.sampler[p] = NUTSIntegrator(self.top.universe)
       elif self.args.params[p]['sampler'] == 'VV':
         from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
           import VelocityVerletIntegrator
-        self.sampler[p] = VelocityVerletIntegrator(self.universe)
+        self.sampler[p] = VelocityVerletIntegrator(self.top.universe)
       else:
         raise Exception('Unrecognized sampler!')
 
@@ -533,7 +460,7 @@ class BPMF:
         self.data['BC'].confs['SmartDarting'] = \
           self.sampler['BC_SmartDarting'].confs
       elif len(seeds) > 0:
-        self.universe.setConfiguration(Configuration(self.universe, seeds[-1]))
+        self.top.universe.setConfiguration(Configuration(self.top.universe, seeds[-1]))
       self.data['BC'].confs['starting_poses'] = seeds
 
       # Ramp the temperature from 0 to the desired starting temperature using HMC
@@ -541,7 +468,7 @@ class BPMF:
 
       # Run at starting temperature
       self.log.start_times['BC_state'] = time.time()
-      seeds = [np.copy(self.universe.configuration().array) \
+      seeds = [np.copy(self.top.universe.configuration().array) \
         for n in range(self.args.params['BC']['seeds_per_state'])]
       (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'BC', lambda_o)
@@ -926,12 +853,12 @@ class BPMF:
         if BC0_Es_OBC != []:
           E['OBC'][c, :, :] = BC0_Es_OBC[c]
         for i_rot in range(self._n_rot):
-          conf_rot = Configuration(self.universe,\
+          conf_rot = Configuration(self.top.universe,\
             np.dot(BC0_confs[c], self._random_rotT[i_rot,:,:]))
           for i_trans in range(n_trans_o, n_trans_n):
-            self.universe.setConfiguration(conf_rot)
-            self.universe.translateTo(self.data['CD']._random_trans[i_trans])
-            eT = self.universe.energyTerms()
+            self.top.universe.setConfiguration(conf_rot)
+            self.top.universe.translateTo(self.data['CD']._random_trans[i_trans])
+            eT = self.top.universe.energyTerms()
             for (key, value) in eT.iteritems():
               if key != 'electrostatic':  # For some reason, MMTK double-counts electrostatic energies
                 E[term_map[key]][c, i_rot, i_trans] += value
@@ -1027,8 +954,8 @@ class BPMF:
             self.data['CD'].confs['SmartDarting'] = \
               self.sampler['CD_SmartDarting'].confs
           elif len(seeds) > 0:
-            self.universe.setConfiguration(\
-              Configuration(self.universe,np.copy(seeds[-1])))
+            self.top.universe.setConfiguration(\
+              Configuration(self.top.universe,np.copy(seeds[-1])))
 
           attempts = 0
           DeltaEs = np.array([0.])
@@ -1036,7 +963,7 @@ class BPMF:
             # Ramp up the temperature using HMC
             self._ramp_T(self.T_SIMMIN, normalize=False)
 
-            seeds = [np.copy(self.universe.configuration().array) \
+            seeds = [np.copy(self.top.universe.configuration().array) \
               for n in range(self.args.params['CD']['seeds_per_state'])]
             # Simulate
             (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
@@ -1830,10 +1757,10 @@ class BPMF:
       from AlGDock.ForceFields.Grid.Interpolation import InterpolationForceField
       FF = InterpolationForceField(FN, \
         scaling_property='scaling_factor_electrostatic')
-      self.universe.setForceField(FF)
+      self.top.universe.setForceField(FF)
       for c in range(len(confs)):
-        self.universe.setConfiguration(Configuration(self.universe, confs[c]))
-        Es[key][c] = self.universe.energy()
+        self.top.universe.setConfiguration(Configuration(self.top.universe, confs[c]))
+        Es[key][c] = self.top.universe.energy()
       updated = True
 
     # Calculate symmetry-corrected RMSD
@@ -1958,7 +1885,7 @@ class BPMF:
     evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
       for k in sorted(lambda_n.keys())])
     if evaluator_key in self._evaluators.keys():
-      self.universe._evaluator[(None,None,None)] = \
+      self.top.universe._evaluator[(None,None,None)] = \
         self._evaluators[evaluator_key]
       return
 
@@ -1986,9 +1913,9 @@ class BPMF:
               coms = []
               for (conf, E) in reversed(zip(confs, Es['total'])):
                 if E <= cutoffE:
-                  self.universe.setConfiguration(
-                      Configuration(self.universe, conf))
-                  coms.append(np.array(self.universe.centerOfMass()))
+                  self.top.universe.setConfiguration(
+                      Configuration(self.top.universe, conf))
+                  coms.append(np.array(self.top.universe.centerOfMass()))
                 else:
                   break
               print '  %d configurations fit in the binding site' % len(coms)
@@ -2000,8 +1927,8 @@ class BPMF:
                           (coms - center)**2, 1))) * 10.) / 10., 0.6)
               self.args.params['CD']['site_max_R'] = max_R
               self.args.params['CD']['site_center'] = center
-              self.universe.setConfiguration(
-                  Configuration(self.universe, confs[-1]))
+              self.top.universe.setConfiguration(
+                  Configuration(self.top.universe, confs[-1]))
             if ((self.args.params['CD']['site_max_R'] is None) or \
                 (self.args.params['CD']['site_center'] is None)):
               raise Exception('No binding site parameters!')
@@ -2073,12 +2000,13 @@ class BPMF:
               # The maximum value is set so that the electrostatic energy
               # less than or equal to the Lennard-Jones repulsive energy
               # for every heavy atom at every grid point
+              # TODO: For conversion to OpenMM, get ParticleProperties from the Force object
               scaling_factors_ELE = np.array([ \
-                self.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
-                  for a in self.molecule.atomList()],dtype=float)
+                self.top.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
+                  for a in self.top.molecule.atomList()],dtype=float)
               scaling_factors_LJr = np.array([ \
-                self.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
-                  for a in self.molecule.atomList()],dtype=float)
+                self.top.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
+                  for a in self.top.molecule.atomList()],dtype=float)
               toKeep = np.logical_and(scaling_factors_LJr > 10.,
                                       abs(scaling_factors_ELE) > 0.1)
               scaling_factors_ELE = scaling_factors_ELE[toKeep]
@@ -2124,13 +2052,13 @@ class BPMF:
             self._store_infinite_f_RL()
             raise Exception('Pose index greater than number of poses')
 
-        Xo = np.copy(self.universe.configuration().array)
-        self.universe.setConfiguration(
-            Configuration(self.universe, starting_pose))
+        Xo = np.copy(self.top.universe.configuration().array)
+        self.top.universe.setConfiguration(
+            Configuration(self.top.universe, starting_pose))
         import AlGDock.rigid_bodies
-        rb = AlGDock.rigid_bodies.identifier(self.universe, self.molecule)
+        rb = AlGDock.rigid_bodies.identifier(self.top.universe, self.top.molecule)
         (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
-        self.universe.setConfiguration(Configuration(self.universe, Xo))
+        self.top.universe.setConfiguration(Configuration(self.top.universe, Xo))
 
         # Create force fields
         from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
@@ -2158,21 +2086,21 @@ class BPMF:
     compoundFF = fflist[0]
     for ff in fflist[1:]:
       compoundFF += ff
-    self.universe.setForceField(compoundFF)
+    self.top.universe.setForceField(compoundFF)
 
-    if self.bonusE_universe is not None:
+    if self.top_RL.universe is not None:
       if 'OBC_RL' in lambda_n.keys():
         if not 'OBC_RL' in self._forceFields.keys():
           from AlGDock.ForceFields.OBC.OBC import OBCForceField
           self._forceFields['OBC_RL'] = OBCForceField()
         self._forceFields['OBC_RL'].set_strength(lambda_n['OBC_RL'])
         if (lambda_n['OBC_RL'] > 0):
-          self.bonusE_universe.setForceField(self._forceFields['OBC_RL'])
+          self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
 
     eval = ForceField.EnergyEvaluator(\
-      self.universe, self.universe._forcefield, None, None, None, None)
+      self.top.universe, self.top.universe._forcefield, None, None, None, None)
     eval.key = evaluator_key
-    self.universe._evaluator[(None, None, None)] = eval
+    self.top.universe._evaluator[(None, None, None)] = eval
     self._evaluators[evaluator_key] = eval
 
   def _clear_evaluators(self):
@@ -2189,20 +2117,20 @@ class BPMF:
 
     # First minimize the energy
     from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
-    minimizer = SteepestDescentMinimizer(self.universe)
+    minimizer = SteepestDescentMinimizer(self.top.universe)
 
     original_stderr = sys.stderr
     sys.stderr = NullDevice()  # Suppresses warnings for minimization
 
-    x_o = np.copy(self.universe.configuration().array)
-    e_o = self.universe.energy()
+    x_o = np.copy(self.top.universe.configuration().array)
+    e_o = self.top.universe.energy()
     for rep in range(5000):
       minimizer(steps=10)
-      x_n = np.copy(self.universe.configuration().array)
-      e_n = self.universe.energy()
+      x_n = np.copy(self.top.universe.configuration().array)
+      e_n = self.top.universe.energy()
       diff = abs(e_o - e_n)
       if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
-        self.universe.setConfiguration(Configuration(self.universe, x_o))
+        self.top.universe.setConfiguration(Configuration(self.top.universe, x_o))
         break
       else:
         x_o = x_n
@@ -2215,9 +2143,9 @@ class BPMF:
     # Then ramp the energy to the starting temperature
     from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
       import HamiltonianMonteCarloIntegrator
-    sampler = HamiltonianMonteCarloIntegrator(self.universe)
+    sampler = HamiltonianMonteCarloIntegrator(self.top.universe)
 
-    e_o = self.universe.energy()
+    e_o = self.top.universe.energy()
     T_LOW = 20.
     T_SERIES = T_LOW * (T_START / T_LOW)**(np.arange(30) / 29.)
     for T in T_SERIES:
@@ -2226,7 +2154,7 @@ class BPMF:
       attempts_left = 10
       while attempts_left > 0:
         random_seed = int(T*10000) + attempts_left + \
-          int(self.universe.configuration().array[0][0]*10000)
+          int(self.top.universe.configuration().array[0][0]*10000)
         if self.args.random_seed == 0:
           random_seed += int(time.time() * 1000)
         random_seed = random_seed % 32767
@@ -2244,11 +2172,11 @@ class BPMF:
           steps_per_trial = max(int(steps_per_trial / 2), 1)
       fmt = "  T = %d, delta_t = %.3f fs, steps_per_trial = %d, acc_rate = %.3f"
       if acc_rate < 0.01:
-        print self.universe.energyTerms()
+        print self.top.universe.energyTerms()
       self.log.tee(fmt % (T, delta_t * 1000, steps_per_trial, acc_rate))
     if normalize:
-      self.universe.normalizePosition()
-    e_f = self.universe.energy()
+      self.top.universe.normalizePosition()
+    e_f = self.top.universe.energy()
 
     self.log.tee("  ramped temperature from %d to %d K in %s, "%(\
       T_LOW, T_START, HMStime(time.time()-self.log.start_times['T_ramp'])) + \
@@ -2270,8 +2198,8 @@ class BPMF:
       # Get initial potential energy
       Es_o = []
       for seed in seeds:
-        self.universe.setConfiguration(Configuration(self.universe, seed))
-        Es_o.append(self.universe.energy())
+        self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
+        Es_o.append(self.top.universe.energy())
       Es_o = np.array(Es_o)
 
       # Perform simulation
@@ -2369,12 +2297,12 @@ class BPMF:
       Initialize BAT converter object.
       Decide which internal coord to crossover. Here, only the soft torsions will be crossovered.
       Produce a list of replica (state) index pairs to be swaped. Only Neighbor pairs will be swaped.
-      Assume that self.universe, self.molecule and K (number of states) exist
+      Assume that self.top.universe, self.top.molecule and K (number of states) exist
       as global variables when the function is called.
       """
       from AlGDock.rigid_bodies import identifier
       import itertools
-      BAT_converter = identifier(self.universe, self.molecule)
+      BAT_converter = identifier(self.top.universe, self.top.molecule)
       BAT = BAT_converter.BAT(extended=True)
       # this assumes that the torsional angles are stored in the tail of BAT
       softTorsionId = [
@@ -2400,7 +2328,7 @@ class BPMF:
     def do_gMC(nr_attempts, BAT_converter, state_indices_to_swap,
                torsion_threshold):
       """
-      Assume self.universe, confs, lambdas, state_inds, inv_state_inds exist as global variables
+      Assume self.top.universe, confs, lambdas, state_inds, inv_state_inds exist as global variables
       when the function is called.
       If at least one of the torsions in the combination chosen for an crossover attempt
       changes more than torsion_threshold, the crossover will be attempted.
@@ -2421,11 +2349,11 @@ class BPMF:
       energies = np.zeros(K, dtype=float)
       for c_ind in range(K):
         s_ind = state_inds[c_ind]
-        self.universe.setConfiguration(
-            Configuration(self.universe, confs[c_ind]))
+        self.top.universe.setConfiguration(
+            Configuration(self.top.universe, confs[c_ind]))
         BATs.append(np.array(BAT_converter.BAT(extended=True), dtype=float))
         self._set_universe_evaluator(lambdas[s_ind])
-        reduced_e = self.universe.energy() / (R * lambdas[s_ind]['T'])
+        reduced_e = self.top.universe.energy() / (R * lambdas[s_ind]['T'])
         energies[c_ind] = reduced_e
       #
       nr_sets_of_torsions = len(BAT_converter.BAT_to_crossover)
@@ -2466,15 +2394,15 @@ class BPMF:
             # Cartesian coord and reduced energies after crossover.
             BAT_converter.Cartesian(BAT_k0_af)
             self._set_universe_evaluator(lambdas[state_pair[0]])
-            e_k0_af = self.universe.energy() / (R *
+            e_k0_af = self.top.universe.energy() / (R *
                                                 lambdas[state_pair[0]]['T'])
-            conf_k0_af = copy.deepcopy(self.universe.configuration().array)
+            conf_k0_af = copy.deepcopy(self.top.universe.configuration().array)
             #
             BAT_converter.Cartesian(BAT_k1_af)
             self._set_universe_evaluator(lambdas[state_pair[1]])
-            e_k1_af = self.universe.energy() / (R *
+            e_k1_af = self.top.universe.energy() / (R *
                                                 lambdas[state_pair[1]]['T'])
-            conf_k1_af = copy.deepcopy(self.universe.configuration().array)
+            conf_k1_af = copy.deepcopy(self.top.universe.configuration().array)
             #
             de = (e_k0_be - e_k0_af) + (e_k1_be - e_k1_af)
             # update confs, energies, BATS
@@ -2692,7 +2620,7 @@ class BPMF:
 
     # Sort energies and conformations by thermodynamic state
     # and store in global variables
-    #   self.self.data[process].Es and self.data[process].confs['samples']
+    #   self.data[process].Es and self.data[process].confs['samples']
     # and also local variables
     #   Es_repX and confs_repX
     if (process == 'CD') and (self.args.params['CD']['rmsd'] is not False):
@@ -2794,7 +2722,7 @@ class BPMF:
   def _sim_one_state(self, seed, process, lambda_k, \
       initialize=False, reference=0):
 
-    self.universe.setConfiguration(Configuration(self.universe, seed))
+    self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
 
     self._set_universe_evaluator(lambda_k)
     if 'delta_t' in lambda_k.keys():
@@ -3132,7 +3060,7 @@ class BPMF:
       import AlGDock.IO
       IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
       (confs, Es) = IO_dock6_mol2.read(self.args.FNs['score'], \
-        reorder=self.molecule.inv_prmtop_atom_order,
+        reorder=self.top.inv_prmtop_atom_order_L,
         multiplier=0.1) # to convert Angstroms to nanometers
       count['dock6'] = len(confs)
     elif self.args.FNs['score'].endswith('.mdcrd'):
@@ -3141,13 +3069,13 @@ class BPMF:
       lig_crds = IO_crd.read(self.args.FNs['score'], \
         multiplier=0.1) # to convert Angstroms to nanometers
       confs = np.array_split(lig_crds, lig_crds.shape[0] / self._ligand_natoms)
-      confs = [conf[self.molecule.inv_prmtop_atom_order, :] for conf in confs]
+      confs = [conf[self.top.inv_prmtop_atom_order_L, :] for conf in confs]
       Es = {}
     elif self.args.FNs['score'].endswith('.nc'):
       from netCDF4 import Dataset
       dock6_nc = Dataset(self.args.FNs['score'], 'r')
       confs = [
-          dock6_nc.variables['confs'][n][self.molecule.inv_prmtop_atom_order, :]
+          dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :]
           for n in range(dock6_nc.variables['confs'].shape[0])
       ]
       Es = dict([(key, dock6_nc.variables[key][:])
@@ -3180,29 +3108,29 @@ class BPMF:
       confs_in_site = []
       Es_in_site = dict([(label, []) for label in Es.keys()])
       old_eval = None
-      if (None, None, None) in self.universe._evaluator.keys():
-        old_eval = self.universe._evaluator[(None, None, None)]
+      if (None, None, None) in self.top.universe._evaluator.keys():
+        old_eval = self.top.universe._evaluator[(None, None, None)]
       self._set_universe_evaluator({'site': True, 'T': self.T_SIMMIN})
       for n in range(len(confs)):
-        self.universe.setConfiguration(Configuration(self.universe, confs[n]))
-        if self.universe.energy() < 1.:
+        self.top.universe.setConfiguration(Configuration(self.top.universe, confs[n]))
+        if self.top.universe.energy() < 1.:
           confs_in_site.append(confs[n])
           for label in Es.keys():
             Es_in_site[label].append(Es[label][n])
       if old_eval is not None:
-        self.universe._evaluator[(None, None, None)] = old_eval
+        self.top.universe._evaluator[(None, None, None)] = old_eval
       confs = confs_in_site
       Es = Es_in_site
 
     try:
-      self.universe.energy()
+      self.top.universe.energy()
     except ValueError:
       return (confs, {})
 
     if minimize:
       Es = {}
       from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
-      minimizer = SteepestDescentMinimizer(self.universe)
+      minimizer = SteepestDescentMinimizer(self.top.universe)
 
       original_stderr = sys.stderr
       sys.stderr = NullDevice()  # Suppresses warnings for minimization
@@ -3211,16 +3139,16 @@ class BPMF:
       minimized_energies = []
       self.log.start_times['minimization'] = time.time()
       for conf in confs:
-        self.universe.setConfiguration(Configuration(self.universe, conf))
-        x_o = np.copy(self.universe.configuration().array)
-        e_o = self.universe.energy()
+        self.top.universe.setConfiguration(Configuration(self.top.universe, conf))
+        x_o = np.copy(self.top.universe.configuration().array)
+        e_o = self.top.universe.energy()
         for rep in range(50):
           minimizer(steps=25)
-          x_n = np.copy(self.universe.configuration().array)
-          e_n = self.universe.energy()
+          x_n = np.copy(self.top.universe.configuration().array)
+          e_n = self.top.universe.energy()
           diff = abs(e_o - e_n)
           if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
-            self.universe.setConfiguration(Configuration(self.universe, x_o))
+            self.top.universe.setConfiguration(Configuration(self.top.universe, x_o))
             break
           else:
             x_o = x_n
@@ -3241,8 +3169,8 @@ class BPMF:
       # Evaluate energies
       energies = []
       for conf in confs:
-        self.universe.setConfiguration(Configuration(self.universe, conf))
-        energies.append(self.universe.energy())
+        self.top.universe.setConfiguration(Configuration(self.top.universe, conf))
+        energies.append(self.top.universe.energy())
 
     if sort and len(confs) > 0:
       # Sort configurations by DECREASING energy
@@ -3992,8 +3920,8 @@ class BPMF:
         E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
         E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
     for c in range(len(confs)):
-      self.universe.setConfiguration(Configuration(self.universe, confs[c]))
-      eT = self.universe.energyTerms()
+      self.top.universe.setConfiguration(Configuration(self.top.universe, confs[c]))
+      eT = self.top.universe.energyTerms()
       for (key, value) in eT.iteritems():
         if key == 'electrostatic':
           pass  # For some reason, MMTK double-counts electrostatic energies
@@ -4224,9 +4152,9 @@ class BPMF:
     factor = 1.0 / MMTK.Units.Ang
     if (moiety.find('R') > -1):
       receptor_0 = factor * self.data['CD'].confs[
-          'receptor'][:self._ligand_first_atom, :]
+          'receptor'][:self.top_RL.L_first_atom, :]
       receptor_1 = factor * self.data['CD'].confs['receptor'][
-          self._ligand_first_atom:, :]
+          self.top_RL.L_first_atom:, :]
 
     if not isinstance(confs, list):
       confs = [confs]
@@ -4234,12 +4162,12 @@ class BPMF:
     if (moiety.find('R') > -1):
       if (moiety.find('L') > -1):
         full_confs = [np.vstack((receptor_0, \
-          conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang, \
+          conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang, \
           receptor_1)) for conf in confs]
       else:
         full_confs = [factor * self.data['CD'].confs['receptor']]
     else:
-      full_confs = [conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang \
+      full_confs = [conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang \
         for conf in confs]
 
     # Set up directory
@@ -4337,8 +4265,8 @@ class BPMF:
         for i in range(OMM_system.getNumParticles()):
           OMM_system.setParticleMass(i, 0)
       elif moiety == 'RL':
-        for i in range(self._ligand_first_atom) + \
-            range(self._ligand_first_atom + self._ligand_natoms, \
+        for i in range(self.top_RL.L_first_atom) + \
+            range(self.top_RL.L_first_atom + self._ligand_natoms, \
             OMM_system.getNumParticles()):
           OMM_system.setParticleMass(i, 0)
       dummy_integrator = simtk.openmm.LangevinIntegrator(300*simtk.unit.kelvin, \
@@ -4362,12 +4290,12 @@ class BPMF:
     if (moiety.find('R') > -1):
       if (moiety.find('L') > -1):
         confs = [np.vstack((receptor_0, \
-          conf[self.molecule.prmtop_atom_order,:], \
+          conf[self.top.prmtop_atom_order_L,:], \
           receptor_1)) for conf in confs]
       else:
         confs = [self.data['CD'].confs['receptor']]
     else:
-      confs = [conf[self.molecule.prmtop_atom_order, :] for conf in confs]
+      confs = [conf[self.top.prmtop_atom_order_L, :] for conf in confs]
 
     import simtk.unit
     # Calculate the energies
@@ -4397,9 +4325,9 @@ class BPMF:
     factor = 1.0 / MMTK.Units.Ang
     if (moiety.find('R') > -1):
       receptor_0 = factor * self.data['CD'].confs[
-          'receptor'][:self._ligand_first_atom, :]
+          'receptor'][:self.top_RL.L_first_atom, :]
       receptor_1 = factor * self.data['CD'].confs['receptor'][
-          self._ligand_first_atom:, :]
+          self.top_RL.L_first_atom:, :]
 
     if not isinstance(confs, list):
       confs = [confs]
@@ -4407,12 +4335,12 @@ class BPMF:
     if (moiety.find('R') > -1):
       if (moiety.find('L') > -1):
         full_confs = [np.vstack((receptor_0, \
-          conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang, \
+          conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang, \
           receptor_1)) for conf in confs]
       else:
         full_confs = [factor * self.data['CD'].confs['receptor']]
     else:
-      full_confs = [conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang \
+      full_confs = [conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang \
         for conf in confs]
 
     # Write coordinates, run APBS, and store energies
@@ -4630,10 +4558,10 @@ END
 
     import AlGDock.IO
     if traj_FN.endswith('.dcd'):
-      IO_dcd = AlGDock.IO.dcd(self.molecule,
-        ligand_atom_order = self.molecule.prmtop_atom_order, \
+      IO_dcd = AlGDock.IO.dcd(self.top.molecule,
+        ligand_atom_order = self.top.prmtop_atom_order_L, \
         receptorConf = self.data['CD'].confs['receptor'], \
-        ligand_first_atom = self._ligand_first_atom)
+        ligand_first_atom = self.top_RL.L_first_atom)
       IO_dcd.write(traj_FN,
                    confs,
                    includeReceptor=(moiety.find('R') > -1),
@@ -4641,21 +4569,21 @@ END
     elif traj_FN.endswith('.mdcrd'):
       if (moiety.find('R') > -1):
         receptor_0 = factor * self.data['CD'].confs[
-            'receptor'][:self._ligand_first_atom, :]
+            'receptor'][:self.top_RL.L_first_atom, :]
         receptor_1 = factor * self.data['CD'].confs['receptor'][
-            self._ligand_first_atom:, :]
+            self.top_RL.L_first_atom:, :]
 
       if not isinstance(confs, list):
         confs = [confs]
       if (moiety.find('R') > -1):
         if (moiety.find('L') > -1):
           confs = [np.vstack((receptor_0, \
-            conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang, \
+            conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang, \
             receptor_1)) for conf in confs]
         else:
           confs = [factor * self.data['CD'].confs['receptor']]
       else:
-        confs = [conf[self.molecule.prmtop_atom_order,:]/MMTK.Units.Ang \
+        confs = [conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang \
           for conf in confs]
 
       import AlGDock.IO
