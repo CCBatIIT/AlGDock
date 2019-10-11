@@ -291,55 +291,8 @@ class BPMF:
     # normalize - normalizes configurations
     # adapt - uses an adaptive time step
 
-    self.sampler = {}
-    # Uses cython class
-    # from SmartDarting import SmartDartingIntegrator # @UnresolvedImport
-    # Uses python class
-    from AlGDock.Integrators.SmartDarting.SmartDarting \
-      import SmartDartingIntegrator # @UnresolvedImport
-    self.sampler['BC_SmartDarting'] = SmartDartingIntegrator(\
-      self.top.universe, self.top.molecule, False)
-    self.sampler['CD_SmartDarting'] = SmartDartingIntegrator(\
-      self.top.universe, self.top.molecule, True)
-    from AlGDock.Integrators.ExternalMC.ExternalMC import ExternalMCIntegrator
-    self.sampler['ExternalMC'] = ExternalMCIntegrator(\
-      self.top.universe, self.top.molecule, step_size=0.25*MMTK.Units.Ang, \
-      bonusE_universe=self.top_RL.universe)
-
-    for p in ['BC', 'CD']:
-      if self.args.params[p]['sampler'] == 'MixedHMC':
-        from AlGDock.Integrators.CDHMC import CDHMC
-        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-          import HamiltonianMonteCarloIntegrator
-        self.mixed_samplers = []
-        self.mixed_samplers.append(CDHMC.CDHMCIntegrator(self.top.universe, \
-          os.path.dirname(self.args.FNs['ligand_database']), \
-          os.path.dirname(self.args.FNs['forcefield'])))
-        self.mixed_samplers.append(
-          HamiltonianMonteCarloIntegrator(self.top.universe))
-        self.sampler[p] = self._mixed_sampler2  #EU END
-#        from AlGDock.Integrators.CDHMC import CDHMC
-#        from AlGDock.Integrators.MixedHMC.MixedHMC import MixedHMCIntegrator
-#        CDIntegrator = CDHMC.CDHMCIntegrator(self.top.universe, \
-#          os.path.dirname(self.args.FNs['mol2']['L']), \
-#          os.path.dirname(self.args.FNs['forcefield']))
-#        self.sampler[p] = MixedHMCIntegrator(self.top.universe, CDIntegrator, \
-#          fraction_CD=self.args.params[p]['fraction_CD'], \
-#          CD_steps_per_trial=self.args.params[p]['CD_steps_per_trial'], \
-#          delta_t_CD=self.args.params[p]['delta_t_CD'])
-      elif self.args.params[p]['sampler'] == 'HMC':
-        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-          import HamiltonianMonteCarloIntegrator
-        self.sampler[p] = HamiltonianMonteCarloIntegrator(self.top.universe)
-      elif self.args.params[p]['sampler'] == 'NUTS':
-        from NUTS import NUTSIntegrator  # @UnresolvedImport
-        self.sampler[p] = NUTSIntegrator(self.top.universe)
-      elif self.args.params[p]['sampler'] == 'VV':
-        from AlGDock.Integrators.VelocityVerlet.VelocityVerlet \
-          import VelocityVerletIntegrator
-        self.sampler[p] = VelocityVerletIntegrator(self.top.universe)
-      else:
-        raise Exception('Unrecognized sampler!')
+    from AlGDock.simulation_iterator import SimulationIterator
+    self.iterator = SimulationIterator(self.args, self.top, self.system)
 
     # Load progress
     self._postprocess(readOnly=True)
@@ -504,11 +457,8 @@ class BPMF:
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
       # initializes smart darting for BC
       # and sets the universe to the lowest energy configuration
-      if self.args.params['BC']['darts_per_seed'] > 0:
-        self.log.tee(self.sampler['BC_SmartDarting'].set_confs(seeds))
-        self.data['BC'].confs['SmartDarting'] = \
-          self.sampler['BC_SmartDarting'].confs
-      elif len(seeds) > 0:
+      self.log.tee(self.iterator.initializeSmartDartingConfigurations(seeds, 'BC', self.data))
+      if len(seeds) > 0:
         self.top.universe.setConfiguration(
           Configuration(self.top.universe, seeds[-1]))
       self.data['BC'].confs['starting_poses'] = seeds
@@ -570,11 +520,7 @@ class BPMF:
       # Simulate
       self.log.recordStart('BC_state')
       self.system.set_lambda(lambda_n)
-      if self.args.params['BC']['darts_per_seed'] > 0:
-        self.log.tee(self.sampler['BC_SmartDarting'].set_confs(\
-          self.data['BC'].confs['SmartDarting']))
-        self.data['BC'].confs['SmartDarting'] = self.sampler[
-          'BC_SmartDarting'].confs
+      self.log.tee(self.iterator.initializeSmartDartingConfigurations(seeds, 'BC', self.data))
       (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'BC', lambda_n)
 
@@ -675,7 +621,7 @@ class BPMF:
       "%d states: "%len(self.data['BC'].protocol) + \
       HMStime(self.log.timeSince('BC')))
     self.log.clear_lock('BC')
-    self.sampler['BC_SmartDarting'].confs = []
+    self.iterator.clearSmartDartingConfigurations('BC')
     return True
 
   def calc_f_L(self, readOnly=False, do_solvation=True, redo=False):
@@ -1000,11 +946,8 @@ class BPMF:
         else:
           # initializes smart darting for CD and sets the universe
           # to the lowest energy configuration
-          if self.args.params['CD']['darts_per_seed'] > 0:
-            self.log.tee(self.sampler['CD_SmartDarting'].set_confs(seeds))
-            self.data['CD'].confs['SmartDarting'] = \
-              self.sampler['CD_SmartDarting'].confs
-          elif len(seeds) > 0:
+          self.log.tee(self.iterator.initializeSmartDartingConfigurations(seeds, 'CD', self.data))
+          if len(seeds) > 0:
             self.top.universe.setConfiguration(\
               Configuration(self.top.universe,np.copy(seeds[-1])))
 
@@ -1154,10 +1097,7 @@ class BPMF:
       self.log.recordStart('CD_state')
       self.system.set_lambda(lambda_n)
       if self.args.params['CD']['darts_per_seed'] > 0 and lambda_n['a'] > 0.1:
-        self.log.tee(self.sampler['CD_SmartDarting'].set_confs(\
-          self.data['CD'].confs['SmartDarting']))
-        self.data['CD'].confs['SmartDarting'] = self.sampler[
-          'CD_SmartDarting'].confs
+        self.log.tee(self.iterator.initializeSmartDartingConfigurations(self.data['CD'].confs['SmartDarting'], 'CD', self.data))
       (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'CD', lambda_n)
       if np.std(DeltaEs) < 1E-7:
@@ -1277,7 +1217,7 @@ class BPMF:
       "%d states: "%len(self.data['CD'].protocol) + \
       HMStime(self.log.timeSince('initial_CD')))
     self.log.clear_lock('CD')
-    self.sampler['CD_SmartDarting'].confs = []
+    self.iterator.clearSmartDartingConfigurations('CD')
     return True
 
   def calc_f_RL(self, readOnly=False, do_solvation=True, redo=False):
@@ -2009,7 +1949,7 @@ class BPMF:
         done_queue = m.Queue()
         for k in range(len(seeds)):
           task_queue.put((seeds[k], process, lambda_k, True, k))
-        processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
+        processes = [multiprocessing.Process(target=self._iteration_worker, \
             args=(task_queue, done_queue)) for p in range(self.args.cores)]
         for p in range(self.args.cores):
           task_queue.put('STOP')
@@ -2022,7 +1962,7 @@ class BPMF:
           p.terminate()
       else:
         # Single process code
-        results = [self._sim_one_state(\
+        results = [self.iterator.iteration(\
           seeds[k], process, lambda_k, True, k) for k in range(len(seeds))]
 
       seeds = [result['confs'] for result in results]
@@ -2041,7 +1981,7 @@ class BPMF:
         delta_t = delta_t[0]
 
       # Adjust the time step
-      if 'HamiltonianMonteCarlo' in self.sampler[process].__module__:
+      if self.args.params[process]['sampler'] == 'HMC':
         # Adjust the time step for Hamiltonian Monte Carlo
         acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
           np.sum([r['att_Sampler'] for r in results])
@@ -2253,12 +2193,7 @@ class BPMF:
       self.system.set_lambda(lambdas[k])
 
     # If it has not been set up, set up Smart Darting
-    if self.args.params[process]['darts_per_sweep'] > 0:
-      if self.sampler[process + '_SmartDarting'].confs == []:
-        self.log.tee(self.sampler[process+'_SmartDarting'].set_confs(\
-          self.data[process].confs['SmartDarting']))
-        self.data[process].confs['SmartDarting'] = \
-          self.sampler[process+'_SmartDarting'].confs
+    self.iterator.initializeSmartDartingConfigurations(self.data[process].confs['SmartDarting'], process, self.data)
 
     # storage[key][sweep_index][state_index] will contain data
     # from the replica exchange sweeps
@@ -2311,7 +2246,7 @@ class BPMF:
           task_queue.put((confs[k], process, lambdas[state_inds[k]], False, k))
         for p in range(self.args.cores):
           task_queue.put('STOP')
-        processes = [multiprocessing.Process(target=self._sim_one_state_worker, \
+        processes = [multiprocessing.Process(target=self._iteration_worker, \
             args=(task_queue, done_queue)) for p in range(self.args.cores)]
         for p in processes:
           p.start()
@@ -2323,7 +2258,7 @@ class BPMF:
           p.terminate()
       else:
         # Single process code
-        results = [self._sim_one_state(confs[k], process, \
+        results = [self.iterator.iteration(confs[k], process, \
             lambdas[state_inds[k]], False, k) for k in range(K)]
 
       # GMC
@@ -2391,7 +2326,7 @@ class BPMF:
     self.log.tee(MC_report)
 
     # Adapt HamiltonianMonteCarlo parameters
-    if 'HamiltonianMonteCarlo' in self.sampler[process].__module__:
+    if self.args.params[process]['sampler'] == 'HMC':
       acc_rates = np.array(acc['Sampler'], dtype=np.float) / att['Sampler']
       for k in range(K):
         acc_rate = acc_rates[k]
@@ -2455,12 +2390,9 @@ class BPMF:
 
     if self.args.params[process]['darts_per_sweep'] > 0:
       self.system.set_lambda(self.data[process].protocol[-1])
-      confs_SmartDarting = [np.copy(conf) \
-        for conf in self.data[process].confs['samples'][k][-1]]
-      self.log.tee(self.sampler[process+'_SmartDarting'].set_confs(\
-        confs_SmartDarting + self.data[process].confs['SmartDarting']))
-      self.data[process].confs['SmartDarting'] = \
-        self.sampler[process+'_SmartDarting'].confs
+      new_confs = [np.copy(conf) \
+        for conf in data[process].confs['samples'][k][-1]]
+      self.iterator.addSmartDartingConfigurations(new_confs, process, self.data)
 
     self.data[process].cycle += 1
     self._save(process)
@@ -2509,79 +2441,13 @@ class BPMF:
         np.random.choice(range(W_nl.shape[0]), size = 1, p = W_nl[:,k])[0])
       self.data[process].confs['replicas'].append(np.copy(confs_repX[s][n]))
 
-  def _sim_one_state_worker(self, input, output):
+  def _iteration_worker(self, input, output):
     """
     Executes a task from the queue
     """
     for args in iter(input.get, 'STOP'):
-      result = self._sim_one_state(*args)
+      result = self.iterator.iteration(*args)
       output.put(result)
-
-  def _sim_one_state(self, seed, process, lambda_k, \
-      initialize=False, reference=0):
-
-    self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
-
-    self.system.set_lambda(lambda_k)
-    if 'delta_t' in lambda_k.keys():
-      delta_t = lambda_k['delta_t']
-    else:
-      raise Exception('No time step specified')
-    if 'steps_per_trial' in lambda_k.keys():
-      steps_per_trial = lambda_k['steps_per_trial']
-    else:
-      steps_per_trial = self.args.params[process]['steps_per_sweep']
-
-    if initialize:
-      steps = self.args.params[process]['steps_per_seed']
-      ndarts = self.args.params[process]['darts_per_seed']
-    else:
-      steps = self.args.params[process]['steps_per_sweep']
-      ndarts = self.args.params[process]['darts_per_sweep']
-
-    random_seed = reference * reference + int(abs(seed[0][0] * 10000))
-    if self.args.random_seed > 0:
-      random_seed += self.args.random_seed
-    else:
-      random_seed += int(time.time() * 1000)
-
-    results = {}
-
-    # Execute external MCMC moves
-    if (process == 'CD') and (self.args.params['CD']['MCMC_moves']>0) \
-        and (lambda_k['a'] < 0.1) and (self.args.params['CD']['pose']==-1):
-      time_start_ExternalMC = time.time()
-      dat = self.sampler['ExternalMC'](ntrials=5, T=lambda_k['T'])
-      results['acc_ExternalMC'] = dat[2]
-      results['att_ExternalMC'] = dat[3]
-      results['time_ExternalMC'] = (time.time() - time_start_ExternalMC)
-
-    # Execute dynamics sampler
-    time_start_Sampler = time.time()
-    dat = self.sampler[process](\
-      steps=steps, steps_per_trial=steps_per_trial, \
-      T=lambda_k['T'], delta_t=delta_t, \
-      normalize=(process=='BC'), adapt=initialize, random_seed=random_seed)
-    results['acc_Sampler'] = dat[2]
-    results['att_Sampler'] = dat[3]
-    results['delta_t'] = dat[4]
-    results['time_Sampler'] = (time.time() - time_start_Sampler)
-
-    # Execute smart darting
-    if (ndarts > 0) and not ((process == 'CD') and (lambda_k['a'] < 0.1)):
-      time_start_SmartDarting = time.time()
-      dat = self.sampler[process+'_SmartDarting'](\
-        ntrials=ndarts, T=lambda_k['T'], random_seed=random_seed+5)
-      results['acc_SmartDarting'] = dat[2]
-      results['att_SmartDarting'] = dat[3]
-      results['time_SmartDarting'] = (time.time() - time_start_SmartDarting)
-
-    # Store and return results
-    results['confs'] = np.copy(dat[0][-1])
-    results['Etot'] = dat[1][-1]
-    results['reference'] = reference
-
-    return results
 
   def sim_process(self, process):
     """
@@ -2668,30 +2534,6 @@ class BPMF:
     self.system.clear_evaluators()
 
     return True  # The process has completed
-
-  def _mixed_sampler2(self,
-                      steps,
-                      steps_per_trial,
-                      T,
-                      delta_t,
-                      random_seed,
-                      normalize=False,
-                      adapt=False):  # EU
-    ntrials = int(steps / steps_per_trial)
-
-    (mixed_confs0, mixed_potEs0, mixed_accs0, mixed_ntrials0, mixed_dts0) = \
-      self.mixed_samplers[0].Call(ntrials*5, 5, T, 0.0030, random_seed%254, 1, 1, 0.5)
-
-    (mixed_confs1, mixed_potEs1, mixed_accs1, mixed_ntrials1, mixed_dts1) = \
-      self.mixed_samplers[1](steps=steps, steps_per_trial=steps_per_trial, T=T, delta_t=delta_t, \
-      normalize=normalize, adapt=adapt, random_seed=random_seed)
-
-    mixed_confs = mixed_confs0 + mixed_confs1
-    mixed_potEs = mixed_potEs0 + mixed_potEs1
-    mixed_accs = mixed_accs0 + mixed_accs1
-    mixed_ntrials = mixed_ntrials0 + mixed_ntrials1
-
-    return (mixed_confs, mixed_potEs, mixed_accs, mixed_ntrials, delta_t)
 
   def _insert_CD_state(self, a, clear=True):
     """
@@ -4450,9 +4292,6 @@ END
       self.log.tee(self.data[p]._save_pkl_gz())
 
   def __del__(self):
-    for p in ['BC', 'CD']:
-      if self.args.params[p]['sampler'] == 'MixedHMC':
-        self.sampler[p].TDintegrator.Clear()
     if (not DEBUG) and len(self.args.toClear) > 0:
       print "\n>>> Clearing files"
       for FN in self.args.toClear:

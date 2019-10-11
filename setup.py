@@ -121,10 +121,8 @@ paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'ForceFields', 'ElectricField'),
          os.path.join('AlGDock', 'Integrators', 'ExternalMC'),
          os.path.join('AlGDock', 'Integrators', 'HamiltonianMonteCarlo'),
-         os.path.join('AlGDock', 'Integrators', 'MixedHMC'),
          os.path.join('AlGDock', 'Integrators', 'NUTS'),
          os.path.join('AlGDock', 'Integrators', 'SmartDarting'),
-         os.path.join('AlGDock', 'Integrators', 'CDHMC'),
          os.path.join('AlGDock', 'Integrators', 'VelocityVerlet')]
 
 data_files = []
@@ -428,10 +426,8 @@ rigid receptor.
                    'AlGDock.Integrators',
                    'AlGDock.Integrators.ExternalMC',
                    'AlGDock.Integrators.HamiltonianMonteCarlo',
-                   'AlGDock.Integrators.MixedHMC',
                    'AlGDock.Integrators.NUTS',
                    'AlGDock.Integrators.SmartDarting',
-                   'AlGDock.Integrators.CDHMC',
                    'AlGDock.Integrators.VelocityVerlet'],
        ext_package = 'AlGDock.'+sys.platform,
        ext_modules = [Extension(name, path, \
