@@ -186,7 +186,8 @@ class BPMF:
           self.args.params['CD']['site_measured']
       else:
         print '\n*** Measuring the binding site ***'
-        self.system.set_lambda(self._lambda(1.0, 'CD', site=False))
+        self.system.setParams(
+          self.system.paramsFromLambda(1.0, 'CD', site=False))
         (confs, Es) = self._get_confs_to_rescore(site=False, minimize=True)
         if len(confs) > 0:
           # Use the center of mass for configurations
@@ -449,29 +450,42 @@ class BPMF:
         time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
 
       # Set up the force field
-      lambda_o = self._lambda(1.0 if warm else 0., 'BC', site=False)
-      self.data['BC'].protocol = [lambda_o]
-      self.system.set_lambda(lambda_o)
+      params_o = self.system.paramsFromLambda(1.0 if warm else 0.,
+                                              'BC',
+                                              site=False)
+      self.data['BC'].protocol = [params_o]
+      self.system.setParams(params_o)
 
       # Get starting configurations
       seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
       # initializes smart darting for BC
       # and sets the universe to the lowest energy configuration
-      self.log.tee(self.iterator.initializeSmartDartingConfigurations(seeds, 'BC', self.data))
+      self.log.tee(
+        self.iterator.initializeSmartDartingConfigurations(
+          seeds, 'BC', self.data))
       if len(seeds) > 0:
         self.top.universe.setConfiguration(
           Configuration(self.top.universe, seeds[-1]))
       self.data['BC'].confs['starting_poses'] = seeds
 
       # Ramp the temperature from 0 to the desired starting temperature using HMC
-      self._ramp_T(lambda_o['T'], normalize=True)
+      self._ramp_T(params_o['T'], normalize=True)
 
       # Run at starting temperature
-      self.log.recordStart('BC_state')
       seeds = [np.copy(self.top.universe.configuration().array) \
         for n in range(self.args.params['BC']['seeds_per_state'])]
-      (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(seeds, 'BC', lambda_o)
+    else:
+      seeds = None
+
+    # from AlGDock.ligand_preparation import LigandPreparation
+    # TODO: Invoke LigandPreparation
+    # LigandPreparation
+
+    if seeds is not None:
+      # Run at starting temperature
+      self.log.recordStart('BC_state')
+      (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
+        self._initial_sim_state(seeds, 'BC', params_o)
       E = self._energyTerms(confs, process='BC')
       self.data['BC'].confs['replicas'] = [
         confs[np.random.randint(len(confs))]
@@ -480,14 +494,14 @@ class BPMF:
       self.data['BC'].Es = [[E]]
 
       self.log.tee("  at %d K in %s: %s" %
-                   (lambda_o['T'], HMStime(
+                   (params_o['T'], HMStime(
                      self.log.timeSince('BC_state')), sampler_metrics))
       self.log.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
-        lambda_o['delta_t']*1000., self._tL_tensor(E,lambda_o,process='BC')))
+        params_o['delta_t']*1000., self._tL_tensor(E,params_o,process='BC')))
     else:
       self.log.tee("\n>>> Initial %sing, continuing at "%direction_name + \
         time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
-      lambda_o = self.data['BC'].protocol[-1]
+      params_o = self.data['BC'].protocol[-1]
       confs = self.data['BC'].confs['samples'][-1][0]
       E = self.data['BC'].Es[-1][0]
 
@@ -499,13 +513,13 @@ class BPMF:
     rejectStage = 0
     while (not self.data['BC'].protocol[-1]['crossed']):
       # Choose new temperature
-      lambda_n = self._next_BC_state(E = E, lambda_o = lambda_o, \
+      params_n = self._next_BC_state(E = E, params_o = params_o, \
         pow = rejectStage, warm = warm)
-      self.data['BC'].protocol.append(lambda_n)
+      self.data['BC'].protocol.append(params_n)
 
       # Randomly select seeds for new trajectory
-      u_o = self._u_kln([E], [lambda_o])
-      u_n = self._u_kln([E], [lambda_n])
+      u_o = self._u_kln([E], [params_o])
+      u_n = self._u_kln([E], [params_n])
       du = u_n - u_o
       weights = np.exp(-du + min(du))
       seedIndicies = np.random.choice(len(u_o), \
@@ -519,10 +533,12 @@ class BPMF:
 
       # Simulate
       self.log.recordStart('BC_state')
-      self.system.set_lambda(lambda_n)
-      self.log.tee(self.iterator.initializeSmartDartingConfigurations(seeds, 'BC', self.data))
-      (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(seeds, 'BC', lambda_n)
+      self.system.setParams(params_n)
+      self.log.tee(
+        self.iterator.initializeSmartDartingConfigurations(
+          seeds, 'BC', self.data))
+      (confs, DeltaEs, params_n['delta_t'], sampler_metrics) = \
+        self._initial_sim_state(seeds, 'BC', params_n)
 
       if self.args.params['BC']['darts_per_seed'] > 0:
         self.data['BC'].confs['SmartDarting'] += confs
@@ -539,10 +555,10 @@ class BPMF:
       mean_acc = np.mean(np.minimum(acc, np.ones(acc.shape)))
 
       self.log.tee("  at %d K in %s: %s"%(\
-        lambda_n['T'], HMStime(self.log.timeSince('BC_state')), sampler_metrics))
+        params_n['T'], HMStime(self.log.timeSince('BC_state')), sampler_metrics))
       self.log.tee("    dt=%.2f fs; tL_tensor=%.2e; <acc>=%.2f"%(\
-        lambda_n['delta_t']*1000., \
-        self._tL_tensor(E,lambda_o,process='BC'), mean_acc))
+        params_n['delta_t']*1000., \
+        self._tL_tensor(E,params_o,process='BC'), mean_acc))
 
       if (mean_acc<self.args.params['BC']['min_repX_acc']) and \
           (self.args.params['BC']['protocol']=='Adaptive'):
@@ -554,16 +570,16 @@ class BPMF:
         rejectStage += 1
         self.log.tee("  rejected new state with low acceptance rate")
       elif (len(self.data['BC'].protocol)>2) and \
-          (mean_acc>0.99) and (not lambda_n['crossed']) and \
+          (mean_acc>0.99) and (not params_n['crossed']) and \
           (self.args.params['BC']['protocol'] == 'Adaptive'):
         # If the acceptance probability is too high,
         # reject the previous state and restart
         self.data['BC'].confs['replicas'][-1] = confs[np.random.randint(
           len(confs))]
         self.data['BC'].protocol.pop()
-        self.data['BC'].protocol[-1] = copy.deepcopy(lambda_n)
+        self.data['BC'].protocol[-1] = copy.deepcopy(params_n)
         rejectStage -= 1
-        lambda_o = lambda_n
+        params_o = params_n
         self.log.tee("  rejected previous state with high acceptance rate")
       else:
         # Store data and continue with initialization
@@ -571,9 +587,9 @@ class BPMF:
           len(confs))])
         self.data['BC'].confs['samples'].append([confs])
         self.data['BC'].Es.append([E])
-        self.data['BC'].protocol[-1] = copy.deepcopy(lambda_n)
+        self.data['BC'].protocol[-1] = copy.deepcopy(params_n)
         rejectStage = 0
-        lambda_o = lambda_n
+        params_o = params_n
 
       # Special tasks after the last stage
       if self.data['BC'].protocol[-1]['crossed']:
@@ -799,12 +815,12 @@ class BPMF:
     BC0_confs = [confs[ind] for ind in random_CD_inds]
 
     # Do the random CD
-    lambda_o = self._lambda(0.0, 'CD')
-    lambda_o['delta_t'] = 1. * self.data['BC'].protocol[0]['delta_t']
-    self.data['CD'].protocol = [lambda_o]
+    params_o = self.system.paramsFromLambda(0.0, 'CD')
+    params_o['delta_t'] = 1. * self.data['BC'].protocol[0]['delta_t']
+    self.data['CD'].protocol = [params_o]
 
     # Set up the force field with full interaction grids
-    self.system.set_lambda(self._lambda(1.0, 'CD'))
+    self.system.setParams(self.system.paramsFromLambda(1.0, 'CD'))
 
     # Either loads or generates the random translations and rotations for the first state of CD
     if not (hasattr(self, '_random_trans') and hasattr(self, '_random_rotT')):
@@ -865,7 +881,7 @@ class BPMF:
         E_c[term] = np.ravel(E[term][:, :self._n_rot, :n_trans_n])
       self.log.tee("  allocated memory for %d translations" % n_trans_n)
       (u_kln,N_k) = self._u_kln([E_c],\
-        [lambda_o,self._next_CD_state(E=E_c, lambda_o=lambda_o, unCD=False)])
+        [params_o,self._next_CD_state(E=E_c, params_o=params_o, unCD=False)])
       du = u_kln[0, 1, :] - u_kln[0, 0, :]
       bootstrap_reps = 50
       f_grid0 = np.zeros(bootstrap_reps)
@@ -930,9 +946,9 @@ class BPMF:
         self.log.tee("\n>>> Initial unCD, starting at " + \
           time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
 
-        lambda_o = self._lambda(1.0, 'CD')
-        self.data['CD'].protocol = [lambda_o]
-        self.system.set_lambda(lambda_o)
+        params_o = self.system.paramsFromLambda(1.0, 'CD')
+        self.data['CD'].protocol = [params_o]
+        self.system.setParams(params_o)
 
         if (self.args.params['CD']['pose'] == -1):
           seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
@@ -946,7 +962,9 @@ class BPMF:
         else:
           # initializes smart darting for CD and sets the universe
           # to the lowest energy configuration
-          self.log.tee(self.iterator.initializeSmartDartingConfigurations(seeds, 'CD', self.data))
+          self.log.tee(
+            self.iterator.initializeSmartDartingConfigurations(
+              seeds, 'CD', self.data))
           if len(seeds) > 0:
             self.top.universe.setConfiguration(\
               Configuration(self.top.universe,np.copy(seeds[-1])))
@@ -960,8 +978,8 @@ class BPMF:
             seeds = [np.copy(self.top.universe.configuration().array) \
               for n in range(self.args.params['CD']['seeds_per_state'])]
             # Simulate
-            (confs, DeltaEs, lambda_o['delta_t'], sampler_metrics) = \
-              self._initial_sim_state(seeds, 'CD', lambda_o)
+            (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
+              self._initial_sim_state(seeds, 'CD', params_o)
 
             attempts += 1
             if attempts == 5:
@@ -977,10 +995,10 @@ class BPMF:
           self.data['CD'].Es = [[E]]
 
           self.log.tee("\n  at a=%.3e in %s: %s"%(\
-            lambda_o['a'], HMStime(self.log.timeSince('initial_CD')), sampler_metrics))
+            params_o['a'], HMStime(self.log.timeSince('initial_CD')), sampler_metrics))
           self.log.tee("    dt=%.2f fs, tL_tensor=%.3e"%(\
-            lambda_o['delta_t']*1000., \
-            self._tL_tensor(E,lambda_o)))
+            params_o['delta_t']*1000., \
+            self._tL_tensor(E,params_o)))
 
       if not unCD:
         self.log.tee("\n>>> Initial CD, starting at " + \
@@ -1009,8 +1027,8 @@ class BPMF:
             self.log.clear_lock('CD')
             return
         else:
-          lambda_o = self._lambda(0, 'CD')
-          self.system.set_lambda(lambda_o)
+          params_o = self.system.paramsFromLambda(0, 'CD')
+          self.system.setParams(params_o)
           confs = confs_HT
           E = self._energyTerms(confs)
           self.data['CD'].confs['replicas'] = [
@@ -1018,7 +1036,7 @@ class BPMF:
           ]
           self.data['CD'].confs['samples'] = [confs]
           self.data['CD'].Es = [[E]]
-          self.data['CD'].protocol = [lambda_o]
+          self.data['CD'].protocol = [params_o]
     else:
       # Continuing from a previous CD instance
       unCD = self.data['CD'].protocol[0]['a'] > self.data['CD'].protocol[1]['a']
@@ -1031,7 +1049,7 @@ class BPMF:
     if self.args.params['CD']['darts_per_seed'] > 0:
       self.data['CD'].confs['SmartDarting'] += confs
 
-    lambda_o = self.data['CD'].protocol[-1]
+    params_o = self.data['CD'].protocol[-1]
 
     # Main loop for initial CD:
     # choose new thermodynamic variables,
@@ -1040,9 +1058,9 @@ class BPMF:
     rejectStage = 0
     while (not self.data['CD'].protocol[-1]['crossed']):
       # Determine next value of the protocol
-      lambda_n = self._next_CD_state(E = E, lambda_o = lambda_o, \
+      params_n = self._next_CD_state(E = E, params_o = params_o, \
           pow = rejectStage, unCD = unCD)
-      self.data['CD'].protocol.append(lambda_n)
+      self.data['CD'].protocol.append(params_n)
       if len(self.data['CD'].protocol) > 1000:
         self._clear('CD')
         self._save('CD')
@@ -1055,8 +1073,8 @@ class BPMF:
         raise Exception('Too many consecutive rejected stages!')
 
       # Randomly select seeds for new trajectory
-      u_o = self._u_kln([E], [lambda_o])
-      u_n = self._u_kln([E], [lambda_n])
+      u_o = self._u_kln([E], [params_o])
+      u_n = self._u_kln([E], [params_n])
       du = u_n - u_o
       weights = np.exp(-du + min(du))
       seedIndicies = np.random.choice(len(u_o), \
@@ -1095,11 +1113,13 @@ class BPMF:
 
       # Simulate
       self.log.recordStart('CD_state')
-      self.system.set_lambda(lambda_n)
-      if self.args.params['CD']['darts_per_seed'] > 0 and lambda_n['a'] > 0.1:
-        self.log.tee(self.iterator.initializeSmartDartingConfigurations(self.data['CD'].confs['SmartDarting'], 'CD', self.data))
-      (confs, DeltaEs, lambda_n['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(seeds, 'CD', lambda_n)
+      self.system.setParams(params_n)
+      if self.args.params['CD']['darts_per_seed'] > 0 and params_n['a'] > 0.1:
+        self.log.tee(
+          self.iterator.initializeSmartDartingConfigurations(
+            self.data['CD'].confs['SmartDarting'], 'CD', self.data))
+      (confs, DeltaEs, params_n['delta_t'], sampler_metrics) = \
+        self._initial_sim_state(seeds, 'CD', params_n)
       if np.std(DeltaEs) < 1E-7:
         self._store_infinite_f_RL()
         raise Exception('Unable to initialize simulation')
@@ -1113,7 +1133,7 @@ class BPMF:
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
       self.log.tee("  at a=%.3e in %s: %s"%(\
-        lambda_n['a'], \
+        params_n['a'], \
         HMStime(self.log.timeSince('CD_state')), sampler_metrics))
 
       if E_o != {}:
@@ -1124,10 +1144,10 @@ class BPMF:
         mean_acc = np.mean(np.minimum(acc, np.ones(acc.shape)))
 
         self.log.tee("    dt=%.2f fs; tL_tensor=%.3e; <acc>=%.2f"%(\
-          lambda_n['delta_t']*1000., self._tL_tensor(E,lambda_o), mean_acc))
+          params_n['delta_t']*1000., self._tL_tensor(E,params_o), mean_acc))
       else:
         self.log.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
-          lambda_n['delta_t']*1000., self._tL_tensor(E,lambda_o)))
+          params_n['delta_t']*1000., self._tL_tensor(E,params_o)))
 
       # Decide whether to keep the state
       if len(self.data['CD'].protocol) > (1 + (not unCD)):
@@ -1142,16 +1162,16 @@ class BPMF:
           self.log.tee(
             "  rejected new state with low estimated acceptance rate")
         elif len(self.data['CD'].protocol)>(2+(not unCD)) and \
-            (mean_acc>0.99) and (not lambda_n['crossed']) and \
+            (mean_acc>0.99) and (not params_n['crossed']) and \
             (self.args.params['CD']['protocol']=='Adaptive'):
           # If the acceptance probability is too high,
           # reject the previous state and restart
           self.data['CD'].confs['replicas'][-1] = confs[np.random.randint(
             len(confs))]
           self.data['CD'].protocol.pop()
-          self.data['CD'].protocol[-1] = copy.deepcopy(lambda_n)
+          self.data['CD'].protocol[-1] = copy.deepcopy(params_n)
           rejectStage -= 1
-          lambda_o = lambda_n
+          params_o = params_n
           self.log.tee(
             "  rejected past state with high estimated acceptance rate")
         else:
@@ -1160,18 +1180,18 @@ class BPMF:
             len(confs))])
           self.data['CD'].confs['samples'].append([confs])
           self.data['CD'].Es.append([E])
-          self.data['CD'].protocol[-1] = copy.deepcopy(lambda_n)
+          self.data['CD'].protocol[-1] = copy.deepcopy(params_n)
           rejectStage = 0
-          lambda_o = lambda_n
+          params_o = params_n
       else:
         # Store data and continue with initialization (first time)
         self.data['CD'].confs['replicas'].append(confs[np.random.randint(
           len(confs))])
         self.data['CD'].confs['samples'].append([confs])
         self.data['CD'].Es.append([E])
-        self.data['CD'].protocol[-1] = copy.deepcopy(lambda_n)
+        self.data['CD'].protocol[-1] = copy.deepcopy(params_n)
         rejectStage = 0
-        lambda_o = lambda_n
+        params_o = params_n
 
       # Special tasks after the last stage
       if (self.data['CD'].protocol[-1]['crossed']):
@@ -1705,8 +1725,8 @@ class BPMF:
     energyFN = os.path.join(self.args.dir['CD'], prefix + '.pkl.gz')
 
     # Set the force field to fully interacting
-    lambda_full = self._lambda(1.0, 'CD')
-    self.system.set_lambda(lambda_full)
+    params_full = self.system.paramsFromLambda(1.0, 'CD')
+    self.system.setParams(params_full)
 
     # Load the configurations
     if os.path.isfile(energyFN):
@@ -1730,7 +1750,7 @@ class BPMF:
       if self.system.isForce('OBC'):
         del self._forceFields['OBC']
       self.system.clear_evaluators()
-      self.system.set_lambda(lambda_full)
+      self.system.setParams(params_full)
       Es = self._energyTerms(confs, Es)
       self.args.params['CD']['solvation'] = solvation_o
       updated = True
@@ -1919,16 +1939,16 @@ class BPMF:
       T_LOW, T_START, HMStime(self.log.timeSince('T_ramp'))) + \
       "changing energy to %.3g kcal/mol"%(e_f))
 
-  def _initial_sim_state(self, seeds, process, lambda_k):
+  def _initial_sim_state(self, seeds, process, params_k):
     """
     Initializes a state, returning the configurations and potential energy.
     Attempts simulation up to 12 times, adjusting the time step.
     """
 
-    if not 'delta_t' in lambda_k.keys():
-      lambda_k[
+    if not 'delta_t' in params_k.keys():
+      params_k[
         'delta_t'] = 1. * self.args.params[process]['delta_t'] * MMTK.Units.fs
-    lambda_k['steps_per_trial'] = self.args.params[process]['steps_per_sweep']
+    params_k['steps_per_trial'] = self.args.params[process]['steps_per_sweep']
 
     attempts_left = 12
     while (attempts_left > 0):
@@ -1948,7 +1968,7 @@ class BPMF:
         task_queue = m.Queue()
         done_queue = m.Queue()
         for k in range(len(seeds)):
-          task_queue.put((seeds[k], process, lambda_k, True, k))
+          task_queue.put((seeds[k], process, params_k, True, k))
         processes = [multiprocessing.Process(target=self._iteration_worker, \
             args=(task_queue, done_queue)) for p in range(self.args.cores)]
         for p in range(self.args.cores):
@@ -1963,7 +1983,7 @@ class BPMF:
       else:
         # Single process code
         results = [self.iterator.iteration(\
-          seeds[k], process, lambda_k, True, k) for k in range(len(seeds))]
+          seeds[k], process, params_k, True, k) for k in range(len(seeds))]
 
       seeds = [result['confs'] for result in results]
       Es_n = np.array([result['Etot'] for result in results])
@@ -1989,8 +2009,8 @@ class BPMF:
           delta_t += 0.125 * MMTK.Units.fs
         elif acc_rate < 0.4:
           if delta_t < 2.0 * MMTK.Units.fs:
-            lambda_k['steps_per_trial'] = max(
-              int(lambda_k['steps_per_trial'] / 2.), 1)
+            params_k['steps_per_trial'] = max(
+              int(params_k['steps_per_trial'] / 2.), 1)
           delta_t -= 0.25 * MMTK.Units.fs
           if acc_rate < 0.1:
             delta_t -= 0.25 * MMTK.Units.fs
@@ -2007,7 +2027,7 @@ class BPMF:
       if delta_t < 0.1 * MMTK.Units.fs:
         delta_t = 0.1 * MMTK.Units.fs
 
-      lambda_k['delta_t'] = delta_t
+      params_k['delta_t'] = delta_t
 
     sampler_metrics = ''
     for s in ['ExternalMC', 'SmartDarting', 'Sampler']:
@@ -2066,7 +2086,7 @@ class BPMF:
     def do_gMC(nr_attempts, BAT_converter, state_indices_to_swap,
                torsion_threshold):
       """
-      Assume self.top.universe, confs, lambdas, state_inds, inv_state_inds exist as global variables
+      Assume self.top.universe, confs, paramss, state_inds, inv_state_inds exist as global variables
       when the function is called.
       If at least one of the torsions in the combination chosen for an crossover attempt
       changes more than torsion_threshold, the crossover will be attempted.
@@ -2090,8 +2110,8 @@ class BPMF:
         self.top.universe.setConfiguration(
           Configuration(self.top.universe, confs[c_ind]))
         BATs.append(np.array(BAT_converter.BAT(extended=True), dtype=float))
-        self.system.set_lambda(lambdas[s_ind])
-        reduced_e = self.top.universe.energy() / (R * lambdas[s_ind]['T'])
+        self.system.setParams(paramss[s_ind])
+        reduced_e = self.top.universe.energy() / (R * paramss[s_ind]['T'])
         energies[c_ind] = reduced_e
       #
       nr_sets_of_torsions = len(BAT_converter.BAT_to_crossover)
@@ -2131,15 +2151,15 @@ class BPMF:
               BAT_k1_af[index] = tmp
             # Cartesian coord and reduced energies after crossover.
             BAT_converter.Cartesian(BAT_k0_af)
-            self.system.set_lambda(lambdas[state_pair[0]])
+            self.system.setParams(paramss[state_pair[0]])
             e_k0_af = self.top.universe.energy() / (
-              R * lambdas[state_pair[0]]['T'])
+              R * paramss[state_pair[0]]['T'])
             conf_k0_af = copy.deepcopy(self.top.universe.configuration().array)
             #
             BAT_converter.Cartesian(BAT_k1_af)
-            self.system.set_lambda(lambdas[state_pair[1]])
+            self.system.setParams(paramss[state_pair[1]])
             e_k1_af = self.top.universe.energy() / (
-              R * lambdas[state_pair[1]]['T'])
+              R * paramss[state_pair[1]]['T'])
             conf_k1_af = copy.deepcopy(self.top.universe.configuration().array)
             #
             de = (e_k0_be - e_k0_af) + (e_k1_be - e_k1_af)
@@ -2162,7 +2182,7 @@ class BPMF:
     self.log.set_lock(process)
 
     confs = self.data[process].confs['replicas']
-    lambdas = self.data[process].protocol
+    paramss = self.data[process].protocol
 
     terms = ['MM']
     if process == 'BC':
@@ -2176,7 +2196,7 @@ class BPMF:
       terms += scalables
 
     # A list of pairs of replica indicies
-    K = len(lambdas)
+    K = len(paramss)
     pairs_to_swap = []
     for interval in range(1, min(5, K)):
       lower_inds = []
@@ -2190,10 +2210,11 @@ class BPMF:
     # Setting the force field will load grids
     # before multiple processes are spawned
     for k in range(K):
-      self.system.set_lambda(lambdas[k])
+      self.system.setParams(paramss[k])
 
     # If it has not been set up, set up Smart Darting
-    self.iterator.initializeSmartDartingConfigurations(self.data[process].confs['SmartDarting'], process, self.data)
+    self.iterator.initializeSmartDartingConfigurations(
+      self.data[process].confs['SmartDarting'], process, self.data)
 
     # storage[key][sweep_index][state_index] will contain data
     # from the replica exchange sweeps
@@ -2243,7 +2264,7 @@ class BPMF:
       # Sample within each state
       if self.args.cores > 1:
         for k in range(K):
-          task_queue.put((confs[k], process, lambdas[state_inds[k]], False, k))
+          task_queue.put((confs[k], process, paramss[state_inds[k]], False, k))
         for p in range(self.args.cores):
           task_queue.put('STOP')
         processes = [multiprocessing.Process(target=self._iteration_worker, \
@@ -2259,7 +2280,7 @@ class BPMF:
       else:
         # Single process code
         results = [self.iterator.iteration(confs[k], process, \
-            lambdas[state_inds[k]], False, k) for k in range(K)]
+            paramss[state_inds[k]], False, k) for k in range(K)]
 
       # GMC
       if do_gMC:
@@ -2287,7 +2308,7 @@ class BPMF:
 
       # Calculate u_ij (i is the replica, and j is the configuration),
       #    a list of arrays
-      (u_ij, N_k) = self._u_kln(E, [lambdas[state_inds[c]] for c in range(K)])
+      (u_ij, N_k) = self._u_kln(E, [paramss[state_inds[c]] for c in range(K)])
       # Do the replica exchange
       repX_start_time = time.time()
       (state_inds, inv_state_inds) = \
@@ -2331,18 +2352,18 @@ class BPMF:
       for k in range(K):
         acc_rate = acc_rates[k]
         if acc_rate > 0.8:
-          lambdas[k]['delta_t'] += 0.125 * MMTK.Units.fs
-          lambdas[k]['steps_per_trial'] = min(lambdas[k]['steps_per_trial']*2,\
+          paramss[k]['delta_t'] += 0.125 * MMTK.Units.fs
+          paramss[k]['steps_per_trial'] = min(paramss[k]['steps_per_trial']*2,\
             self.args.params[process]['steps_per_sweep'])
         elif acc_rate < 0.4:
-          if lambdas[k]['delta_t'] < 2.0 * MMTK.Units.fs:
-            lambdas[k]['steps_per_trial'] = max(
-              int(lambdas[k]['steps_per_trial'] / 2.), 1)
-          lambdas[k]['delta_t'] -= 0.25 * MMTK.Units.fs
+          if paramss[k]['delta_t'] < 2.0 * MMTK.Units.fs:
+            paramss[k]['steps_per_trial'] = max(
+              int(paramss[k]['steps_per_trial'] / 2.), 1)
+          paramss[k]['delta_t'] -= 0.25 * MMTK.Units.fs
           if acc_rate < 0.1:
-            lambdas[k]['delta_t'] -= 0.25 * MMTK.Units.fs
-        if lambdas[k]['delta_t'] < 0.1 * MMTK.Units.fs:
-          lambdas[k]['delta_t'] = 0.1 * MMTK.Units.fs
+            paramss[k]['delta_t'] -= 0.25 * MMTK.Units.fs
+        if paramss[k]['delta_t'] < 0.1 * MMTK.Units.fs:
+          paramss[k]['delta_t'] = 0.1 * MMTK.Units.fs
 
     # Get indicies for sorting by thermodynamic state, not replica
     inv_state_inds = np.zeros((nsnaps, K), dtype=int)
@@ -2389,10 +2410,11 @@ class BPMF:
        for k in range(K)]
 
     if self.args.params[process]['darts_per_sweep'] > 0:
-      self.system.set_lambda(self.data[process].protocol[-1])
+      self.system.setParams(self.data[process].protocol[-1])
       new_confs = [np.copy(conf) \
         for conf in data[process].confs['samples'][k][-1]]
-      self.iterator.addSmartDartingConfigurations(new_confs, process, self.data)
+      self.iterator.addSmartDartingConfigurations(new_confs, process,
+                                                  self.data)
 
     self.data[process].cycle += 1
     self._save(process)
@@ -2413,7 +2435,7 @@ class BPMF:
 
     # Get weights for sampling importance resampling
     # MBAR weights for replica exchange configurations
-    (u_kln, N_k) = self._u_kln(Es_repX, lambdas)
+    (u_kln, N_k) = self._u_kln(Es_repX, paramss)
 
     # This is a more direct way to get the weights
     from pymbar.utils import kln_to_kn
@@ -2474,7 +2496,7 @@ class BPMF:
          (self.args.FNs['score']!='default'):
         self.log.set_lock('CD')
         self.log.tee("\n>>> Reinitializing replica exchange configurations")
-        self.system.set_lambda(self._lambda(1.0, 'CD'))
+        self.system.setParams(self.system.paramsFromLambda(1.0, 'CD'))
         confs = self._get_confs_to_rescore(\
           nconfs=len(self.data['CD'].protocol), site=True, minimize=True)[0]
         self.log.clear_lock('CD')
@@ -2544,7 +2566,8 @@ class BPMF:
     # Defines a new thermodynamic state based on the neighboring state
     neighbor_ind = [a < p['a']
                     for p in self.data['CD'].protocol].index(True) - 1
-    lambda_n = self._lambda(a, lambda_o=self.data['CD'].protocol[neighbor_ind])
+    params_n = self.system.paramsFromLambda(
+      a, params_o=self.data['CD'].protocol[neighbor_ind])
 
     # For sampling importance resampling,
     # prepare an augmented matrix for pymbar calculations
@@ -2552,7 +2575,7 @@ class BPMF:
     (u_kln_s, N_k) = self._u_kln(self.data['CD'].Es, self.data['CD'].protocol)
     (K, L, N) = u_kln_s.shape
 
-    u_kln_n = self._u_kln(self.data['CD'].Es, [lambda_n])[0]
+    u_kln_n = self._u_kln(self.data['CD'].Es, [params_n])[0]
     L += 1
     N_k = np.append(N_k, [0])
 
@@ -2618,7 +2641,7 @@ class BPMF:
       confs_s.append(confs_c)
 
     # Insert resampled values
-    self.data['CD'].protocol.insert(neighbor_ind + 1, lambda_n)
+    self.data['CD'].protocol.insert(neighbor_ind + 1, params_n)
     self.data['CD'].Es.insert(neighbor_ind + 1, CD_Es_s)
     self.data['CD'].confs['samples'].insert(neighbor_ind + 1, confs_s)
     self.data['CD'].confs['replicas'].insert(neighbor_ind+1, \
@@ -2752,7 +2775,7 @@ class BPMF:
       old_eval = None
       if (None, None, None) in self.top.universe._evaluator.keys():
         old_eval = self.top.universe._evaluator[(None, None, None)]
-      self.system.set_lambda({'site': True, 'T': self.T_TARGET})
+      self.system.setParams({'site': True, 'T': self.T_TARGET})
       for n in range(len(confs)):
         self.top.universe.setConfiguration(
           Configuration(self.top.universe, confs[n]))
@@ -2886,7 +2909,7 @@ class BPMF:
       print 'Error with MBAR. Using BAR.'
     return (f_k_MBAR, W_nl)
 
-  def _u_kln(self, eTs, lambdas, noBeta=False):
+  def _u_kln(self, eTs, paramss, noBeta=False):
     """
     Computes a reduced potential energy matrix.  k is the sampled state.  l is the state for which energies are evaluated.
 
@@ -2895,20 +2918,20 @@ class BPMF:
       -dictionary (of mapped energy terms) of numpy arrays (over states)
       -list (over states) of dictionaries (of mapped energy terms) of numpy arrays (over configurations), or a
       -list (over states) of lists (over cycles) of dictionaries (of mapped energy terms) of numpy arrays (over configurations)
-    lambdas is a list of thermodynamic states
+    paramss is a list of thermodynamic states
     noBeta means that the energy will not be divided by RT
 
     Output: u_kln or (u_kln, N_k)
     u_kln is the matrix (as a numpy array)
     N_k is an array of sample sizes
     """
-    L = len(lambdas)
+    L = len(paramss)
 
-    addMM = ('MM' in lambdas[0].keys()) and (lambdas[0]['MM'])
-    addSite = ('site' in lambdas[0].keys()) and (lambdas[0]['site'])
+    addMM = ('MM' in paramss[0].keys()) and (paramss[0]['MM'])
+    addSite = ('site' in paramss[0].keys()) and (paramss[0]['site'])
     probe_keys = ['MM','k_angular_ext','k_spatial_ext','k_angular_int'] + \
       scalables
-    probe_key = [key for key in lambdas[0].keys() if key in probe_keys][0]
+    probe_key = [key for key in paramss[0].keys() if key in probe_keys][0]
 
     if isinstance(eTs, dict):
       # There is one configuration per state
@@ -2923,15 +2946,15 @@ class BPMF:
       for l in range(L):
         E = 1. * E_base
         for scalable in scalables:
-          if scalable in lambdas[l].keys():
-            E += lambdas[l][scalable] * eTs[scalable]
+          if scalable in paramss[l].keys():
+            E += paramss[l][scalable] * eTs[scalable]
         for key in ['k_angular_ext', 'k_spatial_ext', 'k_angular_int']:
-          if key in lambdas[l].keys():
-            E += lambdas[l][key] * eTs[key]
+          if key in paramss[l].keys():
+            E += paramss[l][key] * eTs[key]
         if noBeta:
           u_kln.append(E)
         else:
-          u_kln.append(E / (R * lambdas[l]['T']))
+          u_kln.append(E / (R * paramss[l]['T']))
     elif isinstance(eTs[0], dict):
       K = len(eTs)
       N_k = np.array([len(eTs[k][probe_key]) for k in range(K)])
@@ -2946,15 +2969,15 @@ class BPMF:
         for l in range(L):
           E = 1. * E_base
           for scalable in scalables:
-            if scalable in lambdas[l].keys():
-              E += lambdas[l][scalable] * eTs[k][scalable]
+            if scalable in paramss[l].keys():
+              E += paramss[l][scalable] * eTs[k][scalable]
           for key in ['k_angular_ext', 'k_spatial_ext', 'k_angular_int']:
-            if key in lambdas[l].keys():
-              E += lambdas[l][key] * eTs[k][key]
+            if key in paramss[l].keys():
+              E += paramss[l][key] * eTs[k][key]
           if noBeta:
             u_kln[k, l, :N_k[k]] = E
           else:
-            u_kln[k, l, :N_k[k]] = E / (R * lambdas[l]['T'])
+            u_kln[k, l, :N_k[k]] = E / (R * paramss[l]['T'])
     elif isinstance(eTs[0], list):
       K = len(eTs)
       N_k = np.zeros(K, dtype=int)
@@ -2974,44 +2997,44 @@ class BPMF:
         for l in range(L):
           E = 1. * E_base
           for scalable in scalables:
-            if scalable in lambdas[l].keys():
-              E += lambdas[l][scalable]*np.concatenate([eTs[k][c][scalable] \
+            if scalable in paramss[l].keys():
+              E += paramss[l][scalable]*np.concatenate([eTs[k][c][scalable] \
                 for c in range(C)])
           for key in ['k_angular_ext', 'k_spatial_ext', 'k_angular_int']:
-            if key in lambdas[l].keys():
-              E += lambdas[l][key]*np.concatenate([eTs[k][c][key] \
+            if key in paramss[l].keys():
+              E += paramss[l][key]*np.concatenate([eTs[k][c][key] \
                 for c in range(C)])
           if noBeta:
             u_kln[k, l, :N_k[k]] = E
           else:
-            u_kln[k, l, :N_k[k]] = E / (R * lambdas[l]['T'])
+            u_kln[k, l, :N_k[k]] = E / (R * paramss[l]['T'])
 
     if (K == 1) and (L == 1):
       return u_kln.ravel()
     else:
       return (u_kln, N_k)
 
-  def _next_BC_state(self, E=None, lambda_o=None, pow=None, warm=True):
+  def _next_BC_state(self, E=None, params_o=None, pow=None, warm=True):
     if E is None:
       E = self.data['BC'].Es[-1]
 
-    if lambda_o is None:
-      lambda_o = self.data['BC'].protocol[-1]
+    if params_o is None:
+      params_o = self.data['BC'].protocol[-1]
 
     if self.args.params['BC']['protocol'] == 'Adaptive':
-      tL_tensor = self._tL_tensor(E, lambda_o, process='BC')
-      crossed = lambda_o['crossed']
+      tL_tensor = self._tL_tensor(E, params_o, process='BC')
+      crossed = params_o['crossed']
       if pow is not None:
         tL_tensor = tL_tensor * (1.25**pow)
       if tL_tensor > 1E-7:
         dL = self.args.params['BC']['therm_speed'] / tL_tensor
         if warm:
-          T = lambda_o['T'] + dL
+          T = params_o['T'] + dL
           if T > self.T_HIGH:
             T = self.T_HIGH
             crossed = True
         else:
-          T = lambda_o['T'] - dL
+          T = params_o['T'] - dL
           if T < self.T_TARGET:
             T = self.T_TARGET
             crossed = True
@@ -3029,9 +3052,12 @@ class BPMF:
       T = T_GEOMETRIC[len(self.data['BC'].protocol)]
       crossed = (len(self.data['BC'].protocol) == (len(T_GEOMETRIC) - 1))
     a = (self.T_HIGH - T) / (self.T_HIGH - self.T_TARGET)
-    return self._lambda(a, process='BC', lambda_o=lambda_o, crossed=crossed)
+    return self.system.paramsFromLambda(a,
+                                        process='BC',
+                                        params_o=params_o,
+                                        crossed=crossed)
 
-  def _next_CD_state(self, E=None, lambda_o=None, pow=None, unCD=False):
+  def _next_CD_state(self, E=None, params_o=None, pow=None, unCD=False):
     """
     Determines the parameters for the next CD state
     """
@@ -3039,13 +3065,13 @@ class BPMF:
     if E is None:
       E = self.data['CD'].Es[-1]
 
-    if lambda_o is None:
-      lambda_o = self.data['CD'].protocol[-1]
+    if params_o is None:
+      params_o = self.data['CD'].protocol[-1]
 
     if self.args.params['CD']['protocol'] == 'Adaptive':
       # Change grid scaling and temperature simultaneously
-      tL_tensor = self._tL_tensor(E, lambda_o)
-      crossed = lambda_o['crossed']
+      tL_tensor = self._tL_tensor(E, params_o)
+      crossed = params_o['crossed']
       # Calculate the change in the progress variable, capping at 0.05
       if pow is None:
         dL = min(self.args.params['CD']['therm_speed'] / tL_tensor, 0.05)
@@ -3055,30 +3081,33 @@ class BPMF:
           self.args.params['CD']['therm_speed'] / tL_tensor / (1.25**pow),
           0.05)
       if unCD:
-        a = lambda_o['a'] - dL
+        a = params_o['a'] - dL
         if (self.args.params['CD']['pose'] > -1) and \
-           (lambda_o['a'] > 0.5) and (a < 0.5):
+           (params_o['a'] > 0.5) and (a < 0.5):
           # Stop at 0.5 to facilitate entropy-energy decomposition
           a = 0.5
         elif a < 0.0:
           if pow > 0:
-            a = lambda_o['a'] * (1 - 0.8**pow)
+            a = params_o['a'] * (1 - 0.8**pow)
           else:
             a = 0.0
             crossed = True
       else:
-        a = lambda_o['a'] + dL
+        a = params_o['a'] + dL
         if (self.args.params['CD']['pose'] > -1) and \
-           (lambda_o['a'] < 0.5) and (a > 0.5):
+           (params_o['a'] < 0.5) and (a > 0.5):
           # Stop at 0.5 to facilitate entropy-energy decomposition
           a = 0.5
         elif a > 1.0:
           if pow > 0:
-            a = lambda_o['a'] + (1 - lambda_o['a']) * 0.8**pow
+            a = params_o['a'] + (1 - params_o['a']) * 0.8**pow
           else:
             a = 1.0
             crossed = True
-      return self._lambda(a, process='CD', lambda_o=lambda_o, crossed=crossed)
+      return self.system.paramsFromLambda(a,
+                                          process='CD',
+                                          params_o=params_o,
+                                          crossed=crossed)
     elif self.args.params['CD']['protocol'] == 'Geometric':
       A_GEOMETRIC = [0.] + list(
         np.exp(
@@ -3088,14 +3117,17 @@ class BPMF:
         A_GEOMETRIC.reverse()
       a = A_GEOMETRIC[len(self.data['CD'].protocol)]
       crossed = len(self.data['CD'].protocol) == (len(A_GEOMETRIC) - 1)
-      return self._lambda(a, process='CD', lambda_o=lambda_o, crossed=crossed)
+      return self.system.paramsFromLambda(a,
+                                          process='CD',
+                                          params_o=params_o,
+                                          crossed=crossed)
 
-  def _tL_tensor(self, E, lambda_c, process='CD'):
+  def _tL_tensor(self, E, params_c, process='CD'):
     # Metric tensor for the thermodynamic length
-    T = lambda_c['T']
+    T = params_c['T']
     deltaT = np.abs(self.T_HIGH - self.T_TARGET)
     if process == 'CD':
-      a = lambda_c['a']
+      a = params_c['a']
       a_g = 4. * (a - 0.5)**2 / (1 + np.exp(-100 * (a - 0.5)))
       if a_g < 1E-10:
         a_g = 0
@@ -3139,9 +3171,9 @@ class BPMF:
         # Total potential energy
         U_RL_g = self._u_kln([E],
           [{'MM':True, 'OBC':OBC, 'T':T, \
-            'k_angular_ext':lambda_c['k_angular_ext'], \
-            'k_spatial_ext':lambda_c['k_spatial_ext'], \
-            'k_angular_int':lambda_c['k_angular_int'], \
+            'k_angular_ext':params_c['k_angular_ext'], \
+            'k_spatial_ext':params_c['k_spatial_ext'], \
+            'k_angular_int':params_c['k_angular_int'], \
             'sLJr':a_g, 'sLJa':a_g, 'ELE':a_g}], noBeta=True)
         return np.abs(da_r_da)*U_r.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
@@ -3175,83 +3207,11 @@ class BPMF:
                                     noBeta=True).std() / (R * T * T)
       else:
         # OBC is scaled with the progress variable
-        a = lambda_c['a']
+        a = params_c['a']
         return self._u_kln([E],[{'OBC':1.0}], noBeta=True).std()/(R*T) + \
           deltaT*self._u_kln([E],[{'MM':True, 'OBC':a}], noBeta=True).std()/(R*T*T)
     else:
       raise Exception("Unknown process!")
-
-  def _lambda(self, a, process='CD', lambda_o=None, site=True, crossed=False):
-    if (lambda_o is None) and len(self.data[process].protocol) > 0:
-      lambda_o = copy.deepcopy(self.data[process].protocol)[-1]
-    if (lambda_o is not None):
-      lambda_n = copy.deepcopy(lambda_o)
-      if 'steps_per_trial' not in lambda_o.keys():
-        lambda_n[
-          'steps_per_trial'] = 1 * self.args.params[process]['steps_per_sweep']
-    else:
-      lambda_n = {}
-      lambda_n[
-        'steps_per_trial'] = 1 * self.args.params[process]['steps_per_sweep']
-
-    lambda_n['MM'] = True
-    if crossed is not None:
-      lambda_n['crossed'] = crossed
-
-    if process == 'CD':
-      a_g = 4. * (a - 0.5)**2 / (1 + np.exp(-100 * (a - 0.5)))
-      if a_g < 1E-10:
-        a_g = 0
-      if self.args.params['CD']['solvation']=='Desolvated' or \
-         self.args.params['CD']['solvation']=='Reduced':
-        lambda_n['OBC'] = 0
-      elif self.args.params['CD']['solvation'] == 'Fractional':
-        lambda_n['OBC'] = a_g  # Scales the solvent with the grid
-      elif self.args.params['CD']['solvation'] == 'Full':
-        lambda_n['OBC'] = 1.0
-      if self.args.params['CD']['pose'] > -1:
-        # Pose BPMF
-        a_r = np.tanh(16 * a * a)
-        lambda_n['a'] = a
-        lambda_n['k_angular_int'] = self.args.params['CD']['k_pose'] * a_r
-        lambda_n['k_angular_ext'] = self.args.params['CD']['k_pose']
-        lambda_n['k_spatial_ext'] = self.args.params['CD']['k_pose']
-        lambda_n['sLJr'] = a_g
-        lambda_n['sLJa'] = a_g
-        lambda_n['ELE'] = a_g
-        lambda_n['T'] = a_r * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
-      else:
-        # BPMF
-        a_sg = 1. - 4. * (a - 0.5)**2
-        lambda_n['a'] = a
-        lambda_n['sLJr'] = a_sg
-        if self.args.params['CD']['solvation'] != 'Reduced':
-          lambda_n['sELE'] = a_sg
-        lambda_n['LJr'] = a_g
-        lambda_n['LJa'] = a_g
-        lambda_n['ELE'] = a_g \
-          if self.args.params['CD']['solvation']!='Reduced' else 0.2*a_g
-        if site is not None:
-          lambda_n['site'] = site
-        if self.args.params['CD']['temperature_scaling'] == 'Linear':
-          lambda_n['T'] = a * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
-        elif self.args.params['CD']['temperature_scaling'] == 'Quadratic':
-          lambda_n['T'] = a_g * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
-    elif process == 'BC':
-      lambda_n['a'] = a
-      lambda_n['T'] = self.T_HIGH - a * (self.T_HIGH - self.T_TARGET)
-      if self.args.params['BC']['solvation'] == 'Desolvated':
-        lambda_n['OBC'] = a
-      elif self.args.params['BC']['solvation'] == 'Reduced':
-        lambda_n['OBC'] = a
-      elif self.args.params['BC']['solvation'] == 'Fractional':
-        lambda_n['OBC'] = a
-      elif self.args.params['BC']['solvation'] == 'Full':
-        lambda_n['OBC'] = 1.0
-    else:
-      raise Exception("Unknown process!")
-
-    return lambda_n
 
   def _load_programs(self, phases):
     # Find the necessary programs, downloading them if necessary
@@ -3544,16 +3504,18 @@ class BPMF:
     if E is None:
       E = {}
 
-    lambda_full = self._lambda(a=1.0, process=process, site=(process == 'CD'))
+    params_full = self.system.paramsFromLambda(a=1.0,
+                                               process=process,
+                                               site=(process == 'CD'))
     if process == 'CD':
       for scalable in scalables:
-        lambda_full[scalable] = 1
-    self.system.set_lambda(lambda_full)
+        params_full[scalable] = 1
+    self.system.setParams(params_full)
 
     # Molecular mechanics and grid interaction energies
     E['MM'] = np.zeros(len(confs), dtype=float)
     if process == 'BC':
-      if 'OBC' in lambda_full.keys():
+      if 'OBC' in params_full.keys():
         E['OBC'] = np.zeros(len(confs), dtype=float)
     if process == 'CD':
       for term in (scalables):
@@ -3574,7 +3536,7 @@ class BPMF:
           pass  # For some reason, MMTK double-counts electrostatic energies
         elif key.startswith('pose'):
           # For pose restraints, the energy is per spring constant unit
-          E[term_map[key]][c] += value / lambda_full[term_map[key]]
+          E[term_map[key]][c] += value / params_full[term_map[key]]
         else:
           try:
             E[term_map[key]][c] += value
@@ -4132,7 +4094,7 @@ END
     def roundUpDime(x):
       return (np.ceil((x.astype(float) - 1) / 32) * 32 + 1).astype(int)
 
-    self.system.set_lambda({'MM': True, 'ELE': 1})
+    self.system.setParams({'MM': True, 'ELE': 1})
     gd = self._forceFields['ELE'].grid_data
     focus_dims = roundUpDime(gd['counts'])
     focus_center = factor * (gd['counts'] * gd['spacing'] / 2. + gd['origin'])

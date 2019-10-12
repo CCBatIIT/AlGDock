@@ -1,6 +1,8 @@
 import os, sys
 import numpy as np
 
+import copy
+
 import MMTK
 from MMTK.ForceFields import ForceField
 
@@ -32,7 +34,7 @@ class System:
     top : AlGDock.topology.Topology
       Topology with ligand
     top_RL : AlGDock.topology.Topology
-      Topology with complex
+      Topology of complex
     starting_pose : numpy.array
       Starting pose used for simulations with an external restraint
     """
@@ -41,6 +43,9 @@ class System:
     self.top = top
     self.top_RL = top_RL
     self.starting_pose = starting_pose
+
+    self.T_HIGH = self.args.params['BC']['T_HIGH']
+    self.T_TARGET = self.args.params['BC']['T_TARGET']
 
     self._evaluators = {}
     self._forceFields = {}
@@ -51,10 +56,10 @@ class System:
       parameter_file=self.args.FNs['forcefield'],
       mod_files=self.args.FNs['frcmodList'])
 
-  def set_lambda(self, lambda_n):
+  def setParams(self, params):
     """
-    Sets the universe evaluator to values appropriate for the given lambda_n dictionary.
-    The elements in the dictionary lambda_n can be:
+    Sets the universe evaluator to values appropriate for the given params dictionary.
+    The elements in the dictionary params can be:
       MM - True, to turn on the Generalized AMBER force field
       site - True, to turn on the binding site
       sLJr - scaling of the soft Lennard-Jones repulsive grid
@@ -69,11 +74,11 @@ class System:
       T - the temperature in K
     """
 
-    self.T = lambda_n['T']
+    self.T = params['T']
 
     # Reuse evaluators that have been stored
-    evaluator_key = ','.join(['%s:%s'%(k,lambda_n[k]) \
-      for k in sorted(lambda_n.keys())])
+    evaluator_key = ','.join(['%s:%s'%(k,params[k]) \
+      for k in sorted(params.keys())])
     if evaluator_key in self._evaluators.keys():
       self.top.universe._evaluator[(None,None,None)] = \
         self._evaluators[evaluator_key]
@@ -81,9 +86,9 @@ class System:
 
     # Otherwise create a new evaluator
     fflist = []
-    if ('MM' in lambda_n.keys()) and lambda_n['MM']:
+    if ('MM' in params.keys()) and params['MM']:
       fflist.append(self._forceFields['gaff'])
-    if ('site' in lambda_n.keys()) and lambda_n['site']:
+    if ('site' in params.keys()) and params['site']:
       # Set up the binding site in the force field
       append_site = True  # Whether to append the binding site to the force field
       if not 'site' in self._forceFields.keys():
@@ -114,13 +119,13 @@ class System:
 
     # Add scalable terms
     for scalable in scalables:
-      if (scalable in lambda_n.keys()) and lambda_n[scalable] > 0:
+      if (scalable in params.keys()) and params[scalable] > 0:
         # Load the force field if it has not been loaded
         if not scalable in self._forceFields.keys():
           if scalable == 'OBC':
             from AlGDock.ForceFields.OBC.OBC import OBCForceField
             if self.args.params['CD']['solvation']=='Fractional' and \
-                ('ELE' in lambda_n.keys()):
+                ('ELE' in params.keys()):
               self.log.recordStart('grid_loading')
               self._forceFields['OBC'] = OBCForceField(\
                 desolvationGridFN=self.args.FNs['grids']['desolv'])
@@ -170,7 +175,7 @@ class System:
               import InterpolationForceField
             self._forceFields[scalable] = InterpolationForceField(grid_FN, \
               name=scalable, interpolation_type='Trilinear', \
-              strength=lambda_n[scalable], scaling_property=grid_scaling_factor,
+              strength=params[scalable], scaling_property=grid_scaling_factor,
               inv_power=4 if scalable=='LJr' else None, \
               grid_thresh=grid_thresh)
             self.log.tee('  %s grid loaded from %s in %s'%(scalable, \
@@ -178,12 +183,12 @@ class System:
               HMStime(self.log.timeSince('grid_loading'))))
 
         # Set the force field strength to the desired value
-        self._forceFields[scalable].set_strength(lambda_n[scalable])
+        self._forceFields[scalable].set_strength(params[scalable])
         fflist.append(self._forceFields[scalable])
 
-    if ('k_angular_int' in lambda_n.keys()) or \
-       ('k_spatial_ext' in lambda_n.keys()) or \
-       ('k_angular_ext' in lambda_n.keys()):
+    if ('k_angular_int' in params.keys()) or \
+       ('k_spatial_ext' in params.keys()) or \
+       ('k_angular_ext' in params.keys()):
 
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
@@ -206,19 +211,19 @@ class System:
           ExternalRestraintForceField(*ExternalRestraintSpecs)
 
       # Set parameter values
-      if ('k_angular_int' in lambda_n.keys()):
+      if ('k_angular_int' in params.keys()):
         self._forceFields['InternalRestraint'].set_k(\
-          lambda_n['k_angular_int'])
+          params['k_angular_int'])
         fflist.append(self._forceFields['InternalRestraint'])
 
-      if ('k_spatial_ext' in lambda_n.keys()):
+      if ('k_spatial_ext' in params.keys()):
         self._forceFields['ExternalRestraint'].set_k_spatial(\
-          lambda_n['k_spatial_ext'])
+          params['k_spatial_ext'])
         fflist.append(self._forceFields['ExternalRestraint'])
 
-      if ('k_angular_ext' in lambda_n.keys()):
+      if ('k_angular_ext' in params.keys()):
         self._forceFields['ExternalRestraint'].set_k_angular(\
-          lambda_n['k_angular_ext'])
+          params['k_angular_ext'])
 
     compoundFF = fflist[0]
     for ff in fflist[1:]:
@@ -226,12 +231,12 @@ class System:
     self.top.universe.setForceField(compoundFF)
 
     if self.top_RL.universe is not None:
-      if 'OBC_RL' in lambda_n.keys():
+      if 'OBC_RL' in params.keys():
         if not 'OBC_RL' in self._forceFields.keys():
           from AlGDock.ForceFields.OBC.OBC import OBCForceField
           self._forceFields['OBC_RL'] = OBCForceField()
-        self._forceFields['OBC_RL'].set_strength(lambda_n['OBC_RL'])
-        if (lambda_n['OBC_RL'] > 0):
+        self._forceFields['OBC_RL'].set_strength(params['OBC_RL'])
+        if (params['OBC_RL'] > 0):
           self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
 
     eval = ForceField.EnergyEvaluator(\
@@ -239,6 +244,81 @@ class System:
     eval.key = evaluator_key
     self.top.universe._evaluator[(None, None, None)] = eval
     self._evaluators[evaluator_key] = eval
+
+  def paramsFromLambda(self,
+                       a,
+                       process='CD',
+                       params_o=None,
+                       site=True,
+                       crossed=False):
+    if (params_o is not None):
+      params = copy.deepcopy(params_o)
+      if 'steps_per_trial' not in params_o.keys():
+        params[
+          'steps_per_trial'] = 1 * self.args.params[process]['steps_per_sweep']
+    else:
+      params = {}
+      params[
+        'steps_per_trial'] = 1 * self.args.params[process]['steps_per_sweep']
+
+    params['MM'] = True
+    if crossed is not None:
+      params['crossed'] = crossed
+
+    if process == 'CD':
+      a_g = 4. * (a - 0.5)**2 / (1 + np.exp(-100 * (a - 0.5)))
+      if a_g < 1E-10:
+        a_g = 0
+      if self.args.params['CD']['solvation']=='Desolvated' or \
+         self.args.params['CD']['solvation']=='Reduced':
+        params['OBC'] = 0
+      elif self.args.params['CD']['solvation'] == 'Fractional':
+        params['OBC'] = a_g  # Scales the solvent with the grid
+      elif self.args.params['CD']['solvation'] == 'Full':
+        params['OBC'] = 1.0
+      if self.args.params['CD']['pose'] > -1:
+        # Pose BPMF
+        a_r = np.tanh(16 * a * a)
+        params['a'] = a
+        params['k_angular_int'] = self.args.params['CD']['k_pose'] * a_r
+        params['k_angular_ext'] = self.args.params['CD']['k_pose']
+        params['k_spatial_ext'] = self.args.params['CD']['k_pose']
+        params['sLJr'] = a_g
+        params['sLJa'] = a_g
+        params['ELE'] = a_g
+        params['T'] = a_r * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+      else:
+        # BPMF
+        a_sg = 1. - 4. * (a - 0.5)**2
+        params['a'] = a
+        params['sLJr'] = a_sg
+        if self.args.params['CD']['solvation'] != 'Reduced':
+          params['sELE'] = a_sg
+        params['LJr'] = a_g
+        params['LJa'] = a_g
+        params['ELE'] = a_g \
+          if self.args.params['CD']['solvation']!='Reduced' else 0.2*a_g
+        if site is not None:
+          params['site'] = site
+        if self.args.params['CD']['temperature_scaling'] == 'Linear':
+          params['T'] = a * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+        elif self.args.params['CD']['temperature_scaling'] == 'Quadratic':
+          params['T'] = a_g * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+    elif process == 'BC':
+      params['a'] = a
+      params['T'] = self.T_HIGH - a * (self.T_HIGH - self.T_TARGET)
+      if self.args.params['BC']['solvation'] == 'Desolvated':
+        params['OBC'] = a
+      elif self.args.params['BC']['solvation'] == 'Reduced':
+        params['OBC'] = a
+      elif self.args.params['BC']['solvation'] == 'Fractional':
+        params['OBC'] = a
+      elif self.args.params['BC']['solvation'] == 'Full':
+        params['OBC'] = 1.0
+    else:
+      raise Exception("Unknown process!")
+
+    return params
 
   def clear_evaluators(self):
     """

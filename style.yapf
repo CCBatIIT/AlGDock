@@ -81,6 +81,7 @@ coalesce_brackets=False
 
 # The column limit.
 column_limit=79
+# Changed from PEP8
 # column_limit=500
 
 # The style for continuation alignment. Possible values are:
@@ -151,7 +152,7 @@ indent_blank_lines=False
 indent_dictionary_value=False
 
 # The number of columns to use for indentation.
-# THIS IS THE DIFFERENCE BETWEEN THIS STYLE FILE AND PEP8
+# Changed from PEP8
 indent_width=2
 
 # Join short lines into one line. E.g., single line 'if' statements.

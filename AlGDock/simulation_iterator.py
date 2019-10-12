@@ -5,6 +5,7 @@ import numpy as np
 
 import time
 
+
 class SimulationIterator:
   """SimulationIterators take a molecular configuration and generate a new one.
 
@@ -67,7 +68,7 @@ class SimulationIterator:
       else:
         raise Exception('Unrecognized sampler!')
 
-  def iteration(self, seed, process, lambda_k, \
+  def iteration(self, seed, process, params_k, \
       initialize=False, reference=0):
     """Performs an iteration for a single thermodynamic state
 
@@ -77,17 +78,19 @@ class SimulationIterator:
       Starting configuration
     process : str
       Process, either 'BC' or 'CD'
+    params_k : dict of float
+      Parameters describing a thermodynamic state
     """
 
     self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
 
-    self.system.set_lambda(lambda_k)
-    if 'delta_t' in lambda_k.keys():
-      delta_t = lambda_k['delta_t']
+    self.system.setParams(params_k)
+    if 'delta_t' in params_k.keys():
+      delta_t = params_k['delta_t']
     else:
       raise Exception('No time step specified')
-    if 'steps_per_trial' in lambda_k.keys():
-      steps_per_trial = lambda_k['steps_per_trial']
+    if 'steps_per_trial' in params_k.keys():
+      steps_per_trial = params_k['steps_per_trial']
     else:
       steps_per_trial = self.args.params[process]['steps_per_sweep']
 
@@ -108,9 +111,9 @@ class SimulationIterator:
 
     # Execute external MCMC moves
     if (process == 'CD') and (self.args.params['CD']['MCMC_moves']>0) \
-        and (lambda_k['a'] < 0.1) and (self.args.params['CD']['pose']==-1):
+        and (params_k['a'] < 0.1) and (self.args.params['CD']['pose']==-1):
       time_start_ExternalMC = time.time()
-      dat = self._samplers['ExternalMC'](ntrials=5, T=lambda_k['T'])
+      dat = self._samplers['ExternalMC'](ntrials=5, T=params_k['T'])
       results['acc_ExternalMC'] = dat[2]
       results['att_ExternalMC'] = dat[3]
       results['time_ExternalMC'] = (time.time() - time_start_ExternalMC)
@@ -119,7 +122,7 @@ class SimulationIterator:
     time_start_sampler = time.time()
     dat = self._samplers[process](\
       steps=steps, steps_per_trial=steps_per_trial, \
-      T=lambda_k['T'], delta_t=delta_t, \
+      T=params_k['T'], delta_t=delta_t, \
       normalize=(process=='BC'), adapt=initialize, random_seed=random_seed)
     results['acc_Sampler'] = dat[2]
     results['att_Sampler'] = dat[3]
@@ -127,10 +130,10 @@ class SimulationIterator:
     results['time_Sampler'] = (time.time() - time_start_sampler)
 
     # Execute smart darting
-    if (ndarts > 0) and not ((process == 'CD') and (lambda_k['a'] < 0.1)):
+    if (ndarts > 0) and not ((process == 'CD') and (params_k['a'] < 0.1)):
       time_start_SmartDarting = time.time()
       dat = self._samplers[process+'_SmartDarting'](\
-        ntrials=ndarts, T=lambda_k['T'], random_seed=random_seed+5)
+        ntrials=ndarts, T=params_k['T'], random_seed=random_seed+5)
       results['acc_SmartDarting'] = dat[2]
       results['att_SmartDarting'] = dat[3]
       results['time_SmartDarting'] = (time.time() - time_start_SmartDarting)
@@ -155,7 +158,7 @@ class SimulationIterator:
       Location for minimized configurations
     """
     if self.args.params[process]['darts_per_seed'] > 0:
-      outstr = self._samplers[process+'_SmartDarting'].set_confs(seeds)
+      outstr = self._samplers[process + '_SmartDarting'].set_confs(seeds)
       data[process].confs['SmartDarting'] = \
         self._samplers[process+'_SmartDarting'].confs
       return outstr
@@ -196,4 +199,4 @@ class SimulationIterator:
       Process, either 'BC' or 'CD'
     """
     if self.args.params[process]['darts_per_seed'] > 0:
-      self._samplers[process+'_SmartDarting'].confs = []
+      self._samplers[process + '_SmartDarting'].confs = []
