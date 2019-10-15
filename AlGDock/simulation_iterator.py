@@ -13,14 +13,13 @@ class SimulationIterator:
 
   Attributes
   ----------
+  args : AlGDock.simulation_arguments.SimulationArguments
+    Simulation arguments
+  top : AlGDock.topology.Topology
+    Topology with ligand
+  system : AlGDock.system.System
+    System
   _sampler : dict
-
-  Methods
-  -------
-  iteration
-  initializeSmartDartingConfigurations
-  addSmartDartingConfigurations
-  clearSmartDartingConfigurations
   """
   def __init__(self, args, top, system):
     """Initializes the class
@@ -111,7 +110,7 @@ class SimulationIterator:
 
     # Execute external MCMC moves
     if (process == 'CD') and (self.args.params['CD']['MCMC_moves']>0) \
-        and (params_k['a'] < 0.1) and (self.args.params['CD']['pose']==-1):
+        and (params_k['alpha'] < 0.1) and (self.args.params['CD']['pose']==-1):
       time_start_ExternalMC = time.time()
       dat = self._samplers['ExternalMC'](ntrials=5, T=params_k['T'])
       results['acc_ExternalMC'] = dat[2]
@@ -130,7 +129,7 @@ class SimulationIterator:
     results['time_Sampler'] = (time.time() - time_start_sampler)
 
     # Execute smart darting
-    if (ndarts > 0) and not ((process == 'CD') and (params_k['a'] < 0.1)):
+    if (ndarts > 0) and not ((process == 'CD') and (params_k['alpha'] < 0.1)):
       time_start_SmartDarting = time.time()
       dat = self._samplers[process+'_SmartDarting'](\
         ntrials=ndarts, T=params_k['T'], random_seed=random_seed+5)

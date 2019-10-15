@@ -20,21 +20,36 @@ class System:
   ----------
   _evaluators : dict
   _forceFields : dict
-
+  T : float
+    Current temperature
+  T_HIGH : float
+    High temperature
+  T_TARGET : float
+    Target temperature
+  args : AlGDock.simulation_arguments.SimulationArguments
+    Simulation arguments
+  log : AlGDock.logger.Logger
+    Simulation log
+  top : AlGDock.topology.Topology
+    Topology of the ligand
+  top_RL : AlGDock.topology.Topology
+    Topology of the complex
+  starting_pose : numpy.array
+    Starting pose used for simulations with an external restraint
   """
   def __init__(self, args, log, top, top_RL=None, starting_pose=None):
     """Initializes the class
 
     Parameters
     ----------
-    args : simulation_arguments.SimulationArguments
+    args : AlGDock.simulation_arguments.SimulationArguments
       Simulation arguments
     log : AlGDock.logger.Logger
       Simulation log
     top : AlGDock.topology.Topology
-      Topology with ligand
+      Topology of the ligand
     top_RL : AlGDock.topology.Topology
-      Topology of complex
+      Topology of the complex
     starting_pose : numpy.array
       Starting pose used for simulations with an external restraint
     """
@@ -57,21 +72,24 @@ class System:
       mod_files=self.args.FNs['frcmodList'])
 
   def setParams(self, params):
-    """
-    Sets the universe evaluator to values appropriate for the given params dictionary.
-    The elements in the dictionary params can be:
-      MM - True, to turn on the Generalized AMBER force field
-      site - True, to turn on the binding site
-      sLJr - scaling of the soft Lennard-Jones repulsive grid
-      sLJa - scaling of the soft Lennard-Jones attractive grid
-      sELE - scaling of the soft electrostatic grid
-      LJr - scaling of the Lennard-Jones repulsive grid
-      LJa - scaling of the Lennard-Jones attractive grid
-      ELE - scaling of the electrostatic grid
-      k_angular_int - spring constant of flat-bottom wells for angular internal degrees of freedom (kJ/nm)
-      k_spatial_ext - spring constant of flat-bottom wells for spatial external degrees of freedom (kJ/nm)
-      k_angular_ext - spring constant of flat-bottom wells for angular external degrees of freedom (kJ/nm)
-      T - the temperature in K
+    """Sets the universe evaluator to values appropriate for the parameters.
+
+    Parameters
+    ----------
+    params : dict
+      The elements in the dictionary params can be:
+        MM - True, to turn on the Generalized AMBER force field
+        site - True, to turn on the binding site
+        sLJr - scaling of the soft Lennard-Jones repulsive grid
+        sLJa - scaling of the soft Lennard-Jones attractive grid
+        sELE - scaling of the soft electrostatic grid
+        LJr - scaling of the Lennard-Jones repulsive grid
+        LJa - scaling of the Lennard-Jones attractive grid
+        ELE - scaling of the electrostatic grid
+        k_angular_int - spring constant of flat-bottom wells for angular internal degrees of freedom (kJ/nm)
+        k_spatial_ext - spring constant of flat-bottom wells for spatial external degrees of freedom (kJ/nm)
+        k_angular_ext - spring constant of flat-bottom wells for angular external degrees of freedom (kJ/nm)
+        T - the temperature in K
     """
 
     self.T = params['T']
@@ -245,12 +263,32 @@ class System:
     self.top.universe._evaluator[(None, None, None)] = eval
     self._evaluators[evaluator_key] = eval
 
-  def paramsFromLambda(self,
-                       a,
+  def paramsFromAlpha(self,
+                       alpha,
                        process='CD',
                        params_o=None,
                        site=True,
                        crossed=False):
+    """Creates a parameter dictionary for a given alpha value
+
+    Parameters
+    ----------
+    alpha : float
+      Progress variable for the thermodynamic state
+    process : str
+      Process, either 'BC' or 'CD'
+    params_o : dict of float
+      Parameter dictionary to modify
+    site : bool
+      If True, the ligand is restricted to the binding site
+    crossed : bool
+      If True, the initial protocol is complete
+
+    Returns
+    -------
+    params : dict of float
+      Parameter dictionary that corresponds to the given alpha
+    """
     if (params_o is not None):
       params = copy.deepcopy(params_o)
       if 'steps_per_trial' not in params_o.keys():
@@ -266,53 +304,54 @@ class System:
       params['crossed'] = crossed
 
     if process == 'CD':
-      a_g = 4. * (a - 0.5)**2 / (1 + np.exp(-100 * (a - 0.5)))
-      if a_g < 1E-10:
-        a_g = 0
+      alpha_g = 4. * (alpha - 0.5)**2 / (1 + np.exp(-100 * (alpha - 0.5)))
+      if alpha_g < 1E-10:
+        alpha_g = 0
       if self.args.params['CD']['solvation']=='Desolvated' or \
          self.args.params['CD']['solvation']=='Reduced':
         params['OBC'] = 0
       elif self.args.params['CD']['solvation'] == 'Fractional':
-        params['OBC'] = a_g  # Scales the solvent with the grid
+        params['OBC'] = alpha_g  # Scales the solvent with the grid
       elif self.args.params['CD']['solvation'] == 'Full':
         params['OBC'] = 1.0
       if self.args.params['CD']['pose'] > -1:
         # Pose BPMF
-        a_r = np.tanh(16 * a * a)
-        params['a'] = a
-        params['k_angular_int'] = self.args.params['CD']['k_pose'] * a_r
+        alpha_r = np.tanh(16 * alpha * alpha)
+        params['alpha'] = alpha
+        params['k_angular_int'] = self.args.params['CD']['k_pose'] * alpha_r
         params['k_angular_ext'] = self.args.params['CD']['k_pose']
         params['k_spatial_ext'] = self.args.params['CD']['k_pose']
-        params['sLJr'] = a_g
-        params['sLJa'] = a_g
-        params['ELE'] = a_g
-        params['T'] = a_r * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+        params['sLJr'] = alpha_g
+        params['sLJa'] = alpha_g
+        params['ELE'] = alpha_g
+        params['T'] = alpha_r * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
       else:
         # BPMF
-        a_sg = 1. - 4. * (a - 0.5)**2
-        params['a'] = a
-        params['sLJr'] = a_sg
+        alpha_sg = 1. - 4. * (alpha - 0.5)**2
+        params['alpha'] = alpha
+        params['sLJr'] = alpha_sg
         if self.args.params['CD']['solvation'] != 'Reduced':
-          params['sELE'] = a_sg
-        params['LJr'] = a_g
-        params['LJa'] = a_g
-        params['ELE'] = a_g \
-          if self.args.params['CD']['solvation']!='Reduced' else 0.2*a_g
+          params['sELE'] = alpha_sg
+        params['LJr'] = alpha_g
+        params['LJa'] = alpha_g
+        params['ELE'] = alpha_g \
+          if self.args.params['CD']['solvation']!='Reduced' else 0.2*alpha_g
         if site is not None:
           params['site'] = site
         if self.args.params['CD']['temperature_scaling'] == 'Linear':
-          params['T'] = a * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+          params['T'] = alpha * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
         elif self.args.params['CD']['temperature_scaling'] == 'Quadratic':
-          params['T'] = a_g * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+          params['T'] = alpha_g * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
     elif process == 'BC':
-      params['a'] = a
-      params['T'] = self.T_HIGH - a * (self.T_HIGH - self.T_TARGET)
+      # If alpha = 0.0, T = T_HIGH. If alpha = 1.0, T = T_TARGET.
+      params['alpha'] = alpha
+      params['T'] = self.T_HIGH - alpha * (self.T_HIGH - self.T_TARGET)
       if self.args.params['BC']['solvation'] == 'Desolvated':
-        params['OBC'] = a
+        params['OBC'] = alpha
       elif self.args.params['BC']['solvation'] == 'Reduced':
-        params['OBC'] = a
+        params['OBC'] = alpha
       elif self.args.params['BC']['solvation'] == 'Fractional':
-        params['OBC'] = a
+        params['OBC'] = alpha
       elif self.args.params['BC']['solvation'] == 'Full':
         params['OBC'] = 1.0
     else:
@@ -321,8 +360,7 @@ class System:
     return params
 
   def clear_evaluators(self):
-    """
-    Deletes the stored evaluators and grids to save memory
+    """Deletes the stored evaluators and grids to save memory
     """
     self._evaluators = {}
     for scalable in scalables:
@@ -331,6 +369,5 @@ class System:
 
   def isForce(self, val):
     """Determines whether a force named 'val' is defined
-
     """
     return (val in self._forceFields.keys())

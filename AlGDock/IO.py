@@ -327,18 +327,19 @@ class crd:
 
 
 class dock6_mol2:
-  """
-  Class to read output from UCSF DOCK 6
+  """Handles mol2 from UCSF DOCK 6
+
+  Reads output files and writes similar mol2 files
   """
   def __init__(self):
     pass
 
   def read(self, FN, reorder=None, multiplier=None):
-    crds = []
+    confs = []
     E = {}
 
     if (FN is None) or (not os.path.isfile(FN)):
-      return (crds, E)
+      return (confs, E)
 
     # Specifically to read output from UCSF dock6
     if FN.endswith('.mol2'):
@@ -362,24 +363,24 @@ class dock6_mol2:
       for model in models:
         fields = model.split('<TRIPOS>')
 
-        crd = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
+        conf = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
                        dtype=float)
         if multiplier is not None:
-          crd = multiplier * crd
+          conf = multiplier * conf
         if reorder is not None:
-          crd = crd[reorder, :]
+          conf = conf[reorder, :]
 
         for line in fields[0].split('\n'):
           if line.startswith('##########'):
             label = line[11:line.find(':')].strip()
             if not label in E.keys():
-              E[label] = [0] * len(crds)
+              E[label] = [0] * len(confs)
             E[label].append(float(line.split()[-1]))
 
-        crds.append(crd)
-    return (crds, E)
+        confs.append(conf)
+    return (confs, E)
 
-  def write(self, templateFN, confs, FN):
+  def write(self, templateFN, confs, FN, reorder=None, multiplier=None):
     if (templateFN is None) or not os.path.isfile(templateFN):
       raise Exception('Template required')
 
@@ -405,6 +406,10 @@ class dock6_mol2:
     footer = template[template.find('\n@<TRIPOS>BOND'):] + '\n'
     F = open(FN, 'w')
     for conf in confs:
+      if multiplier is not None:
+        conf = multiplier * conf
+      if reorder is not None:
+        conf = conf[reorder, :]
       F.write(header + \
         '\n'.join([body[ind][:16] + \
                    ''.join(['%10.4f'%x for x in conf[ind]]) + \

@@ -187,7 +187,7 @@ class BPMF:
       else:
         print '\n*** Measuring the binding site ***'
         self.system.setParams(
-          self.system.paramsFromLambda(1.0, 'CD', site=False))
+          self.system.paramsFromAlpha(1.0, 'CD', site=False))
         (confs, Es) = self._get_confs_to_rescore(site=False, minimize=True)
         if len(confs) > 0:
           # Use the center of mass for configurations
@@ -426,10 +426,9 @@ class BPMF:
   ###########
   # BC #
   ###########
-  def initial_BC(self, warm=True):
+  def initial_BC(self):
     """
-    Warms the ligand from self.T_TARGET to self.T_HIGH, or
-    BCs the ligand from self.T_HIGH to self.T_TARGET
+    Warms the ligand from self.T_TARGET to self.T_HIGH
 
     Intermediate thermodynamic states are chosen such that
     thermodynamic length intervals are approximately constant.
@@ -440,48 +439,24 @@ class BPMF:
         0) and (self.data['BC'].protocol[-1]['crossed']):
       return  # Initial BC is already complete
 
-    self.log.set_lock('BC')
     self.log.recordStart('BC')
+
+    from AlGDock.ligand_preparation import LigandPreparation
+    seeds = LigandPreparation(self.args, self.log, self.top, self.system,
+                              self._get_confs_to_rescore, self.iterator,
+                              self.data).run('BC')
+
+    self.log.set_lock('BC')
     self.log.recordStart('BC_save')
 
-    direction_name = 'warm' if warm else 'BC'
-    if self.data['BC'].protocol == []:
-      self.log.tee("\n>>> Initial %sing, starting at "%direction_name + \
+    if seeds is not None:
+      self.log.tee("\n>>> Initial warming, starting at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
 
-      # Set up the force field
-      params_o = self.system.paramsFromLambda(1.0 if warm else 0.,
-                                              'BC',
-                                              site=False)
+      params_o = self.system.paramsFromAlpha(1.0, 'BC', site=False)
       self.data['BC'].protocol = [params_o]
       self.system.setParams(params_o)
 
-      # Get starting configurations
-      seeds = self._get_confs_to_rescore(site=False, minimize=True)[0]
-      # initializes smart darting for BC
-      # and sets the universe to the lowest energy configuration
-      self.log.tee(
-        self.iterator.initializeSmartDartingConfigurations(
-          seeds, 'BC', self.data))
-      if len(seeds) > 0:
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, seeds[-1]))
-      self.data['BC'].confs['starting_poses'] = seeds
-
-      # Ramp the temperature from 0 to the desired starting temperature using HMC
-      self._ramp_T(params_o['T'], normalize=True)
-
-      # Run at starting temperature
-      seeds = [np.copy(self.top.universe.configuration().array) \
-        for n in range(self.args.params['BC']['seeds_per_state'])]
-    else:
-      seeds = None
-
-    # from AlGDock.ligand_preparation import LigandPreparation
-    # TODO: Invoke LigandPreparation
-    # LigandPreparation
-
-    if seeds is not None:
       # Run at starting temperature
       self.log.recordStart('BC_state')
       (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
@@ -499,7 +474,7 @@ class BPMF:
       self.log.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
         params_o['delta_t']*1000., self._tL_tensor(E,params_o,process='BC')))
     else:
-      self.log.tee("\n>>> Initial %sing, continuing at "%direction_name + \
+      self.log.tee("\n>>> Initial warming, continuing at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
       params_o = self.data['BC'].protocol[-1]
       confs = self.data['BC'].confs['samples'][-1][0]
@@ -514,7 +489,7 @@ class BPMF:
     while (not self.data['BC'].protocol[-1]['crossed']):
       # Choose new temperature
       params_n = self._next_BC_state(E = E, params_o = params_o, \
-        pow = rejectStage, warm = warm)
+        pow = rejectStage)
       self.data['BC'].protocol.append(params_n)
 
       # Randomly select seeds for new trajectory
@@ -594,14 +569,13 @@ class BPMF:
       # Special tasks after the last stage
       if self.data['BC'].protocol[-1]['crossed']:
         # For warming, reverse protocol and energies
-        if warm:
-          self.log.tee("  reversing replicas, samples, and protocol")
-          self.data['BC'].confs['replicas'].reverse()
-          self.data['BC'].confs['samples'].reverse()
-          self.data['BC'].Es.reverse()
-          self.data['BC'].protocol.reverse()
-          self.data['BC'].protocol[0]['crossed'] = False
-          self.data['BC'].protocol[-1]['crossed'] = True
+        self.log.tee("  reversing replicas, samples, and protocol")
+        self.data['BC'].confs['replicas'].reverse()
+        self.data['BC'].confs['samples'].reverse()
+        self.data['BC'].Es.reverse()
+        self.data['BC'].protocol.reverse()
+        self.data['BC'].protocol[0]['crossed'] = False
+        self.data['BC'].protocol[-1]['crossed'] = True
 
         if (not self.args.params['BC']['keep_intermediate']):
           for k in range(1, len(self.data['BC'].protocol) - 1):
@@ -633,7 +607,7 @@ class BPMF:
       self._save('BC')
       self.log.tee("")
 
-    self.log.tee("Elapsed time for initial %sing of "%direction_name + \
+    self.log.tee("Elapsed time for initial warming of " + \
       "%d states: "%len(self.data['BC'].protocol) + \
       HMStime(self.log.timeSince('BC')))
     self.log.clear_lock('BC')
@@ -815,12 +789,12 @@ class BPMF:
     BC0_confs = [confs[ind] for ind in random_CD_inds]
 
     # Do the random CD
-    params_o = self.system.paramsFromLambda(0.0, 'CD')
+    params_o = self.system.paramsFromAlpha(0.0, 'CD')
     params_o['delta_t'] = 1. * self.data['BC'].protocol[0]['delta_t']
     self.data['CD'].protocol = [params_o]
 
     # Set up the force field with full interaction grids
-    self.system.setParams(self.system.paramsFromLambda(1.0, 'CD'))
+    self.system.setParams(self.system.paramsFromAlpha(1.0, 'CD'))
 
     # Either loads or generates the random translations and rotations for the first state of CD
     if not (hasattr(self, '_random_trans') and hasattr(self, '_random_rotT')):
@@ -881,7 +855,7 @@ class BPMF:
         E_c[term] = np.ravel(E[term][:, :self._n_rot, :n_trans_n])
       self.log.tee("  allocated memory for %d translations" % n_trans_n)
       (u_kln,N_k) = self._u_kln([E_c],\
-        [params_o,self._next_CD_state(E=E_c, params_o=params_o, unCD=False)])
+        [params_o,self._next_CD_state(E=E_c, params_o=params_o, decoupling=False)])
       du = u_kln[0, 1, :] - u_kln[0, 0, :]
       bootstrap_reps = 50
       f_grid0 = np.zeros(bootstrap_reps)
@@ -935,72 +909,52 @@ class BPMF:
         0) and (self.data['CD'].protocol[-1]['crossed']):
       return  # Initial CD already complete
 
+    from AlGDock.ligand_preparation import LigandPreparation
+    seeds = LigandPreparation(self.args, self.log, self.top, self.system,
+                              self._get_confs_to_rescore, self.iterator,
+                              self.data).run('CD')
+
     self.log.set_lock('CD')
     self.log.recordStart('initial_CD')
     self.log.recordStart('CD_save')
 
     if self.data['CD'].protocol == []:
-      unCD = True
-      # unCD = (self.args.params['CD']['pose'] == -1)
-      if unCD:
-        self.log.tee("\n>>> Initial unCD, starting at " + \
-          time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+      if seeds is not None:
+        decoupling = True
 
-        params_o = self.system.paramsFromLambda(1.0, 'CD')
+        params_o = self.system.paramsFromAlpha(1.0, 'CD')
         self.data['CD'].protocol = [params_o]
         self.system.setParams(params_o)
 
-        if (self.args.params['CD']['pose'] == -1):
-          seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
-          self.data['CD'].confs['starting_poses'] = seeds
-        else:
-          # For pose BPMF, starting_poses is defined in _set_universe_evaluator
-          seeds = self.data['CD'].confs['starting_poses']
+        attempts = 0
+        DeltaEs = np.array([0.])
+        # Iteratively simulate and modify the time step
+        # until the simulations lead to different energies
+        while np.std(DeltaEs) < 1E-7:
+          attempts += 1
+          if attempts == 5:
+            self._store_infinite_f_RL()
+            raise Exception('Unable to ramp temperature')
 
-        if seeds == []:
-          unCD = False
-        else:
-          # initializes smart darting for CD and sets the universe
-          # to the lowest energy configuration
-          self.log.tee(
-            self.iterator.initializeSmartDartingConfigurations(
-              seeds, 'CD', self.data))
-          if len(seeds) > 0:
-            self.top.universe.setConfiguration(\
-              Configuration(self.top.universe,np.copy(seeds[-1])))
+          (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
+            self._initial_sim_state(seeds, 'CD', params_o)
 
-          attempts = 0
-          DeltaEs = np.array([0.])
-          while np.std(DeltaEs) < 1E-7:
-            # Ramp up the temperature using HMC
-            self._ramp_T(self.T_TARGET, normalize=False)
+        # Get state energies
+        E = self._energyTerms(confs)
+        self.data['CD'].confs['replicas'] = [
+          confs[np.random.randint(len(confs))]
+        ]
+        self.data['CD'].confs['samples'] = [[confs]]
+        self.data['CD'].Es = [[E]]
 
-            seeds = [np.copy(self.top.universe.configuration().array) \
-              for n in range(self.args.params['CD']['seeds_per_state'])]
-            # Simulate
-            (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
-              self._initial_sim_state(seeds, 'CD', params_o)
+        self.log.tee("\n  at a=%.3e in %s: %s"%(\
+          params_o['alpha'], HMStime(self.log.timeSince('initial_CD')), sampler_metrics))
+        self.log.tee("    dt=%.2f fs, tL_tensor=%.3e"%(\
+          params_o['delta_t']*1000., \
+          self._tL_tensor(E,params_o)))
+      else:
+        decoupling = False
 
-            attempts += 1
-            if attempts == 5:
-              self._store_infinite_f_RL()
-              raise Exception('Unable to ramp temperature')
-
-          # Get state energies
-          E = self._energyTerms(confs)
-          self.data['CD'].confs['replicas'] = [
-            confs[np.random.randint(len(confs))]
-          ]
-          self.data['CD'].confs['samples'] = [[confs]]
-          self.data['CD'].Es = [[E]]
-
-          self.log.tee("\n  at a=%.3e in %s: %s"%(\
-            params_o['a'], HMStime(self.log.timeSince('initial_CD')), sampler_metrics))
-          self.log.tee("    dt=%.2f fs, tL_tensor=%.3e"%(\
-            params_o['delta_t']*1000., \
-            self._tL_tensor(E,params_o)))
-
-      if not unCD:
         self.log.tee("\n>>> Initial CD, starting at " + \
           time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
 
@@ -1027,7 +981,7 @@ class BPMF:
             self.log.clear_lock('CD')
             return
         else:
-          params_o = self.system.paramsFromLambda(0, 'CD')
+          params_o = self.system.paramsFromAlpha(0, 'CD')
           self.system.setParams(params_o)
           confs = confs_HT
           E = self._energyTerms(confs)
@@ -1039,8 +993,8 @@ class BPMF:
           self.data['CD'].protocol = [params_o]
     else:
       # Continuing from a previous CD instance
-      unCD = self.data['CD'].protocol[0]['a'] > self.data['CD'].protocol[1]['a']
-      self.log.tee("\n>>> Initial %sCD, "%({True:'un',False:''}[unCD]) + \
+      decoupling = self.data['CD'].protocol[0]['alpha'] > self.data['CD'].protocol[1]['alpha']
+      self.log.tee("\n>>> Initial %sCD, "%({True:'un',False:''}[decoupling]) + \
         "continuing at " + \
         time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
       confs = self.data['CD'].confs['samples'][-1][0]
@@ -1059,7 +1013,7 @@ class BPMF:
     while (not self.data['CD'].protocol[-1]['crossed']):
       # Determine next value of the protocol
       params_n = self._next_CD_state(E = E, params_o = params_o, \
-          pow = rejectStage, unCD = unCD)
+          pow = rejectStage, decoupling = decoupling)
       self.data['CD'].protocol.append(params_n)
       if len(self.data['CD'].protocol) > 1000:
         self._clear('CD')
@@ -1081,7 +1035,7 @@ class BPMF:
         size = self.args.params['CD']['seeds_per_state'], \
         p=weights/sum(weights))
 
-      if (not unCD) and (self.args.params['CD']['pose'] == -1) \
+      if (not decoupling) and (self.args.params['CD']['pose'] == -1) \
           and (len(self.data['CD'].protocol)==2):
         # BC state 0 configurations, randomly oriented
         # Use the lowest energy configuration
@@ -1114,7 +1068,7 @@ class BPMF:
       # Simulate
       self.log.recordStart('CD_state')
       self.system.setParams(params_n)
-      if self.args.params['CD']['darts_per_seed'] > 0 and params_n['a'] > 0.1:
+      if self.args.params['CD']['darts_per_seed'] > 0 and params_n['alpha'] > 0.1:
         self.log.tee(
           self.iterator.initializeSmartDartingConfigurations(
             self.data['CD'].confs['SmartDarting'], 'CD', self.data))
@@ -1133,7 +1087,7 @@ class BPMF:
       # Estimate the mean replica exchange acceptance rate
       # between the previous and new state
       self.log.tee("  at a=%.3e in %s: %s"%(\
-        params_n['a'], \
+        params_n['alpha'], \
         HMStime(self.log.timeSince('CD_state')), sampler_metrics))
 
       if E_o != {}:
@@ -1150,7 +1104,7 @@ class BPMF:
           params_n['delta_t']*1000., self._tL_tensor(E,params_o)))
 
       # Decide whether to keep the state
-      if len(self.data['CD'].protocol) > (1 + (not unCD)):
+      if len(self.data['CD'].protocol) > (1 + (not decoupling)):
         if (mean_acc<self.args.params['CD']['min_repX_acc']) and \
             (self.args.params['CD']['protocol']=='Adaptive'):
           # If the acceptance probability is too low,
@@ -1161,7 +1115,7 @@ class BPMF:
           rejectStage += 1
           self.log.tee(
             "  rejected new state with low estimated acceptance rate")
-        elif len(self.data['CD'].protocol)>(2+(not unCD)) and \
+        elif len(self.data['CD'].protocol)>(2+(not decoupling)) and \
             (mean_acc>0.99) and (not params_n['crossed']) and \
             (self.args.params['CD']['protocol']=='Adaptive'):
           # If the acceptance probability is too high,
@@ -1195,8 +1149,8 @@ class BPMF:
 
       # Special tasks after the last stage
       if (self.data['CD'].protocol[-1]['crossed']):
-        # For unCD, reverse protocol and energies
-        if unCD:
+        # For decoupling, reverse protocol and energies
+        if decoupling:
           self.log.tee("  reversing replicas, samples, and protocol")
           self.data['CD'].confs['replicas'].reverse()
           self.data['CD'].confs['samples'].reverse()
@@ -1725,7 +1679,7 @@ class BPMF:
     energyFN = os.path.join(self.args.dir['CD'], prefix + '.pkl.gz')
 
     # Set the force field to fully interacting
-    params_full = self.system.paramsFromLambda(1.0, 'CD')
+    params_full = self.system.paramsFromAlpha(1.0, 'CD')
     self.system.setParams(params_full)
 
     # Load the configurations
@@ -1867,77 +1821,6 @@ class BPMF:
   ######################
   # Internal Functions #
   ######################
-
-  def _ramp_T(self, T_START, T_LOW=20., normalize=False):
-    self.log.recordStart('T_ramp')
-
-    # First minimize the energy
-    from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
-    minimizer = SteepestDescentMinimizer(self.top.universe)
-
-    original_stderr = sys.stderr
-    sys.stderr = NullDevice()  # Suppresses warnings for minimization
-
-    x_o = np.copy(self.top.universe.configuration().array)
-    e_o = self.top.universe.energy()
-    for rep in range(5000):
-      minimizer(steps=10)
-      x_n = np.copy(self.top.universe.configuration().array)
-      e_n = self.top.universe.energy()
-      diff = abs(e_o - e_n)
-      if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, x_o))
-        break
-      else:
-        x_o = x_n
-        e_o = e_n
-
-    sys.stderr = original_stderr
-    self.log.tee("  minimized to %.3g kcal/mol over %d steps" % (e_o, 10 *
-                                                                 (rep + 1)))
-
-    # Then ramp the energy to the starting temperature
-    from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-      import HamiltonianMonteCarloIntegrator
-    sampler = HamiltonianMonteCarloIntegrator(self.top.universe)
-
-    e_o = self.top.universe.energy()
-    T_LOW = 20.
-    T_SERIES = T_LOW * (T_START / T_LOW)**(np.arange(30) / 29.)
-    for T in T_SERIES:
-      delta_t = 2.0 * MMTK.Units.fs
-      steps_per_trial = 10
-      attempts_left = 10
-      while attempts_left > 0:
-        random_seed = int(T*10000) + attempts_left + \
-          int(self.top.universe.configuration().array[0][0]*10000)
-        if self.args.random_seed == 0:
-          random_seed += int(time.time() * 1000)
-        random_seed = random_seed % 32767
-        (xs, energies, acc, ntrials, delta_t) = \
-          sampler(steps = 2500, steps_per_trial = 10, T=T,\
-                  delta_t=delta_t, random_seed=random_seed)
-        attempts_left -= 1
-        acc_rate = float(acc) / ntrials
-        if acc_rate < 0.4:
-          delta_t -= 0.25 * MMTK.Units.fs
-        else:
-          attempts_left = 0
-        if delta_t < 0.1 * MMTK.Units.fs:
-          delta_t = 0.1 * MMTK.Units.fs
-          steps_per_trial = max(int(steps_per_trial / 2), 1)
-      fmt = "  T = %d, delta_t = %.3f fs, steps_per_trial = %d, acc_rate = %.3f"
-      if acc_rate < 0.01:
-        print self.top.universe.energyTerms()
-      self.log.tee(fmt % (T, delta_t * 1000, steps_per_trial, acc_rate))
-    if normalize:
-      self.top.universe.normalizePosition()
-    e_f = self.top.universe.energy()
-
-    self.log.tee("  ramped temperature from %d to %d K in %s, "%(\
-      T_LOW, T_START, HMStime(self.log.timeSince('T_ramp'))) + \
-      "changing energy to %.3g kcal/mol"%(e_f))
 
   def _initial_sim_state(self, seeds, process, params_k):
     """
@@ -2496,7 +2379,7 @@ class BPMF:
          (self.args.FNs['score']!='default'):
         self.log.set_lock('CD')
         self.log.tee("\n>>> Reinitializing replica exchange configurations")
-        self.system.setParams(self.system.paramsFromLambda(1.0, 'CD'))
+        self.system.setParams(self.system.paramsFromAlpha(1.0, 'CD'))
         confs = self._get_confs_to_rescore(\
           nconfs=len(self.data['CD'].protocol), site=True, minimize=True)[0]
         self.log.clear_lock('CD')
@@ -2557,17 +2440,17 @@ class BPMF:
 
     return True  # The process has completed
 
-  def _insert_CD_state(self, a, clear=True):
+  def _insert_CD_state(self, alpha, clear=True):
     """
     Inserts a new thermodynamic state into the CD protocol.
     Samples for previous cycles are added by sampling importance resampling.
     Clears grid_MBAR.
     """
     # Defines a new thermodynamic state based on the neighboring state
-    neighbor_ind = [a < p['a']
+    neighbor_ind = [alpha < p['alpha']
                     for p in self.data['CD'].protocol].index(True) - 1
-    params_n = self.system.paramsFromLambda(
-      a, params_o=self.data['CD'].protocol[neighbor_ind])
+    params_n = self.system.paramsFromAlpha(
+      alpha, params_o=self.data['CD'].protocol[neighbor_ind])
 
     # For sampling importance resampling,
     # prepare an augmented matrix for pymbar calculations
@@ -2667,21 +2550,21 @@ class BPMF:
     k = 0
     while k < len(self.data['CD'].protocol) - 1:
       mean_acc = calc_mean_acc(k)
-      # print k, self.data['CD'].protocol[k]['a'], self.data['CD'].protocol[k+1]['a'], mean_acc
+      # print k, self.data['CD'].protocol[k]['alpha'], self.data['CD'].protocol[k+1]['alpha'], mean_acc
       while mean_acc < 0.4:
         if not updated:
           updated = True
           self.log.set_lock('CD')
-        a_k = self.data['CD'].protocol[k]['a']
-        a_kp = self.data['CD'].protocol[k + 1]['a']
-        a_n = (a_k + a_kp) / 2.
+        alpha_k = self.data['CD'].protocol[k]['alpha']
+        alpha_kp = self.data['CD'].protocol[k + 1]['alpha']
+        alpha_n = (alpha_k + alpha_kp) / 2.
         report = '  inserted state'
-        report += ' between %.5g and %.5g at %.5g\n' % (a_k, a_kp, a_n)
+        report += ' between %.5g and %.5g at %.5g\n' % (alpha_k, alpha_kp, alpha_n)
         report += '  to improve acceptance rate from %.5g ' % mean_acc
-        self._insert_CD_state(a_n, clear=False)
+        self._insert_CD_state(alpha_n, clear=False)
         mean_acc = calc_mean_acc(k)
         report += 'to %.5g' % mean_acc
-        # print k, self.data['CD'].protocol[k]['a'], self.data['CD'].protocol[k+1]['a'], mean_acc
+        # print k, self.data['CD'].protocol[k]['alpha'], self.data['CD'].protocol[k+1]['alpha'], mean_acc
         self.log.tee(report)
       k += 1
     if updated:
@@ -2695,15 +2578,29 @@ class BPMF:
                             site=False,
                             minimize=True,
                             sort=True):
-    """
-    Returns configurations to rescore and their corresponding energies
-    as a tuple of lists, ordered by DECREASING energy.
-    It is either the default configuration, or from dock6 and initial CD.
-    If nconfs is None, then all configurations will be unique.
-    If nconfs is smaller than the number of unique configurations,
-    then the lowest energy configurations will be retained.
-    If nconfs is larger than the number of unique configurations,
-    then the lowest energy configuration will be duplicated.
+    """Returns configurations to rescore and their corresponding energies
+
+    Parameters
+    ----------
+    nconfs : int or None
+      Number of configurations to keep. If it is smaller than the number
+      of unique configurations, then the lowest energy configurations will
+      be kept. If it is larger, then the lowest energy configuration will be
+      duplicated. If it is None, then all unique configurations will be kept.
+    site : bool
+      If True, configurations that are outside of the binding site
+      will be discarded.
+    minimize : bool
+      If True, the configurations will be minimized
+    sort : bool
+      If True, configurations and energies will be sorted by DECREASING energy.
+
+    Returns
+    -------
+    confs : list of np.array
+      Configurations
+    energies : list of float
+      Energies of the configurations
     """
     # Get configurations
     count = {'xtal': 0, 'dock6': 0, 'initial_CD': 0, 'duplicated': 0}
@@ -2795,44 +2692,7 @@ class BPMF:
 
     if minimize:
       Es = {}
-      from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
-      minimizer = SteepestDescentMinimizer(self.top.universe)
-
-      original_stderr = sys.stderr
-      sys.stderr = NullDevice()  # Suppresses warnings for minimization
-
-      minimized_confs = []
-      minimized_energies = []
-      self.log.recordStart('minimization')
-      for conf in confs:
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, conf))
-        x_o = np.copy(self.top.universe.configuration().array)
-        e_o = self.top.universe.energy()
-        for rep in range(50):
-          minimizer(steps=25)
-          x_n = np.copy(self.top.universe.configuration().array)
-          e_n = self.top.universe.energy()
-          diff = abs(e_o - e_n)
-          if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
-            self.top.universe.setConfiguration(
-              Configuration(self.top.universe, x_o))
-            break
-          else:
-            x_o = x_n
-            e_o = e_n
-        if not np.isnan(e_o):
-          minimized_confs.append(x_o)
-          minimized_energies.append(e_o)
-
-      sys.stderr = original_stderr  # Restores error reporting
-
-      confs = minimized_confs
-      energies = minimized_energies
-      self.log.tee("  minimized %d configurations in "%len(confs) + \
-        HMStime(self.log.timeSince('minimization')) + \
-        "\n  the first %d energies are:\n  "%min(len(confs),10) + \
-        ', '.join(['%.2f'%e for e in energies[:10]]))
+      (confs, energies) = self._checkedMinimizer(confs)
     else:
       # Evaluate energies
       energies = []
@@ -2864,6 +2724,61 @@ class BPMF:
       "  keeping {nconfs}{minimized} configurations out of\n  {xtal} from xtal, {dock6} from dock6, {initial_CD} from initial CD, and {duplicated} duplicated"
       .format(**count))
     return (confs, Es)
+
+  def _checkedMinimizer(self, confs):
+    """Minimizes configurations while checking for crashes and overflows
+
+    Parameters
+    ----------
+    confs : list of np.array
+      Configurations to minimize
+
+    Returns
+    -------
+    confs : list of np.array
+      Minimized configurations
+    energies : list of float
+      Energies of the minimized configurations
+    """
+    from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
+    minimizer = SteepestDescentMinimizer(self.top.universe)
+
+    original_stderr = sys.stderr
+    sys.stderr = NullDevice()  # Suppresses warnings for minimization
+
+    minimized_confs = []
+    minimized_energies = []
+    self.log.recordStart('minimization')
+    for conf in confs:
+      self.top.universe.setConfiguration(
+        Configuration(self.top.universe, conf))
+      x_o = np.copy(self.top.universe.configuration().array)
+      e_o = self.top.universe.energy()
+      for rep in range(50):
+        minimizer(steps=25)
+        x_n = np.copy(self.top.universe.configuration().array)
+        e_n = self.top.universe.energy()
+        diff = abs(e_o - e_n)
+        if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
+          self.top.universe.setConfiguration(
+            Configuration(self.top.universe, x_o))
+          break
+        else:
+          x_o = x_n
+          e_o = e_n
+      if not np.isnan(e_o):
+        minimized_confs.append(x_o)
+        minimized_energies.append(e_o)
+
+    sys.stderr = original_stderr  # Restores error reporting
+
+    confs = minimized_confs
+    energies = minimized_energies
+    self.log.tee("  minimized %d configurations in "%len(confs) + \
+      HMStime(self.log.timeSince('minimization')) + \
+      "\n  the first %d energies are:\n  "%min(len(confs),10) + \
+      ', '.join(['%.2f'%e for e in energies[:10]]))
+    return confs, energies
 
   def _run_MBAR(self, u_kln, N_k, augmented=False):
     """
@@ -3051,13 +2966,13 @@ class BPMF:
         T_GEOMETRIC = T_GEOMETRIC[::-1]
       T = T_GEOMETRIC[len(self.data['BC'].protocol)]
       crossed = (len(self.data['BC'].protocol) == (len(T_GEOMETRIC) - 1))
-    a = (self.T_HIGH - T) / (self.T_HIGH - self.T_TARGET)
-    return self.system.paramsFromLambda(a,
+    alpha = (self.T_HIGH - T) / (self.T_HIGH - self.T_TARGET)
+    return self.system.paramsFromAlpha(alpha,
                                         process='BC',
                                         params_o=params_o,
                                         crossed=crossed)
 
-  def _next_CD_state(self, E=None, params_o=None, pow=None, unCD=False):
+  def _next_CD_state(self, E=None, params_o=None, pow=None, decoupling=False):
     """
     Determines the parameters for the next CD state
     """
@@ -3080,31 +2995,31 @@ class BPMF:
         dL = min(
           self.args.params['CD']['therm_speed'] / tL_tensor / (1.25**pow),
           0.05)
-      if unCD:
-        a = params_o['a'] - dL
+      if decoupling:
+        alpha = params_o['alpha'] - dL
         if (self.args.params['CD']['pose'] > -1) and \
-           (params_o['a'] > 0.5) and (a < 0.5):
+           (params_o['alpha'] > 0.5) and (alpha < 0.5):
           # Stop at 0.5 to facilitate entropy-energy decomposition
-          a = 0.5
-        elif a < 0.0:
+          alpha = 0.5
+        elif alpha < 0.0:
           if pow > 0:
-            a = params_o['a'] * (1 - 0.8**pow)
+            alpha = params_o['alpha'] * (1 - 0.8**pow)
           else:
-            a = 0.0
+            alpha = 0.0
             crossed = True
       else:
-        a = params_o['a'] + dL
+        alpha = params_o['alpha'] + dL
         if (self.args.params['CD']['pose'] > -1) and \
-           (params_o['a'] < 0.5) and (a > 0.5):
+           (params_o['alpha'] < 0.5) and (alpha > 0.5):
           # Stop at 0.5 to facilitate entropy-energy decomposition
-          a = 0.5
-        elif a > 1.0:
+          alpha = 0.5
+        elif alpha > 1.0:
           if pow > 0:
-            a = params_o['a'] + (1 - params_o['a']) * 0.8**pow
+            alpha = params_o['alpha'] + (1 - params_o['alpha']) * 0.8**pow
           else:
-            a = 1.0
+            alpha = 1.0
             crossed = True
-      return self.system.paramsFromLambda(a,
+      return self.system.paramsFromAlpha(alpha,
                                           process='CD',
                                           params_o=params_o,
                                           crossed=crossed)
@@ -3113,11 +3028,11 @@ class BPMF:
         np.exp(
           np.linspace(np.log(1E-10), np.log(1.0),
                       int(1 / self.args.params['CD']['therm_speed']))))
-      if unCD:
+      if decoupling:
         A_GEOMETRIC.reverse()
-      a = A_GEOMETRIC[len(self.data['CD'].protocol)]
-      crossed = len(self.data['CD'].protocol) == (len(A_GEOMETRIC) - 1)
-      return self.system.paramsFromLambda(a,
+      alpha = A_GEOMETRIC[len(self.data['CD'].protocol)]
+      crossed = len(self.data['CD'].protocol) == (len(alpha_GEOMETRIC) - 1)
+      return self.system.paramsFromAlpha(alpha,
                                           process='CD',
                                           params_o=params_o,
                                           crossed=crossed)
@@ -3127,15 +3042,15 @@ class BPMF:
     T = params_c['T']
     deltaT = np.abs(self.T_HIGH - self.T_TARGET)
     if process == 'CD':
-      a = params_c['a']
-      a_g = 4. * (a - 0.5)**2 / (1 + np.exp(-100 * (a - 0.5)))
-      if a_g < 1E-10:
-        a_g = 0
-      da_g_da = (400.*(a-0.5)**2*np.exp(-100.*(a-0.5)))/(\
-        1+np.exp(-100.*(a-0.5)))**2 + \
-        (8.*(a-0.5))/(1 + np.exp(-100.*(a-0.5)))
+      alpha = params_c['alpha']
+      alpha_g = 4. * (alpha - 0.5)**2 / (1 + np.exp(-100 * (alpha - 0.5)))
+      if alpha_g < 1E-10:
+        alpha_g = 0
+      da_g_da = (400.*(alpha-0.5)**2*np.exp(-100.*(alpha-0.5)))/(\
+        1+np.exp(-100.*(alpha-0.5)))**2 + \
+        (8.*(alpha-0.5))/(1 + np.exp(-100.*(alpha-0.5)))
 
-      # Psi_g are terms that are scaled in with a_g
+      # Psi_g are terms that are scaled in with alpha_g
       # OBC is the strength of the OBC scaling in the current state
       s_ELE = 0.2 if self.args.params['CD']['solvation'] == 'Reduced' else 1.0
       if self.args.params['CD']['solvation'] == 'Desolvated':
@@ -3157,15 +3072,15 @@ class BPMF:
           'OBC': 1
         }],
                             noBeta=True)
-        OBC = a_g
+        OBC = alpha_g
       elif self.args.params['CD']['solvation'] == 'Full':
         Psi_g = self._u_kln([E], [{'LJr': 1, 'LJa': 1, 'ELE': 1}], noBeta=True)
         OBC = 1.0
 
       if self.args.params['CD']['pose'] > -1:  # Pose BPMF
-        a_r = np.tanh(16 * a * a)
-        da_r_da = 32. * a / np.cosh(16. * a * a)**2
-        # Scaled in with a_r
+        alpha_r = np.tanh(16 * alpha * alpha)
+        da_r_da = 32. * alpha / np.cosh(16. * alpha * alpha)**2
+        # Scaled in with alpha_r
         U_r = self._u_kln([E], \
           [{'k_angular_int':self.args.params['CD']['k_pose']}], noBeta=True)
         # Total potential energy
@@ -3174,26 +3089,26 @@ class BPMF:
             'k_angular_ext':params_c['k_angular_ext'], \
             'k_spatial_ext':params_c['k_spatial_ext'], \
             'k_angular_int':params_c['k_angular_int'], \
-            'sLJr':a_g, 'sLJa':a_g, 'ELE':a_g}], noBeta=True)
+            'sLJr':alpha_g, 'sLJa':alpha_g, 'ELE':alpha_g}], noBeta=True)
         return np.abs(da_r_da)*U_r.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
                deltaT*U_RL_g.std()/(R*T*T)
       else:  # BPMF
-        a_sg = 1. - 4. * (a - 0.5)**2
-        da_sg_da = -8 * (a - 0.5)
+        alpha_sg = 1. - 4. * (alpha - 0.5)**2
+        da_sg_da = -8 * (alpha - 0.5)
         if self.args.params['CD']['solvation'] == 'Reduced':
           Psi_sg = self._u_kln([E], [{'sLJr': 1}], noBeta=True)
           U_RL_g = self._u_kln([E],
             [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
-            'sLJr':a_sg, 'LJr':a_g, 'LJa':a_g, 'ELE':s_ELE*a_g}], noBeta=True)
+            'sLJr':alpha_sg, 'LJr':alpha_g, 'LJa':alpha_g, 'ELE':s_ELE*alpha_g}], noBeta=True)
         else:
           # Scaled in with soft grid
           Psi_sg = self._u_kln([E], [{'sLJr': 1, 'sELE': 1}], noBeta=True)
           # Total potential energy
           U_RL_g = self._u_kln([E],
             [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
-            'sLJr':a_sg, 'sELE':a_sg, \
-            'LJr':a_g, 'LJa':a_g, 'ELE':a_g}], noBeta=True)
+            'sLJr':alpha_sg, 'sELE':alpha_sg, \
+            'LJr':alpha_g, 'LJa':alpha_g, 'ELE':alpha_g}], noBeta=True)
         return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
                np.abs(da_g_da)*Psi_g.std()/(R*T) + \
                deltaT*U_RL_g.std()/(R*T*T)
@@ -3207,9 +3122,9 @@ class BPMF:
                                     noBeta=True).std() / (R * T * T)
       else:
         # OBC is scaled with the progress variable
-        a = params_c['a']
+        alpha = params_c['alpha']
         return self._u_kln([E],[{'OBC':1.0}], noBeta=True).std()/(R*T) + \
-          deltaT*self._u_kln([E],[{'MM':True, 'OBC':a}], noBeta=True).std()/(R*T*T)
+          deltaT*self._u_kln([E],[{'MM':True, 'OBC':alpha}], noBeta=True).std()/(R*T*T)
     else:
       raise Exception("Unknown process!")
 
@@ -3504,7 +3419,7 @@ class BPMF:
     if E is None:
       E = {}
 
-    params_full = self.system.paramsFromLambda(a=1.0,
+    params_full = self.system.paramsFromAlpha(alpha=1.0,
                                                process=process,
                                                site=(process == 'CD'))
     if process == 'CD':

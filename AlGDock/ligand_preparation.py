@@ -1,48 +1,213 @@
-import os
-import cPickle as pickle
-import gzip
-import copy
-
-from AlGDock.IO import load_pkl_gz
-from AlGDock.IO import write_pkl_gz
 from AlGDock.logger import NullDevice
+from AlGDock.BindingPMF import HMStime
 
+import os
 import sys
 import time
 import numpy as np
 
-from collections import OrderedDict
-
-from AlGDock import dictionary_tools
-from AlGDock import path_tools
-
 import MMTK
 import MMTK.Units
 from MMTK.ParticleProperties import Configuration
-from MMTK.ForceFields import ForceField
-
-import Scientific
-try:
-  from Scientific._vector import Vector
-except:
-  from Scientific.Geometry.VectorModule import Vector
-
-import pymbar.timeseries
-
-import multiprocessing
-from multiprocessing import Process
-
-try:
-  import requests  # for downloading additional files
-except:
-  print '  no requests module for downloading additional files'
 
 
 class LigandPreparation():
-  def __init__(self, ):
-    pass
+  """Minimizes and equilibrates the ligand
+
+  Attributes
+  ----------
+  args : AlGDock.simulation_arguments.SimulationArguments
+    Simulation arguments
+  log : AlGDock.logger.Logger
+    Simulation log
+  top : AlGDock.topology.Topology
+    Topology of the ligand
+  system : AlGDock.system.System
+    Simulation system
+  _get_confs_to_rescore : function
+    Returns the configurations to rescore
+  iterator : AlGDock.simulation_iterator.SimulationIterator
+    Performs an iteration on one thermodynamic state
+  data : AlGDock.simulation_data.SimulationData
+    Stores results from the simulation
+  """
+  def __init__(self, args, log, top, system, _get_confs_to_rescore,
+               iterator, data):
+    """Initializes the class
+
+    Parameters
+    ----------
+    args : AlGDock.simulation_arguments.SimulationArguments
+      Simulation arguments
+    log : AlGDock.logger.Logger
+      Simulation log
+    top : AlGDock.topology.Topology
+      Topology of the ligand
+    system : AlGDock.system.System
+      Simulation system
+    _get_confs_to_rescore : function
+      Returns the configurations to rescore
+    iterator : AlGDock.simulation_iterator.SimulationIterator
+      Performs an iteration on one thermodynamic state
+    data : AlGDock.simulation_data.SimulationData
+      Stores results from the simulation
+    """
+    self.args = args
+    self.log = log
+    self.top = top
+    self.system = system
+    self._get_confs_to_rescore = _get_confs_to_rescore
+    self.iterator = iterator
+    self.data = data
+
+  def run(self, process):
+    """Performs the ligand preparation
+
+    Also stores minimized ligand in milestone B and keeps track of timing
+
+    Parameters
+    ----------
+    process : str
+      Process, either 'BC' or 'CD'
+
+    Returns
+    -------
+    seeds : list of np.array
+      Minimized ligand configurations for the appropriate thermodynamic state
+    """
+    self.log.set_lock(process)
+    self.log.recordStart(process+' ligand prep')
+    self.log.tee("\n>>> Ligand preparation for %s, starting at "%process + \
+      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+    if process == 'BC':
+      seeds = self._prepare_ligand_BC()
+    elif process == 'CD':
+      seeds = self._prepare_ligand_CD()
+    self.log.tee("Elapsed time for ligand preparation for %s:"%process + \
+      HMStime(self.log.timeSince(process+' ligand prep')))
+    self.log.clear_lock(process)
+    return seeds
+
+  def _prepare_ligand_BC(self):
+    """Prepares the ligand for BC simulations
+
+    Returns
+    -------
+    seeds : list of np.array
+      Ligand configurations minimized in milestone B
+    """
+    if self.data['BC'].protocol == []:
+
+      # Set up the force field
+      params_o = self.system.paramsFromAlpha(1.0, 'BC', site=False)
+      self.system.setParams(params_o)
+
+      # Get starting configurations
+      basename = os.path.basename(self.args.FNs['score'])
+      basename = basename[:basename.find('.')]
+      dirname = os.path.dirname(self.args.FNs['score'])
+      minimizedB_FN = os.path.join(dirname, basename + '_minB.nc')
+      if os.path.isfile(minimizedB_FN):
+        from netCDF4 import Dataset
+        dock6_nc = Dataset(minimizedB_FN, 'r')
+        minimizedConfigurations = [
+          dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :]
+          for n in range(dock6_nc.variables['confs'].shape[0])
+        ]
+        Es = dict([(key, dock6_nc.variables[key][:])
+          for key in dock6_nc.variables.keys() if key != 'confs'])
+        dock6_nc.close()
+      else:
+        (minimizedConfigurations, Es) = self._get_confs_to_rescore(site=False, minimize=True)
+
+        from netCDF4 import Dataset
+        dock6_nc = Dataset(minimizedB_FN, 'w')
+        dock6_nc.createDimension('n_confs', len(minimizedConfigurations))
+        dock6_nc.createDimension('n_atoms', minimizedConfigurations[0].shape[0])
+        dock6_nc.createDimension('n_cartesian', 3)
+        dock6_nc.createDimension('one', 1)
+        dock6_nc.createVariable('confs', 'f8', ('n_confs', 'n_atoms', 'n_cartesian'))
+        for n in range(len(minimizedConfigurations)):
+          dock6_nc.variables['confs'][n] = minimizedConfigurations[n][self.top.prmtop_atom_order_L, :]
+        for key in Es.keys():
+          dock6_nc.createVariable(key, 'f8', ('one', 'n_confs'))
+          dock6_nc.variables[key][:] = Es[key]
+        dock6_nc.close()
+
+      # initializes smart darting for BC
+      # and sets the universe to the lowest energy configuration
+      self.log.tee(
+        self.iterator.initializeSmartDartingConfigurations(
+          minimizedConfigurations, 'BC', self.data))
+      if len(minimizedConfigurations) > 0:
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, minimizedConfigurations[-1]))
+      self.data['BC'].confs['starting_poses'] = minimizedConfigurations
+
+      # Ramp the temperature from 0 to the desired starting temperature using HMC
+      self._ramp_T(params_o['T'], normalize=True)
+
+      # Run at starting temperature
+      seeds = [np.copy(self.top.universe.configuration().array) \
+        for n in range(self.args.params['BC']['seeds_per_state'])]
+    else:
+      seeds = None
+    return seeds
+
+
+  def _prepare_ligand_CD(self):
+    """Prepares the ligand for CD simulations
+
+    Returns
+    -------
+    seeds : list of np.array
+      Ligand configurations minimized in milestone D
+    """
+    if self.data['CD'].protocol == []:
+      self.log.tee("\n>>> Ligand preparation for CD, starting at " + \
+        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+
+      params_o = self.system.paramsFromAlpha(1.0, 'CD')
+      self.system.setParams(params_o)
+
+      if (self.args.params['CD']['pose'] == -1):
+        seeds = self._get_confs_to_rescore(site=True, minimize=True)[0]
+        self.data['CD'].confs['starting_poses'] = seeds
+      else:
+        # For pose BPMF, starting_poses is defined in _set_universe_evaluator
+        seeds = self.data['CD'].confs['starting_poses']
+
+      if seeds == []:
+        seeds = None
+      else:
+        # initializes smart darting for CD and sets the universe
+        # to the lowest energy configuration
+        self.log.tee(
+          self.iterator.initializeSmartDartingConfigurations(
+            seeds, 'CD', self.data))
+        if len(seeds) > 0:
+          self.top.universe.setConfiguration(\
+            Configuration(self.top.universe,np.copy(seeds[-1])))
+
+        # Ramp up the temperature using HMC
+        self._ramp_T(self.args.params['BC']['T_TARGET'], normalize=False)
+
+        seeds = [np.copy(self.top.universe.configuration().array) \
+          for n in range(self.args.params['CD']['seeds_per_state'])]
+    return seeds
 
   def _ramp_T(self, T_START, T_LOW=20., normalize=False):
+    """Ramp the temperature from T_LOW to T_START
+
+    Parameters
+    ----------
+    T_START : float
+      The final temperature
+    T_LOW : float
+      The lowest temperature in the ramp
+    normalize : bool
+      If True, the ligand center of mass will be normalized
+    """
     self.log.recordStart('T_ramp')
 
     # First minimize the energy
