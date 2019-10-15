@@ -29,15 +29,6 @@ class Logger:
     Times when calculations started
   timings : dict of float
     Amount of time spend in each type of calculation
-
-
-  Methods
-  -------
-  set_lock
-  clear_lock
-  tee
-  recordStart
-  timeSince
   """
   def __init__(self, args, max_time=None, run_type=None):
     """
@@ -54,6 +45,7 @@ class Logger:
     self.args = args
     self.max_time = max_time
     self.run_type = run_type
+
     self.start_times = {}
     self.timings = {}
 
@@ -156,3 +148,43 @@ class Logger:
       return time.time() - self.start_times[event_key]
     else:
       raise Exception(event_key + ' has not started!')
+
+  def isTimeRemaining(self):
+    """Checks whether there is any time remaining
+
+    Returns
+    -------
+    bool
+      If True, there is time remaining
+    """
+    if self.run_type.startswith('timed'):
+      time_since_start = (time.time() - self.start_times['run'])
+      remaining_time = self.max_time * 60 - time_since_start
+      if remaining_time < 0:
+        return False
+    else:
+      return True
+
+  def isTimeForTask(self, task_times):
+    """Projects whether there is enough time remaining to complete a task
+
+    Parameters
+    ----------
+    task_times : list of float
+      The amount of time required for similar previous tasks
+
+    Returns
+    -------
+    bool
+      If True, there is expected to be sufficient time remaining to complete the task
+    """
+    if self.run_type.startswith('timed'):
+      time_since_start = (time.time() - self.start_times['run'])
+      remaining_time = self.max_time * 60 - time_since_start
+      mean_task_time = np.mean(task_times)
+      self.tee("  projected task time: %s, remaining time: %s"%(\
+        HMStime(mean_task_time), HMStime(remaining_time)), process=process)
+      if mean_task_time > remaining_time:
+        return False
+    else:
+      return True

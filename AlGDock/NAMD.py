@@ -338,7 +338,7 @@ class NAMD:
     if self.namd_command == None:
       raise Exception("NAMD not found!")
 
-  def _load_pkl_gz(self, FN):
+  def load_pkl_gz(self, FN):
     import os, gzip, pickle
     if os.path.isfile(FN) and os.path.getsize(FN) > 0:
       F = gzip.open(FN, 'r')
@@ -851,7 +851,7 @@ coorfile close
                                               test=test)
 
     if (os.path.exists('%s.pkl.gz' % outputname)):
-      energies = self._load_pkl_gz('%s.pkl.gz' % outputname)
+      energies = self.load_pkl_gz('%s.pkl.gz' % outputname)
     else:
       energies = self._execute(outputname,
                                0.0,
@@ -882,7 +882,7 @@ coorfile close
     grid_script_ELE = self.grid.script_ELE()
 
     if (os.path.exists('%s.LJ.pkl.gz' % outputname)):
-      energies = self._load_pkl_gz('%s.LJ.pkl.gz' % outputname)
+      energies = self.load_pkl_gz('%s.LJ.pkl.gz' % outputname)
     else:
       energies = self._execute(
         outputname + '.LJ',
@@ -899,7 +899,7 @@ coorfile close
     E_INT = [energy[1] - energy[0] for energy in energies]
 
     if (os.path.exists('%s.ELE.pkl.gz' % outputname)):
-      energies = self._load_pkl_gz('%s.ELE.pkl.gz' % outputname)
+      energies = self.load_pkl_gz('%s.ELE.pkl.gz' % outputname)
     else:
       energies = self._execute(
         outputname + '.ELE',

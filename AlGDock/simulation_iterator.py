@@ -144,6 +144,20 @@ class SimulationIterator:
 
     return results
 
+  def iteration_worker(self, input, output):
+    """Executes an iteration from a multiprocessing queue
+
+    Parameters
+    ----------
+    input : multiprocessing.Queue
+      Tasks to complete
+    output : multiprocessing.Queue
+      Completed tasks
+    """
+    for args in iter(input.get, 'STOP'):
+      result = self.iteration(*args)
+      output.put(result)
+
   def initializeSmartDartingConfigurations(self, seeds, process, data):
     """Initializes the configurations for Smart Darting
 

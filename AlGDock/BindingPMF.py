@@ -50,28 +50,6 @@ except:
 
 R = 8.3144621 * MMTK.Units.J / MMTK.Units.mol / MMTK.Units.K
 
-term_map = {
-  'cosine dihedral angle': 'MM',
-  'electrostatic/pair sum': 'MM',
-  'harmonic bond': 'MM',
-  'harmonic bond angle': 'MM',
-  'Lennard-Jones': 'MM',
-  'OpenMM': 'MM',
-  'OBC': 'OBC',
-  'OBC_desolv': 'OBC',
-  'site': 'site',
-  'sLJr': 'sLJr',
-  'sELE': 'sELE',
-  'sLJa': 'sLJa',
-  'LJr': 'LJr',
-  'LJa': 'LJa',
-  'ELE': 'ELE',
-  'pose dihedral angle': 'k_angular_int',
-  'pose external dihedral': 'k_angular_ext',
-  'pose external distance': 'k_spatial_ext',
-  'pose external angle': 'k_angular_ext'
-}
-
 scalables = ['OBC', 'sLJr', 'sELE', 'LJr', 'LJa', 'ELE']
 
 # In APBS, minimum ratio of PB grid length to maximum dimension of solute
@@ -305,15 +283,15 @@ class BPMF:
 
   def _run(self, run_type):
     self.log.recordStart('run')
-    self._run_type = run_type
+    self.log.run_type = run_type
     if run_type=='configuration_energies' or \
        run_type=='minimized_configuration_energies':
       self.configuration_energies(\
         minimize = (run_type=='minimized_configuration_energies'), \
         max_confs = 50)
     elif run_type == 'store_params':
-      self._save('BC', keys=['progress'])
-      self._save('CD', keys=['progress'])
+      self.save('BC', keys=['progress'])
+      self.save('CD', keys=['progress'])
     elif run_type == 'initial_BC':
       self.initial_BC()
     elif run_type == 'BC':  # Sample the BC process
@@ -418,7 +396,7 @@ class BPMF:
           for cycle_ind in range(
               len(self.data[process].confs['samples'][state_ind])):
             self.data[process].confs['samples'][state_ind][cycle_ind] = []
-        self._save(process)
+        self.save(process)
     if run_type is not None:
       print "\nElapsed time for execution of %s: %s" % (
         run_type, HMStime(self.log.timeSince('run')))
@@ -446,172 +424,10 @@ class BPMF:
                               self._get_confs_to_rescore, self.iterator,
                               self.data).run('BC')
 
-    self.log.set_lock('BC')
-    self.log.recordStart('BC_save')
+    from AlGDock.initialization import Initialization
+    Initialization(self.args, self.log, self.top, self.system,
+                  self.iterator, self.data, self.save, self._u_kln).run('BC', seeds)
 
-    if seeds is not None:
-      self.log.tee("\n>>> Initial warming, starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-
-      params_o = self.system.paramsFromAlpha(1.0, 'BC', site=False)
-      self.data['BC'].protocol = [params_o]
-      self.system.setParams(params_o)
-
-      # Run at starting temperature
-      self.log.recordStart('BC_state')
-      (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(seeds, 'BC', params_o)
-      E = self._energyTerms(confs, process='BC')
-      self.data['BC'].confs['replicas'] = [
-        confs[np.random.randint(len(confs))]
-      ]
-      self.data['BC'].confs['samples'] = [[confs]]
-      self.data['BC'].Es = [[E]]
-
-      self.log.tee("  at %d K in %s: %s" %
-                   (params_o['T'], HMStime(
-                     self.log.timeSince('BC_state')), sampler_metrics))
-      self.log.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
-        params_o['delta_t']*1000., self._tL_tensor(E,params_o,process='BC')))
-    else:
-      self.log.tee("\n>>> Initial warming, continuing at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
-      params_o = self.data['BC'].protocol[-1]
-      confs = self.data['BC'].confs['samples'][-1][0]
-      E = self.data['BC'].Es[-1][0]
-
-    if self.args.params['BC']['darts_per_seed'] > 0:
-      self.data['BC'].confs['SmartDarting'] += confs
-
-    # Main loop for initial BC:
-    # choose new temperature, randomly select seeds, simulate
-    rejectStage = 0
-    while (not self.data['BC'].protocol[-1]['crossed']):
-      # Choose new temperature
-      params_n = self._next_BC_state(E = E, params_o = params_o, \
-        pow = rejectStage)
-      self.data['BC'].protocol.append(params_n)
-
-      # Randomly select seeds for new trajectory
-      u_o = self._u_kln([E], [params_o])
-      u_n = self._u_kln([E], [params_n])
-      du = u_n - u_o
-      weights = np.exp(-du + min(du))
-      seedIndicies = np.random.choice(len(u_o), \
-        size = self.args.params['BC']['seeds_per_state'], \
-        p = weights/sum(weights))
-      seeds = [np.copy(confs[s]) for s in seedIndicies]
-
-      # Store old data
-      confs_o = confs
-      E_o = E
-
-      # Simulate
-      self.log.recordStart('BC_state')
-      self.system.setParams(params_n)
-      self.log.tee(
-        self.iterator.initializeSmartDartingConfigurations(
-          seeds, 'BC', self.data))
-      (confs, DeltaEs, params_n['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(seeds, 'BC', params_n)
-
-      if self.args.params['BC']['darts_per_seed'] > 0:
-        self.data['BC'].confs['SmartDarting'] += confs
-
-      # Get state energies
-      E = self._energyTerms(confs, process='BC')
-
-      # Estimate the mean replica exchange acceptance rate
-      # between the previous and new state
-      (u_kln, N_k) = self._u_kln([[E_o], [E]], self.data['BC'].protocol[-2:])
-      N = min(N_k)
-      acc = np.exp(-u_kln[0, 1, :N] - u_kln[1, 0, :N] + u_kln[0, 0, :N] +
-                   u_kln[1, 1, :N])
-      mean_acc = np.mean(np.minimum(acc, np.ones(acc.shape)))
-
-      self.log.tee("  at %d K in %s: %s"%(\
-        params_n['T'], HMStime(self.log.timeSince('BC_state')), sampler_metrics))
-      self.log.tee("    dt=%.2f fs; tL_tensor=%.2e; <acc>=%.2f"%(\
-        params_n['delta_t']*1000., \
-        self._tL_tensor(E,params_o,process='BC'), mean_acc))
-
-      if (mean_acc<self.args.params['BC']['min_repX_acc']) and \
-          (self.args.params['BC']['protocol']=='Adaptive'):
-        # If the acceptance probability is too low,
-        # reject the state and restart
-        self.data['BC'].protocol.pop()
-        confs = confs_o
-        E = E_o
-        rejectStage += 1
-        self.log.tee("  rejected new state with low acceptance rate")
-      elif (len(self.data['BC'].protocol)>2) and \
-          (mean_acc>0.99) and (not params_n['crossed']) and \
-          (self.args.params['BC']['protocol'] == 'Adaptive'):
-        # If the acceptance probability is too high,
-        # reject the previous state and restart
-        self.data['BC'].confs['replicas'][-1] = confs[np.random.randint(
-          len(confs))]
-        self.data['BC'].protocol.pop()
-        self.data['BC'].protocol[-1] = copy.deepcopy(params_n)
-        rejectStage -= 1
-        params_o = params_n
-        self.log.tee("  rejected previous state with high acceptance rate")
-      else:
-        # Store data and continue with initialization
-        self.data['BC'].confs['replicas'].append(confs[np.random.randint(
-          len(confs))])
-        self.data['BC'].confs['samples'].append([confs])
-        self.data['BC'].Es.append([E])
-        self.data['BC'].protocol[-1] = copy.deepcopy(params_n)
-        rejectStage = 0
-        params_o = params_n
-
-      # Special tasks after the last stage
-      if self.data['BC'].protocol[-1]['crossed']:
-        # For warming, reverse protocol and energies
-        self.log.tee("  reversing replicas, samples, and protocol")
-        self.data['BC'].confs['replicas'].reverse()
-        self.data['BC'].confs['samples'].reverse()
-        self.data['BC'].Es.reverse()
-        self.data['BC'].protocol.reverse()
-        self.data['BC'].protocol[0]['crossed'] = False
-        self.data['BC'].protocol[-1]['crossed'] = True
-
-        if (not self.args.params['BC']['keep_intermediate']):
-          for k in range(1, len(self.data['BC'].protocol) - 1):
-            self.data['BC'].confs['samples'][k] = []
-
-        self.data['BC'].cycle += 1
-
-      # Save progress every 5 minutes
-      if (self.log.timeSince('BC_save') > 5 * 60):
-        self._save('BC')
-        self.log.recordStart('BC_save')
-        saved = True
-      else:
-        saved = False
-
-      if self._run_type.startswith('timed'):
-        remaining_time = self.log.max_time*60 - \
-          (time.time()-self.log.start_times['run'])
-        if remaining_time < 0:
-          if not saved:
-            self._save('BC')
-            self.log.tee("")
-          self.log.tee("  no time remaining for initial BC")
-          self.log.clear_lock('BC')
-          return False
-
-    # Save data
-    if not saved:
-      self._save('BC')
-      self.log.tee("")
-
-    self.log.tee("Elapsed time for initial warming of " + \
-      "%d states: "%len(self.data['BC'].protocol) + \
-      HMStime(self.log.timeSince('BC')))
-    self.log.clear_lock('BC')
-    self.iterator.clearSmartDartingConfigurations('BC')
     return True
 
   def calc_f_L(self, readOnly=False, do_solvation=True, redo=False):
@@ -698,7 +514,7 @@ class BPMF:
 
     if not do_solvation:
       if updated:
-        if not self._run_type.startswith('timed'):
+        if not self.log.run_type.startswith('timed'):
           write_pkl_gz(f_L_FN, (self.stats_L, self.f_L))
         self.log.clear_lock('BC')
       return True
@@ -763,139 +579,6 @@ class BPMF:
   ###########
   # Docking #
   ###########
-  def random_CD(self):
-    """
-      Randomly places the ligand into the receptor and evaluates energies
-
-      The first state of CD is sampled by randomly placing configurations
-      from the high temperature ligand simulation into the binding site.
-    """
-    # Select samples from the high T unbound state
-    E_MM = []
-    E_OBC = []
-    confs = []
-    for k in range(1, len(self.data['BC'].Es[0])):
-      E_MM += list(self.data['BC'].Es[0][k]['MM'])
-      if ('OBC' in self.data['BC'].Es[0][k].keys()):
-        E_OBC += list(self.data['BC'].Es[0][k]['OBC'])
-      confs += list(self.data['BC'].confs['samples'][0][k])
-
-    random_CD_inds = np.array(np.linspace(0,len(E_MM), \
-      self.args.params['CD']['seeds_per_state'],endpoint=False),dtype=int)
-    BC0_Es_MM = [E_MM[ind] for ind in random_CD_inds]
-    BC0_Es_OBC = []
-    if E_OBC != []:
-      BC0_Es_OBC = [E_OBC[ind] for ind in random_CD_inds]
-    BC0_confs = [confs[ind] for ind in random_CD_inds]
-
-    # Do the random CD
-    params_o = self.system.paramsFromAlpha(0.0, 'CD')
-    params_o['delta_t'] = 1. * self.data['BC'].protocol[0]['delta_t']
-    self.data['CD'].protocol = [params_o]
-
-    # Set up the force field with full interaction grids
-    self.system.setParams(self.system.paramsFromAlpha(1.0, 'CD'))
-
-    # Either loads or generates the random translations and rotations for the first state of CD
-    if not (hasattr(self, '_random_trans') and hasattr(self, '_random_rotT')):
-      self.data['CD']._max_n_trans = 10000
-      # Default density of points is 50 per nm**3
-      self.data['CD']._n_trans = max(
-        min(
-          np.int(
-            np.ceil(self._forceFields['site'].volume *
-                    self.args.params['CD']['site_density'])),
-          self.data['CD']._max_n_trans), 5)
-      self.data['CD']._random_trans = np.ndarray(
-        (self.data['CD']._max_n_trans), dtype=Vector)
-      for ind in range(self.data['CD']._max_n_trans):
-        self.data['CD']._random_trans[ind] = Vector(
-          self._forceFields['site'].randomPoint())
-      self.data['CD']._max_n_rot = 100
-      self._n_rot = 100
-      self._random_rotT = np.ndarray((self.data['CD']._max_n_rot, 3, 3))
-      from AlGDock.Integrators.ExternalMC.ExternalMC import random_rotate
-      for ind in range(self.data['CD']._max_n_rot):
-        self._random_rotT[ind, :, :] = np.transpose(random_rotate())
-    else:
-      self.data['CD']._max_n_trans = self.data['CD']._random_trans.shape[0]
-      self._n_rot = self._random_rotT.shape[0]
-
-    # Get interaction energies.
-    # Loop over configurations, random rotations, and random translations
-    E = {}
-    for term in (['MM', 'site'] + scalables):
-      # Large array creation may cause MemoryError
-      E[term] = np.zeros((self.args.params['CD']['seeds_per_state'], \
-        self.data['CD']._max_n_rot,self.data['CD']._n_trans))
-    self.log.tee("  allocated memory for interaction energies")
-
-    converged = False
-    n_trans_o = 0
-    n_trans_n = self.data['CD']._n_trans
-    while not converged:
-      for c in range(self.args.params['CD']['seeds_per_state']):
-        E['MM'][c, :, :] = BC0_Es_MM[c]
-        if BC0_Es_OBC != []:
-          E['OBC'][c, :, :] = BC0_Es_OBC[c]
-        for i_rot in range(self._n_rot):
-          conf_rot = Configuration(self.top.universe,\
-            np.dot(BC0_confs[c], self._random_rotT[i_rot,:,:]))
-          for i_trans in range(n_trans_o, n_trans_n):
-            self.top.universe.setConfiguration(conf_rot)
-            self.top.universe.translateTo(
-              self.data['CD']._random_trans[i_trans])
-            eT = self.top.universe.energyTerms()
-            for (key, value) in eT.iteritems():
-              if key != 'electrostatic':  # For some reason, MMTK double-counts electrostatic energies
-                E[term_map[key]][c, i_rot, i_trans] += value
-      E_c = {}
-      for term in E.keys():
-        # Large array creation may cause MemoryError
-        E_c[term] = np.ravel(E[term][:, :self._n_rot, :n_trans_n])
-      self.log.tee("  allocated memory for %d translations" % n_trans_n)
-      (u_kln,N_k) = self._u_kln([E_c],\
-        [params_o,self._next_CD_state(E=E_c, params_o=params_o, decoupling=False)])
-      du = u_kln[0, 1, :] - u_kln[0, 0, :]
-      bootstrap_reps = 50
-      f_grid0 = np.zeros(bootstrap_reps)
-      for b in range(bootstrap_reps):
-        du_b = du[np.random.randint(0, len(du), len(du))]
-        f_grid0[b] = -np.log(np.exp(-du_b + min(du_b)).mean()) + min(du_b)
-      f_grid0_std = f_grid0.std()
-      converged = f_grid0_std < 0.1
-      if not converged:
-        self.log.tee("  with %s translations "%n_trans_n + \
-                 "the predicted free energy difference is %.5g (%.5g)"%(\
-                 f_grid0.mean(),f_grid0_std))
-        if n_trans_n == self.data['CD']._max_n_trans:
-          break
-        n_trans_o = n_trans_n
-        n_trans_n = min(n_trans_n + 25, self.data['CD']._max_n_trans)
-        for term in (['MM', 'site'] + scalables):
-          # Large array creation may cause MemoryError
-          E[term] = np.dstack((E[term], \
-            np.zeros((self.args.params['CD']['seeds_per_state'],\
-              self.data['CD']._max_n_rot,25))))
-
-    if self.data['CD']._n_trans != n_trans_n:
-      self.data['CD']._n_trans = n_trans_n
-
-    self.log.tee("  %d ligand configurations "%len(BC0_Es_MM) + \
-             "were randomly docked into the binding site using "+ \
-             "%d translations and %d rotations "%(n_trans_n,self._n_rot))
-    self.log.tee("  the predicted free energy difference between the" + \
-             " first and second CD states is " + \
-             "%.5g (%.5g)"%(f_grid0.mean(),f_grid0_std))
-
-    self.log.recordStart('ravel')
-    for term in E.keys():
-      E[term] = np.ravel(E[term][:, :self._n_rot, :self.data['CD']._n_trans])
-    self.log.tee("  raveled energy terms in " + \
-      HMStime(self.log.timeSince('ravel')))
-
-    return (BC0_confs, E)
-
   def initial_CD(self, randomOnly=False):
     """
       Docks the ligand into the receptor
@@ -914,284 +597,10 @@ class BPMF:
                               self._get_confs_to_rescore, self.iterator,
                               self.data).run('CD')
 
-    self.log.set_lock('CD')
-    self.log.recordStart('initial_CD')
-    self.log.recordStart('CD_save')
+    from AlGDock.initialization import Initialization
+    Initialization(self.args, self.log, self.top, self.system,
+                  self.iterator, self.data, self.save, self._u_kln).run('CD', seeds)
 
-    if self.data['CD'].protocol == []:
-      if seeds is not None:
-        decoupling = True
-
-        params_o = self.system.paramsFromAlpha(1.0, 'CD')
-        self.data['CD'].protocol = [params_o]
-        self.system.setParams(params_o)
-
-        attempts = 0
-        DeltaEs = np.array([0.])
-        # Iteratively simulate and modify the time step
-        # until the simulations lead to different energies
-        while np.std(DeltaEs) < 1E-7:
-          attempts += 1
-          if attempts == 5:
-            self._store_infinite_f_RL()
-            raise Exception('Unable to ramp temperature')
-
-          (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
-            self._initial_sim_state(seeds, 'CD', params_o)
-
-        # Get state energies
-        E = self._energyTerms(confs)
-        self.data['CD'].confs['replicas'] = [
-          confs[np.random.randint(len(confs))]
-        ]
-        self.data['CD'].confs['samples'] = [[confs]]
-        self.data['CD'].Es = [[E]]
-
-        self.log.tee("\n  at a=%.3e in %s: %s"%(\
-          params_o['alpha'], HMStime(self.log.timeSince('initial_CD')), sampler_metrics))
-        self.log.tee("    dt=%.2f fs, tL_tensor=%.3e"%(\
-          params_o['delta_t']*1000., \
-          self._tL_tensor(E,params_o)))
-      else:
-        decoupling = False
-
-        self.log.tee("\n>>> Initial CD, starting at " + \
-          time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-
-        # Select samples from the high T unbound state and ensure there are enough
-        confs_HT = []
-        for k in range(1, len(self.data['BC'].Es[0])):
-          confs_HT += list(self.data['BC'].confs['samples'][0][k])
-        while len(confs_HT) < self.args.params['CD']['seeds_per_state']:
-          self.log.tee(
-            "More samples from high temperature ligand simulation needed")
-          self.log.clear_lock('CD')
-          self._replica_exchange('BC')
-          self.log.set_lock('CD')
-          confs_HT = []
-          for k in range(1, len(self.data['BC'].Es[0])):
-            confs_HT += list(self.data['BC'].confs['samples'][0][k])
-        confs_HT = confs_HT[:self.args.params['CD']['seeds_per_state']]
-
-        if (self.args.params['CD']['pose'] == -1):
-          (confs, E) = self.random_CD()
-          self.log.tee("  random CD complete in " +
-                       HMStime(self.log.timeSince('initial_CD')))
-          if randomOnly:
-            self.log.clear_lock('CD')
-            return
-        else:
-          params_o = self.system.paramsFromAlpha(0, 'CD')
-          self.system.setParams(params_o)
-          confs = confs_HT
-          E = self._energyTerms(confs)
-          self.data['CD'].confs['replicas'] = [
-            confs[np.random.randint(len(confs))]
-          ]
-          self.data['CD'].confs['samples'] = [confs]
-          self.data['CD'].Es = [[E]]
-          self.data['CD'].protocol = [params_o]
-    else:
-      # Continuing from a previous CD instance
-      decoupling = self.data['CD'].protocol[0]['alpha'] > self.data['CD'].protocol[1]['alpha']
-      self.log.tee("\n>>> Initial %sCD, "%({True:'un',False:''}[decoupling]) + \
-        "continuing at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
-      confs = self.data['CD'].confs['samples'][-1][0]
-      E = self.data['CD'].Es[-1][0]
-
-    if self.args.params['CD']['darts_per_seed'] > 0:
-      self.data['CD'].confs['SmartDarting'] += confs
-
-    params_o = self.data['CD'].protocol[-1]
-
-    # Main loop for initial CD:
-    # choose new thermodynamic variables,
-    # randomly select seeds,
-    # simulate
-    rejectStage = 0
-    while (not self.data['CD'].protocol[-1]['crossed']):
-      # Determine next value of the protocol
-      params_n = self._next_CD_state(E = E, params_o = params_o, \
-          pow = rejectStage, decoupling = decoupling)
-      self.data['CD'].protocol.append(params_n)
-      if len(self.data['CD'].protocol) > 1000:
-        self._clear('CD')
-        self._save('CD')
-        self._store_infinite_f_RL()
-        raise Exception('Too many replicas!')
-      if abs(rejectStage) > 20:
-        self._clear('CD')
-        self._save('CD')
-        self._store_infinite_f_RL()
-        raise Exception('Too many consecutive rejected stages!')
-
-      # Randomly select seeds for new trajectory
-      u_o = self._u_kln([E], [params_o])
-      u_n = self._u_kln([E], [params_n])
-      du = u_n - u_o
-      weights = np.exp(-du + min(du))
-      seedIndicies = np.random.choice(len(u_o), \
-        size = self.args.params['CD']['seeds_per_state'], \
-        p=weights/sum(weights))
-
-      if (not decoupling) and (self.args.params['CD']['pose'] == -1) \
-          and (len(self.data['CD'].protocol)==2):
-        # BC state 0 configurations, randomly oriented
-        # Use the lowest energy configuration
-        # in the first CD state for replica exchange
-        ind = np.argmin(u_n)
-        (c,i_rot,i_trans) = np.unravel_index(ind, \
-          (self.args.params['CD']['seeds_per_state'], self._n_rot, self.data['CD']._n_trans))
-        repX_conf = np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]),\
-                           self.data['CD']._random_trans[i_trans].array)
-        self.data['CD'].confs['replicas'] = [repX_conf]
-        self.data['CD'].confs['samples'] = [[repX_conf]]
-        self.data['CD'].Es = [[dict([(key,np.array([val[ind]])) \
-          for (key,val) in E.iteritems()])]]
-        seeds = []
-        for ind in seedIndicies:
-          (c,i_rot,i_trans) = np.unravel_index(ind, \
-            (self.args.params['CD']['seeds_per_state'], self._n_rot, self._n_trans))
-          seeds.append(np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]), \
-            self.data['CD']._random_trans[i_trans].array))
-        confs = None
-        E = {}
-      else:  # Seeds from last state
-        seeds = [np.copy(confs[ind]) for ind in seedIndicies]
-      self.data['CD'].confs['seeds'] = seeds
-
-      # Store old data
-      confs_o = confs
-      E_o = E
-
-      # Simulate
-      self.log.recordStart('CD_state')
-      self.system.setParams(params_n)
-      if self.args.params['CD']['darts_per_seed'] > 0 and params_n['alpha'] > 0.1:
-        self.log.tee(
-          self.iterator.initializeSmartDartingConfigurations(
-            self.data['CD'].confs['SmartDarting'], 'CD', self.data))
-      (confs, DeltaEs, params_n['delta_t'], sampler_metrics) = \
-        self._initial_sim_state(seeds, 'CD', params_n)
-      if np.std(DeltaEs) < 1E-7:
-        self._store_infinite_f_RL()
-        raise Exception('Unable to initialize simulation')
-
-      if self.args.params['CD']['darts_per_seed'] > 0:
-        self.data['CD'].confs['SmartDarting'] += confs
-
-      # Get state energies
-      E = self._energyTerms(confs)
-
-      # Estimate the mean replica exchange acceptance rate
-      # between the previous and new state
-      self.log.tee("  at a=%.3e in %s: %s"%(\
-        params_n['alpha'], \
-        HMStime(self.log.timeSince('CD_state')), sampler_metrics))
-
-      if E_o != {}:
-        (u_kln, N_k) = self._u_kln([[E_o], [E]], self.data['CD'].protocol[-2:])
-        N = min(N_k)
-        acc = np.exp(-u_kln[0, 1, :N] - u_kln[1, 0, :N] + u_kln[0, 0, :N] +
-                     u_kln[1, 1, :N])
-        mean_acc = np.mean(np.minimum(acc, np.ones(acc.shape)))
-
-        self.log.tee("    dt=%.2f fs; tL_tensor=%.3e; <acc>=%.2f"%(\
-          params_n['delta_t']*1000., self._tL_tensor(E,params_o), mean_acc))
-      else:
-        self.log.tee("    dt=%.2f fs; tL_tensor=%.3e"%(\
-          params_n['delta_t']*1000., self._tL_tensor(E,params_o)))
-
-      # Decide whether to keep the state
-      if len(self.data['CD'].protocol) > (1 + (not decoupling)):
-        if (mean_acc<self.args.params['CD']['min_repX_acc']) and \
-            (self.args.params['CD']['protocol']=='Adaptive'):
-          # If the acceptance probability is too low,
-          # reject the state and restart
-          self.data['CD'].protocol.pop()
-          confs = confs_o
-          E = E_o
-          rejectStage += 1
-          self.log.tee(
-            "  rejected new state with low estimated acceptance rate")
-        elif len(self.data['CD'].protocol)>(2+(not decoupling)) and \
-            (mean_acc>0.99) and (not params_n['crossed']) and \
-            (self.args.params['CD']['protocol']=='Adaptive'):
-          # If the acceptance probability is too high,
-          # reject the previous state and restart
-          self.data['CD'].confs['replicas'][-1] = confs[np.random.randint(
-            len(confs))]
-          self.data['CD'].protocol.pop()
-          self.data['CD'].protocol[-1] = copy.deepcopy(params_n)
-          rejectStage -= 1
-          params_o = params_n
-          self.log.tee(
-            "  rejected past state with high estimated acceptance rate")
-        else:
-          # Store data and continue with initialization
-          self.data['CD'].confs['replicas'].append(confs[np.random.randint(
-            len(confs))])
-          self.data['CD'].confs['samples'].append([confs])
-          self.data['CD'].Es.append([E])
-          self.data['CD'].protocol[-1] = copy.deepcopy(params_n)
-          rejectStage = 0
-          params_o = params_n
-      else:
-        # Store data and continue with initialization (first time)
-        self.data['CD'].confs['replicas'].append(confs[np.random.randint(
-          len(confs))])
-        self.data['CD'].confs['samples'].append([confs])
-        self.data['CD'].Es.append([E])
-        self.data['CD'].protocol[-1] = copy.deepcopy(params_n)
-        rejectStage = 0
-        params_o = params_n
-
-      # Special tasks after the last stage
-      if (self.data['CD'].protocol[-1]['crossed']):
-        # For decoupling, reverse protocol and energies
-        if decoupling:
-          self.log.tee("  reversing replicas, samples, and protocol")
-          self.data['CD'].confs['replicas'].reverse()
-          self.data['CD'].confs['samples'].reverse()
-          self.data['CD'].confs['seeds'] = None
-          self.data['CD'].Es.reverse()
-          self.data['CD'].protocol.reverse()
-          self.data['CD'].protocol[0]['crossed'] = False
-          self.data['CD'].protocol[-1]['crossed'] = True
-
-        if (not self.args.params['CD']['keep_intermediate']):
-          for k in range(1, len(self.data['CD'].protocol) - 1):
-            self.data['CD'].confs['samples'][k] = []
-
-        self.data['CD'].cycle += 1
-
-      # Save progress every 10 minutes
-      if (self.log.timeSince('CD_save') > (10 * 60)):
-        self._save('CD')
-        self.log.recordStart('CD_save')
-        saved = True
-      else:
-        saved = False
-
-      if self._run_type.startswith('timed'):
-        remaining_time = self.log.max_time*60 - \
-          (time.time()-self.log.start_times['run'])
-        if remaining_time < 0:
-          if not saved:
-            self._save('CD')
-          self.log.tee("  no time remaining for initial CD")
-          self.log.clear_lock('CD')
-          return False
-
-    if not saved:
-      self._save('CD')
-
-    self.log.tee("\nElapsed time for initial CD of " + \
-      "%d states: "%len(self.data['CD'].protocol) + \
-      HMStime(self.log.timeSince('initial_CD')))
-    self.log.clear_lock('CD')
-    self.iterator.clearSmartDartingConfigurations('CD')
     return True
 
   def calc_f_RL(self, readOnly=False, do_solvation=True, redo=False):
@@ -1279,11 +688,12 @@ class BPMF:
                                     quiet=not do_solvation)
 
     # Store rmsd values
-    if redo and (self.args.params['CD']['rmsd'] is not False):
+    if (self.args.params['CD']['rmsd'] is not False):
       k = len(self.data['CD'].protocol) - 1
       for c in range(self.data['CD'].cycle):
-        confs = [conf for conf in self.data['CD'].confs['samples'][k][c]]
-        self.data['CD'].Es[k][c]['rmsd'] = self.get_rmsds(confs)
+        if not 'rmsd' in self.data['CD'].Es[k][c].keys():
+          confs = [conf for conf in self.data['CD'].confs['samples'][k][c]]
+          self.data['CD'].Es[k][c]['rmsd'] = self.get_rmsds(confs)
     self.stats_RL['rmsd'] = [(np.hstack([self.data['CD'].Es[k][c]['rmsd']
       if 'rmsd' in self.data['CD'].Es[k][c].keys() else [] \
         for c in range(self.stats_RL['equilibrated_cycle'][-1], \
@@ -1336,7 +746,7 @@ class BPMF:
 
     if not do_solvation:
       if updated:
-        if not self._run_type.startswith('timed'):
+        if not self.log.run_type.startswith('timed'):
           self.log.tee(write_pkl_gz(f_RL_FN, \
             (self.f_L, self.stats_RL, self.f_RL, self.B)))
         self.log.clear_lock('CD')
@@ -1698,14 +1108,14 @@ class BPMF:
     updated = False
     # Calculate MM and OBC energies
     if not 'MM' in Es.keys():
-      Es = self._energyTerms(confs, Es)
+      Es = self.system.energyTerms(confs, Es)
       solvation_o = self.args.params['CD']['solvation']
       self.args.params['CD']['solvation'] = 'Full'
       if self.system.isForce('OBC'):
         del self._forceFields['OBC']
       self.system.clear_evaluators()
       self.system.setParams(params_full)
-      Es = self._energyTerms(confs, Es)
+      Es = self.system.energyTerms(confs, Es)
       self.args.params['CD']['solvation'] = solvation_o
       updated = True
 
@@ -1821,107 +1231,6 @@ class BPMF:
   ######################
   # Internal Functions #
   ######################
-
-  def _initial_sim_state(self, seeds, process, params_k):
-    """
-    Initializes a state, returning the configurations and potential energy.
-    Attempts simulation up to 12 times, adjusting the time step.
-    """
-
-    if not 'delta_t' in params_k.keys():
-      params_k[
-        'delta_t'] = 1. * self.args.params[process]['delta_t'] * MMTK.Units.fs
-    params_k['steps_per_trial'] = self.args.params[process]['steps_per_sweep']
-
-    attempts_left = 12
-    while (attempts_left > 0):
-      # Get initial potential energy
-      Es_o = []
-      for seed in seeds:
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, seed))
-        Es_o.append(self.top.universe.energy())
-      Es_o = np.array(Es_o)
-
-      # Perform simulation
-      results = []
-      if self.args.cores > 1:
-        # Multiprocessing code
-        m = multiprocessing.Manager()
-        task_queue = m.Queue()
-        done_queue = m.Queue()
-        for k in range(len(seeds)):
-          task_queue.put((seeds[k], process, params_k, True, k))
-        processes = [multiprocessing.Process(target=self._iteration_worker, \
-            args=(task_queue, done_queue)) for p in range(self.args.cores)]
-        for p in range(self.args.cores):
-          task_queue.put('STOP')
-        for p in processes:
-          p.start()
-        for p in processes:
-          p.join()
-        results = [done_queue.get() for seed in seeds]
-        for p in processes:
-          p.terminate()
-      else:
-        # Single process code
-        results = [self.iterator.iteration(\
-          seeds[k], process, params_k, True, k) for k in range(len(seeds))]
-
-      seeds = [result['confs'] for result in results]
-      Es_n = np.array([result['Etot'] for result in results])
-      deltaEs = Es_n - Es_o
-      attempts_left -= 1
-
-      # Get the time step
-      delta_t = np.array([result['delta_t'] for result in results])
-      if np.std(delta_t) > 1E-3:
-        # If the integrator adapts the time step, take an average
-        delta_t = min(max(np.mean(delta_t), \
-          self.args.params[process]['delta_t']/5.0*MMTK.Units.fs), \
-          self.args.params[process]['delta_t']*0.1*MMTK.Units.fs)
-      else:
-        delta_t = delta_t[0]
-
-      # Adjust the time step
-      if self.args.params[process]['sampler'] == 'HMC':
-        # Adjust the time step for Hamiltonian Monte Carlo
-        acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
-          np.sum([r['att_Sampler'] for r in results])
-        if acc_rate > 0.8:
-          delta_t += 0.125 * MMTK.Units.fs
-        elif acc_rate < 0.4:
-          if delta_t < 2.0 * MMTK.Units.fs:
-            params_k['steps_per_trial'] = max(
-              int(params_k['steps_per_trial'] / 2.), 1)
-          delta_t -= 0.25 * MMTK.Units.fs
-          if acc_rate < 0.1:
-            delta_t -= 0.25 * MMTK.Units.fs
-        else:
-          attempts_left = 0
-      else:
-        # For other integrators, make sure the time step
-        # is small enough to see changes in the energy
-        if (np.std(deltaEs) < 1E-3):
-          delta_t -= 0.25 * MMTK.Units.fs
-        else:
-          attempts_left = 0
-
-      if delta_t < 0.1 * MMTK.Units.fs:
-        delta_t = 0.1 * MMTK.Units.fs
-
-      params_k['delta_t'] = delta_t
-
-    sampler_metrics = ''
-    for s in ['ExternalMC', 'SmartDarting', 'Sampler']:
-      if np.array(['acc_' + s in r.keys() for r in results]).any():
-        acc = np.sum([r['acc_' + s] for r in results])
-        att = np.sum([r['att_' + s] for r in results])
-        time = np.sum([r['time_' + s] for r in results])
-        if att > 0:
-          sampler_metrics += '%s %d/%d=%.2f (%.1f s); '%(\
-            s,acc,att,float(acc)/att,time)
-    return (seeds, Es_n - Es_o, delta_t, sampler_metrics)
 
   def _replica_exchange(self, process):
     """
@@ -2150,7 +1459,7 @@ class BPMF:
           task_queue.put((confs[k], process, paramss[state_inds[k]], False, k))
         for p in range(self.args.cores):
           task_queue.put('STOP')
-        processes = [multiprocessing.Process(target=self._iteration_worker, \
+        processes = [multiprocessing.Process(target=self.iterator.iteration_worker, \
             args=(task_queue, done_queue)) for p in range(self.args.cores)]
         for p in processes:
           p.start()
@@ -2178,7 +1487,7 @@ class BPMF:
       for k in range(K):
         confs[k] = results[k]['confs']
       mean_energies.append(np.mean([results[k]['Etot'] for k in range(K)]))
-      E = self._energyTerms(confs, E, process=process)
+      E = self.system.energyTerms(confs, E, process=process)
 
       # Store MC move statistics
       for k in range(K):
@@ -2300,7 +1609,7 @@ class BPMF:
                                                   self.data)
 
     self.data[process].cycle += 1
-    self._save(process)
+    self.save(process)
     self.log.tee("")
     self.log.clear_lock(process)
 
@@ -2346,14 +1655,6 @@ class BPMF:
         np.random.choice(range(W_nl.shape[0]), size = 1, p = W_nl[:,k])[0])
       self.data[process].confs['replicas'].append(np.copy(confs_repX[s][n]))
 
-  def _iteration_worker(self, input, output):
-    """
-    Executes a task from the queue
-    """
-    for args in iter(input.get, 'STOP'):
-      result = self.iterator.iteration(*args)
-      output.put(result)
-
   def sim_process(self, process):
     """
     Simulate and analyze a BC or CD process.
@@ -2398,14 +1699,8 @@ class BPMF:
         cycle_times.append(self.log.timeSince('repX cycle'))
         if process == 'CD':
           self._insert_CD_state_between_low_acc()
-        if self._run_type.startswith('timed'):
-          remaining_time = self.log.max_time * 60 - (
-            time.time() - self.log.start_times['run'])
-          cycle_time = np.mean(cycle_times)
-          self.log.tee("  projected cycle time: %s, remaining time: %s"%(\
-            HMStime(cycle_time), HMStime(remaining_time)), process=process)
-          if cycle_time > remaining_time:
-            return False
+        if not self.log.isTimeForTask(cycle_times):
+          return False
       self.log.tee("Elapsed time for %d cycles of replica exchange: %s"%(\
          (self.data[process].cycle - start_cycle), \
           HMStime(self.log.timeSince(process+'_repX_start'))), \
@@ -2423,14 +1718,8 @@ class BPMF:
           process='BC')
         self._replica_exchange('BC')
         cycle_times.append(self.log.timeSince('repX cycle'))
-        if self._run_type.startswith('timed'):
-          remaining_time = self.log.max_time * 60 - (
-            time.time() - self.log.start_times['run'])
-          cycle_time = np.mean(cycle_times)
-          self.log.tee("  projected cycle time: %s, remaining time: %s"%(\
-            HMStime(cycle_time), HMStime(remaining_time)), process=process)
-          if cycle_time > remaining_time:
-            return False
+        if not self.log.isTimeForTask(cycle_times):
+          return False
         E_MM = []
         for k in range(len(self.data['BC'].Es[0])):
           E_MM += list(self.data['BC'].Es[0][k]['MM'])
@@ -2569,7 +1858,7 @@ class BPMF:
       k += 1
     if updated:
       self._clear_f_RL()
-      self._save('CD')
+      self.save('CD')
       self.log.tee("")
       self.log.clear_lock('CD')
 
@@ -2929,205 +2218,6 @@ class BPMF:
     else:
       return (u_kln, N_k)
 
-  def _next_BC_state(self, E=None, params_o=None, pow=None, warm=True):
-    if E is None:
-      E = self.data['BC'].Es[-1]
-
-    if params_o is None:
-      params_o = self.data['BC'].protocol[-1]
-
-    if self.args.params['BC']['protocol'] == 'Adaptive':
-      tL_tensor = self._tL_tensor(E, params_o, process='BC')
-      crossed = params_o['crossed']
-      if pow is not None:
-        tL_tensor = tL_tensor * (1.25**pow)
-      if tL_tensor > 1E-7:
-        dL = self.args.params['BC']['therm_speed'] / tL_tensor
-        if warm:
-          T = params_o['T'] + dL
-          if T > self.T_HIGH:
-            T = self.T_HIGH
-            crossed = True
-        else:
-          T = params_o['T'] - dL
-          if T < self.T_TARGET:
-            T = self.T_TARGET
-            crossed = True
-      else:
-        raise Exception('No variance in configuration energies')
-    elif self.args.params['BC']['protocol'] == 'Geometric':
-      T_GEOMETRIC = np.exp(
-        np.linspace(np.log(self.T_TARGET), np.log(self.T_HIGH),
-                    int(1 / self.args.params['BC']['therm_speed'])))
-      if warm:
-        T_START, T_END = self.T_TARGET, self.T_HIGH
-      else:
-        T_START, T_END = self.T_HIGH, self.T_TARGET
-        T_GEOMETRIC = T_GEOMETRIC[::-1]
-      T = T_GEOMETRIC[len(self.data['BC'].protocol)]
-      crossed = (len(self.data['BC'].protocol) == (len(T_GEOMETRIC) - 1))
-    alpha = (self.T_HIGH - T) / (self.T_HIGH - self.T_TARGET)
-    return self.system.paramsFromAlpha(alpha,
-                                        process='BC',
-                                        params_o=params_o,
-                                        crossed=crossed)
-
-  def _next_CD_state(self, E=None, params_o=None, pow=None, decoupling=False):
-    """
-    Determines the parameters for the next CD state
-    """
-
-    if E is None:
-      E = self.data['CD'].Es[-1]
-
-    if params_o is None:
-      params_o = self.data['CD'].protocol[-1]
-
-    if self.args.params['CD']['protocol'] == 'Adaptive':
-      # Change grid scaling and temperature simultaneously
-      tL_tensor = self._tL_tensor(E, params_o)
-      crossed = params_o['crossed']
-      # Calculate the change in the progress variable, capping at 0.05
-      if pow is None:
-        dL = min(self.args.params['CD']['therm_speed'] / tL_tensor, 0.05)
-      else:
-        # If there have been rejected stages, reduce dL
-        dL = min(
-          self.args.params['CD']['therm_speed'] / tL_tensor / (1.25**pow),
-          0.05)
-      if decoupling:
-        alpha = params_o['alpha'] - dL
-        if (self.args.params['CD']['pose'] > -1) and \
-           (params_o['alpha'] > 0.5) and (alpha < 0.5):
-          # Stop at 0.5 to facilitate entropy-energy decomposition
-          alpha = 0.5
-        elif alpha < 0.0:
-          if pow > 0:
-            alpha = params_o['alpha'] * (1 - 0.8**pow)
-          else:
-            alpha = 0.0
-            crossed = True
-      else:
-        alpha = params_o['alpha'] + dL
-        if (self.args.params['CD']['pose'] > -1) and \
-           (params_o['alpha'] < 0.5) and (alpha > 0.5):
-          # Stop at 0.5 to facilitate entropy-energy decomposition
-          alpha = 0.5
-        elif alpha > 1.0:
-          if pow > 0:
-            alpha = params_o['alpha'] + (1 - params_o['alpha']) * 0.8**pow
-          else:
-            alpha = 1.0
-            crossed = True
-      return self.system.paramsFromAlpha(alpha,
-                                          process='CD',
-                                          params_o=params_o,
-                                          crossed=crossed)
-    elif self.args.params['CD']['protocol'] == 'Geometric':
-      A_GEOMETRIC = [0.] + list(
-        np.exp(
-          np.linspace(np.log(1E-10), np.log(1.0),
-                      int(1 / self.args.params['CD']['therm_speed']))))
-      if decoupling:
-        A_GEOMETRIC.reverse()
-      alpha = A_GEOMETRIC[len(self.data['CD'].protocol)]
-      crossed = len(self.data['CD'].protocol) == (len(alpha_GEOMETRIC) - 1)
-      return self.system.paramsFromAlpha(alpha,
-                                          process='CD',
-                                          params_o=params_o,
-                                          crossed=crossed)
-
-  def _tL_tensor(self, E, params_c, process='CD'):
-    # Metric tensor for the thermodynamic length
-    T = params_c['T']
-    deltaT = np.abs(self.T_HIGH - self.T_TARGET)
-    if process == 'CD':
-      alpha = params_c['alpha']
-      alpha_g = 4. * (alpha - 0.5)**2 / (1 + np.exp(-100 * (alpha - 0.5)))
-      if alpha_g < 1E-10:
-        alpha_g = 0
-      da_g_da = (400.*(alpha-0.5)**2*np.exp(-100.*(alpha-0.5)))/(\
-        1+np.exp(-100.*(alpha-0.5)))**2 + \
-        (8.*(alpha-0.5))/(1 + np.exp(-100.*(alpha-0.5)))
-
-      # Psi_g are terms that are scaled in with alpha_g
-      # OBC is the strength of the OBC scaling in the current state
-      s_ELE = 0.2 if self.args.params['CD']['solvation'] == 'Reduced' else 1.0
-      if self.args.params['CD']['solvation'] == 'Desolvated':
-        Psi_g = self._u_kln([E], [{'LJr': 1, 'LJa': 1, 'ELE': 1}], noBeta=True)
-        OBC = 0.0
-      elif self.args.params['CD']['solvation'] == 'Reduced':
-        Psi_g = self._u_kln([E], [{
-          'LJr': 1,
-          'LJa': 1,
-          'ELE': 0.2
-        }],
-                            noBeta=True)
-        OBC = 0.0
-      elif self.args.params['CD']['solvation'] == 'Fractional':
-        Psi_g = self._u_kln([E], [{
-          'LJr': 1,
-          'LJa': 1,
-          'ELE': 1,
-          'OBC': 1
-        }],
-                            noBeta=True)
-        OBC = alpha_g
-      elif self.args.params['CD']['solvation'] == 'Full':
-        Psi_g = self._u_kln([E], [{'LJr': 1, 'LJa': 1, 'ELE': 1}], noBeta=True)
-        OBC = 1.0
-
-      if self.args.params['CD']['pose'] > -1:  # Pose BPMF
-        alpha_r = np.tanh(16 * alpha * alpha)
-        da_r_da = 32. * alpha / np.cosh(16. * alpha * alpha)**2
-        # Scaled in with alpha_r
-        U_r = self._u_kln([E], \
-          [{'k_angular_int':self.args.params['CD']['k_pose']}], noBeta=True)
-        # Total potential energy
-        U_RL_g = self._u_kln([E],
-          [{'MM':True, 'OBC':OBC, 'T':T, \
-            'k_angular_ext':params_c['k_angular_ext'], \
-            'k_spatial_ext':params_c['k_spatial_ext'], \
-            'k_angular_int':params_c['k_angular_int'], \
-            'sLJr':alpha_g, 'sLJa':alpha_g, 'ELE':alpha_g}], noBeta=True)
-        return np.abs(da_r_da)*U_r.std()/(R*T) + \
-               np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-               deltaT*U_RL_g.std()/(R*T*T)
-      else:  # BPMF
-        alpha_sg = 1. - 4. * (alpha - 0.5)**2
-        da_sg_da = -8 * (alpha - 0.5)
-        if self.args.params['CD']['solvation'] == 'Reduced':
-          Psi_sg = self._u_kln([E], [{'sLJr': 1}], noBeta=True)
-          U_RL_g = self._u_kln([E],
-            [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
-            'sLJr':alpha_sg, 'LJr':alpha_g, 'LJa':alpha_g, 'ELE':s_ELE*alpha_g}], noBeta=True)
-        else:
-          # Scaled in with soft grid
-          Psi_sg = self._u_kln([E], [{'sLJr': 1, 'sELE': 1}], noBeta=True)
-          # Total potential energy
-          U_RL_g = self._u_kln([E],
-            [{'MM':True, 'OBC':OBC, 'site':True, 'T':T,\
-            'sLJr':alpha_sg, 'sELE':alpha_sg, \
-            'LJr':alpha_g, 'LJa':alpha_g, 'ELE':alpha_g}], noBeta=True)
-        return np.abs(da_sg_da)*Psi_sg.std()/(R*T) + \
-               np.abs(da_g_da)*Psi_g.std()/(R*T) + \
-               deltaT*U_RL_g.std()/(R*T*T)
-    elif process == 'BC':
-      if self.args.params['BC']['solvation'] == 'Full':
-        # OBC is always on
-        return deltaT * self._u_kln([E], [{
-          'MM': True,
-          'OBC': 1.0
-        }],
-                                    noBeta=True).std() / (R * T * T)
-      else:
-        # OBC is scaled with the progress variable
-        alpha = params_c['alpha']
-        return self._u_kln([E],[{'OBC':1.0}], noBeta=True).std()/(R*T) + \
-          deltaT*self._u_kln([E],[{'MM':True, 'OBC':alpha}], noBeta=True).std()/(R*T*T)
-    else:
-      raise Exception("Unknown process!")
-
   def _load_programs(self, phases):
     # Find the necessary programs, downloading them if necessary
     programs = []
@@ -3355,11 +2445,11 @@ class BPMF:
            (self.args.original_Es[0][0]['R'+phase] is not None):
           self.args.params['CD']['receptor_'+phase] = \
             self.args.original_Es[0][0]['R'+phase]
-      self._save('CD', keys=['progress'])
+      self.save('CD', keys=['progress'])
     if 'BC' in updated_processes:
-      self._save('BC')
+      self.save('BC')
     if ('CD' in updated_processes) or ('original' in updated_processes):
-      self._save('CD')
+      self.save('CD')
 
     if len(updated_processes) > 0:
       self.log.tee("\nElapsed time for postprocessing: " + \
@@ -3374,25 +2464,15 @@ class BPMF:
       nsnaps = len(confs)
 
       # Make sure there is enough time remaining
-      if self._run_type.startswith('timed'):
-        remaining_time = self.log.max_time*60 - \
-          (time.time()-self.log.start_times['run'])
-        if len(time_per_snap[moiety + phase]) > 0:
-          mean_time_per_snap = np.mean(np.mean(time_per_snap[moiety + phase]))
-          if np.isnan(mean_time_per_snap):
-            return
-          projected_time = mean_time_per_snap * nsnaps
-          self.log.tee("  projected cycle time for %s: %s, remaining time: %s"%(\
-            moiety+phase, \
-            HMStime(projected_time), HMStime(remaining_time)), process=p)
-          if projected_time > remaining_time:
-            return
+      if len(time_per_snap[moiety + phase]) > 0:
+        if not self.log.isTimeForTask(nsnaps * np.array(time_per_snap[moiety + phase])):
+          return
 
       # Calculate the energy
       self.log.recordStart('energy')
       for program in ['NAMD', 'sander', 'gbnsr6', 'OpenMM', 'APBS']:
         if phase.startswith(program):
-          E = getattr(self, '_%s_Energy' % program)(*args)
+          E = np.array(getattr(self, '_%s_Energy' % program)(*args))
           break
       wall_time = self.log.timeSince('energy')
 
@@ -3403,65 +2483,13 @@ class BPMF:
         # Store output and timings
         output.put((E, reference, wall_time))
 
-        times_per_snap = time_per_snap[moiety + phase]
-        times_per_snap.append(wall_time / nsnaps)
-        time_per_snap[moiety + phase] = times_per_snap
+        time_per_snap_list = time_per_snap[moiety + phase]
+        time_per_snap_list.append(wall_time / nsnaps)
+        time_per_snap[moiety + phase] = time_per_snap_list
       else:
         self.log.tee("  error in postprocessing %s, state %d, cycle %d, %s in %s"%(\
           p,state,c,label,HMStime(wall_time)))
         return
-
-  def _energyTerms(self, confs, E=None, process='CD', debug=DEBUG):
-    """
-    Calculates MMTK energy terms for a series of configurations
-    Units are the MMTK standard, kJ/mol
-    """
-    if E is None:
-      E = {}
-
-    params_full = self.system.paramsFromAlpha(alpha=1.0,
-                                               process=process,
-                                               site=(process == 'CD'))
-    if process == 'CD':
-      for scalable in scalables:
-        params_full[scalable] = 1
-    self.system.setParams(params_full)
-
-    # Molecular mechanics and grid interaction energies
-    E['MM'] = np.zeros(len(confs), dtype=float)
-    if process == 'BC':
-      if 'OBC' in params_full.keys():
-        E['OBC'] = np.zeros(len(confs), dtype=float)
-    if process == 'CD':
-      for term in (scalables):
-        E[term] = np.zeros(len(confs), dtype=float)
-      if self.system.isForce('site'):
-        E['site'] = np.zeros(len(confs), dtype=float)
-      if self.system.isForce('InternalRestraint'):
-        E['k_angular_int'] = np.zeros(len(confs), dtype=float)
-      if self.system.isForce('ExternalRestraint'):
-        E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
-        E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
-    for c in range(len(confs)):
-      self.top.universe.setConfiguration(
-        Configuration(self.top.universe, confs[c]))
-      eT = self.top.universe.energyTerms()
-      for (key, value) in eT.iteritems():
-        if key == 'electrostatic':
-          pass  # For some reason, MMTK double-counts electrostatic energies
-        elif key.startswith('pose'):
-          # For pose restraints, the energy is per spring constant unit
-          E[term_map[key]][c] += value / params_full[term_map[key]]
-        else:
-          try:
-            E[term_map[key]][c] += value
-          except KeyError:
-            print key
-            print 'Keys in eT', eT.keys()
-            print 'Keys in term map', term_map.keys()
-            print 'Keys in E', E.keys()
-            raise Exception('key not found in term map or E')
-    return E
 
   def _NAMD_Energy(self,
                    confs,
@@ -4042,7 +3070,7 @@ END
   def _combine_MM_and_solvent(self, E, toParse=None):
     if toParse is None:
       toParse = [k for k in E.keys() \
-        if (E[k] is not None) and (len(E[k].shape)==2)]
+        if (E[k] is not None) and (len(np.array(E[k]).shape)==2)]
     for key in toParse:
       if np.isnan(E[key][:, -1]).all():
         E[key] = E[key][:, :-1]
@@ -4149,11 +3177,11 @@ END
     else:
       f_RL_FN = os.path.join(self.args.dir['CD'], \
         'f_RL_pose%03d.pkl.gz'%self.args.params['CD']['pose'])
-    if hasattr(self, 'run_type') and (not self._run_type.startswith('timed')):
+    if hasattr(self, 'run_type') and (not self.log.run_type.startswith('timed')):
       self.log.tee(
         write_pkl_gz(f_RL_FN, (self.f_L, self.stats_RL, self.f_RL, self.B)))
 
-  def _save(self, p, keys=['progress', 'data']):
+  def save(self, p, keys=['progress', 'data']):
     """Saves results
 
     Parameters
@@ -4164,9 +3192,9 @@ END
       Save the progress, the data, or both
     """
     if 'progress' in keys:
-      self.log.tee(self.args._save_pkl_gz(p, self.data[p]))
+      self.log.tee(self.args.save_pkl_gz(p, self.data[p]))
     if 'data' in keys:
-      self.log.tee(self.data[p]._save_pkl_gz())
+      self.log.tee(self.data[p].save_pkl_gz())
 
   def __del__(self):
     if (not DEBUG) and len(self.args.toClear) > 0:

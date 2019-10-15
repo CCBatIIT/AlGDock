@@ -39,9 +39,9 @@ class SimulationData:
     self.dir = dir
     self.process = process
     self.pose = pose
-    self._load_pkl_gz()
+    self.load_pkl_gz()
 
-  def _load_pkl_gz(self):
+  def load_pkl_gz(self):
     """Load sampled configurations and energies
 
     """
@@ -112,7 +112,7 @@ class SimulationData:
         (not self.protocol[-1]['crossed']):
       self.cycle = 0
 
-  def _save_pkl_gz(self):
+  def save_pkl_gz(self):
     """Saves sampled configurations and energies
 
     """
@@ -134,7 +134,7 @@ class SimulationData:
     else:
       saved_FN = os.path.join(self.dir, '%s_%s.pkl.gz' % (self.process, key))
     if not os.path.isdir(self.dir):
-      os.system('mkself.dir -p ' + self.dir)
+      os.system('mkdir -p ' + self.dir)
     if os.path.isfile(saved_FN):
       os.rename(saved_FN, saved_FN + '.BAK')
     return (write_pkl_gz(saved_FN, saved[key]) +

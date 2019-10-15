@@ -78,12 +78,12 @@ class LigandPreparation():
     self.log.set_lock(process)
     self.log.recordStart(process+' ligand prep')
     self.log.tee("\n>>> Ligand preparation for %s, starting at "%process + \
-      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()))
     if process == 'BC':
       seeds = self._prepare_ligand_BC()
     elif process == 'CD':
       seeds = self._prepare_ligand_CD()
-    self.log.tee("Elapsed time for ligand preparation for %s:"%process + \
+    self.log.tee("Elapsed time for ligand preparation for %s: "%process + \
       HMStime(self.log.timeSince(process+' ligand prep')))
     self.log.clear_lock(process)
     return seeds

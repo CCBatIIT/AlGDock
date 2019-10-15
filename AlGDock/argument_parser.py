@@ -94,7 +94,7 @@ class SimulationArguments:
     FNs = OrderedDict()
     args = OrderedDict()
     for p in ['CD', 'BC']:
-      params = self._load_pkl_gz(p, kwargs['pose'])
+      params = self.load_pkl_gz(p, kwargs['pose'])
       if params is not None:
         (fn_dict, param_dict) = params
         FNs[p] = dictionary_tools.convert_dictionary_relpath(
@@ -409,7 +409,7 @@ class SimulationArguments:
       print '\nfor %s:' % p
       print dictionary_tools.dict_view(self.params[p])[:-1]
 
-  def _load_pkl_gz(self, p, pose):
+  def load_pkl_gz(self, p, pose):
     """Loads parameters from a pickled gzip file
 
     """
@@ -441,7 +441,7 @@ class SimulationArguments:
       params = saved[0]
     return params
 
-  def _save_pkl_gz(self, p, data):
+  def save_pkl_gz(self, p, data):
     """
     Saves simulation parameters, simulation files, and the protocol.
 

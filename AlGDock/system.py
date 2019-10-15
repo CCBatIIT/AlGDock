@@ -4,12 +4,34 @@ import numpy as np
 import copy
 
 import MMTK
+from MMTK.ParticleProperties import Configuration
 from MMTK.ForceFields import ForceField
 
 from AlGDock.BindingPMF import scalables
 from AlGDock.BindingPMF import R
 from AlGDock.BindingPMF import HMStime
 
+term_map = {
+  'cosine dihedral angle': 'MM',
+  'electrostatic/pair sum': 'MM',
+  'harmonic bond': 'MM',
+  'harmonic bond angle': 'MM',
+  'Lennard-Jones': 'MM',
+  'OpenMM': 'MM',
+  'OBC': 'OBC',
+  'OBC_desolv': 'OBC',
+  'site': 'site',
+  'sLJr': 'sLJr',
+  'sELE': 'sELE',
+  'sLJa': 'sLJa',
+  'LJr': 'LJr',
+  'LJa': 'LJa',
+  'ELE': 'ELE',
+  'pose dihedral angle': 'k_angular_int',
+  'pose external dihedral': 'k_angular_ext',
+  'pose external distance': 'k_spatial_ext',
+  'pose external angle': 'k_angular_ext'
+}
 
 class System:
   """Forces and masses
@@ -22,10 +44,6 @@ class System:
   _forceFields : dict
   T : float
     Current temperature
-  T_HIGH : float
-    High temperature
-  T_TARGET : float
-    Target temperature
   args : AlGDock.simulation_arguments.SimulationArguments
     Simulation arguments
   log : AlGDock.logger.Logger
@@ -58,9 +76,6 @@ class System:
     self.top = top
     self.top_RL = top_RL
     self.starting_pose = starting_pose
-
-    self.T_HIGH = self.args.params['BC']['T_HIGH']
-    self.T_TARGET = self.args.params['BC']['T_TARGET']
 
     self._evaluators = {}
     self._forceFields = {}
@@ -263,6 +278,72 @@ class System:
     self.top.universe._evaluator[(None, None, None)] = eval
     self._evaluators[evaluator_key] = eval
 
+  def energyTerms(self, confs, E=None, process='CD'):
+    """Calculates energy terms for a series of configurations
+
+    Units are kJ/mol.
+
+    Parameters
+    ----------
+    confs : list of np.array
+      Configurations
+    E : dict of np.array
+      Dictionary to add to
+    process : str
+      Process, either 'BC' or 'CD'
+
+    Returns
+    -------
+    E : dict of np.array
+      Dictionary of energy terms
+    """
+    if E is None:
+      E = {}
+
+    params_full = self.paramsFromAlpha(alpha=1.0,
+                                               process=process,
+                                               site=(process == 'CD'))
+    if process == 'CD':
+      for scalable in scalables:
+        params_full[scalable] = 1
+    self.setParams(params_full)
+
+    # Molecular mechanics and grid interaction energies
+    E['MM'] = np.zeros(len(confs), dtype=float)
+    if process == 'BC':
+      if 'OBC' in params_full.keys():
+        E['OBC'] = np.zeros(len(confs), dtype=float)
+    if process == 'CD':
+      for term in (scalables):
+        E[term] = np.zeros(len(confs), dtype=float)
+      if self.isForce('site'):
+        E['site'] = np.zeros(len(confs), dtype=float)
+      if self.isForce('InternalRestraint'):
+        E['k_angular_int'] = np.zeros(len(confs), dtype=float)
+      if self.isForce('ExternalRestraint'):
+        E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
+        E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
+    for c in range(len(confs)):
+      self.top.universe.setConfiguration(
+        Configuration(self.top.universe, confs[c]))
+      eT = self.top.universe.energyTerms()
+      for (key, value) in eT.iteritems():
+        if key == 'electrostatic':
+          pass  # For some reason, MMTK double-counts electrostatic energies
+        elif key.startswith('pose'):
+          # For pose restraints, the energy is per spring constant unit
+          E[term_map[key]][c] += value / params_full[term_map[key]]
+        else:
+          try:
+            E[term_map[key]][c] += value
+          except KeyError:
+            print key
+            print 'Keys in eT', eT.keys()
+            print 'Keys in term map', term_map.keys()
+            print 'Keys in E', E.keys()
+            raise Exception('key not found in term map or E')
+    return E
+
   def paramsFromAlpha(self,
                        alpha,
                        process='CD',
@@ -324,7 +405,7 @@ class System:
         params['sLJr'] = alpha_g
         params['sLJa'] = alpha_g
         params['ELE'] = alpha_g
-        params['T'] = alpha_r * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+        params['T'] = alpha_r * (self.args.params['BC']['T_TARGET'] - self.args.params['BC']['T_HIGH']) + self.args.params['BC']['T_HIGH']
       else:
         # BPMF
         alpha_sg = 1. - 4. * (alpha - 0.5)**2
@@ -339,13 +420,13 @@ class System:
         if site is not None:
           params['site'] = site
         if self.args.params['CD']['temperature_scaling'] == 'Linear':
-          params['T'] = alpha * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+          params['T'] = alpha * (self.args.params['BC']['T_TARGET'] - self.args.params['BC']['T_HIGH']) + self.args.params['BC']['T_HIGH']
         elif self.args.params['CD']['temperature_scaling'] == 'Quadratic':
-          params['T'] = alpha_g * (self.T_TARGET - self.T_HIGH) + self.T_HIGH
+          params['T'] = alpha_g * (self.args.params['BC']['T_TARGET'] - self.args.params['BC']['T_HIGH']) + self.args.params['BC']['T_HIGH']
     elif process == 'BC':
       # If alpha = 0.0, T = T_HIGH. If alpha = 1.0, T = T_TARGET.
       params['alpha'] = alpha
-      params['T'] = self.T_HIGH - alpha * (self.T_HIGH - self.T_TARGET)
+      params['T'] = self.args.params['BC']['T_HIGH'] - alpha * (self.args.params['BC']['T_HIGH'] - self.args.params['BC']['T_TARGET'])
       if self.args.params['BC']['solvation'] == 'Desolvated':
         params['OBC'] = alpha
       elif self.args.params['BC']['solvation'] == 'Reduced':
