@@ -158,7 +158,7 @@ class SimulationIterator:
       result = self.iteration(*args)
       output.put(result)
 
-  def initializeSmartDartingConfigurations(self, seeds, process, data):
+  def initializeSmartDartingConfigurations(self, seeds, process, log, data):
     """Initializes the configurations for Smart Darting
 
     Parameters
@@ -167,18 +167,18 @@ class SimulationIterator:
       Starting configurations
     process : str
       Process, either 'BC' or 'CD'
-    data : AlGDock.simulation_data.SimulationData object
+    log : AlGDock.logger.Logger
+      Logger that includes tee function
+    data : AlGDock.simulation_data.SimulationData
       Location for minimized configurations
     """
     if self.args.params[process]['darts_per_seed'] > 0:
       outstr = self._samplers[process + '_SmartDarting'].set_confs(seeds)
       data[process].confs['SmartDarting'] = \
         self._samplers[process+'_SmartDarting'].confs
-      return outstr
-    else:
-      return ''
+      log.tee(outstr)
 
-  def addSmartDartingConfigurations(self, new_confs, process, data):
+  def addSmartDartingConfigurations(self, new_confs, process, log, data):
     """Adds new configurations for Smart Darting
 
     Parameters
@@ -197,9 +197,7 @@ class SimulationIterator:
         new_confs + data[process].confs['SmartDarting'])
       data[process].confs['SmartDarting'] = \
         self._samplers[process+'_SmartDarting'].confs
-      return outstr
-    else:
-      return ''
+      log.tee(outstr)
 
   def clearSmartDartingConfigurations(self, process):
     """Clears the list of configurations for Smart Darting

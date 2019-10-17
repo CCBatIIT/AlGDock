@@ -98,7 +98,7 @@ class SimulationData:
         (self._n_trans, self._max_n_trans, self._random_trans, \
          self._n_rot, self._max_n_rot, self._random_rotT) = saved['data'][0]
       # New file format (after 6/13/2016) storing starting self.poses
-      self.confs['starting_self.poses'] = saved['data'][1]
+      self.confs['starting_poses'] = saved['data'][1]
       self.confs['replicas'] = saved['data'][2]
       self.confs['seeds'] = saved['data'][3]
       self.confs['SmartDarting'] = saved['data'][4]

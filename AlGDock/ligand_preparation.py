@@ -136,9 +136,8 @@ class LigandPreparation():
 
       # initializes smart darting for BC
       # and sets the universe to the lowest energy configuration
-      self.log.tee(
-        self.iterator.initializeSmartDartingConfigurations(
-          minimizedConfigurations, 'BC', self.data))
+      self.iterator.initializeSmartDartingConfigurations(
+        minimizedConfigurations, 'BC', self.log, self.data)
       if len(minimizedConfigurations) > 0:
         self.top.universe.setConfiguration(
           Configuration(self.top.universe, minimizedConfigurations[-1]))
@@ -164,9 +163,6 @@ class LigandPreparation():
       Ligand configurations minimized in milestone D
     """
     if self.data['CD'].protocol == []:
-      self.log.tee("\n>>> Ligand preparation for CD, starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-
       params_o = self.system.paramsFromAlpha(1.0, 'CD')
       self.system.setParams(params_o)
 
@@ -182,9 +178,8 @@ class LigandPreparation():
       else:
         # initializes smart darting for CD and sets the universe
         # to the lowest energy configuration
-        self.log.tee(
-          self.iterator.initializeSmartDartingConfigurations(
-            seeds, 'CD', self.data))
+        self.iterator.initializeSmartDartingConfigurations(
+          seeds, 'CD', self.log, self.data)
         if len(seeds) > 0:
           self.top.universe.setConfiguration(\
             Configuration(self.top.universe,np.copy(seeds[-1])))
@@ -276,4 +271,4 @@ class LigandPreparation():
 
     self.log.tee("  ramped temperature from %d to %d K in %s, "%(\
       T_LOW, T_START, HMStime(self.log.timeSince('T_ramp'))) + \
-      "changing energy to %.3g kcal/mol"%(e_f))
+      "changing energy to %.3g kcal/mol\n"%(e_f))

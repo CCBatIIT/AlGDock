@@ -53,7 +53,6 @@ class Initialization():
     _u_kln : AlGDock.BindingPMF._u_kln
       Evaluates energies in different thermodynamic states
     """
-    pass
     self.args = args
     self.log = log
     self.top = top
@@ -289,9 +288,6 @@ class Initialization():
     self.log.recordStart('BCsave')
 
     if seeds is not None:
-      self.log.tee("\n>>> Initial warming, starting at " + \
-        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-
       params_o = self.system.paramsFromAlpha(1.0, 'BC', site=False)
       self.data['BC'].protocol = [params_o]
       self.system.setParams(params_o)
@@ -348,9 +344,8 @@ class Initialization():
       # Simulate
       self.log.recordStart('BC_state')
       self.system.setParams(params_n)
-      self.log.tee(
-        self.iterator.initializeSmartDartingConfigurations(
-          seeds, 'BC', self.data))
+      self.iterator.initializeSmartDartingConfigurations(
+          seeds, 'BC', self.log, self.data)
       (confs, DeltaEs, params_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'BC', params_n)
 
@@ -648,9 +643,8 @@ class Initialization():
       self.log.recordStart('CD_state')
       self.system.setParams(params_n)
       if self.args.params['CD']['darts_per_seed'] > 0 and params_n['alpha'] > 0.1:
-        self.log.tee(
-          self.iterator.initializeSmartDartingConfigurations(
-            self.data['CD'].confs['SmartDarting'], 'CD', self.data))
+        self.iterator.initializeSmartDartingConfigurations(
+          self.data['CD'].confs['SmartDarting'], 'CD', self.log, self.data)
       (confs, DeltaEs, params_n['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'CD', params_n)
       if np.std(DeltaEs) < 1E-7:

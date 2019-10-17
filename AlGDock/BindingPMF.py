@@ -240,22 +240,8 @@ class BPMF:
           natoms=self.top.universe.numberOfAtoms(), multiplier=0.1)
         rmsd_crd = rmsd_crd[self.top.inv_prmtop_atom_order_L, :]
       self.data['CD'].confs['rmsd'] = rmsd_crd
+
       self.get_rmsds.set_ref_configuration(self.data['CD'].confs['rmsd'])
-
-    # TODO: Remove after postprocessin
-    # Locate programs for postprocessing
-    all_phases = self.args.params['CD']['phases'] + self.args.params['BC'][
-      'phases']
-    self._load_programs(all_phases)
-
-    # Determine APBS grid spacing
-    if 'APBS_PBSA' in self.args.params['CD']['phases'] or \
-       'APBS_PBSA' in self.args.params['BC']['phases']:
-      self._get_APBS_grid_spacing()
-
-    # Determines receptor electrostatic size
-    if np.array([p.find('ALPB') > -1 for p in all_phases]).any():
-      self.elsize = self._get_elsize()
 
     # If configurations are being rescored, start with a docked structure
     (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
@@ -274,7 +260,9 @@ class BPMF:
     self.iterator = SimulationIterator(self.args, self.top, self.system)
 
     # Load progress
-    self._postprocess(readOnly=True)
+    from AlGDock.postprocessing import Postprocessing
+    Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run(readOnly=True)
+
     self.calc_f_L(readOnly=True)
     self.calc_f_RL(readOnly=True)
 
@@ -282,6 +270,8 @@ class BPMF:
       np.random.seed(self.args.random_seed)
 
   def _run(self, run_type):
+    from AlGDock.postprocessing import Postprocessing
+
     self.log.recordStart('run')
     self.log.run_type = run_type
     if run_type=='configuration_energies' or \
@@ -296,44 +286,44 @@ class BPMF:
       self.initial_BC()
     elif run_type == 'BC':  # Sample the BC process
       self.sim_process('BC')
-      self._postprocess([('BC', -1, -1, 'L')])
+      Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run([('BC', -1, -1, 'L')])
       self.calc_f_L()
     elif run_type == 'initial_CD':
       self.initial_CD()
     elif run_type == 'CD':  # Sample the CD process
       self.sim_process('CD')
-      self._postprocess()
+      Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run()
       self.calc_f_RL()
       # self.targeted_FEP()
     elif run_type == 'timed':  # Timed replica exchange sampling
       BC_complete = self.sim_process('BC')
       if BC_complete:
-        pp_complete = self._postprocess([('BC', -1, -1, 'L')])
+        pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run([('BC', -1, -1, 'L')])
         if pp_complete:
           self.calc_f_L()
           CD_complete = self.sim_process('CD')
           if CD_complete:
-            pp_complete = self._postprocess()
+            pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run()
             if pp_complete:
               self.calc_f_RL()
               # self.targeted_FEP()
     elif run_type == 'timed_BC':  # Timed BC only
       BC_complete = self.sim_process('BC')
       if BC_complete:
-        pp_complete = self._postprocess([('BC', -1, -1, 'L')])
+        pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run([('BC', -1, -1, 'L')])
         if pp_complete:
           self.calc_f_L()
     elif run_type == 'timed_CD':  # Timed CD only
       CD_complete = self.sim_process('CD')
       if CD_complete:
-        pp_complete = self._postprocess()
+        pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run()
         if pp_complete:
           self.calc_f_RL()
           # self.targeted_FEP()
     elif run_type == 'postprocess':  # Postprocessing
-      self._postprocess()
+      Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run()
     elif run_type == 'redo_postprocess':
-      self._postprocess(redo_CD=True)
+      Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run(redo_CD=True)
     elif run_type == 'redo_pose_prediction':
       self.calc_f_RL(readOnly=True)
       # Predict native pose
@@ -350,10 +340,10 @@ class BPMF:
       # self.targeted_FEP()
     elif run_type == 'all':
       self.sim_process('BC')
-      self._postprocess([('BC', -1, -1, 'L')])
+      Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run([('BC', -1, -1, 'L')])
       self.calc_f_L()
       self.sim_process('CD')
-      self._postprocess()
+      Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run()
       self.calc_f_RL()
       # self.targeted_FEP()
     elif run_type == 'render_docked':
@@ -520,7 +510,8 @@ class BPMF:
       return True
 
     # Make sure postprocessing is complete
-    pp_complete = self._postprocess([('BC', -1, -1, 'L')])
+    from AlGDock.postprocessing import Postprocessing
+    pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run([('BC', -1, -1, 'L')])
     if not pp_complete:
       return False
 
@@ -753,7 +744,8 @@ class BPMF:
       return True
 
     # Make sure postprocessing is complete
-    pp_complete = self._postprocess()
+    from AlGDock.postprocessing import Postprocessing
+    pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run()
     if not pp_complete:
       return False
     self.calc_f_L()
@@ -1155,7 +1147,8 @@ class BPMF:
     self._load_programs(self.args.params['CD']['phases'])
 
     self.data['CD'].confs['starting_poses'] = None
-    self._postprocess([('original', 0, 0, 'R')])
+    from AlGDock.postprocessing import Postprocessing
+    pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run([('original', 0, 0, 'R')])
 
     for phase in self.args.params['CD']['phases']:
       if not 'R' + phase in Es.keys():
@@ -1232,429 +1225,6 @@ class BPMF:
   # Internal Functions #
   ######################
 
-  def _replica_exchange(self, process):
-    """
-    Performs a cycle of replica exchange
-    """
-    if not process in ['CD', 'BC']:
-      raise Exception('Process must be CD or BC')
-
-
-# GMC
-
-    def gMC_initial_setup():
-      """
-      Initialize BAT converter object.
-      Decide which internal coord to crossover. Here, only the soft torsions will be crossovered.
-      Produce a list of replica (state) index pairs to be swaped. Only Neighbor pairs will be swaped.
-      Assume that self.top.universe, self.top.molecule and K (number of states) exist
-      as global variables when the function is called.
-      """
-      from AlGDock.rigid_bodies import identifier
-      import itertools
-      BAT_converter = identifier(self.top.universe, self.top.molecule)
-      BAT = BAT_converter.BAT(extended=True)
-      # this assumes that the torsional angles are stored in the tail of BAT
-      softTorsionId = [
-        i + len(BAT) - BAT_converter.ntorsions
-        for i in BAT_converter._softTorsionInd
-      ]
-      torsions_to_crossover = []
-      for i in range(1, len(softTorsionId)):
-        combinations = itertools.combinations(softTorsionId, i)
-        for c in combinations:
-          torsions_to_crossover.append(list(c))
-      #
-      BAT_converter.BAT_to_crossover = torsions_to_crossover
-      if len(BAT_converter.BAT_to_crossover) == 0:
-        self.log.tee('  GMC No BAT to crossover')
-      state_indices = range(K)
-      state_indices_to_swap = zip( state_indices[0::2], state_indices[1::2] ) + \
-                      zip( state_indices[1::2], state_indices[2::2] )
-      #
-      return BAT_converter, state_indices_to_swap
-
-    #
-    def do_gMC(nr_attempts, BAT_converter, state_indices_to_swap,
-               torsion_threshold):
-      """
-      Assume self.top.universe, confs, paramss, state_inds, inv_state_inds exist as global variables
-      when the function is called.
-      If at least one of the torsions in the combination chosen for an crossover attempt
-      changes more than torsion_threshold, the crossover will be attempted.
-      The function will update confs.
-      It returns the number of attempts and the number of accepted moves.
-      """
-      if nr_attempts < 0:
-        raise Exception('Number of attempts must be nonnegative!')
-      if torsion_threshold < 0.:
-        raise Exception('Torsion threshold must be nonnegative!')
-      #
-      if len(BAT_converter.BAT_to_crossover) == 0:
-        return 0., 0.
-      #
-      from random import randrange
-      # get reduced energies and BAT for all configurations in confs
-      BATs = []
-      energies = np.zeros(K, dtype=float)
-      for c_ind in range(K):
-        s_ind = state_inds[c_ind]
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, confs[c_ind]))
-        BATs.append(np.array(BAT_converter.BAT(extended=True), dtype=float))
-        self.system.setParams(paramss[s_ind])
-        reduced_e = self.top.universe.energy() / (R * paramss[s_ind]['T'])
-        energies[c_ind] = reduced_e
-      #
-      nr_sets_of_torsions = len(BAT_converter.BAT_to_crossover)
-      #
-      attempt_count, acc_count = 0, 0
-      sweep_count = 0
-      while True:
-        sweep_count += 1
-        if (sweep_count * K) > (1000 * nr_attempts):
-          self.log.tee(
-            '  GMC Sweep too many times, but few attempted. Consider reducing torsion_threshold.'
-          )
-          return attempt_count, acc_count
-        #
-        for state_pair in state_indices_to_swap:
-          conf_ind_k0 = inv_state_inds[state_pair[0]]
-          conf_ind_k1 = inv_state_inds[state_pair[1]]
-          # check if it should attempt for this pair of states
-          ran_set_torsions = BAT_converter.BAT_to_crossover[randrange(
-            nr_sets_of_torsions)]
-          do_crossover = np.any(
-            np.abs(BATs[conf_ind_k0][ran_set_torsions] -
-                   BATs[conf_ind_k1][ran_set_torsions]) >= torsion_threshold)
-          if do_crossover:
-            attempt_count += 1
-            # BAT and reduced energies before crossover
-            BAT_k0_be = copy.deepcopy(BATs[conf_ind_k0])
-            BAT_k1_be = copy.deepcopy(BATs[conf_ind_k1])
-            e_k0_be = energies[conf_ind_k0]
-            e_k1_be = energies[conf_ind_k1]
-            # BAT after crossover
-            BAT_k0_af = copy.deepcopy(BAT_k0_be)
-            BAT_k1_af = copy.deepcopy(BAT_k1_be)
-            for index in ran_set_torsions:
-              tmp = BAT_k0_af[index]
-              BAT_k0_af[index] = BAT_k1_af[index]
-              BAT_k1_af[index] = tmp
-            # Cartesian coord and reduced energies after crossover.
-            BAT_converter.Cartesian(BAT_k0_af)
-            self.system.setParams(paramss[state_pair[0]])
-            e_k0_af = self.top.universe.energy() / (
-              R * paramss[state_pair[0]]['T'])
-            conf_k0_af = copy.deepcopy(self.top.universe.configuration().array)
-            #
-            BAT_converter.Cartesian(BAT_k1_af)
-            self.system.setParams(paramss[state_pair[1]])
-            e_k1_af = self.top.universe.energy() / (
-              R * paramss[state_pair[1]]['T'])
-            conf_k1_af = copy.deepcopy(self.top.universe.configuration().array)
-            #
-            de = (e_k0_be - e_k0_af) + (e_k1_be - e_k1_af)
-            # update confs, energies, BATS
-            if (de > 0) or (np.random.uniform() < np.exp(de)):
-              acc_count += 1
-              confs[conf_ind_k0] = conf_k0_af
-              confs[conf_ind_k1] = conf_k1_af
-              #
-              energies[conf_ind_k0] = e_k0_af
-              energies[conf_ind_k1] = e_k1_af
-              #
-              BATs[conf_ind_k0] = BAT_k0_af
-              BATs[conf_ind_k1] = BAT_k1_af
-            #
-            if attempt_count == nr_attempts:
-              return attempt_count, acc_count
-
-    #
-    self.log.set_lock(process)
-
-    confs = self.data[process].confs['replicas']
-    paramss = self.data[process].protocol
-
-    terms = ['MM']
-    if process == 'BC':
-      terms += ['OBC']
-    elif process == 'CD':
-      if self.args.params['CD']['pose'] > -1:
-        # Pose BPMF
-        terms += ['k_angular_ext', 'k_spatial_ext', 'k_angular_int']
-      else:
-        terms += ['site']
-      terms += scalables
-
-    # A list of pairs of replica indicies
-    K = len(paramss)
-    pairs_to_swap = []
-    for interval in range(1, min(5, K)):
-      lower_inds = []
-      for lowest_index in range(interval):
-        lower_inds += range(lowest_index, K - interval, interval)
-      upper_inds = np.array(lower_inds) + interval
-      pairs_to_swap += zip(lower_inds, upper_inds)
-
-    from repX import attempt_swaps
-
-    # Setting the force field will load grids
-    # before multiple processes are spawned
-    for k in range(K):
-      self.system.setParams(paramss[k])
-
-    # If it has not been set up, set up Smart Darting
-    self.iterator.initializeSmartDartingConfigurations(
-      self.data[process].confs['SmartDarting'], process, self.data)
-
-    # storage[key][sweep_index][state_index] will contain data
-    # from the replica exchange sweeps
-    storage = {}
-    for var in ['confs', 'state_inds', 'energies']:
-      storage[var] = []
-
-    self.log.recordStart('repX cycle')
-
-    if self.args.cores > 1:
-      # Multiprocessing setup
-      m = multiprocessing.Manager()
-      task_queue = m.Queue()
-      done_queue = m.Queue()
-
-    # GMC
-    do_gMC = self.args.params[process]['GMC_attempts'] > 0
-    if do_gMC:
-      self.log.tee('  Using GMC for %s' % process)
-      nr_gMC_attempts = K * self.args.params[process]['GMC_attempts']
-      torsion_threshold = self.args.params[process]['GMC_tors_threshold']
-      gMC_attempt_count = 0
-      gMC_acc_count = 0
-      time_gMC = 0.0
-      BAT_converter, state_indices_to_swap = gMC_initial_setup()
-
-    # MC move statistics
-    acc = {}
-    att = {}
-    for move_type in ['ExternalMC', 'SmartDarting', 'Sampler']:
-      acc[move_type] = np.zeros(K, dtype=int)
-      att[move_type] = np.zeros(K, dtype=int)
-      self.log.timings[move_type] = 0.
-    self.log.timings['repX'] = 0.
-
-    mean_energies = []
-
-    # Do replica exchange
-    state_inds = range(K)
-    inv_state_inds = range(K)
-    nsweeps = self.args.params[process]['sweeps_per_cycle']
-    nsnaps = nsweeps / self.args.params[process]['snaps_per_cycle']
-    for sweep in range(nsweeps):
-      E = {}
-      for term in terms:
-        E[term] = np.zeros(K, dtype=float)
-      # Sample within each state
-      if self.args.cores > 1:
-        for k in range(K):
-          task_queue.put((confs[k], process, paramss[state_inds[k]], False, k))
-        for p in range(self.args.cores):
-          task_queue.put('STOP')
-        processes = [multiprocessing.Process(target=self.iterator.iteration_worker, \
-            args=(task_queue, done_queue)) for p in range(self.args.cores)]
-        for p in processes:
-          p.start()
-        for p in processes:
-          p.join()
-        unordered_results = [done_queue.get() for k in range(K)]
-        results = sorted(unordered_results, key=lambda d: d['reference'])
-        for p in processes:
-          p.terminate()
-      else:
-        # Single process code
-        results = [self.iterator.iteration(confs[k], process, \
-            paramss[state_inds[k]], False, k) for k in range(K)]
-
-      # GMC
-      if do_gMC:
-        time_start_gMC = time.time()
-        att_count, acc_count = do_gMC(nr_gMC_attempts, BAT_converter,
-                                      state_indices_to_swap, torsion_threshold)
-        gMC_attempt_count += att_count
-        gMC_acc_count += acc_count
-        time_gMC = +(time.time() - time_start_gMC)
-
-      # Store energies
-      for k in range(K):
-        confs[k] = results[k]['confs']
-      mean_energies.append(np.mean([results[k]['Etot'] for k in range(K)]))
-      E = self.system.energyTerms(confs, E, process=process)
-
-      # Store MC move statistics
-      for k in range(K):
-        for move_type in ['ExternalMC', 'SmartDarting', 'Sampler']:
-          key = 'acc_' + move_type
-          if key in results[k].keys():
-            acc[move_type][state_inds[k]] += results[k][key]
-            att[move_type][state_inds[k]] += results[k]['att_' + move_type]
-            self.log.timings[move_type] += results[k]['time_' + move_type]
-
-      # Calculate u_ij (i is the replica, and j is the configuration),
-      #    a list of arrays
-      (u_ij, N_k) = self._u_kln(E, [paramss[state_inds[c]] for c in range(K)])
-      # Do the replica exchange
-      repX_start_time = time.time()
-      (state_inds, inv_state_inds) = \
-        attempt_swaps(state_inds, inv_state_inds, u_ij, pairs_to_swap, \
-          self.args.params[process]['attempts_per_sweep'])
-      self.log.timings['repX'] += (time.time() - repX_start_time)
-
-      # Store data in local variables
-      if (sweep + 1) % self.args.params[process]['snaps_per_cycle'] == 0:
-        if (process == 'CD') and (self.args.params['CD']['rmsd'] is not False):
-          E['rmsd'] = self.get_rmsds(confs)
-        storage['confs'].append(list(confs))
-        storage['state_inds'].append(list(state_inds))
-        storage['energies'].append(copy.deepcopy(E))
-
-    # GMC
-    if do_gMC:
-      self.log.tee('  {0}/{1} crossover attempts ({2:.3g}) accepted in {3}'.format(\
-        gMC_acc_count, gMC_attempt_count, \
-        float(gMC_acc_count)/float(gMC_attempt_count) \
-          if gMC_attempt_count > 0 else 0, \
-        HMStime(time_gMC)))
-
-    # Report
-    self.log.tee("  completed cycle %d in %s"%(self.data[process].cycle, \
-      HMStime(self.log.timeSince('repX cycle'))))
-    MC_report = " "
-    for move_type in ['ExternalMC', 'SmartDarting', 'Sampler']:
-      total_acc = np.sum(acc[move_type])
-      total_att = np.sum(att[move_type])
-      if total_att > 0:
-        MC_report += " %s %d/%d=%.2f (%.1f s);"%(move_type, \
-          total_acc, total_att, float(total_acc)/total_att, \
-          self.log.timings[move_type])
-    MC_report += " repX t %.1f s" % self.log.timings['repX']
-    self.log.tee(MC_report)
-
-    # Adapt HamiltonianMonteCarlo parameters
-    if self.args.params[process]['sampler'] == 'HMC':
-      acc_rates = np.array(acc['Sampler'], dtype=np.float) / att['Sampler']
-      for k in range(K):
-        acc_rate = acc_rates[k]
-        if acc_rate > 0.8:
-          paramss[k]['delta_t'] += 0.125 * MMTK.Units.fs
-          paramss[k]['steps_per_trial'] = min(paramss[k]['steps_per_trial']*2,\
-            self.args.params[process]['steps_per_sweep'])
-        elif acc_rate < 0.4:
-          if paramss[k]['delta_t'] < 2.0 * MMTK.Units.fs:
-            paramss[k]['steps_per_trial'] = max(
-              int(paramss[k]['steps_per_trial'] / 2.), 1)
-          paramss[k]['delta_t'] -= 0.25 * MMTK.Units.fs
-          if acc_rate < 0.1:
-            paramss[k]['delta_t'] -= 0.25 * MMTK.Units.fs
-        if paramss[k]['delta_t'] < 0.1 * MMTK.Units.fs:
-          paramss[k]['delta_t'] = 0.1 * MMTK.Units.fs
-
-    # Get indicies for sorting by thermodynamic state, not replica
-    inv_state_inds = np.zeros((nsnaps, K), dtype=int)
-    for snap in range(nsnaps):
-      state_inds = storage['state_inds'][snap]
-      for k in range(K):
-        inv_state_inds[snap][state_inds[k]] = k
-
-    # Sort energies and conformations by thermodynamic state
-    # and store in global variables
-    #   self.data[process].Es and self.data[process].confs['samples']
-    # and also local variables
-    #   Es_repX and confs_repX
-    if (process == 'CD') and (self.args.params['CD']['rmsd'] is not False):
-      terms.append('rmsd')  # Make sure to save the rmsd
-    Es_repX = []
-    for k in range(K):
-      E_k = {}
-      E_k_repX = {}
-      if k == 0:
-        E_k['acc'] = acc
-        E_k['att'] = att
-        E_k['mean_energies'] = mean_energies
-      for term in terms:
-        E_term = np.array([storage['energies'][snap][term][\
-          inv_state_inds[snap][k]] for snap in range(nsnaps)])
-        E_k[term] = E_term
-        E_k_repX[term] = E_term
-      self.data[process].Es[k].append(E_k)
-      Es_repX.append([E_k_repX])
-
-    confs_repX = []
-    for k in range(K):
-      confs_k = [storage['confs'][snap][inv_state_inds[snap][k]] \
-        for snap in range(nsnaps)]
-      if self.args.params[process]['keep_intermediate'] or \
-          ((process=='BC') and (k==0)) or (k==(K-1)):
-        self.data[process].confs['samples'][k].append(confs_k)
-      confs_repX.append(confs_k)
-
-    # Store final conformation of each replica
-    self.data[process].confs['replicas'] = \
-      [np.copy(storage['confs'][-1][inv_state_inds[-1][k]]) \
-       for k in range(K)]
-
-    if self.args.params[process]['darts_per_sweep'] > 0:
-      self.system.setParams(self.data[process].protocol[-1])
-      new_confs = [np.copy(conf) \
-        for conf in data[process].confs['samples'][k][-1]]
-      self.iterator.addSmartDartingConfigurations(new_confs, process,
-                                                  self.data)
-
-    self.data[process].cycle += 1
-    self.save(process)
-    self.log.tee("")
-    self.log.clear_lock(process)
-
-    # The code below is only for sampling importance resampling
-    if not self.args.params[process]['sampling_importance_resampling']:
-      return
-
-    # Calculate appropriate free energy
-    if process == 'BC':
-      self.calc_f_L(do_solvation=False)
-      f_k = self.f_L['BC_MBAR'][-1]
-    elif process == 'CD':
-      self.calc_f_RL(do_solvation=False)
-      f_k = self.f_RL['grid_MBAR'][-1]
-
-    # Get weights for sampling importance resampling
-    # MBAR weights for replica exchange configurations
-    (u_kln, N_k) = self._u_kln(Es_repX, paramss)
-
-    # This is a more direct way to get the weights
-    from pymbar.utils import kln_to_kn
-    u_kn = kln_to_kn(u_kln, N_k=N_k)
-
-    from pymbar.utils import logsumexp
-    log_denominator_n = logsumexp(f_k - u_kn.T, b=N_k, axis=1)
-    logW = f_k - u_kn.T - log_denominator_n[:, np.newaxis]
-    W_nl = np.exp(logW)
-    for k in range(K):
-      W_nl[:, k] = W_nl[:, k] / np.sum(W_nl[:, k])
-
-    # This is for conversion to 2 indicies: state and snapshot
-    cum_N_state = np.cumsum([0] + list(N_k))
-
-    def linear_index_to_snapshot_index(ind):
-      state_index = list(ind < cum_N_state).index(True) - 1
-      nis_index = ind - cum_N_state[state_index]
-      return (state_index, nis_index)
-
-    # Selects new replica exchange snapshots
-    self.data[process].confs['replicas'] = []
-    for k in range(K):
-      (s,n) = linear_index_to_snapshot_index(\
-        np.random.choice(range(W_nl.shape[0]), size = 1, p = W_nl[:,k])[0])
-      self.data[process].confs['replicas'].append(np.copy(confs_repX[s][n]))
-
   def sim_process(self, process):
     """
     Simulate and analyze a BC or CD process.
@@ -1695,7 +1265,10 @@ class BPMF:
       cycle_times = []
       while (self.data[process].cycle <
              self.args.params[process]['repX_cycles']):
-        self._replica_exchange(process)
+        from AlGDock.replica_exchange import ReplicaExchange
+        ReplicaExchange(self.args, self.log, self.top, self.system,
+                      self.iterator, self.data, self.save, self._u_kln).run(process)
+        self.SIRS(process)
         cycle_times.append(self.log.timeSince('repX cycle'))
         if process == 'CD':
           self._insert_CD_state_between_low_acc()
@@ -1716,7 +1289,10 @@ class BPMF:
         self.log.tee(
           "More samples from high temperature ligand simulation needed",
           process='BC')
-        self._replica_exchange('BC')
+        from AlGDock.replica_exchange import ReplicaExchange
+        ReplicaExchange(self.args, self.log, self.top, self.system,
+                      self.iterator, self.data, self.save, self._u_kln).run('BC')
+        self.SIRS(process)
         cycle_times.append(self.log.timeSince('repX cycle'))
         if not self.log.isTimeForTask(cycle_times):
           return False
@@ -1728,6 +1304,53 @@ class BPMF:
     self.system.clear_evaluators()
 
     return True  # The process has completed
+
+  def SIRS(self, process):
+    # The code below is only for sampling importance resampling
+    if not self.args.params[process]['sampling_importance_resampling']:
+      return
+
+    # Calculate appropriate free energy
+    if process == 'BC':
+      self.calc_f_L(do_solvation=False)
+      f_k = self.f_L['BC_MBAR'][-1]
+    elif process == 'CD':
+      self.calc_f_RL(do_solvation=False)
+      f_k = self.f_RL['grid_MBAR'][-1]
+
+    # Get weights for sampling importance resampling
+    # MBAR weights for replica exchange configurations
+
+    protocol = self.data[process].protocol
+    Es_repX = [[copy.deepcopy(self.data[process].Es[k][-1])] for k in range(len(protocol))]
+    (u_kln, N_k) = self._u_kln(Es_repX, protocol)
+
+    # This is a more direct way to get the weights
+    from pymbar.utils import kln_to_kn
+    u_kn = kln_to_kn(u_kln, N_k=N_k)
+
+    from pymbar.utils import logsumexp
+    log_denominator_n = logsumexp(f_k - u_kn.T, b=N_k, axis=1)
+    logW = f_k - u_kn.T - log_denominator_n[:, np.newaxis]
+    W_nl = np.exp(logW)
+    for k in range(len(protocol)):
+      W_nl[:, k] = W_nl[:, k] / np.sum(W_nl[:, k])
+
+    # This is for conversion to 2 indicies: state and snapshot
+    cum_N_state = np.cumsum([0] + list(N_k))
+
+    def linear_index_to_snapshot_index(ind):
+      state_index = list(ind < cum_N_state).index(True) - 1
+      nis_index = ind - cum_N_state[state_index]
+      return (state_index, nis_index)
+
+    # Selects new replica exchange snapshots
+    confs_repX = self.data[process].confs['last_repX']
+    self.data[process].confs['replicas'] = []
+    for k in range(len(protocol)):
+      (s,n) = linear_index_to_snapshot_index(\
+        np.random.choice(range(W_nl.shape[0]), size = 1, p = W_nl[:,k])[0])
+      self.data[process].confs['replicas'].append(np.copy(confs_repX[s][n]))
 
   def _insert_CD_state(self, alpha, clear=True):
     """
@@ -2113,7 +1736,7 @@ class BPMF:
       print 'Error with MBAR. Using BAR.'
     return (f_k_MBAR, W_nl)
 
-  def _u_kln(self, eTs, paramss, noBeta=False):
+  def _u_kln(self, eTs, protocol, noBeta=False):
     """
     Computes a reduced potential energy matrix.  k is the sampled state.  l is the state for which energies are evaluated.
 
@@ -2122,20 +1745,20 @@ class BPMF:
       -dictionary (of mapped energy terms) of numpy arrays (over states)
       -list (over states) of dictionaries (of mapped energy terms) of numpy arrays (over configurations), or a
       -list (over states) of lists (over cycles) of dictionaries (of mapped energy terms) of numpy arrays (over configurations)
-    paramss is a list of thermodynamic states
+    protocol is a list of thermodynamic states
     noBeta means that the energy will not be divided by RT
 
     Output: u_kln or (u_kln, N_k)
     u_kln is the matrix (as a numpy array)
     N_k is an array of sample sizes
     """
-    L = len(paramss)
+    L = len(protocol)
 
-    addMM = ('MM' in paramss[0].keys()) and (paramss[0]['MM'])
-    addSite = ('site' in paramss[0].keys()) and (paramss[0]['site'])
+    addMM = ('MM' in protocol[0].keys()) and (protocol[0]['MM'])
+    addSite = ('site' in protocol[0].keys()) and (protocol[0]['site'])
     probe_keys = ['MM','k_angular_ext','k_spatial_ext','k_angular_int'] + \
       scalables
-    probe_key = [key for key in paramss[0].keys() if key in probe_keys][0]
+    probe_key = [key for key in protocol[0].keys() if key in probe_keys][0]
 
     if isinstance(eTs, dict):
       # There is one configuration per state
@@ -2150,15 +1773,15 @@ class BPMF:
       for l in range(L):
         E = 1. * E_base
         for scalable in scalables:
-          if scalable in paramss[l].keys():
-            E += paramss[l][scalable] * eTs[scalable]
+          if scalable in protocol[l].keys():
+            E += protocol[l][scalable] * eTs[scalable]
         for key in ['k_angular_ext', 'k_spatial_ext', 'k_angular_int']:
-          if key in paramss[l].keys():
-            E += paramss[l][key] * eTs[key]
+          if key in protocol[l].keys():
+            E += protocol[l][key] * eTs[key]
         if noBeta:
           u_kln.append(E)
         else:
-          u_kln.append(E / (R * paramss[l]['T']))
+          u_kln.append(E / (R * protocol[l]['T']))
     elif isinstance(eTs[0], dict):
       K = len(eTs)
       N_k = np.array([len(eTs[k][probe_key]) for k in range(K)])
@@ -2173,15 +1796,15 @@ class BPMF:
         for l in range(L):
           E = 1. * E_base
           for scalable in scalables:
-            if scalable in paramss[l].keys():
-              E += paramss[l][scalable] * eTs[k][scalable]
+            if scalable in protocol[l].keys():
+              E += protocol[l][scalable] * eTs[k][scalable]
           for key in ['k_angular_ext', 'k_spatial_ext', 'k_angular_int']:
-            if key in paramss[l].keys():
-              E += paramss[l][key] * eTs[k][key]
+            if key in protocol[l].keys():
+              E += protocol[l][key] * eTs[k][key]
           if noBeta:
             u_kln[k, l, :N_k[k]] = E
           else:
-            u_kln[k, l, :N_k[k]] = E / (R * paramss[l]['T'])
+            u_kln[k, l, :N_k[k]] = E / (R * protocol[l]['T'])
     elif isinstance(eTs[0], list):
       K = len(eTs)
       N_k = np.zeros(K, dtype=int)
@@ -2201,949 +1824,22 @@ class BPMF:
         for l in range(L):
           E = 1. * E_base
           for scalable in scalables:
-            if scalable in paramss[l].keys():
-              E += paramss[l][scalable]*np.concatenate([eTs[k][c][scalable] \
+            if scalable in protocol[l].keys():
+              E += protocol[l][scalable]*np.concatenate([eTs[k][c][scalable] \
                 for c in range(C)])
           for key in ['k_angular_ext', 'k_spatial_ext', 'k_angular_int']:
-            if key in paramss[l].keys():
-              E += paramss[l][key]*np.concatenate([eTs[k][c][key] \
+            if key in protocol[l].keys():
+              E += protocol[l][key]*np.concatenate([eTs[k][c][key] \
                 for c in range(C)])
           if noBeta:
             u_kln[k, l, :N_k[k]] = E
           else:
-            u_kln[k, l, :N_k[k]] = E / (R * paramss[l]['T'])
+            u_kln[k, l, :N_k[k]] = E / (R * protocol[l]['T'])
 
     if (K == 1) and (L == 1):
       return u_kln.ravel()
     else:
       return (u_kln, N_k)
-
-  def _load_programs(self, phases):
-    # Find the necessary programs, downloading them if necessary
-    programs = []
-    for phase in phases:
-      for (prefix,program) in [('NAMD','namd'), \
-          ('sander','sander'), ('gbnsr6','gbnsr6'), ('APBS','apbs')]:
-        if phase.startswith(prefix) and not program in programs:
-          programs.append(program)
-      if phase.find('ALPB') > -1:
-        if not 'elsize' in programs:
-          programs.append('elsize')
-        if not 'ambpdb' in programs:
-          programs.append('ambpdb')
-    if 'apbs' in programs:
-      for program in ['ambpdb', 'molsurf']:
-        if not program in programs:
-          programs.append(program)
-    for program in programs:
-      self.args.FNs[program] = path_tools.findPaths([program])[program]
-    path_tools.loadModules(programs)
-
-  def _postprocess(self,
-      conditions=[('original',0, 0,'R'), ('BC',-1,-1,'L'), \
-                  ('CD',   -1,-1,'L'), ('CD',-1,-1,'RL')],
-      phases=None,
-      readOnly=False, redo_CD=False, debug=DEBUG):
-    """
-    Obtains the NAMD energies of all the conditions using all the phases.
-    Saves both MMTK and NAMD energies after NAMD energies are estimated.
-
-    state == -1 means the last state
-    cycle == -1 means all cycles
-
-    """
-    # Clear evaluators to save memory
-    self.system.clear_evaluators()
-
-    if phases is None:
-      phases = list(set(self.args.params['BC']['phases'] + \
-        self.args.params['CD']['phases']))
-
-    updated_processes = []
-
-    # Identify incomplete calculations
-    incomplete = []
-    for (p, state, cycle, moiety) in conditions:
-      # Check that the values are legitimate
-      if not p in ['BC', 'CD', 'original']:
-        raise Exception("Type should be in ['BC', 'CD', 'original']")
-      if not moiety in ['R', 'L', 'RL']:
-        raise Exception("Species should in ['R','L', 'RL']")
-      if p != 'original' and self.data[p].protocol == []:
-        continue
-      if state == -1:
-        state = len(self.data[p].protocol) - 1
-      if cycle == -1:
-        cycles = range(self.data[p].cycle)
-      else:
-        cycles = [cycle]
-
-      # Check for completeness
-      for c in cycles:
-        for phase in phases:
-          label = moiety + phase
-
-          # Skip postprocessing
-          # if the function is NOT being rerun in redo_CD mode
-          # and one of the following:
-          # the function is being run in readOnly mode,
-          # the energies are already in memory.
-          if (not (redo_CD and p=='CD')) and \
-            (readOnly \
-            or (p == 'original' and \
-                (label in self.args.original_Es[state][c].keys()) and \
-                (self.args.original_Es[state][c][label] is not None)) \
-            or (p != 'original' and \
-                ('MM' in self.data[p].Es[state][c].keys()) and \
-                (label in self.data[p].Es[state][c].keys()) and \
-                (len(self.data[p].Es[state][c]['MM'])==\
-                 len(self.data[p].Es[state][c][label])))):
-            pass
-          else:
-            incomplete.append((p, state, c, moiety, phase))
-
-    if incomplete == []:
-      return True
-
-    del p, state, c, moiety, phase, cycles, label
-
-    self._load_programs([val[-1] for val in incomplete])
-
-    # Write trajectories and queue calculations
-    m = multiprocessing.Manager()
-    task_queue = m.Queue()
-    time_per_snap = m.dict()
-    for (p, state, c, moiety, phase) in incomplete:
-      if moiety + phase not in time_per_snap.keys():
-        time_per_snap[moiety + phase] = m.list()
-
-    # Decompress prmtop and inpcrd files
-    decompress = (self.args.FNs['prmtop'][moiety].endswith('.gz')) or \
-                 (self.args.FNs['inpcrd'][moiety].endswith('.gz'))
-    if decompress:
-      for key in ['prmtop', 'inpcrd']:
-        if self.args.FNs[key][moiety].endswith('.gz'):
-          import shutil
-          shutil.copy(self.args.FNs[key][moiety],
-                      self.args.FNs[key][moiety] + '.BAK')
-          os.system('gunzip -f ' + self.args.FNs[key][moiety])
-          os.rename(self.args.FNs[key][moiety] + '.BAK',
-                    self.args.FNs[key][moiety])
-          self.args.FNs[key][moiety] = self.args.FNs[key][moiety][:-3]
-
-    toClean = []
-
-    for (p, state, c, moiety, phase) in incomplete:
-      # Identify the configurations
-      if (moiety == 'R'):
-        if not 'receptor' in self.data['CD'].confs.keys():
-          continue
-        confs = [self.data['CD'].confs['receptor']]
-      else:
-        confs = self.data[p].confs['samples'][state][c]
-
-      # Identify the file names
-      if p == 'original':
-        prefix = p
-      else:
-        prefix = '%s%d_%d' % (p, state, c)
-
-      p_dir = {
-        'BC': self.args.dir['BC'],
-        'original': self.args.dir['CD'],
-        'CD': self.args.dir['CD']
-      }[p]
-
-      if phase.startswith('NAMD'):
-        traj_FN = os.path.join(p_dir, '%s.%s.dcd' % (prefix, moiety))
-      elif phase.startswith('sander'):
-        traj_FN = os.path.join(p_dir, '%s.%s.mdcrd' % (prefix, moiety))
-      elif phase.startswith('gbnsr6'):
-        traj_FN = os.path.join(p_dir, '%s.%s%s' % (prefix, moiety, phase),
-                               'in.crd')
-      elif phase.startswith('OpenMM'):
-        traj_FN = None
-      elif phase in ['APBS_PBSA']:
-        traj_FN = os.path.join(p_dir, '%s.%s.pqr' % (prefix, moiety))
-      outputname = os.path.join(p_dir, '%s.%s%s' % (prefix, moiety, phase))
-
-      # Writes trajectory
-      self._write_traj(traj_FN, confs, moiety)
-      if (traj_FN is not None) and (not traj_FN in toClean):
-        toClean.append(traj_FN)
-
-      # Queues the calculations
-      task_queue.put((confs, moiety, phase, traj_FN, outputname, debug, \
-              (p,state,c,moiety+phase)))
-
-    # Start postprocessing
-    # self.log.set_lock('CD' if 'CD' in [loc[0] for loc in incomplete] else 'BC')
-    self.log.tee("\n>>> Postprocessing, starting at " + \
-      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
-    self.log.recordStart('postprocess')
-
-    done_queue = m.Queue()
-    processes = [multiprocessing.Process(target=self._energy_worker, \
-        args=(task_queue, done_queue, time_per_snap)) \
-        for p in range(self.args.cores)]
-    for process in range(self.args.cores):
-      task_queue.put('STOP')
-    for process in processes:
-      process.start()
-    for process in processes:
-      process.join()
-    results = []
-    while not done_queue.empty():
-      results.append(done_queue.get())
-    for process in processes:
-      process.terminate()
-
-    # Clean up files
-    if not debug:
-      for FN in toClean:
-        if os.path.isfile(FN):
-          os.remove(FN)
-
-    # Clear decompressed files
-    if decompress:
-      for key in ['prmtop', 'inpcrd']:
-        if os.path.isfile(self.args.FNs[key][moiety] + '.gz'):
-          os.remove(self.args.FNs[key][moiety])
-          self.args.FNs[key][moiety] = self.args.FNs[key][moiety] + '.gz'
-
-    # Store energies
-    updated_energy_dicts = []
-    for (E, (p, state, c, label), wall_time) in results:
-      if p == 'original':
-        self.args.original_Es[state][c][label] = E
-        updated_energy_dicts.append(self.args.original_Es[state][c])
-      else:
-        self.data[p].Es[state][c][label] = E
-        updated_energy_dicts.append(self.data[p].Es[state][c])
-      if not p in updated_processes:
-        updated_processes.append(p)
-    for d in updated_energy_dicts:
-      self._combine_MM_and_solvent(d)
-
-    # Print time per snapshot
-    for key in time_per_snap.keys():
-      if len(time_per_snap[key]) > 0:
-        mean_time_per_snap = np.mean(time_per_snap[key])
-        if not np.isnan(mean_time_per_snap):
-          self.log.tee("  an average of %.5g s per %s snapshot"%(\
-            mean_time_per_snap, key))
-        else:
-          self.log.tee("  time per snapshot in %s: "%(key) + \
-            ', '.join(['%.5g'%t for t in time_per_snap[key]]))
-      else:
-        self.log.tee("  no snapshots postprocessed in %s" % (key))
-
-    # Save data
-    if 'original' in updated_processes:
-      for phase in phases:
-        if (self.args.params['CD']['receptor_'+phase] is None) and \
-           (self.args.original_Es[0][0]['R'+phase] is not None):
-          self.args.params['CD']['receptor_'+phase] = \
-            self.args.original_Es[0][0]['R'+phase]
-      self.save('CD', keys=['progress'])
-    if 'BC' in updated_processes:
-      self.save('BC')
-    if ('CD' in updated_processes) or ('original' in updated_processes):
-      self.save('CD')
-
-    if len(updated_processes) > 0:
-      self.log.tee("\nElapsed time for postprocessing: " + \
-        HMStime(self.log.timeSince('postprocess')))
-      self.log.clear_lock('CD' if 'CD' in updated_processes else 'BC')
-      return len(incomplete) == len(results)
-
-  def _energy_worker(self, input, output, time_per_snap):
-    for args in iter(input.get, 'STOP'):
-      (confs, moiety, phase, traj_FN, outputname, debug, reference) = args
-      (p, state, c, label) = reference
-      nsnaps = len(confs)
-
-      # Make sure there is enough time remaining
-      if len(time_per_snap[moiety + phase]) > 0:
-        if not self.log.isTimeForTask(nsnaps * np.array(time_per_snap[moiety + phase])):
-          return
-
-      # Calculate the energy
-      self.log.recordStart('energy')
-      for program in ['NAMD', 'sander', 'gbnsr6', 'OpenMM', 'APBS']:
-        if phase.startswith(program):
-          E = np.array(getattr(self, '_%s_Energy' % program)(*args))
-          break
-      wall_time = self.log.timeSince('energy')
-
-      if not np.isinf(E).any():
-        self.log.tee("  postprocessed %s, state %d, cycle %d, %s in %s"%(\
-          p,state,c,label,HMStime(wall_time)))
-
-        # Store output and timings
-        output.put((E, reference, wall_time))
-
-        time_per_snap_list = time_per_snap[moiety + phase]
-        time_per_snap_list.append(wall_time / nsnaps)
-        time_per_snap[moiety + phase] = time_per_snap_list
-      else:
-        self.log.tee("  error in postprocessing %s, state %d, cycle %d, %s in %s"%(\
-          p,state,c,label,HMStime(wall_time)))
-        return
-
-  def _NAMD_Energy(self,
-                   confs,
-                   moiety,
-                   phase,
-                   dcd_FN,
-                   outputname,
-                   debug=DEBUG,
-                   reference=None):
-    """
-    Uses NAMD to calculate the energy of a set of configurations
-    Units are the MMTK standard, kJ/mol
-    """
-    # NAMD ENERGY FIELDS:
-    # 0. TS 1. BOND 2. ANGLE 3. DIHED 4. IMPRP 5. ELECT 6. VDW 7. BOUNDARY
-    # 8. MISC 9. KINETIC 10. TOTAL 11. TEMP 12. POTENTIAL 13. TOTAL3 14. TEMPAVG
-    # The saved fields are energyFields=[1, 2, 3, 4, 5, 6, 8, 12],
-    # and thus the new indicies are
-    # 0. BOND 1. ANGLE 2. DIHED 3. IMPRP 4. ELECT 5. VDW 6. MISC 7. POTENTIAL
-
-    # Run NAMD
-    import AlGDock.NAMD
-    energyCalc = AlGDock.NAMD.NAMD(\
-      prmtop=self.args.FNs['prmtop'][moiety], \
-      inpcrd=self.args.FNs['inpcrd'][moiety], \
-      fixed={'R':self.args.FNs['fixed_atoms']['R'], \
-             'L':None, \
-             'RL':self.args.FNs['fixed_atoms']['RL']}[moiety], \
-      solvent={'NAMD_OBC':'GBSA', 'NAMD_Gas':'Gas'}[phase], \
-      useCutoff=(phase=='NAMD_OBC'), \
-      namd_command=self.args.FNs['namd'])
-    E = energyCalc.energies_PE(\
-      outputname, dcd_FN, energyFields=[1, 2, 3, 4, 5, 6, 8, 12], \
-      keepScript=debug, write_energy_pkl_gz=False)
-
-    return np.array(E, dtype=float) * MMTK.Units.kcal / MMTK.Units.mol
-
-  def _sander_Energy(self, confs, moiety, phase, AMBER_mdcrd_FN, \
-      outputname=None, debug=DEBUG, reference=None):
-    self.args.dir['out'] = os.path.dirname(os.path.abspath(AMBER_mdcrd_FN))
-    script_FN = '%s%s.in' % ('.'.join(AMBER_mdcrd_FN.split('.')[:-1]), phase)
-    out_FN = '%s%s.out' % ('.'.join(AMBER_mdcrd_FN.split('.')[:-1]), phase)
-
-    script_F = open(script_FN, 'w')
-    script_F.write('''Calculating energies with sander
-&cntrl
-  imin=5,    ! read trajectory in for analysis
-  ntx=1,     ! input is read formatted with no velocities
-  irest=0,
-  ntb=0,     ! no periodicity and no PME
-  idecomp=0, ! no decomposition
-  ntc=1,     ! No SHAKE
-  cut=9999., !''')
-    if phase == 'sander_Gas':
-      script_F.write("""
-  ntf=1,     ! Complete interaction is calculated
-/
-""")
-    elif phase == 'sander_PBSA':
-      fillratio = 4.0 if moiety == 'L' else 2.0
-      script_F.write('''
-  ntf=7,     ! No bond, angle, or dihedral forces calculated
-  ipb=2,     ! Default PB dielectric model
-  inp=2,     ! non-polar from cavity + dispersion
-/
-&pb
-  radiopt=0, ! Use atomic radii from the prmtop file
-  fillratio=%d,
-  sprob=1.4,
-  cavity_surften=0.0378, ! (kcal/mol) Default in MMPBSA.py
-  cavity_offset=-0.5692, ! (kcal/mol) Default in MMPBSA.py
-/
-''' % fillratio)
-    else:
-      if phase.find('ALPB') > -1 and moiety.find('R') > -1:
-        script_F.write("\n  alpb=1,")
-        script_F.write("\n  arad=%.2f," % self.elsize)
-      key = phase.split('_')[-1]
-      igb = {'HCT': 1, 'OBC1': 2, 'OBC2': 5, 'GBn': 7, 'GBn2': 8}[key]
-      script_F.write('''
-  ntf=7,     ! No bond, angle, or dihedral forces calculated
-  igb=%d,     !
-  gbsa=2,    ! recursive surface area algorithm (for postprocessing)
-/
-''' % (igb))
-    script_F.close()
-
-    os.chdir(self.args.dir['out'])
-    import subprocess
-    args_list = [self.args.FNs['sander'], '-O','-i',script_FN,'-o',out_FN, \
-      '-p',self.args.FNs['prmtop'][moiety],'-c',self.args.FNs['inpcrd'][moiety], \
-      '-y', AMBER_mdcrd_FN, '-r',script_FN+'.restrt']
-    if debug:
-      print ' '.join(args_list)
-    p = subprocess.Popen(args_list)
-    p.wait()
-
-    F = open(out_FN, 'r')
-    dat = F.read().strip().split(' BOND')
-    F.close()
-
-    dat.pop(0)
-    if len(dat) > 0:
-      # For the different models, all the terms are the same except for
-      # EGB/EPB (every model is different)
-      # ESURF versus ECAVITY + EDISPER
-      # EEL (ALPB versus not)
-      E = np.array([
-        rec[:rec.find('\nminimization')].replace('1-4 ', '1-4').split()[1::3]
-        for rec in dat
-      ],
-                   dtype=float) * MMTK.Units.kcal / MMTK.Units.mol
-      if phase == 'sander_Gas':
-        E = np.hstack((E, np.sum(E, 1)[..., None]))
-      else:
-        # Mark as nan to add the Gas energies later
-        E = np.hstack((E, np.ones((E.shape[0], 1)) * np.nan))
-
-      if not debug and os.path.isfile(script_FN):
-        os.remove(script_FN)
-      if os.path.isfile(script_FN + '.restrt'):
-        os.remove(script_FN + '.restrt')
-
-      if not debug and os.path.isfile(out_FN):
-        os.remove(out_FN)
-    else:
-      E = np.array([np.inf] * 11)
-
-    os.chdir(self.args.dir['start'])
-    return E
-    # AMBER ENERGY FIELDS:
-    # For Gas phase:
-    # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL
-    # 5. HBOND 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT
-    # For GBSA phases:
-    # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL
-    # 5. EGB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT 9. ESURF
-    # For PBSA phase:
-    # 0. BOND 1. ANGLE 2. DIHEDRAL 3. VDWAALS 4. EEL
-    # 5. EPB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT 9. ECAVITY 10. EDISPER
-
-  def _get_elsize(self):
-    # Calculates the electrostatic size of the receptor for ALPB calculations
-    # Writes the coordinates in AMBER format
-    pqr_FN = os.path.join(self.args.dir['CD'], 'receptor.pqr')
-    if not os.path.isdir(self.args.dir['CD']):
-      os.system('mkdir -p ' + self.args.dir['CD'])
-
-    import AlGDock.IO
-    IO_crd = AlGDock.IO.crd()
-    factor = 1.0 / MMTK.Units.Ang
-    IO_crd.write(self.args.FNs['inpcrd']['R'], factor*self.data['CD'].confs['receptor'], \
-      'title', trajectory=False)
-
-    # Converts the coordinates to a pqr file
-    inpcrd_F = open(self.args.FNs['inpcrd']['R'], 'r')
-    cdir = os.getcwd()
-    import subprocess
-    try:
-      p = subprocess.Popen(\
-        [self.args.FNs['ambpdb'], \
-         '-p', os.path.relpath(self.args.FNs['prmtop']['R'], cdir), \
-         '-pqr'], \
-        stdin=inpcrd_F, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      (stdoutdata_ambpdb, stderrdata_ambpdb) = p.communicate()
-      p.wait()
-    except OSError:
-      os.system('ls -ltr')
-      print 'Command: ' + ' '.join([os.path.relpath(self.args.FNs['ambpdb'], cdir), \
-         '-p', os.path.relpath(self.args.FNs['prmtop']['R'], cdir), \
-         '-pqr'])
-      print 'stdout:\n' + stdoutdata_ambpdb
-      print 'stderr:\n' + stderrdata_ambpdb
-    inpcrd_F.close()
-
-    pqr_F = open(pqr_FN, 'w')
-    pqr_F.write(stdoutdata_ambpdb)
-    pqr_F.close()
-
-    # Runs the pqr file through elsize
-    p = subprocess.Popen(\
-      [self.args.FNs['elsize'], os.path.relpath(pqr_FN, cdir)], \
-      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (stdoutdata_elsize, stderrdata_elsize) = p.communicate()
-    p.wait()
-
-    for FN in [pqr_FN]:
-      if os.path.isfile(FN):
-        os.remove(FN)
-    try:
-      elsize = float(stdoutdata_elsize.strip())
-    except ValueError:
-      print 'Command: ' + ' '.join([os.path.relpath(self.args.FNs['elsize'], cdir), \
-       os.path.relpath(pqr_FN, cdir)])
-      print stdoutdata_elsize
-      print 'Error with elsize'
-    return elsize
-
-  def _gbnsr6_Energy(self,
-                     confs,
-                     moiety,
-                     phase,
-                     inpcrd_FN,
-                     outputname,
-                     debug=DEBUG,
-                     reference=None):
-    """
-    Uses gbnsr6 (part of AmberTools)
-    to calculate the energy of a set of configurations
-    """
-    # Prepare configurations for writing to crd file
-    factor = 1.0 / MMTK.Units.Ang
-    if (moiety.find('R') > -1):
-      receptor_0 = factor * self.data['CD'].confs['receptor'][:self.top_RL.
-                                                              L_first_atom, :]
-      receptor_1 = factor * self.data['CD'].confs['receptor'][self.top_RL.
-                                                              L_first_atom:, :]
-
-    if not isinstance(confs, list):
-      confs = [confs]
-
-    if (moiety.find('R') > -1):
-      if (moiety.find('L') > -1):
-        full_confs = [np.vstack((receptor_0, \
-          conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang, \
-          receptor_1)) for conf in confs]
-      else:
-        full_confs = [factor * self.data['CD'].confs['receptor']]
-    else:
-      full_confs = [conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang \
-        for conf in confs]
-
-    # Set up directory
-    inpcrdFN = os.path.abspath(inpcrd_FN)
-    gbnsr6_dir = os.path.dirname(inpcrd_FN)
-    os.system('mkdir -p ' + gbnsr6_dir)
-    os.chdir(gbnsr6_dir)
-    cdir = os.getcwd()
-
-    # Write gbnsr6 script
-    chagb = 0 if phase.find('Still') > -1 else 1
-    alpb = 1 if moiety.find(
-      'R') > -1 else 0  # ALPB ineffective with small solutes
-    gbnsr6_in_FN = moiety + 'gbnsr6.in'
-    gbnsr6_in_F = open(gbnsr6_in_FN, 'w')
-    gbnsr6_in_F.write("""gbnsr6
-&cntrl
-  inp=1
-/
-&gb
-  alpb=%d,
-  chagb=%d
-/
-""" % (alpb, chagb))
-    gbnsr6_in_F.close()
-
-    args_list = [self.args.FNs['gbnsr6'], \
-      '-i', os.path.relpath(gbnsr6_in_FN, cdir), \
-      '-o', 'stdout', \
-      '-p', os.path.relpath(self.args.FNs['prmtop'][moiety], cdir), \
-      '-c', os.path.relpath(inpcrd_FN, cdir)]
-    if debug:
-      print ' '.join(args_list)
-
-    # Write coordinates, run gbnsr6, and store energies
-    import subprocess
-    import AlGDock.IO
-    IO_crd = AlGDock.IO.crd()
-
-    E = []
-    for full_conf in full_confs:
-      # Writes the coordinates in AMBER format
-      IO_crd.write(inpcrd_FN, full_conf, 'title', trajectory=False)
-
-      # Runs gbnsr6
-      import subprocess
-      p = subprocess.Popen(args_list, \
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      (stdoutdata, stderrdata) = p.communicate()
-      p.wait()
-
-      recs = stdoutdata.strip().split(' BOND')
-      if len(recs) > 1:
-        rec = recs[1]
-        E.append(rec[:rec.find('\n -----')].replace('1-4 ',
-                                                    '1-4').split()[1::3])
-      else:
-        self.log.tee("  error has occured in gbnsr6 after %d snapshots" %
-                     len(E))
-        self.log.tee("  prmtop was " + self.args.FNs['prmtop'][moiety])
-        self.log.tee("  --- stdout:")
-        self.log.tee(stdoutdata)
-        self.log.tee("  --- stderr:")
-        self.log.tee(stderrdata)
-
-    E = np.array(E, dtype=float) * MMTK.Units.kcal / MMTK.Units.mol
-    E = np.hstack((E, np.ones((E.shape[0], 1)) * np.nan))
-
-    os.chdir(self.args.dir['start'])
-    if not debug:
-      os.system('rm -rf ' + gbnsr6_dir)
-    return E
-    # For gbnsr6 phases:
-    # 0. BOND 1. ANGLE 2. DIHED 3. 1-4 NB 4. 1-4 EEL
-    # 5. VDWAALS 6. EELEC 7. EGB 8. RESTRAINT 9. ESURF
-
-  def _setup_OpenMM(self, moiety, phase):
-    if not hasattr(self, '_OpenMM_sims'):
-      self._OpenMM_sims = {}
-    key = moiety + phase
-    if not key in self._OpenMM_sims.keys():
-      import simtk.openmm
-      import simtk.openmm.app as OpenMM_app
-      prmtop = OpenMM_app.AmberPrmtopFile(self.args.FNs['prmtop'][moiety])
-      inpcrd = OpenMM_app.AmberInpcrdFile(self.args.FNs['inpcrd'][moiety])
-      OMM_system = prmtop.createSystem(nonbondedMethod=OpenMM_app.NoCutoff, \
-        constraints=None, implicitSolvent={
-          'OpenMM_Gas':None,
-          'OpenMM_GBn':OpenMM_app.GBn,
-          'OpenMM_GBn2':OpenMM_app.GBn2,
-          'OpenMM_HCT':OpenMM_app.HCT,
-          'OpenMM_OBC1':OpenMM_app.OBC1,
-          'OpenMM_OBC2':OpenMM_app.OBC2}[phase])
-      # Set receptor atom mass to zero to facilitate future minimization
-      if moiety == 'R':
-        for i in range(OMM_system.getNumParticles()):
-          OMM_system.setParticleMass(i, 0)
-      elif moiety == 'RL':
-        for i in range(self.top_RL.L_first_atom) + \
-            range(self.top_RL.L_first_atom + self.top.universe.numberOfAtoms(), \
-            OMM_system.getNumParticles()):
-          OMM_system.setParticleMass(i, 0)
-      dummy_integrator = simtk.openmm.LangevinIntegrator(300*simtk.unit.kelvin, \
-        1/simtk.unit.picosecond, 0.002*simtk.unit.picoseconds)
-      self._OpenMM_sims[key] = OpenMM_app.Simulation(prmtop.topology, \
-        OMM_system, dummy_integrator)
-
-  def _OpenMM_Energy(self, confs, moiety, phase, traj_FN=None, \
-      outputname=None, debug=DEBUG, reference=None):
-    key = moiety + phase
-    self._setup_OpenMM(moiety, phase)  # Set up the simulation
-
-    # Prepare the conformations by combining with the receptor if necessary
-    if (moiety.find('R') > -1):
-      receptor_0 = self.data['CD'].confs['receptor'][:self.top_RL.
-                                                     L_first_atom, :]
-      receptor_1 = self.data['CD'].confs['receptor'][self.top_RL.
-                                                     L_first_atom:, :]
-    if not isinstance(confs, list):
-      confs = [confs]
-    if (moiety.find('R') > -1):
-      if (moiety.find('L') > -1):
-        confs = [np.vstack((receptor_0, \
-          conf[self.top.prmtop_atom_order_L,:], \
-          receptor_1)) for conf in confs]
-      else:
-        confs = [self.data['CD'].confs['receptor']]
-    else:
-      confs = [conf[self.top.prmtop_atom_order_L, :] for conf in confs]
-
-    import simtk.unit
-    # Calculate the energies
-    E = []
-    for conf in confs:
-      self._OpenMM_sims[key].context.setPositions(conf)
-      s = self._OpenMM_sims[key].context.getState(getEnergy=True)
-      E.append(
-        [0.,
-         s.getPotentialEnergy() / simtk.unit.kilojoule * simtk.unit.mole])
-    return np.array(E, dtype=float) * MMTK.Units.kJ / MMTK.Units.mol
-
-  def _APBS_Energy(self,
-                   confs,
-                   moiety,
-                   phase,
-                   pqr_FN,
-                   outputname,
-                   debug=DEBUG,
-                   reference=None):
-    """
-    Uses APBS to calculate the solvation energy of a set of configurations
-    Units are the MMTK standard, kJ/mol
-    """
-    # Prepare configurations for writing to crd file
-    factor = 1.0 / MMTK.Units.Ang
-    if (moiety.find('R') > -1):
-      receptor_0 = factor * self.data['CD'].confs['receptor'][:self.top_RL.
-                                                              L_first_atom, :]
-      receptor_1 = factor * self.data['CD'].confs['receptor'][self.top_RL.
-                                                              L_first_atom:, :]
-
-    if not isinstance(confs, list):
-      confs = [confs]
-
-    if (moiety.find('R') > -1):
-      if (moiety.find('L') > -1):
-        full_confs = [np.vstack((receptor_0, \
-          conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang, \
-          receptor_1)) for conf in confs]
-      else:
-        full_confs = [factor * self.data['CD'].confs['receptor']]
-    else:
-      full_confs = [conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang \
-        for conf in confs]
-
-    # Write coordinates, run APBS, and store energies
-    apbs_dir = os.path.abspath(pqr_FN)[:-4]
-    os.system('mkdir -p ' + apbs_dir)
-    os.chdir(apbs_dir)
-    pqr_FN = os.path.join(apbs_dir, 'in.pqr')
-
-    import subprocess
-    import AlGDock.IO
-    IO_crd = AlGDock.IO.crd()
-
-    E = []
-    for full_conf in full_confs:
-      # Writes the coordinates in AMBER format
-      inpcrd_FN = pqr_FN[:-4] + '.crd'
-      IO_crd.write(inpcrd_FN, full_conf, 'title', trajectory=False)
-
-      # Converts the coordinates to a pqr file
-      inpcrd_F = open(inpcrd_FN, 'r')
-      cdir = os.getcwd()
-      p = subprocess.Popen(\
-        [os.path.relpath(self.args.FNs['ambpdb'], cdir), \
-         '-p', os.path.relpath(self.args.FNs['prmtop'][moiety], cdir), \
-         '-pqr'], \
-        stdin=inpcrd_F, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      (stdoutdata_ambpdb, stderrdata_ambpdb) = p.communicate()
-      p.wait()
-      inpcrd_F.close()
-
-      pqr_F = open(pqr_FN, 'w')
-      pqr_F.write(stdoutdata_ambpdb)
-      pqr_F.close()
-
-      # Writes APBS script
-      apbs_in_FN = moiety + 'apbs-mg-manual.in'
-      apbs_in_F = open(apbs_in_FN, 'w')
-      apbs_in_F.write('READ\n  mol pqr {0}\nEND\n'.format(pqr_FN))
-
-      for sdie in [80.0, 1.0]:
-        if moiety == 'L':
-          min_xyz = np.array([min(full_conf[a, :]) for a in range(3)])
-          max_xyz = np.array([max(full_conf[a, :]) for a in range(3)])
-          mol_range = max_xyz - min_xyz
-          mol_center = (min_xyz + max_xyz) / 2.
-
-          def roundUpDime(x):
-            return (np.ceil((x.astype(float) - 1) / 32) * 32 + 1).astype(int)
-
-          focus_spacing = 0.5
-          focus_dims = roundUpDime(mol_range * LFILLRATIO / focus_spacing)
-          args = zip(['mdh'], [focus_dims], [mol_center], [focus_spacing])
-        else:
-          args = zip(['mdh', 'focus'], self._apbs_grid['dime'],
-                     self._apbs_grid['gcent'], self._apbs_grid['spacing'])
-        for (bcfl, dime, gcent, grid) in args:
-          apbs_in_F.write('''ELEC mg-manual
-  bcfl {0} # multiple debye-huckel boundary condition
-  chgm spl4 # quintic B-spline charge discretization
-  dime {1[0]} {1[1]} {1[2]}
-  gcent {2[0]} {2[1]} {2[2]}
-  grid {3} {3} {3}
-  lpbe # Linearized Poisson-Boltzmann
-  mol 1
-  pdie 1.0
-  sdens 10.0
-  sdie {4}
-  srad 1.4
-  srfm smol # Smoothed dielectric and ion-accessibility coefficients
-  swin 0.3
-  temp 300.0
-  calcenergy total
-END
-'''.format(bcfl, dime, gcent, grid, sdie))
-      apbs_in_F.write('quit\n')
-      apbs_in_F.close()
-
-      # Runs APBS
-      #      TODO: Control the number of threads. This doesn't seem to do anything.
-      #      if self.args.cores==1:
-      #        os.environ['OMP_NUM_THREADS']='1'
-      p = subprocess.Popen([self.args.FNs['apbs'], apbs_in_FN], \
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      (stdoutdata, stderrdata) = p.communicate()
-      p.wait()
-
-      apbs_energy = [float(line.split('=')[-1][:-7]) \
-        for line in stdoutdata.split('\n') \
-        if line.startswith('  Total electrostatic energy')]
-      if moiety == 'L' and len(apbs_energy) == 2:
-        polar_energy = apbs_energy[0] - apbs_energy[1]
-      elif len(apbs_energy) == 4:
-        polar_energy = apbs_energy[1] - apbs_energy[3]
-      else:
-        # An error has occured in APBS
-        polar_energy = np.inf
-        self.log.tee("  error has occured in APBS after %d snapshots" % len(E))
-        self.log.tee("  prmtop was " + self.args.FNs['prmtop'][moiety])
-        self.log.tee("  --- ambpdb stdout:")
-        self.log.tee(stdoutdata_ambpdb)
-        self.log.tee("  --- ambpdb stderr:")
-        self.log.tee(stderrdata_ambpdb)
-        self.log.tee("  --- APBS stdout:")
-        self.log.tee(stdoutdata)
-        self.log.tee("  --- APBS stderr:")
-        self.log.tee(stderrdata)
-
-      # Runs molsurf to calculate Connolly surface
-      apolar_energy = np.inf
-      p = subprocess.Popen([self.args.FNs['molsurf'], pqr_FN, '1.4'], \
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      (stdoutdata, stderrdata) = p.communicate()
-      p.wait()
-
-      for line in stdoutdata.split('\n'):
-        if line.startswith('surface area ='):
-          apolar_energy = float(line.split('=')[-1]) * \
-            0.0072 * MMTK.Units.kcal/MMTK.Units.mol
-
-      if debug:
-        molsurf_out_FN = moiety + 'molsurf-mg-manual.out'
-        molsurf_out_F = open(molsurf_out_FN, 'w')
-        molsurf_out_F.write(stdoutdata)
-        molsurf_out_F.close()
-      else:
-        for FN in [inpcrd_FN, pqr_FN, apbs_in_FN, 'io.mc']:
-          os.remove(FN)
-
-      E.append([polar_energy, apolar_energy, np.nan])
-
-      if np.isinf(polar_energy) or np.isinf(apolar_energy):
-        break
-
-    os.chdir(self.args.dir['start'])
-    if not debug:
-      os.system('rm -rf ' + apbs_dir)
-    return np.array(E, dtype=float) * MMTK.Units.kJ / MMTK.Units.mol
-
-  def _get_APBS_grid_spacing(self, RFILLRATIO=RFILLRATIO):
-    factor = 1.0 / MMTK.Units.Ang
-
-    def roundUpDime(x):
-      return (np.ceil((x.astype(float) - 1) / 32) * 32 + 1).astype(int)
-
-    self.system.setParams({'MM': True, 'ELE': 1})
-    gd = self._forceFields['ELE'].grid_data
-    focus_dims = roundUpDime(gd['counts'])
-    focus_center = factor * (gd['counts'] * gd['spacing'] / 2. + gd['origin'])
-    focus_spacing = factor * gd['spacing'][0]
-
-    min_xyz = np.array([
-      min(factor * self.data['CD'].confs['receptor'][a, :]) for a in range(3)
-    ])
-    max_xyz = np.array([
-      max(factor * self.data['CD'].confs['receptor'][a, :]) for a in range(3)
-    ])
-    mol_range = max_xyz - min_xyz
-    mol_center = (min_xyz + max_xyz) / 2.
-
-    # The full grid spans RFILLRATIO times the range of the receptor
-    # and the focus grid, whatever is larger
-    full_spacing = 1.0
-    full_min = np.minimum(mol_center - mol_range/2.*RFILLRATIO, \
-                          focus_center - focus_dims*focus_spacing/2.*RFILLRATIO)
-    full_max = np.maximum(mol_center + mol_range/2.*RFILLRATIO, \
-                          focus_center + focus_dims*focus_spacing/2.*RFILLRATIO)
-    full_dims = roundUpDime((full_max - full_min) / full_spacing)
-    full_center = (full_min + full_max) / 2.
-
-    self._apbs_grid = {\
-      'dime':[full_dims, focus_dims], \
-      'gcent':[full_center, focus_center], \
-      'spacing':[full_spacing, focus_spacing]}
-
-  def _combine_MM_and_solvent(self, E, toParse=None):
-    if toParse is None:
-      toParse = [k for k in E.keys() \
-        if (E[k] is not None) and (len(np.array(E[k]).shape)==2)]
-    for key in toParse:
-      if np.isnan(E[key][:, -1]).all():
-        E[key] = E[key][:, :-1]
-        if key.find('sander') > -1:
-          prefix = key.split('_')[0][:-6]
-          for c in [0, 1, 2, 6, 7]:
-            E[key][:, c] = E[prefix + 'sander_Gas'][:, c]
-        elif key.find('gbnsr6') > -1:
-          prefix = key.split('_')[0][:-6]
-          for (gbnsr6_ind, sander_ind) in [(0, 0), (1, 1), (2, 2), (3, 6),
-                                           (5, 3)]:
-            E[key][:, gbnsr6_ind] = E[prefix + 'sander_Gas'][:, sander_ind]
-        elif key.find('APBS_PBSA'):
-          prefix = key[:-9]
-          totalMM = np.transpose(np.atleast_2d(E[prefix + 'NAMD_Gas'][:, -1]))
-          E[key] = np.hstack((E[key], totalMM))
-        E[key] = np.hstack((E[key], np.sum(E[key], 1)[..., None]))
-
-  def _write_traj(self, traj_FN, confs, moiety, \
-      title='', factor=1.0/MMTK.Units.Ang):
-    """
-    Writes a trajectory file
-    """
-
-    if traj_FN is None:
-      return
-    if traj_FN.endswith('.pqr'):
-      return
-    if traj_FN.endswith('.crd'):
-      return
-    if os.path.isfile(traj_FN):
-      return
-
-    traj_dir = os.path.dirname(os.path.abspath(traj_FN))
-    if not os.path.isdir(traj_dir):
-      os.system('mkdir -p ' + traj_dir)
-
-    import AlGDock.IO
-    if traj_FN.endswith('.dcd'):
-      IO_dcd = AlGDock.IO.dcd(self.top.molecule,
-        ligand_atom_order = self.top.prmtop_atom_order_L, \
-        receptorConf = self.data['CD'].confs['receptor'], \
-        ligand_first_atom = self.top_RL.L_first_atom)
-      IO_dcd.write(traj_FN,
-                   confs,
-                   includeReceptor=(moiety.find('R') > -1),
-                   includeLigand=(moiety.find('L') > -1))
-    elif traj_FN.endswith('.mdcrd'):
-      if (moiety.find('R') > -1):
-        receptor_0 = factor * self.data['CD'].confs[
-          'receptor'][:self.top_RL.L_first_atom, :]
-        receptor_1 = factor * self.data['CD'].confs['receptor'][
-          self.top_RL.L_first_atom:, :]
-
-      if not isinstance(confs, list):
-        confs = [confs]
-      if (moiety.find('R') > -1):
-        if (moiety.find('L') > -1):
-          confs = [np.vstack((receptor_0, \
-            conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang, \
-            receptor_1)) for conf in confs]
-        else:
-          confs = [factor * self.data['CD'].confs['receptor']]
-      else:
-        confs = [conf[self.top.prmtop_atom_order_L,:]/MMTK.Units.Ang \
-          for conf in confs]
-
-      import AlGDock.IO
-      IO_crd = AlGDock.IO.crd()
-      IO_crd.write(traj_FN, confs, title, trajectory=True)
-      self.log.tee("  wrote %d configurations to %s" % (len(confs), traj_FN))
-    else:
-      raise Exception('Unknown trajectory type')
 
   def _clear_f_RL(self):
     # stats_RL will include internal energies, interaction energies,

@@ -452,3 +452,13 @@ class System:
     """Determines whether a force named 'val' is defined
     """
     return (val in self._forceFields.keys())
+
+  def getGridParams(self):
+    """Returns the counts, center, and spacing used for the electrostatic grid
+    """
+    self.setParams({'MM': True, 'ELE': 1})
+    gd = self._forceFields['ELE'].grid_data
+    dims = gd['counts']
+    center = factor * (gd['counts'] * gd['spacing'] / 2. + gd['origin'])
+    spacing = factor * gd['spacing'][0]
+    return (dims, center, spacing)
