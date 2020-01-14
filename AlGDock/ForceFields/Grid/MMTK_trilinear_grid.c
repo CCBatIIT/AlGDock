@@ -139,7 +139,7 @@ ef_evaluator(PyFFEnergyTermObject *self,
     }
     else {
       for (i = 0; i<3; i++) {
-        if (coordinates[ind][i]<i) {
+        if (coordinates[ind][i]<0.0) {
           gridEnergy += k*coordinates[ind][i]*coordinates[ind][i]/2.;
           if (energy->gradients != NULL)
             g[ind][i] += k*coordinates[ind][i];
