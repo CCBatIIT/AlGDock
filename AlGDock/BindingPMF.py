@@ -18,7 +18,6 @@ import numpy as np
 from collections import OrderedDict
 
 from AlGDock import dictionary_tools
-from AlGDock import path_tools
 
 import MMTK
 import MMTK.Units
@@ -35,11 +34,6 @@ import pymbar.timeseries
 
 import multiprocessing
 from multiprocessing import Process
-
-try:
-  import requests  # for downloading additional files
-except:
-  print '  no requests module for downloading additional files'
 
 # For profiling. Unnecessary for normal execution.
 # from memory_profiler import profile
@@ -78,13 +72,13 @@ def HMStime(s):
 
 class BPMF:
   def __init__(self, **kwargs):
-    """Parses the input arguments and runs the requested CD calculation"""
+    """Parses the input arguments and runs the requested calculation"""
 
     #         mod_path = os.path.join(os.path.dirname(a.__file__), 'BindingPMF.py')
     #         print """###########
     # # AlGDock #
     # ###########
-    # Molecular CD with adaptively scaled alchemical interaction grids
+    # Molecular docking with adaptively scaled alchemical interaction grids
     #
     # in {0}
     # last modified {1}
@@ -100,6 +94,8 @@ class BPMF:
     self.data['CD'] = SimulationData(self.args.dir['CD'], 'CD', \
       self.args.params['CD']['pose'])
 
+    if not 'max_time' in kwargs.keys():
+      kwargs['max_time'] = None
     if not 'run_type' in kwargs.keys():
       kwargs['run_type'] = None
 
@@ -117,7 +113,7 @@ class BPMF:
       print '\nfor %s:' % p
       print dictionary_tools.dict_view(self.args.params[p])[:-1]
 
-    self._run(kwargs['run_type'])
+    self.run(kwargs['run_type'])
 
   def _setup(self):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
@@ -249,13 +245,6 @@ class BPMF:
       self.top.universe.setConfiguration(
         Configuration(self.top.universe, confs[-1]))
 
-    # Samplers may accept the following options:
-    # steps - number of MD steps
-    # T - temperature in K
-    # delta_t - MD time step
-    # normalize - normalizes configurations
-    # adapt - uses an adaptive time step
-
     from AlGDock.simulation_iterator import SimulationIterator
     self.iterator = SimulationIterator(self.args, self.top, self.system)
 
@@ -269,7 +258,7 @@ class BPMF:
     if self.args.random_seed > 0:
       np.random.seed(self.args.random_seed)
 
-  def _run(self, run_type):
+  def run(self, run_type):
     from AlGDock.postprocessing import Postprocessing
 
     self.log.recordStart('run')
@@ -484,7 +473,7 @@ class BPMF:
       for BC_Es_state in self.data['BC'].Es:
         BC_Es.append(BC_Es_state[fromCycle:toCycle])
       (u_kln, N_k) = self._u_kln(BC_Es, self.data['BC'].protocol)
-      MBAR = self._run_MBAR(u_kln, N_k)[0]
+      MBAR = self.run_MBAR(u_kln, N_k)[0]
       self.f_L['BC_MBAR'].append(MBAR)
 
       # Average acceptance probabilities
@@ -714,7 +703,7 @@ class BPMF:
 
       # Use MBAR for the grid scaling free energy estimate
       (u_kln, N_k) = self._u_kln(CD_Es, self.data['CD'].protocol)
-      MBAR = self._run_MBAR(u_kln, N_k)[0]
+      MBAR = self.run_MBAR(u_kln, N_k)[0]
       self.f_RL['grid_MBAR'][c] = MBAR
       updated = set_updated_to_True(updated,
                                     start_string,
@@ -1144,8 +1133,6 @@ class BPMF:
       confs = confs[:max_confs]
 
     # Implicit solvent energies
-    self._load_programs(self.args.params['CD']['phases'])
-
     self.data['CD'].confs['starting_poses'] = None
     from AlGDock.postprocessing import Postprocessing
     pp_complete = Postprocessing(self.args, self.log, self.top, self.top_RL, self.system, self.data, self.save).run([('original', 0, 0, 'R')])
@@ -1380,7 +1367,7 @@ class BPMF:
       u_kln[k, -1, :] = u_kln_n[k, 0, :]
 
     # Determine SIR weights
-    weights = self._run_MBAR(u_kln, N_k, augmented=True)[1][:, -1]
+    weights = self.run_MBAR(u_kln, N_k, augmented=True)[1][:, -1]
     weights = weights / sum(weights)
 
     # Resampling
@@ -1692,7 +1679,7 @@ class BPMF:
       ', '.join(['%.2f'%e for e in energies[:10]]))
     return confs, energies
 
-  def _run_MBAR(self, u_kln, N_k, augmented=False):
+  def run_MBAR(self, u_kln, N_k, augmented=False):
     """
     Estimates the free energy of a transition using BAR and MBAR
     """

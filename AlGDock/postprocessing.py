@@ -78,7 +78,13 @@ class Postprocessing:
       self.elsize = self._get_elsize()
 
   def _load_programs(self, phases):
-    # Find the necessary programs, downloading them if necessary
+    """Locate the necessary external programs, downloading them if necessary
+
+    Parameters
+    ----------
+    phases : list of str
+      The names of the phases that will be used
+    """
     programs = []
     for phase in phases:
       for (prefix,program) in [('NAMD','namd'), \
@@ -103,13 +109,24 @@ class Postprocessing:
                   ('CD',   -1,-1,'L'), ('CD',-1,-1,'RL')],
       phases=None,
       readOnly=False, redo_CD=False, debug=DEBUG):
-    """
-    Obtains the NAMD energies of all the conditions using all the phases.
-    Saves both MMTK and NAMD energies after NAMD energies are estimated.
+    """Obtains and stores energies of all conditions in all phases
 
-    state == -1 means the last state
-    cycle == -1 means all cycles
+    Energies are stored in self.data
 
+    Parameters
+    ----------
+    conditions : list of tuples
+      Each tuple contains the process, the thermodynamic state index,
+      the simulation cycle, and moeity.
+
+      state == -1 means the last state
+      cycle == -1 means all cycles
+
+    phases : list of str
+      The names of the phases that will be considered
+    readOnly : bool
+      If True, no calculations will be performed. The data will simply be
+      loaded into memory.
     """
     # Clear evaluators to save memory
     self.system.clear_evaluators()
@@ -317,6 +334,8 @@ class Postprocessing:
       return len(incomplete) == len(results)
 
   def _energy_worker(self, input, output, time_per_snap):
+    """Performs energy calculation for one process
+    """
     for args in iter(input.get, 'STOP'):
       (confs, moiety, phase, traj_FN, outputname, debug, reference) = args
       (p, state, c, label) = reference
@@ -358,8 +377,7 @@ class Postprocessing:
                    outputname,
                    debug=DEBUG,
                    reference=None):
-    """
-    Uses NAMD to calculate the energy of a set of configurations
+    """Uses NAMD to calculate the energy of a set of configurations.
     Units are the MMTK standard, kJ/mol
     """
     # NAMD ENERGY FIELDS:
@@ -556,8 +574,10 @@ class Postprocessing:
     # 5. EPB 6. 1-4 VWD 7. 1-4 EEL 8. RESTRAINT 9. ECAVITY 10. EDISPER
 
   def _get_elsize(self):
-    # Calculates the electrostatic size of the receptor for ALPB calculations
-    # Writes the coordinates in AMBER format
+    """Calculates the electrostatic size of the receptor for ALPB calculations
+
+    Writes the coordinates in AMBER format
+    """
     if hasattr(self, 'elsize'):
       return
 
@@ -623,9 +643,7 @@ class Postprocessing:
                      outputname,
                      debug=DEBUG,
                      reference=None):
-    """
-    Uses gbnsr6 (part of AmberTools)
-    to calculate the energy of a set of configurations
+    """Uses gbnsr6 (part of AmberTools) to calculate the energy of a set of configurations
     """
     # Prepare configurations for writing to crd file
     factor = 1.0 / MMTK.Units.Ang
@@ -731,9 +749,8 @@ class Postprocessing:
                    outputname,
                    debug=DEBUG,
                    reference=None):
-    """
-    Uses APBS to calculate the solvation energy of a set of configurations
-    Units are the MMTK standard, kJ/mol
+    """Uses APBS to calculate the solvation energy of a set of configurations.
+    Units are the MMTK standard, kJ/mol.
     """
     # Prepare configurations for writing to crd file
     factor = 1.0 / MMTK.Units.Ang

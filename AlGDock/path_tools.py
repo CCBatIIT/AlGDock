@@ -5,8 +5,10 @@ dir_external_paths = os.path.dirname(os.path.abspath(\
 
 ### Google drive downloader from
 # http://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive
-import requests
-
+try:
+  import requests  # for downloading additional files
+except:
+  print '  no requests module for downloading additional files'
 
 def download_file_from_google_drive(id, destination):
   URL = "https://docs.google.com/uc?export=download"

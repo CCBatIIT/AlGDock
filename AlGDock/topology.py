@@ -46,7 +46,7 @@ class Topology:
       os.path.dirname(args.FNs['ligand_database'])
     self.molecule = MMTK.Molecule(\
       os.path.basename(args.FNs['ligand_database']))
-    if includeReceptor:
+    if includeReceptor and (args.FNs['receptor_database']is not None):
       self.molecule_R = MMTK.Molecule(\
         os.path.basename(args.FNs['receptor_database']))
     else:
@@ -77,7 +77,10 @@ class Topology:
     self.universe = MMTK.Universe.InfiniteUniverse()
     self.universe.addObject(self.molecule)
     if includeReceptor:
-      self.universe.addObject(self.molecule_R)
+      if self.molecule_R is not None:
+        self.universe.addObject(self.molecule_R)
+      else:
+        self.universe = None
 
     # Define L_first_atom
     if includeReceptor:
