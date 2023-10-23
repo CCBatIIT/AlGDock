@@ -5,7 +5,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Run a command on the queue')
 parser.add_argument('name', help='Job name')
 parser.add_argument('command', help='Command to execute')
-parser.add_argument('--mem', type=int, default=2, help='Amount of memory to allocate (GB)')
+parser.add_argument('--mem', type=int, default=64, help='Amount of memory to allocate (GB)')
 parser.add_argument('--comment', default='', help='Adds a comment to the end of the script')
 parser.add_argument('--dry', action='store_true', default=False, \
   help='Does not actually submit the job to the queue')
@@ -118,15 +118,23 @@ hostname
            curdir, out_FN, err_FN, \
            modules, command, args.comment, \
            email_specified, args.email, args.email_options)
-elif os.path.exists('/pylon2') or os.path.exists('/oasis/projects/nsf'): # Bridges Cluster
-  if os.path.exists('/pylon2'):
-    cluster = 'Bridges'
-  else:
-    cluster = 'Comet'
-  
+
+elif os.path.exists('/anvil/projects/x-mcb150144'): # Anvil Cluster  
+  cluster = 'Anvil'
   # Split the command onto multiple lines
   command_list = args.command.split(';')
   command = '\n'.join([c.strip() for c in command_list])
+
+  # By default, use miniconda
+  if command.find('python')>-1:
+    modules = 'module load anaconda/2021.05-py38\n'
+    modules += 'conda activate algdock\n'
+  else:
+    modules = ''
+
+  if command.find('modeller')>-1:
+    modules += 'module load anaconda/2021.05-py38\n'
+    modules += 'conda activate modeller\n'
 
   if command.find('cores')>-1:
     cores = command[command.find('cores')+5:]
@@ -139,30 +147,34 @@ elif os.path.exists('/pylon2') or os.path.exists('/oasis/projects/nsf'): # Bridg
   if args.email == '':
     email_specified = '#'
 
-  max_time = min(max_time, 48*60)
+  max_time = min(max_time, 45*60)
   max_time = '%02d:%02d:00'%(int(max_time/60), max_time%60)
 
   # Write script
   submit_script = '''#!/bin/bash
-#
-#SBATCH --job-name={0}
-#SBATCH --mem={1}
+#!/bin/bash
+# FILENAME: submit_algdock
+
+#SBATCH -A mcb150144
+#SBATCH -J {0}
+#SBATCH --mem={1}GB
 #SBATCH --nodes={2}
-#SBATCH --ntasks-per-node={3}
+#SBATCH --ntasks={3}
 #SBATCH -t {4}
-#SBATCH --partition={5}
-#SBATCH --workdir={6}
-#SBATCH -o {7}
-#SBATCH -e {8}
+#SBATCH -p shared
+#SBATCH -o {5}
+#SBATCH -e {6}
 
-hostname
+#Load anaconda and env
+{7}
+date
+free -h
+{8}
 
-{9}
+# {9}
+'''.format(args.name, args.mem, args.nodes, args.ppn, max_time, \
+  out_FN, err_FN, modules, command, args.comment)
 
-# {10}
-'''.format(args.name, args.mem*1000, args.nodes, args.ppn, max_time, \
-  {'Bridges':'RM-shared', 'Comet':'shared'}[cluster], \
-  curdir, out_FN, err_FN, command, args.comment)
 elif os.path.exists('/g/g19/minh1'): # LLNL syrah
   cluster = 'syrah'
 
@@ -352,7 +364,7 @@ if execute_script!='':
   sh_F.write(execute_script)
   sh_F.close()
 
-if (not args.dry) and cluster in ['OSG','CCB','Bridges','Comet']:
+if (not args.dry) and cluster in ['OSG','CCB','Bridges','Comet', 'Anvil']:
   print 'Submitting job script: ' + submit_FN
 
 print('Job name: ' + args.name)
@@ -360,7 +372,7 @@ print('Job name: ' + args.name)
 if not args.dry:
   if cluster=='CCB':
     os.system('qsub %s'%submit_FN)
-  elif cluster in ['Bridges','Comet','syrah']:
+  elif cluster in ['Bridges','Comet','syrah', 'Anvil']:
     os.system('sbatch %s'%submit_FN)
   elif cluster=='OSG':
     os.system('condor_submit %s'%submit_FN)

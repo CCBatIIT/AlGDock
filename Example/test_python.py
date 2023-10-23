@@ -1,11 +1,11 @@
 # The example is 1of6
 
 # run_types = [None]
-# run_types = ['all']
+run_types = ['all']
 # run_types = ['cool']
 # run_types = ['cool','dock','postprocess','free_energies']
 # run_types = ['timed']
-run_types = ['redo_pose_prediction']
+# run_types = ['redo_pose_prediction']
 
 import AlGDock.BindingPMF_plots
 import os, shutil, glob
@@ -51,7 +51,7 @@ for run_type in run_types:
     random_seed=-1, \
     max_time=240, \
     keep_intermediate=True)
-  self._run(run_type)
+  self.run(run_type)
 
 # To test timed runs:
 #    run_type='timed',

@@ -9,7 +9,13 @@ import MMTK
 import MMTK.Units
 from MMTK.ParticleProperties import Configuration
 
-from AlGDock.BindingPMF import R
+import Scientific
+try:
+      from Scientific._vector import Vector
+except:
+      from Scientific.Geometry.VectorModule import Vector
+
+from AlGDock.BindingPMF import R, scalables
 
 class Initialization():
   """Establishes the initial protocol of thermodynamic states
@@ -74,8 +80,8 @@ class Initialization():
     """
     self.log.set_lock(process)
     self.log.recordStart(process+' initialization')
-    self.log.tee("\n>>> Initialization for %s, starting at "%process + \
-      time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+    self.log.tee("\n>>> Initialization for %s, starting at "%process + time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()) + "\n")
+    
     if process == 'BC':
       seeds = self._initialize_BC(seeds)
     elif process == 'CD':
@@ -104,7 +110,6 @@ class Initialization():
           Configuration(self.top.universe, seed))
         Es_o.append(self.top.universe.energy())
       Es_o = np.array(Es_o)
-
       # Perform simulation
       results = []
       if self.args.cores > 1:
@@ -130,7 +135,7 @@ class Initialization():
         # Single process code
         results = [self.iterator.iteration(\
           seeds[k], process, params_k, True, k) for k in range(len(seeds))]
-
+      
       seeds = [result['confs'] for result in results]
       Es_n = np.array([result['Etot'] for result in results])
       deltaEs = Es_n - Es_o
@@ -184,6 +189,7 @@ class Initialization():
         if att > 0:
           sampler_metrics += '%s %d/%d=%.2f (%.1f s); '%(\
             s,acc,att,float(acc)/att,time)
+
     return (seeds, Es_n - Es_o, delta_t, sampler_metrics)
 
 
@@ -286,16 +292,16 @@ class Initialization():
     TODO
     """
     self.log.recordStart('BCsave')
-
+    
     if seeds is not None:
       params_o = self.system.paramsFromAlpha(1.0, 'BC', site=False)
       self.data['BC'].protocol = [params_o]
       self.system.setParams(params_o)
-
       # Run at starting temperature
       self.log.recordStart('BC_state')
       (confs, DeltaEs, params_o['delta_t'], sampler_metrics) = \
         self._initial_sim_state(seeds, 'BC', params_o)
+      
       E = self.system.energyTerms(confs, process='BC')
       self.data['BC'].confs['replicas'] = [
         confs[np.random.randint(len(confs))]
@@ -551,9 +557,9 @@ class Initialization():
           (confs, E) = self._random_CD()
           self.log.tee("  random CD complete in " +
                        HMStime(self.log.timeSince('initial_CD')))
-          if randomOnly:
-            self.log.clear_lock('CD')
-            return
+          #if randomOnly:
+          #  self.log.clear_lock('CD')
+          #  return
         else:
           params_o = self.system.paramsFromAlpha(0, 'CD')
           self.system.setParams(params_o)
@@ -618,7 +624,10 @@ class Initialization():
         (c,i_rot,i_trans) = np.unravel_index(ind, \
           (self.args.params['CD']['seeds_per_state'], self._n_rot, self.data['CD']._n_trans))
         repX_conf = np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]),\
-                           self.data['CD']._random_trans[i_trans].array)
+                            self.data['CD']._random_trans[i_trans])
+        #repX_conf = np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]),\
+        #                   self.data['CD']._random_trans[i_trans].array)
+
         self.data['CD'].confs['replicas'] = [repX_conf]
         self.data['CD'].confs['samples'] = [[repX_conf]]
         self.data['CD'].Es = [[dict([(key,np.array([val[ind]])) \
@@ -626,9 +635,12 @@ class Initialization():
         seeds = []
         for ind in seedIndicies:
           (c,i_rot,i_trans) = np.unravel_index(ind, \
-            (self.args.params['CD']['seeds_per_state'], self._n_rot, self._n_trans))
+            (self.args.params['CD']['seeds_per_state'], self._n_rot, self.data['CD']._n_trans))
           seeds.append(np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]), \
-            self.data['CD']._random_trans[i_trans].array))
+            self.data['CD']._random_trans[i_trans]))
+          #seeds.append(np.add(np.dot(confs[c], self._random_rotT[i_rot,:,:]), \
+          #  self.data['CD']._random_trans[i_trans].array))
+
         confs = None
         E = {}
       else:  # Seeds from last state
@@ -738,7 +750,7 @@ class Initialization():
             self.data['CD'].confs['samples'][k] = []
 
         self.data['CD'].cycle += 1
-
+      
       # Save progress every 10 minutes
       if (self.log.timeSince('CDsave') > (10 * 60)):
         self.save('CD')
@@ -804,14 +816,13 @@ class Initialization():
       self.data['CD']._n_trans = max(
         min(
           np.int(
-            np.ceil(self._forceFields['site'].volume *
+            np.ceil(self.system._forceFields['site'].volume * 
                     self.args.params['CD']['site_density'])),
           self.data['CD']._max_n_trans), 5)
-      self.data['CD']._random_trans = np.ndarray(
-        (self.data['CD']._max_n_trans), dtype=Vector)
+      self.data['CD']._random_trans = np.ndarray((self.data['CD']._max_n_trans, 3))
       for ind in range(self.data['CD']._max_n_trans):
-        self.data['CD']._random_trans[ind] = Vector(
-          self._forceFields['site'].randomPoint())
+        self.data['CD']._random_trans[ind] = self.system._forceFields['site'].randomPoint()
+
       self.data['CD']._max_n_rot = 100
       self._n_rot = 100
       self._random_rotT = np.ndarray((self.data['CD']._max_n_rot, 3, 3))
@@ -847,7 +858,7 @@ class Initialization():
           for i_trans in range(n_trans_o, n_trans_n):
             self.top.universe.setConfiguration(conf_rot)
             self.top.universe.translateTo(
-              self.data['CD']._random_trans[i_trans])
+              Vector(self.data['CD']._random_trans[i_trans]))
             eT = self.top.universe.energyTerms()
             for (key, value) in eT.iteritems():
               if key != 'electrostatic':  # For some reason, MMTK double-counts electrostatic energies
@@ -880,6 +891,9 @@ class Initialization():
           E[term] = np.dstack((E[term], \
             np.zeros((self.args.params['CD']['seeds_per_state'],\
               self.data['CD']._max_n_rot,25))))
+
+    self.data['CD']._n_rot = self._n_rot
+    self.data['CD']._random_rotT = self._random_rotT
 
     if self.data['CD']._n_trans != n_trans_n:
       self.data['CD']._n_trans = n_trans_n

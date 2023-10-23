@@ -1,0 +1,5 @@
+('/share/apps/miniconda/2/lib/python2.7/site-packages/pymbar-3.0.0.dev0-py2.7-linux-x86_64.egg',
+ None,
+ set(['*.py', '*.pyc', '*.pyd', '*.pyo', '*.so', 'EGG-INFO']),
+ 'DATA',
+ [])

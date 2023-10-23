@@ -91,45 +91,55 @@ def findPaths(keys):
 # David's IIT MacBook Pro, WH210, and the CCB cluster
 search_paths = {
 # These files/programs are used in the pipeline
-     'balloon':['/Users/dminh/Installers/Balloon-1.5.0.1143/balloon',
+     'balloon':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/balloon/1.5.0.1143/balloon',
+                '/Users/dminh/Installers/Balloon-1.5.0.1143/balloon',
                 '/Applications/Darwin_64bit-Balloon/balloon',
                 '/share/apps/balloon/1.5.0.1143/balloon'],
                # For adding hydrogens and charges to receptors
-     'pdb2pqr':['/Users/dminh/Applications/pdb2pqr-osx-bin-1.9.0/pdb2pqr',
+     'pdb2pqr':['/home/x-ellanguyen/.conda/envs/2021.05-py38/modeller/bin/pdb2pqr30',
+                '/Users/dminh/Applications/pdb2pqr-osx-bin-1.9.0/pdb2pqr',
                 '/share/apps/pdb2pqr/1.9.0/pdb2pqr'],
                # For adding hydrogens and charges to ligands
-     'chimera':['/Applications/Chimera.app/Contents/MacOS/chimera', # same in WH210
+     'chimera':['/home/x-ellanguyen/.conda/envs/2021.05-py38/algdock/bin/chimera',
+                '/Applications/Chimera.app/Contents/MacOS/chimera', # same in WH210
                 '/share/apps/chimera/1.11/bin/chimera'],
                # For initial ligand pose
-       'dock6':['/Users/dminh/Installers/dock6/bin/dock6',
+       'dock6':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/dock6/bin/dock6',
+                '/Users/dminh/Installers/dock6/bin/dock6',
                 '/Applications/dock6/dock6',
                 '/share/apps/dock/6/bin/dock6',
                 '/home/dminh/software/dock6/bin/dock6',
                 '/home/daveminh/software/dock6/bin/dock6',
                 '/g/g19/minh1/software/dock6/bin/dock6'],
                # Submits a command to the queue
-'qsub_command':['/Users/dminh/scripts/qsub_command.py',
+'qsub_command':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/Pipeline/qsub_command.py',
+                '/Users/dminh/scripts/qsub_command.py',
                 '~/scripts/qsub_command.py',
                 '/home/dminh/scripts/qsub_command.py',
                 '/home/daveminh/scripts/qsub_command.py',
                 '/g/g19/minh1/scripts/qsub_command.py'],
                # Spheres for UCSF DOCK 6
-  'sphgen_cpp':['/Users/dminh/Applications/sphgen_cpp.1.2/sphgen_cpp',
+  'sphgen_cpp':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/dock6/bin/sphgen',
+                '/Users/dminh/Applications/sphgen_cpp.1.2/sphgen_cpp',
                 '/Applications/dock6/sphgen',
                 '/share/apps/sphgen_cpp/1.2/sphgen_cpp'],
                # Preparing the system for AMBER
-      'sander':['/Users/dminh/Installers/amber16/bin/sander',
+      'sander':['/home/x-ellanguyen/.conda/envs/2021.05-py38/algdock/bin/sander',
                 '/Applications/amber16/bin/sander',
                 '/share/apps/amber/16/bin/sander'],
                # Calculating a Poisson-Boltzmann Grid
-        'apbs':['/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
+        'apbs':['/home/x-ellanguyen/.conda/envs/2021.05-py38/algdock/bin/apbs',
+                '/Users/dminh/Applications/APBS-1.4.1/APBS.app/Contents/MacOS/apbs',
                 '/share/apps/apbs/1.4/bin/apbs'],
+        'amber':['/home/x-ellanguyen/.conda/envs/2021.05-py38/algdock'],
                # Generalized AMBER force field
-        'gaff':['/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+        'gaff':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+                '/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
                 '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
                 '/home/daveminh/algdock_data/gaff2.dat'],
                # AlGDock
-     'algdock':['/Users/dminh/Library/Enthought/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
+     'algdock':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/AlGDock/BindingPMF.py',
+                '/Users/dminh/Library/Enthought/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
                 '/share/apps/canopy/1.5.0/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py']}
 
 algdock_setup = '''

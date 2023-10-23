@@ -1,0 +1,370 @@
+
+>>> Ligand preparation for BC, starting at Mon, 14 Sep 2020 12:32:38
+  minimized to -301 kcal/mol over 10 steps
+  T = 20, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.812
+  T = 21, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.832
+  T = 24, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.844
+  T = 26, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.828
+  T = 29, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.836
+  T = 31, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.872
+  T = 35, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.836
+  T = 38, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.856
+  T = 42, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 46, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.868
+  T = 50, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 55, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.832
+  T = 61, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.792
+  T = 67, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.820
+  T = 73, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.828
+  T = 81, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.848
+  T = 89, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.824
+  T = 97, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.848
+  T = 107, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.856
+  T = 117, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.812
+  T = 129, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.848
+  T = 142, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 156, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.816
+  T = 171, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.868
+  T = 188, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.828
+  T = 206, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.844
+  T = 226, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.836
+  T = 248, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 273, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.856
+  T = 300, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.844
+  ramped temperature from 20 to 300 K in 20.28 s, changing energy to -224 kcal/mol
+
+Elapsed time for ligand preparation for BC: 20.97 s
+
+>>> Initialization for BC, starting at Mon, 14 Sep 2020 12:32:59
+
+  at 300 K in 1.48 s: Sampler 19/40=0.47 (0.5 s); 
+    dt=3.50 fs; tL_tensor=6.055e+00
+  at 304 K in 0.99 s: Sampler 19/40=0.47 (0.5 s); 
+    dt=3.25 fs; tL_tensor=9.71e+00; <acc>=0.91
+  at 308 K in 0.50 s: Sampler 22/40=0.55 (0.5 s); 
+    dt=3.25 fs; tL_tensor=1.19e+01; <acc>=0.95
+  at 310 K in 0.49 s: Sampler 19/40=0.47 (0.5 s); 
+    dt=3.25 fs; tL_tensor=7.83e+00; <acc>=0.98
+  at 314 K in 0.49 s: Sampler 21/40=0.53 (0.5 s); 
+    dt=3.25 fs; tL_tensor=8.75e+00; <acc>=0.94
+  at 318 K in 0.49 s: Sampler 22/40=0.55 (0.5 s); 
+    dt=3.25 fs; tL_tensor=1.03e+01; <acc>=0.93
+  at 321 K in 0.49 s: Sampler 16/40=0.40 (0.5 s); 
+    dt=3.25 fs; tL_tensor=6.76e+00; <acc>=0.99
+  at 325 K in 0.49 s: Sampler 25/40=0.62 (0.5 s); 
+    dt=3.25 fs; tL_tensor=1.07e+01; <acc>=0.89
+  at 328 K in 0.49 s: Sampler 27/40=0.68 (0.5 s); 
+    dt=3.25 fs; tL_tensor=8.22e+00; <acc>=0.97
+  at 332 K in 0.49 s: Sampler 25/40=0.62 (0.5 s); 
+    dt=3.25 fs; tL_tensor=9.09e+00; <acc>=0.93
+  at 335 K in 0.49 s: Sampler 22/40=0.55 (0.5 s); 
+    dt=3.25 fs; tL_tensor=9.85e+00; <acc>=0.96
+  at 338 K in 0.49 s: Sampler 18/40=0.45 (0.5 s); 
+    dt=3.25 fs; tL_tensor=1.00e+01; <acc>=0.99
+  at 341 K in 0.49 s: Sampler 16/40=0.40 (0.5 s); 
+    dt=3.25 fs; tL_tensor=6.44e+00; <acc>=0.98
+  at 346 K in 0.49 s: Sampler 17/40=0.42 (0.5 s); 
+    dt=3.25 fs; tL_tensor=7.32e+00; <acc>=0.95
+  at 350 K in 0.49 s: Sampler 20/40=0.50 (0.5 s); 
+    dt=3.25 fs; tL_tensor=7.01e+00; <acc>=0.94
+  at 354 K in 0.49 s: Sampler 20/40=0.50 (0.5 s); 
+    dt=3.25 fs; tL_tensor=8.73e+00; <acc>=0.91
+  at 358 K in 0.49 s: Sampler 20/40=0.50 (0.5 s); 
+    dt=3.25 fs; tL_tensor=6.53e+00; <acc>=0.93
+  at 363 K in 0.49 s: Sampler 24/40=0.60 (0.5 s); 
+    dt=3.25 fs; tL_tensor=4.87e+00; <acc>=0.96
+  at 369 K in 0.49 s: Sampler 18/40=0.45 (0.5 s); 
+    dt=3.25 fs; tL_tensor=5.90e+00; <acc>=0.94
+  at 374 K in 0.49 s: Sampler 23/40=0.57 (0.5 s); 
+    dt=3.25 fs; tL_tensor=5.80e+00; <acc>=0.98
+  at 379 K in 0.49 s: Sampler 24/40=0.60 (0.5 s); 
+    dt=3.25 fs; tL_tensor=6.63e+00; <acc>=0.96
+  at 384 K in 0.49 s: Sampler 20/40=0.50 (0.5 s); 
+    dt=3.25 fs; tL_tensor=6.98e+00; <acc>=0.96
+  at 388 K in 0.49 s: Sampler 31/40=0.78 (0.5 s); 
+    dt=3.25 fs; tL_tensor=6.05e+00; <acc>=0.95
+  at 393 K in 0.98 s: Sampler 25/40=0.62 (0.5 s); 
+    dt=3.00 fs; tL_tensor=8.79e+00; <acc>=0.94
+  at 397 K in 0.49 s: Sampler 31/40=0.78 (0.5 s); 
+    dt=3.00 fs; tL_tensor=8.30e+00; <acc>=0.97
+  at 401 K in 0.49 s: Sampler 30/40=0.75 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.65e+00; <acc>=0.99
+  rejected previous state with high acceptance rate
+  at 407 K in 0.49 s: Sampler 25/40=0.62 (0.5 s); 
+    dt=3.00 fs; tL_tensor=7.95e+00; <acc>=0.90
+  at 411 K in 0.49 s: Sampler 27/40=0.68 (0.5 s); 
+    dt=3.00 fs; tL_tensor=6.00e+00; <acc>=0.97
+  at 416 K in 0.49 s: Sampler 26/40=0.65 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.25e+00; <acc>=0.96
+  at 422 K in 0.49 s: Sampler 32/40=0.80 (0.5 s); 
+    dt=3.00 fs; tL_tensor=3.57e+00; <acc>=0.97
+  at 431 K in 0.49 s: Sampler 29/40=0.72 (0.5 s); 
+    dt=3.00 fs; tL_tensor=4.91e+00; <acc>=0.94
+  at 437 K in 0.50 s: Sampler 25/40=0.62 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.51e+00; <acc>=0.95
+  at 443 K in 0.49 s: Sampler 19/40=0.47 (0.5 s); 
+    dt=3.00 fs; tL_tensor=6.14e+00; <acc>=0.95
+  at 448 K in 0.50 s: Sampler 27/40=0.68 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.79e+00; <acc>=0.96
+  at 453 K in 0.49 s: Sampler 22/40=0.55 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.23e+00; <acc>=0.96
+  at 459 K in 0.50 s: Sampler 27/40=0.68 (0.5 s); 
+    dt=3.00 fs; tL_tensor=3.49e+00; <acc>=0.97
+  at 468 K in 0.49 s: Sampler 27/40=0.68 (0.5 s); 
+    dt=3.00 fs; tL_tensor=4.67e+00; <acc>=0.90
+  at 474 K in 0.49 s: Sampler 26/40=0.65 (0.5 s); 
+    dt=3.00 fs; tL_tensor=4.97e+00; <acc>=0.96
+  at 480 K in 0.49 s: Sampler 26/40=0.65 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.65e+00; <acc>=0.92
+  at 486 K in 0.49 s: Sampler 31/40=0.78 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.67e+00; <acc>=0.97
+  at 491 K in 0.50 s: Sampler 24/40=0.60 (0.5 s); 
+    dt=3.00 fs; tL_tensor=4.60e+00; <acc>=0.96
+  at 498 K in 0.49 s: Sampler 26/40=0.65 (0.5 s); 
+    dt=3.00 fs; tL_tensor=7.44e+00; <acc>=0.96
+  at 502 K in 0.50 s: Sampler 24/40=0.60 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.21e+00; <acc>=0.97
+  at 508 K in 0.49 s: Sampler 21/40=0.53 (0.5 s); 
+    dt=3.00 fs; tL_tensor=4.33e+00; <acc>=0.94
+  at 515 K in 0.50 s: Sampler 21/40=0.53 (0.5 s); 
+    dt=3.00 fs; tL_tensor=3.92e+00; <acc>=0.96
+  at 523 K in 0.49 s: Sampler 29/40=0.72 (0.5 s); 
+    dt=3.00 fs; tL_tensor=4.11e+00; <acc>=0.92
+  at 530 K in 0.49 s: Sampler 25/40=0.62 (0.5 s); 
+    dt=3.00 fs; tL_tensor=5.60e+00; <acc>=0.96
+  at 536 K in 0.49 s: Sampler 29/40=0.72 (0.5 s); 
+    dt=3.00 fs; tL_tensor=4.63e+00; <acc>=0.96
+  at 542 K in 0.99 s: Sampler 26/40=0.65 (0.5 s); 
+    dt=3.12 fs; tL_tensor=7.85e+00; <acc>=0.99
+  rejected previous state with high acceptance rate
+  at 547 K in 0.49 s: Sampler 26/40=0.65 (0.5 s); 
+    dt=3.12 fs; tL_tensor=4.77e+00; <acc>=0.96
+  at 553 K in 0.98 s: Sampler 29/40=0.72 (0.5 s); 
+    dt=2.87 fs; tL_tensor=7.56e+00; <acc>=0.95
+  at 557 K in 0.49 s: Sampler 24/40=0.60 (0.5 s); 
+    dt=2.87 fs; tL_tensor=6.42e+00; <acc>=0.95
+  at 562 K in 0.49 s: Sampler 28/40=0.70 (0.5 s); 
+    dt=2.87 fs; tL_tensor=5.53e+00; <acc>=0.96
+  at 568 K in 0.49 s: Sampler 31/40=0.78 (0.5 s); 
+    dt=2.87 fs; tL_tensor=3.72e+00; <acc>=0.97
+  at 576 K in 0.49 s: Sampler 24/40=0.60 (0.5 s); 
+    dt=2.87 fs; tL_tensor=4.25e+00; <acc>=0.91
+  at 583 K in 0.50 s: Sampler 26/40=0.65 (0.5 s); 
+    dt=2.87 fs; tL_tensor=4.63e+00; <acc>=0.94
+  at 590 K in 0.50 s: Sampler 31/40=0.78 (0.5 s); 
+    dt=2.87 fs; tL_tensor=4.79e+00; <acc>=0.99
+  rejected previous state with high acceptance rate
+  at 598 K in 0.49 s: Sampler 29/40=0.72 (0.5 s); 
+    dt=2.87 fs; tL_tensor=5.12e+00; <acc>=0.95
+  at 600 K in 0.15 s: Sampler 25/40=0.62 (0.1 s); 
+    dt=2.87 fs; tL_tensor=4.18e+00; <acc>=0.99
+  reversing replicas, samples, and protocol
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+Elapsed time for initial warming of 56 states: 53.79 s
+
+>>> Replica exchange for BC, starting at Mon, 14 Sep 2020 12:33:32
+
+  completed cycle 1 in 42.52 s
+  Sampler 1714/2800=0.61 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 2 in 42.59 s
+  Sampler 1689/2800=0.60 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 3 in 42.58 s
+  Sampler 1775/2800=0.63 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 4 in 42.64 s
+  Sampler 1687/2800=0.60 (37.7 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 5 in 42.54 s
+  Sampler 1745/2800=0.62 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 6 in 42.62 s
+  Sampler 1746/2800=0.62 (37.7 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 7 in 42.56 s
+  Sampler 1731/2800=0.62 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 8 in 42.63 s
+  Sampler 1794/2800=0.64 (37.7 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 9 in 42.59 s
+  Sampler 1759/2800=0.63 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 10 in 42.56 s
+  Sampler 1766/2800=0.63 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 11 in 42.60 s
+  Sampler 1808/2800=0.65 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 12 in 42.57 s
+  Sampler 1724/2800=0.62 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 13 in 42.62 s
+  Sampler 1730/2800=0.62 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 14 in 42.65 s
+  Sampler 1788/2800=0.64 (37.7 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 15 in 42.55 s
+  Sampler 1720/2800=0.61 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 16 in 42.57 s
+  Sampler 1712/2800=0.61 (37.6 s); repX t 4.1 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 17 in 42.55 s
+  Sampler 1716/2800=0.61 (37.6 s); repX t 4.0 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 18 in 42.42 s
+  Sampler 1752/2800=0.63 (37.5 s); repX t 4.0 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+  completed cycle 19 in 42.37 s
+  Sampler 1709/2800=0.61 (37.5 s); repX t 4.0 s
+  wrote to BC_progress.pkl.gz
+  saved BC progress
+  wrote to BC_data.pkl.gz
+  saved BC data
+
+Elapsed time for 19 cycles of replica exchange: 15:28.19
+
+>>> Ligand free energy calculations, starting at Mon, 14 Sep 2020 12:49:20
+
+  calculated BC free energy of -109.65 RT using cycles 0 to 0
+  calculated BC free energy of -109.11 RT using cycles 1 to 1
+  calculated BC free energy of -109.44 RT using cycles 1 to 2
+  calculated BC free energy of -109.32 RT using cycles 1 to 3
+  calculated BC free energy of -109.41 RT using cycles 1 to 4
+  calculated BC free energy of -109.35 RT using cycles 1 to 5
+  calculated BC free energy of -109.29 RT using cycles 1 to 6
+  calculated BC free energy of -109.31 RT using cycles 1 to 7
+  calculated BC free energy of -109.35 RT using cycles 1 to 8
+  calculated BC free energy of -109.32 RT using cycles 1 to 9
+  calculated BC free energy of -109.29 RT using cycles 1 to 10
+  calculated BC free energy of -109.25 RT using cycles 1 to 11
+  calculated BC free energy of -109.21 RT using cycles 3 to 12
+  calculated BC free energy of -109.20 RT using cycles 3 to 13
+  calculated BC free energy of -109.17 RT using cycles 3 to 14
+  calculated BC free energy of -109.16 RT using cycles 3 to 15
+  calculated BC free energy of -109.12 RT using cycles 6 to 16
+  calculated BC free energy of -109.12 RT using cycles 6 to 17
+  calculated BC free energy of -109.11 RT using cycles 6 to 18
+  calculated BC free energy of -109.08 RT using cycles 6 to 19
+  calculated NAMD_Gas solvation free energy of 144.47 RT using cycles 0 to 0
+  calculated NAMD_Gas solvation free energy of 148.58 RT using cycles 1 to 1
+  calculated NAMD_Gas solvation free energy of 146.27 RT using cycles 1 to 2
+  calculated NAMD_Gas solvation free energy of 146.65 RT using cycles 1 to 3
+  calculated NAMD_Gas solvation free energy of 146.76 RT using cycles 1 to 4
+  calculated NAMD_Gas solvation free energy of 146.76 RT using cycles 1 to 5
+  calculated NAMD_Gas solvation free energy of 146.86 RT using cycles 1 to 6
+  calculated NAMD_Gas solvation free energy of 146.64 RT using cycles 1 to 7
+  calculated NAMD_Gas solvation free energy of 146.73 RT using cycles 1 to 8
+  calculated NAMD_Gas solvation free energy of 146.72 RT using cycles 1 to 9
+  calculated NAMD_Gas solvation free energy of 146.72 RT using cycles 1 to 10
+  calculated NAMD_Gas solvation free energy of 146.81 RT using cycles 1 to 11
+  calculated NAMD_Gas solvation free energy of 146.73 RT using cycles 3 to 12
+  calculated NAMD_Gas solvation free energy of 146.82 RT using cycles 3 to 13
+  calculated NAMD_Gas solvation free energy of 146.47 RT using cycles 3 to 14
+  calculated NAMD_Gas solvation free energy of 146.53 RT using cycles 3 to 15
+  calculated NAMD_Gas solvation free energy of 146.47 RT using cycles 6 to 16
+  calculated NAMD_Gas solvation free energy of 146.54 RT using cycles 6 to 17
+  calculated NAMD_Gas solvation free energy of 146.39 RT using cycles 6 to 18
+  calculated NAMD_Gas solvation free energy of 146.42 RT using cycles 6 to 19
+  calculated NAMD_OBC solvation free energy of 63.292 RT using cycles 0 to 0
+  calculated NAMD_OBC solvation free energy of 63.689 RT using cycles 1 to 1
+  calculated NAMD_OBC solvation free energy of 63.554 RT using cycles 1 to 2
+  calculated NAMD_OBC solvation free energy of 63.496 RT using cycles 1 to 3
+  calculated NAMD_OBC solvation free energy of 63.535 RT using cycles 1 to 4
+  calculated NAMD_OBC solvation free energy of 63.544 RT using cycles 1 to 5
+  calculated NAMD_OBC solvation free energy of 63.485 RT using cycles 1 to 6
+  calculated NAMD_OBC solvation free energy of 63.462 RT using cycles 1 to 7
+  calculated NAMD_OBC solvation free energy of 63.449 RT using cycles 1 to 8
+  calculated NAMD_OBC solvation free energy of 63.435 RT using cycles 1 to 9
+  calculated NAMD_OBC solvation free energy of 63.468 RT using cycles 1 to 10
+  calculated NAMD_OBC solvation free energy of 63.427 RT using cycles 1 to 11
+  calculated NAMD_OBC solvation free energy of 63.409 RT using cycles 3 to 12
+  calculated NAMD_OBC solvation free energy of 63.396 RT using cycles 3 to 13
+  calculated NAMD_OBC solvation free energy of 63.408 RT using cycles 3 to 14
+  calculated NAMD_OBC solvation free energy of 63.43 RT using cycles 3 to 15
+  calculated NAMD_OBC solvation free energy of 63.418 RT using cycles 6 to 16
+  calculated NAMD_OBC solvation free energy of 63.39 RT using cycles 6 to 17
+  calculated NAMD_OBC solvation free energy of 63.394 RT using cycles 6 to 18
+  calculated NAMD_OBC solvation free energy of 63.414 RT using cycles 6 to 19
+  wrote to f_L.pkl.gz
+
+Elapsed time for free energy calculation: 10.24 s

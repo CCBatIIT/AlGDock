@@ -6,18 +6,20 @@ import os
 import cPickle as pickle
 import gzip
 import copy
+import sys
 
+
+import AlGDock.IO 
 from AlGDock.IO import load_pkl_gz
 from AlGDock.IO import write_pkl_gz
 from AlGDock.logger import NullDevice
 
-import sys
 import time
 import numpy as np
 
 from collections import OrderedDict
 
-from AlGDock import dictionary_tools
+import AlGDock.dictionary_tools
 
 import MMTK
 import MMTK.Units
@@ -34,7 +36,7 @@ import pymbar.timeseries
 
 import multiprocessing
 from multiprocessing import Process
-
+import arguments
 # For profiling. Unnecessary for normal execution.
 # from memory_profiler import profile
 
@@ -144,7 +146,7 @@ class BPMF:
           raise Exception('Pose index greater than number of poses')
     else:
       starting_pose = None
-
+    
     from AlGDock.system import System
     self.system = System(self.args,
                          self.log,
@@ -402,7 +404,8 @@ class BPMF:
     seeds = LigandPreparation(self.args, self.log, self.top, self.system,
                               self._get_confs_to_rescore, self.iterator,
                               self.data).run('BC')
-
+    
+    
     from AlGDock.initialization import Initialization
     Initialization(self.args, self.log, self.top, self.system,
                   self.iterator, self.data, self.save, self._u_kln).run('BC', seeds)
@@ -576,7 +579,7 @@ class BPMF:
     seeds = LigandPreparation(self.args, self.log, self.top, self.system,
                               self._get_confs_to_rescore, self.iterator,
                               self.data).run('CD')
-
+    
     from AlGDock.initialization import Initialization
     Initialization(self.args, self.log, self.top, self.system,
                   self.iterator, self.data, self.save, self._u_kln).run('CD', seeds)
@@ -1239,7 +1242,7 @@ class BPMF:
         self.log.tee("\n>>> Reinitializing replica exchange configurations")
         self.system.setParams(self.system.paramsFromAlpha(1.0, 'CD'))
         confs = self._get_confs_to_rescore(\
-          nconfs=len(self.data['CD'].protocol), site=True, minimize=True)[0]
+          nconfs=len(self.data['CD'].protocol), site=True, minimize=True)[0] 
         self.log.clear_lock('CD')
         if len(confs) > 0:
           self.data['CD'].confs['replicas'] = confs
@@ -1887,14 +1890,15 @@ class BPMF:
           os.remove(FN)
           print '  removed ' + os.path.relpath(FN, self.args.dir['start'])
 
+
 if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(
     description=
     'Molecular docking with adaptively scaled alchemical interaction grids')
 
-  for key in arguments.keys():
-    parser.add_argument('--' + key, **arguments[key])
+  for key in arguments.args.keys():
+    parser.add_argument('--' + key, **arguments.args[key])
   args = parser.parse_args()
 
   if args.run_type in ['render_docked', 'render_intermediates']:

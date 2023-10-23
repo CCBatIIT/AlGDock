@@ -119,7 +119,7 @@ class SimulationData:
     random_orient = None
     if self.process == 'CD' and hasattr(self, '_n_trans'):
       random_orient = (self._n_trans, self._max_n_trans, self._random_trans, \
-         self._n_rot, self._max_n_rot, self._max_n_rot)
+         self._n_rot, self._max_n_rot, self._random_rotT)
 
     saved = {
       'data': (random_orient, self.confs['starting_self.poses'],
