@@ -119,7 +119,7 @@ search_paths = {
                 '/home/daveminh/scripts/qsub_command.py',
                 '/g/g19/minh1/scripts/qsub_command.py'],
                # Spheres for UCSF DOCK 6
-  'sphgen_cpp':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/dock6/bin/sphgen',
+  'sphgen_cpp':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/dock6/bin/sphgen_cpp',
                 '/Users/dminh/Applications/sphgen_cpp.1.2/sphgen_cpp',
                 '/Applications/dock6/sphgen',
                 '/share/apps/sphgen_cpp/1.2/sphgen_cpp'],
