@@ -12,8 +12,7 @@ import glob
 import inspect
 import argparse
 import sys
-sys.path.insert(0, '/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/AlGDock')
-import IO
+import AlGDock.IO
 
 def nonzero(path):
     return (isfile(path) and getsize(path) > 0) or \
@@ -23,8 +22,8 @@ def nonzero(path):
 # Look for AlGDock and qsub_command.py
 dirs = {}
 dirs['current'] = os.getcwd()
-dirs['script'] = '/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/Pipeline'
-
+dirs['script'] = os.path.dirname(os.path.abspath(\
+          inspect.getfile(inspect.currentframe())))
 execfile(join(dirs['script'], '_external_paths.py'))
 command_paths = findPaths(['qsub_command'])
 algdock_path = findPath(search_paths['algdock'])

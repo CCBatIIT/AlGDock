@@ -112,7 +112,7 @@ search_paths = {
                 '/home/daveminh/software/dock6/bin/dock6',
                 '/g/g19/minh1/software/dock6/bin/dock6'],
                # Submits a command to the queue
-'qsub_command':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/Pipeline/qsub_command.py',
+'qsub_command':['/anvil/projects/x-mcb150144/ellanguyen/github/AlGDock/Pipeline/qsub_command.py',
                 '/Users/dminh/scripts/qsub_command.py',
                 '~/scripts/qsub_command.py',
                 '/home/dminh/scripts/qsub_command.py',
@@ -133,12 +133,12 @@ search_paths = {
                 '/share/apps/apbs/1.4/bin/apbs'],
         'amber':['/home/x-ellanguyen/.conda/envs/2021.05-py38/algdock'],
                # Generalized AMBER force field
-        'gaff':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/Data/gaff2.dat',
+        'gaff':['/anvil/projects/x-mcb150144/ellanguyen/github/AlGDock/Data/gaff2.dat',
                 '/Users/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
                 '/home/dminh/Installers/AlGDock-0.0.1/Data/gaff2.dat',
                 '/home/daveminh/algdock_data/gaff2.dat'],
                # AlGDock
-     'algdock':['/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/AlGDock/BindingPMF.py',
+     'algdock':['/anvil/projects/x-mcb150144/ellanguyen/github/AlGDock/AlGDock/BindingPMF.py',
                 '/Users/dminh/Library/Enthought/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py',
                 '/share/apps/canopy/1.5.0/Canopy_64bit/User/lib/python2.7/site-packages/AlGDock/BindingPMF.py']}
 

@@ -65,7 +65,7 @@ if {[expr [lindex [center_of_mass $sel] 2]>0]} {
 
 
 class BPMF_plots(BPMF):
-  def plot_energies(self, process='cool', firstCycle=0, toCycle=None):
+  def plot_energies(self, process='BC', firstCycle=0, toCycle=None):
     """
     Plots timeseries and histograms of the energies for each state.
     Requires matplotlib extension for python.
@@ -119,18 +119,18 @@ class BPMF_plots(BPMF):
       print 'plot_energy_ratio requires matplotlib'
       return
 
-    K = len(self.dock_protocol)
+    K = len(self.CD_protocol)
     e_ratio = []
     for k in range(K):
       e_ratio_k = np.array([])
-      for c in range(len(self.dock_Es[k])):
+      for c in range(len(self.CD_Es[k])):
         e_ratio_k = np.hstack(
           (e_ratio_k,
-           np.abs(self.dock_Es[k][c]['ELE'] / self.dock_Es[k][c]['sLJr'])))
+           np.abs(self.CD_Es[k][c]['ELE'] / self.CD_Es[k][c]['sLJr'])))
       e_ratio.append(e_ratio_k)
     plt.plot(np.transpose(e_ratio))
 
-  def show_replicas(self, process='dock', \
+  def show_replicas(self, process='CD', \
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
         save_image=False, image_labels=None, execute=True, \
         principal_axes_alignment=False, clear_files=True, quit=False, \
@@ -138,7 +138,7 @@ class BPMF_plots(BPMF):
     """
     Show replicas from replica exchange
     """
-    confs = self.confs['dock']['replicas']
+    confs = self.confs['CD']['replicas']
     prefix = 'replicas'
     return self.show_poses(confs, prefix, \
       thickness=None,
@@ -153,7 +153,7 @@ class BPMF_plots(BPMF):
       quit=quit, \
       view_args=view_args)
 
-  def show_samples(self, prefix=None, process='dock', state=-1, \
+  def show_samples(self, prefix=None, process='CD', state=-1, \
         show_ref_ligand=True, show_starting_pose=True, show_receptor=False, \
         save_image=False, image_labels=None, execute=True, \
         principal_axes_alignment=False, clear_files=True, quit=False, \
@@ -169,7 +169,7 @@ class BPMF_plots(BPMF):
       if prefix is None:
         prefix = '%s-%05d' % (process, state)
 
-    if process == 'dock':
+    if process == 'CD':
       first_cycle = self.stats_RL['equilibrated_cycle'][-1]
     else:
       first_cycle = self.stats_L['equilibrated_cycle'][-1]
@@ -203,7 +203,7 @@ class BPMF_plots(BPMF):
     ws = ws / sum(ws)
     toShow = np.arange(len(ws))[ws > 0.001]
 
-    confs = [self.confs['dock']['samples'][-1][cycle][n] \
+    confs = [self.confs['CD']['samples'][-1][cycle][n] \
       for (cycle,n) in self.stats_RL['pose_inds']]
     confs = [confs[n] for n in np.arange(len(ws))[toShow]]
     return self.show_poses(confs, 'prediction-'+score,
@@ -269,9 +269,9 @@ class BPMF_plots(BPMF):
     # Show the starting pose
     start_ligand_dcd_FN = os.path.join(self.dir[process], 'L_start.dcd')
     if show_starting_pose:
-      if self.confs['dock']['starting_poses'] is not None:
+      if self.confs['CD']['starting_poses'] is not None:
         IO_dcd.write(start_ligand_dcd_FN, \
-          self.confs['dock']['starting_poses'][-1], \
+          self.confs['CD']['starting_poses'][-1], \
           includeLigand=True, includeReceptor=False)
         script += 'set start_ligand [mol new ' + self._FNs['prmtop'][
           'L'] + ']\n'
@@ -332,7 +332,7 @@ class BPMF_plots(BPMF):
       nmolecules=len(molids), molid_receptor=molid_receptor)
 
     if save_image:
-      image_path = os.path.join(self.dir['dock'], prefix + '.tga')
+      image_path = os.path.join(self.dir['CD'], prefix + '.tga')
       if 'render' in view_args.keys():
         render = view_args['render']
       else:
@@ -440,18 +440,18 @@ class BPMF_plots(BPMF):
       script += 'axes location Off\n'
     return script
 
-  def render_intermediates(self, process='dock', movie_name=None, \
+  def render_intermediates(self, process='CD', movie_name=None, \
         stride=1, nframes=None, view_args={}):
     # Determine state indices by the number of frames of by the stride
     if nframes is not None:
       state_inds = [int(s) \
-        for s in np.linspace(0,len(self.dock_protocol)-1,nframes)]
+        for s in np.linspace(0,len(self.CD_protocol)-1,nframes)]
     else:
       state_inds = range(0, len(self.confs[process]['samples']), stride)
 
     # Confirm that intermediate conformations exist
     for state_ind in state_inds:
-      if self.confs['dock']['samples'][state_ind] == []:
+      if self.confs['CD']['samples'][state_ind] == []:
         raise Exception('No snapshots in state %d' % state_ind)
 
     # Generate each snapshot
@@ -460,7 +460,7 @@ class BPMF_plots(BPMF):
     for s in range(len(state_inds)):
       # Format label for snapshot
       lambda_s = getattr(self, '%s_protocol' % process)[state_inds[s]]
-      if process == 'dock':
+      if process == 'CD':
         labels = [u'\u03B1 = %-8.2g' % lambda_s['a']]
       else:
         labels = []
@@ -477,11 +477,11 @@ class BPMF_plots(BPMF):
       if self._FNs['convert'] is not None:
         import subprocess
         subprocess.call([self._FNs['convert'],'-delay','15',\
-          os.path.join(self.dir[process],'dock*.tga'), movie_name])
+          os.path.join(self.dir[process],'CD*.tga'), movie_name])
       else:
         raise Exception('ImageMagick convert required to make movies')
 
       import glob
-      tga_FNs = glob.glob(os.path.join(self.dir[process], 'dock*.tga'))
+      tga_FNs = glob.glob(os.path.join(self.dir[process], 'CD*.tga'))
       for tga_FN in tga_FNs:
         os.remove(tga_FN)
