@@ -121,7 +121,6 @@ class LigandPreparation():
             else:
                 (minimizedConfigurations, Es) = self._get_confs_to_rescore(
                     site=False, minimize=True)
-                print (Es[:10])
 
                 from netCDF4 import Dataset
                 dock6_nc = Dataset(minimizedB_FN, 'w')
