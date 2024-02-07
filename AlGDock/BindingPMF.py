@@ -19,7 +19,7 @@ import numpy as np
 
 from collections import OrderedDict
 
-import AlGDock.dictionary_tools
+from AlGDock import dictionary_tools
 
 import MMTK
 import MMTK.Units
