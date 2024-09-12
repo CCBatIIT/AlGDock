@@ -1,0 +1,415 @@
+
+>>> Ligand preparation for CD, starting at Mon, 14 Sep 2020 12:49:30
+  sLJr grid loaded from LJr.nc in 0.53 s
+  ELE grid loaded from pbsa.nc in 0.08 s
+  minimized to 195 kcal/mol over 400 steps
+  T = 20, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.672
+  T = 21, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.724
+  T = 24, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.736
+  T = 26, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.724
+  T = 29, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.748
+  T = 31, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.796
+  T = 35, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.768
+  T = 38, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.812
+  T = 42, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.772
+  T = 46, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.776
+  T = 50, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.812
+  T = 55, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.792
+  T = 61, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.784
+  T = 67, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.800
+  T = 73, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.800
+  T = 81, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 89, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 97, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.848
+  T = 107, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.780
+  T = 117, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 129, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 142, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.792
+  T = 156, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 171, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.808
+  T = 188, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 206, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.848
+  T = 226, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.816
+  T = 248, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.820
+  T = 273, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 300, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.756
+  ramped temperature from 20 to 300 K in 6.06 s, changing energy to 266 kcal/mol
+
+Elapsed time for ligand preparation for CD: 6.80 s
+
+>>> Initialization for CD, starting at Mon, 14 Sep 2020 12:49:37
+
+  sELE grid loaded from pbsa.nc in 0.04 s
+  LJr grid loaded from LJr.nc in 0.65 s
+  LJa grid loaded from LJa.nc in 0.25 s
+
+  at a=1.000e+00 in 1.40 s: Sampler 23/40=0.57 (0.1 s); 
+    dt=3.50 fs, tL_tensor=1.603e+01
+  at a=9.500e-01 in 0.15 s: Sampler 18/40=0.45 (0.1 s); 
+    dt=3.50 fs; tL_tensor=1.285e+01; <acc>=0.81
+  at a=9.000e-01 in 0.30 s: Sampler 22/40=0.55 (0.1 s); 
+    dt=3.25 fs; tL_tensor=1.038e+01; <acc>=0.64
+  at a=8.500e-01 in 0.15 s: Sampler 18/40=0.45 (0.1 s); 
+    dt=3.25 fs; tL_tensor=9.896e+00; <acc>=0.60
+  at a=8.000e-01 in 0.15 s: Sampler 18/40=0.45 (0.1 s); 
+    dt=3.25 fs; tL_tensor=2.067e+01; <acc>=0.79
+  at a=7.500e-01 in 0.15 s: Sampler 27/40=0.68 (0.1 s); 
+    dt=3.25 fs; tL_tensor=1.542e+01; <acc>=0.46
+  at a=7.000e-01 in 0.15 s: Sampler 23/40=0.57 (0.1 s); 
+    dt=3.25 fs; tL_tensor=1.501e+01; <acc>=0.40
+  at a=6.500e-01 in 0.15 s: Sampler 23/40=0.57 (0.1 s); 
+    dt=3.25 fs; tL_tensor=3.678e+01; <acc>=0.72
+  at a=6.000e-01 in 0.15 s: Sampler 21/40=0.53 (0.1 s); 
+    dt=3.25 fs; tL_tensor=2.084e+01; <acc>=0.50
+  at a=5.500e-01 in 0.15 s: Sampler 20/40=0.50 (0.1 s); 
+    dt=3.25 fs; tL_tensor=7.570e+01; <acc>=0.31
+  rejected new state with low estimated acceptance rate
+  at a=5.500e-01 in 0.15 s: Sampler 23/40=0.57 (0.1 s); 
+    dt=3.25 fs; tL_tensor=5.133e+01; <acc>=0.17
+  rejected new state with low estimated acceptance rate
+  at a=5.500e-01 in 0.15 s: Sampler 20/40=0.50 (0.1 s); 
+    dt=3.25 fs; tL_tensor=6.330e+01; <acc>=0.34
+  rejected new state with low estimated acceptance rate
+  at a=5.500e-01 in 0.15 s: Sampler 26/40=0.65 (0.1 s); 
+    dt=3.25 fs; tL_tensor=6.389e+01; <acc>=0.38
+  rejected new state with low estimated acceptance rate
+  at a=5.500e-01 in 0.15 s: Sampler 21/40=0.53 (0.1 s); 
+    dt=3.25 fs; tL_tensor=4.743e+01; <acc>=0.42
+  at a=5.000e-01 in 0.14 s: Sampler 16/40=0.40 (0.1 s); 
+    dt=3.25 fs; tL_tensor=1.022e+02; <acc>=0.43
+  at a=4.500e-01 in 0.15 s: Sampler 29/40=0.72 (0.1 s); 
+    dt=3.25 fs; tL_tensor=4.166e+00; <acc>=0.99
+  at a=4.000e-01 in 0.15 s: Sampler 27/40=0.68 (0.1 s); 
+    dt=3.25 fs; tL_tensor=2.240e+02; <acc>=0.87
+  at a=3.500e-01 in 0.15 s: Sampler 26/40=0.65 (0.1 s); 
+    dt=3.25 fs; tL_tensor=3.835e+01; <acc>=0.91
+  at a=3.000e-01 in 0.30 s: Sampler 21/40=0.53 (0.1 s); 
+    dt=3.00 fs; tL_tensor=7.135e+00; <acc>=0.86
+  at a=2.500e-01 in 0.14 s: Sampler 32/40=0.80 (0.1 s); 
+    dt=3.00 fs; tL_tensor=6.736e+00; <acc>=0.65
+  at a=2.000e-01 in 0.15 s: Sampler 23/40=0.57 (0.1 s); 
+    dt=3.00 fs; tL_tensor=4.512e+00; <acc>=0.58
+  at a=1.500e-01 in 0.15 s: Sampler 32/40=0.80 (0.1 s); 
+    dt=3.00 fs; tL_tensor=9.911e+00; <acc>=0.65
+  at a=1.000e-01 in 0.14 s: Sampler 24/40=0.60 (0.1 s); 
+    dt=3.00 fs; tL_tensor=7.852e+00; <acc>=0.57
+  at a=5.000e-02 in 0.14 s: Sampler 27/40=0.68 (0.1 s); 
+    dt=3.00 fs; tL_tensor=1.197e+01; <acc>=0.82
+  at a=6.939e-17 in 0.14 s: Sampler 26/40=0.65 (0.1 s); 
+    dt=3.00 fs; tL_tensor=4.594e+02; <acc>=0.43
+  at a=0.000e+00 in 0.14 s: Sampler 21/40=0.53 (0.1 s); 
+    dt=3.00 fs; tL_tensor=2.211e+00; <acc>=1.00
+  reversing replicas, samples, and protocol
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+Elapsed time for initial CD of 22 states: 5.91 s
+
+>>> Replica exchange for CD, starting at Mon, 14 Sep 2020 12:49:43
+
+  completed cycle 1 in 7.41 s
+  Sampler 606/1100=0.55 (5.2 s); repX t 1.8 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  inserted state between 6.9389e-17 and 0.05 at 0.025
+  to improve acceptance rate from 0.0023526 to 0.10284
+  inserted state between 6.9389e-17 and 0.025 at 0.0125
+  to improve acceptance rate from 0.10284 to 0.38824
+  inserted state between 6.9389e-17 and 0.0125 at 0.00625
+  to improve acceptance rate from 0.38824 to 0.98003
+  inserted state between 0.00625 and 0.0125 at 0.009375
+  to improve acceptance rate from 0.3402 to 0.55352
+  inserted state between 0.15 and 0.2 at 0.175
+  to improve acceptance rate from 0.33276 to 0.87483
+  inserted state between 0.5 and 0.55 at 0.525
+  to improve acceptance rate from 0.20212 to 0.46657
+  inserted state between 0.55 and 0.6 at 0.575
+  to improve acceptance rate from 0.038202 to 0.17311
+  inserted state between 0.55 and 0.575 at 0.5625
+  to improve acceptance rate from 0.17311 to 0.45733
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 2 in 10.13 s
+  Sampler 817/1500=0.54 (7.1 s); repX t 2.5 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  inserted state between 0.0125 and 0.025 at 0.01875
+  to improve acceptance rate from 0.38352 to 0.61551
+  inserted state between 0.5 and 0.525 at 0.5125
+  to improve acceptance rate from 0.27808 to 0.41586
+  inserted state between 0.525 and 0.55 at 0.5375
+  to improve acceptance rate from 0.35672 to 0.65481
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 3 in 11.20 s
+  Sampler 921/1650=0.56 (7.8 s); repX t 2.7 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  inserted state between 0.5 and 0.5125 at 0.50625
+  to improve acceptance rate from 0.29164 to 0.46156
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 4 in 11.42 s
+  Sampler 964/1700=0.57 (8.0 s); repX t 2.7 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  inserted state between 0.5 and 0.50625 at 0.50313
+  to improve acceptance rate from 0.39935 to 0.74166
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 5 in 11.77 s
+  Sampler 970/1750=0.55 (8.2 s); repX t 2.8 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 6 in 11.80 s
+  Sampler 963/1750=0.55 (8.3 s); repX t 2.8 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  inserted state between 0.6 and 0.65 at 0.625
+  to improve acceptance rate from 0.39642 to 0.5643
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 7 in 12.16 s
+  Sampler 1054/1800=0.59 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 8 in 12.10 s
+  Sampler 1032/1800=0.57 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 9 in 12.15 s
+  Sampler 1052/1800=0.58 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 10 in 12.17 s
+  Sampler 1097/1800=0.61 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 11 in 12.12 s
+  Sampler 1044/1800=0.58 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 12 in 12.14 s
+  Sampler 1068/1800=0.59 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 13 in 12.14 s
+  Sampler 1057/1800=0.59 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 14 in 12.09 s
+  Sampler 1046/1800=0.58 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 15 in 12.16 s
+  Sampler 1003/1800=0.56 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 16 in 12.15 s
+  Sampler 1052/1800=0.58 (8.5 s); repX t 2.9 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  inserted state between 0.4 and 0.45 at 0.425
+  to improve acceptance rate from 0.29805 to 0.79028
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 17 in 12.45 s
+  Sampler 1091/1850=0.59 (8.7 s); repX t 3.0 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 18 in 12.48 s
+  Sampler 1107/1850=0.60 (8.7 s); repX t 3.0 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+  completed cycle 19 in 12.51 s
+  Sampler 1056/1850=0.57 (8.8 s); repX t 3.0 s
+  wrote to CD_progress_pose000.pkl.gz
+  saved CD progress
+  wrote to CD_data_self.pose000.pkl.gz
+  saved CD data
+
+Elapsed time for 19 cycles of replica exchange: 6:9.44
+
+>>> Complex free energy calculations, starting at Mon, 14 Sep 2020 13:02:46
+
+  calculated grid scaling free energy of 100.64 RT using cycles 0 to 0
+  calculated grid scaling free energy of 101.05 RT using cycles 1 to 1
+  calculated grid scaling free energy of 102.83 RT using cycles 1 to 2
+  calculated grid scaling free energy of 103.57 RT using cycles 1 to 3
+  calculated grid scaling free energy of 104.86 RT using cycles 2 to 4
+  calculated grid scaling free energy of 104.53 RT using cycles 2 to 5
+  calculated grid scaling free energy of 104.59 RT using cycles 2 to 6
+  calculated grid scaling free energy of 104.50 RT using cycles 4 to 7
+  calculated grid scaling free energy of 104.55 RT using cycles 4 to 8
+  calculated grid scaling free energy of 104.71 RT using cycles 5 to 9
+  calculated grid scaling free energy of 105.02 RT using cycles 5 to 10
+  calculated grid scaling free energy of 105.54 RT using cycles 5 to 11
+  calculated grid scaling free energy of 105.22 RT using cycles 5 to 12
+  calculated grid scaling free energy of 105.12 RT using cycles 5 to 13
+  calculated grid scaling free energy of 105.11 RT using cycles 5 to 14
+  calculated grid scaling free energy of 105.21 RT using cycles 5 to 15
+  calculated grid scaling free energy of 105.25 RT using cycles 5 to 16
+  calculated grid scaling free energy of 105.31 RT using cycles 5 to 17
+  calculated grid scaling free energy of 105.46 RT using cycles 5 to 18
+  calculated grid scaling free energy of 105.44 RT using cycles 5 to 19
+  calculated NAMD_Gas binding PMF of -165.39 RT with cycles 0 to 0
+  calculated NAMD_Gas binding PMF of -156.98 RT with cycles 1 to 1
+  calculated NAMD_Gas binding PMF of -175.71 RT with cycles 1 to 2
+  calculated NAMD_Gas binding PMF of -175.3 RT with cycles 1 to 3
+  calculated NAMD_Gas binding PMF of -175.3 RT with cycles 2 to 4
+  calculated NAMD_Gas binding PMF of -175.01 RT with cycles 2 to 5
+  calculated NAMD_Gas binding PMF of -174.79 RT with cycles 2 to 6
+  calculated NAMD_Gas binding PMF of -157.58 RT with cycles 4 to 7
+  calculated NAMD_Gas binding PMF of -157.55 RT with cycles 4 to 8
+  calculated NAMD_Gas binding PMF of -160.29 RT with cycles 5 to 9
+  calculated NAMD_Gas binding PMF of -160.84 RT with cycles 5 to 10
+  calculated NAMD_Gas binding PMF of -161.11 RT with cycles 5 to 11
+  calculated NAMD_Gas binding PMF of -160.97 RT with cycles 5 to 12
+  calculated NAMD_Gas binding PMF of -160.86 RT with cycles 5 to 13
+  calculated NAMD_Gas binding PMF of -168.44 RT with cycles 5 to 14
+  calculated NAMD_Gas binding PMF of -168.58 RT with cycles 5 to 15
+  calculated NAMD_Gas binding PMF of -171.45 RT with cycles 5 to 16
+  calculated NAMD_Gas binding PMF of -171.71 RT with cycles 5 to 17
+  calculated NAMD_Gas binding PMF of -172.25 RT with cycles 5 to 18
+  calculated NAMD_Gas binding PMF of -172.18 RT with cycles 5 to 19
+  calculated NAMD_OBC binding PMF of -21.877 RT with cycles 0 to 0
+  calculated NAMD_OBC binding PMF of -19.472 RT with cycles 1 to 1
+  calculated NAMD_OBC binding PMF of -32.977 RT with cycles 1 to 2
+  calculated NAMD_OBC binding PMF of -32.572 RT with cycles 1 to 3
+  calculated NAMD_OBC binding PMF of -32.572 RT with cycles 2 to 4
+  calculated NAMD_OBC binding PMF of -32.284 RT with cycles 2 to 5
+  calculated NAMD_OBC binding PMF of -32.061 RT with cycles 2 to 6
+  calculated NAMD_OBC binding PMF of -23.086 RT with cycles 4 to 7
+  calculated NAMD_OBC binding PMF of -22.904 RT with cycles 4 to 8
+  calculated NAMD_OBC binding PMF of -24.952 RT with cycles 5 to 9
+  calculated NAMD_OBC binding PMF of -24.915 RT with cycles 5 to 10
+  calculated NAMD_OBC binding PMF of -24.79 RT with cycles 5 to 11
+  calculated NAMD_OBC binding PMF of -24.653 RT with cycles 5 to 12
+  calculated NAMD_OBC binding PMF of -25.507 RT with cycles 5 to 13
+  calculated NAMD_OBC binding PMF of -26.634 RT with cycles 5 to 14
+  calculated NAMD_OBC binding PMF of -27.798 RT with cycles 5 to 15
+  calculated NAMD_OBC binding PMF of -30.025 RT with cycles 5 to 16
+  calculated NAMD_OBC binding PMF of -31.152 RT with cycles 5 to 17
+  calculated NAMD_OBC binding PMF of -31.08 RT with cycles 5 to 18
+  calculated NAMD_OBC binding PMF of -31.01 RT with cycles 5 to 19
+  wrote to f_RL_pose000.pkl.gz
+
+Elapsed time for binding PMF estimation: 7.54 s
+
+>>> Ligand preparation for CD, starting at Wed, 02 Nov 2022 10:13:49
+  sLJr grid loaded from LJr.nc in 0.75 s
+  ELE grid loaded from pbsa.nc in 0.06 s
+  minimized to 195 kcal/mol over 400 steps
+  T = 20, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.672
+  T = 21, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.724
+  T = 24, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.736
+  T = 26, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.724
+  T = 29, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.748
+  T = 31, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.796
+  T = 35, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.768
+  T = 38, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.812
+  T = 42, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.772
+  T = 46, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.776
+  T = 50, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.812
+  T = 55, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.792
+  T = 61, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.784
+  T = 67, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.800
+  T = 73, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.800
+  T = 81, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 89, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 97, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.848
+  T = 107, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.780
+  T = 117, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 129, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 142, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.792
+  T = 156, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.804
+  T = 171, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.808
+  T = 188, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 206, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.848
+  T = 226, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.816
+  T = 248, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.820
+  T = 273, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.852
+  T = 300, delta_t = 2.000 fs, steps_per_trial = 10, acc_rate = 0.756
+  ramped temperature from 20 to 300 K in 6.07 s, changing energy to 266 kcal/mol
+
+Elapsed time for ligand preparation for CD: 7.01 s
+
+>>> Initialization for CD, starting at Wed, 02 Nov 2022 10:13:56
+
+  sELE grid loaded from pbsa.nc in 0.04 s
+  LJr grid loaded from LJr.nc in 0.63 s
+  LJa grid loaded from LJa.nc in 0.26 s

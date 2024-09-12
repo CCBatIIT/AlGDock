@@ -12,7 +12,7 @@ exclude = []
 
 script_dir = os.path.dirname(os.path.abspath(\
   inspect.getfile(inspect.currentframe())))
-execfile(os.path.join(script_dir,'_load_profile.py'))
+exec(open(os.path.join(script_dir,'_load_profile.py')).read())
 
 # Parse arguments
 import argparse

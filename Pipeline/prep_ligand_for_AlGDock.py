@@ -87,6 +87,32 @@ else:
     if os.path.isfile(FN):
       os.remove(FN)
 
+#Change Radius of Cl, Br, Iodine if possible
+import parmed as pmd
+from parmed.tools.actions import change
+
+topology = pmd.load_file(prefix+'.prmtop')
+new_radii = {
+            'Cl': 1.75,  # Replace 'Cl' with the halogen atom type you want to change
+            'Br': 1.85,  # Replace 'Br' with the halogen atom type you want to change
+            'I' : 1.98   # Replace 'I' with the halogen atom type you want to change
+            }
+
+#Create a change action to update the radii
+actions = [change(topology, 'RADII', '@%s'%atom_type, new_radius) for atom_type, new_radius in new_radii.items()]
+# Apply the change actions to the topology
+for action in actions:
+    action.execute()
+
+topology.save(prefix+'fix.prmtop')
+
+if not os.path.isfile(prefix+'fix.prmtop'):
+    print '\n*** ARMBER FIXING NOT SUCCESSFUL ***'
+else:
+    os.remove (prefix+'.prmtop')
+    os.rename (prefix+'fix.prmtop', prefix+'.prmtop')
+    print '\n*** ARMBER FIXING SUCCESSFUL ***'
+
 db_FN = prefix.lower()+'.db'
 if not os.path.isfile((db_FN)):
   print '\n*** Generating MMTK database ***'

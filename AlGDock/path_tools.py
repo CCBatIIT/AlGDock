@@ -141,7 +141,7 @@ search_paths = {
     '/g/g19/minh1/software/namd2', 'namd2'
   ],
   # For postprocessing snapshots with sander
-  'sander': [
+  'sander': ['/home/x-ellanguyen/.conda/envs/2021.05-py38/algdock/bin/sander',
     '/Users/dminh/Documents/Code/amber16/bin/sander',
     '/share/apps/amber/16/bin/sander', '/home/dminh/software/sander', 'sander'
   ],
@@ -170,12 +170,13 @@ search_paths = {
     'molsurf'
   ],
   # BindingPMF.py is built on MMTK (not essential)
-  'MMTK': [
+  'MMTK': ['/mnt/ella/Targets/Installers/MMTK-2.7.9',
+    '/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/MMTK-2.7.9',
     '/Users/dminh/Documents/Code/MMTK-2.7.9',
     '/home/dminh/Installers/MMTK-2.7.9'
   ],
   # For visualizing (not essential)
-  'vmd': [
+  'vmd': ['/home/ellanguyen/anaconda3/envs/algdock/bin/vmd', 
     '/Applications/VMD.app/Contents/Resources/VMD.app/Contents/MacOS/VMD',
     '/share/apps/vmd/1.9.1/bin/vmd'
   ],
@@ -183,7 +184,7 @@ search_paths = {
   'catdcd':
   ['/Users/dminh/Applications/catdcd', '/share/apps/catdcd/4.0/catdcd'],
   # For making movies (not essential)
-  'convert': [
+  'convert': ['/mnt/ella/Targets/Installers/ImageMagick/ImageMagick/bin/convert', 
     '/Applications/ImageMagick-6.9.1/bin/convert',
     '/share/apps/imagemagick/6.9.1-6/bin/convert'
   ],

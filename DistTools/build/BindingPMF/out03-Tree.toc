@@ -1,0 +1,10 @@
+('/home/dminh/Installers/AlGDock-0.0.1/DistTools/build/BindingPMF/setuptools-19.2-py2.7.egg',
+ None,
+ set(['*.py', '*.pyc', '*.pyd', '*.pyo', '*.so', 'EGG-INFO']),
+ 'DATA',
+ [('setuptools/script (dev).tmpl',
+   '/home/dminh/Installers/AlGDock-0.0.1/DistTools/build/BindingPMF/setuptools-19.2-py2.7.egg/setuptools/script (dev).tmpl',
+   'DATA'),
+  ('setuptools/script.tmpl',
+   '/home/dminh/Installers/AlGDock-0.0.1/DistTools/build/BindingPMF/setuptools-19.2-py2.7.egg/setuptools/script.tmpl',
+   'DATA')])

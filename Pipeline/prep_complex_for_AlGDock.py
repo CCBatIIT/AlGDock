@@ -96,6 +96,31 @@ if os.path.isfile(os.path.join(complex_prefix+'.pdb')):
   command = command.format(dirs['script'], os.path.join(complex_prefix+'.pdb'))
   os.system(command)
 
+#Change Radius of Cl, Br, Iodine if possible
+import parmed as pmd
+from parmed.tools.actions import change
+
+topology = pmd.load_file(complex_prefix+'.prmtop')
+new_radii = {
+            'Cl': 1.75,  # Replace 'Cl' with the halogen atom type you want to change
+            'Br': 1.85,  # Replace 'Br' with the halogen atom type you want to change
+            'I' : 1.98   # Replace 'I' with the halogen atom type you want to change
+            }
+#Create a change action to update the radii
+actions = [change(topology, 'RADII', '@%s'%atom_type, new_radius) for atom_type, new_radius in new_radii.items()]
+# Apply the change actions to the topology
+for action in actions:
+    action.execute()
+
+topology.save(complex_prefix+'fix.prmtop')
+
+if not os.path.isfile(complex_prefix+'fix.prmtop'):
+    print '\n *** AMBER FIXING NOT SUCCESSFUL ***'
+else:
+    os.remove(complex_prefix+'.prmtop')
+    os.rename(complex_prefix+'fix.prmtop', complex_prefix+'.prmtop')
+    print '\n *** AMBER FIXING SUCCESSFUL ***'
+
 # Compresses the complex files in a tarball
 import tarfile
 tarF = tarfile.open(args.complex_tarball,'w:gz')
