@@ -125,7 +125,7 @@ class System:
       # Set up the binding site in the force field
       append_site = True  # Whether to append the binding site to the force field
       if not 'site' in self._forceFields.keys():
-        print (self.args.params['CD']['site'], self.args.params['CD']['site_center'], self.args.params['CD']['site_max_R'])
+        print(self.args.params['CD']['site'], self.args.params['CD']['site_center'], self.args.params['CD']['site_max_R'])
         if (self.args.params['CD']['site']=='Sphere') and \
            (self.args.params['CD']['site_center'] is not None) and \
            (self.args.params['CD']['site_max_R'] is not None):
@@ -190,13 +190,68 @@ class System:
               # less than or equal to the Lennard-Jones repulsive energy
               # for every heavy atom at every grid point
               # TODO: For conversion to OpenMM, get ParticleProperties from the Force object
-              scaling_factors_ELE = np.array([ \
+
+              if MMTK:
+                scaling_factors_ELE = np.array([ \
                 self.top.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
                   for a in self.top.molecule.atomList()],dtype=float)
-              scaling_factors_LJr = np.array([ \
+                scaling_factors_LJr = np.array([ \
                 self.top.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
                   for a in self.top.molecule.atomList()],dtype=float)
+              else:
+                """
+                get the scaling_factors_ELE and scaling_factors_LJr using openmm instead of MMTK.
+                Note that MMTK may provide the values in a different atom order compared to OpenMM.
+                """
+                scaling_factors_ELE = []
+                scaling_factors_LJr = []
+                ligand_prmtop = self.args.FNs['prmtop']['L']
+                ligand_inpcrd = self.args.FNs['inpcrd']['L']
+                prmtop = AmberPrmtopFile(ligand_prmtop)
+                inpcrd = AmberInpcrdFile(ligand_inpcrd)
+                topology = prmtop.topology
+                positions = inpcrd.positions  # angstrom
 
+                r_distance = dict()
+                for bond in topology.bonds():
+                  atom1, atom2 = bond
+                  atom1_position = list(positions[atom1.index].value_in_unit(nanometer))
+                  atom2_position = list(positions[atom2.index].value_in_unit(nanometer))
+                  dist = ((atom1_position[0] - atom2_position[0]) ** 2 +
+                        (atom1_position[1] - atom2_position[1]) ** 2 +
+                        (atom1_position[2] - atom2_position[2]) ** 2) ** 0.5
+                  dist = round(dist, 6)
+                  r_distance[atom1.name] = (atom2.name, dist)
+                  r_distance[atom2.name] = (atom1.name, dist)
+                atoms_name = [a.name for a in topology.atoms()]
+                atoms_elements = dict()
+                for a in topology.atoms():
+                  atoms_elements[a.name] = a.element.symbol
+
+                system = prmtop.createSystem(nonbondedMethod=NoCutoff, nonbondedCutoff=1.0 * nanometer,
+                                             constraints=None)
+                force = system.getForce(3)
+                assert force.getName() == 'NonbondedForce'
+
+                for i in range(system.getNumParticles()):
+                  atom_name = atoms_name[i]
+                  charge, sigma, epsilon = force.getParticleParameters(i)
+                  charge_val = charge.value_in_unit(elementary_charge)
+                  sigma_val = round(sigma.value_in_unit(nanometer), 6)
+                  epsilon = epsilon.value_in_unit(kilojoule / mole)
+                  if epsilon == 0:
+                    continue
+                  r = r_distance[atom_name][1]
+                  lj_potential = 4 * epsilon * ((sigma_val / r) ** 12 - (sigma_val / r) ** 6)
+                  # print(atoms_name[i], '4 *', epsilon, '* ((', sigma_val, '/r ))**12 -', sigma_val, '/r ))**6 =',
+                  #       ljr_data[atom_name])
+                  scaling_factors_LJr.append(lj_potential)
+                  scaling_factors_ELE.append(round(charge_val * 4.184, 6))
+
+                scaling_factors_ELE = np.array(scaling_factors_ELE)
+                scaling_factors_LJr = np.array(scaling_factors_LJr)
+
+              #---------
               toKeep = np.logical_and(scaling_factors_LJr > 10.,
                                       abs(scaling_factors_ELE) > 0.1)
             
