@@ -146,7 +146,7 @@ class System:
             name='site')
         else:
           # Do not append the site if it is not defined
-          print 'Binding site not defined!'
+          print('Binding site not defined!')
           append_site = False
       if append_site:
         fflist.append(self._forceFields['site'])
@@ -341,10 +341,10 @@ class System:
           try:
             E[term_map[key]][c] += value
           except KeyError:
-            print key
-            print 'Keys in eT', eT.keys()
-            print 'Keys in term map', term_map.keys()
-            print 'Keys in E', E.keys()
+            print(key)
+            print('Keys in eT', eT.keys())
+            print('Keys in term map', term_map.keys())
+            print('Keys in E', E.keys())
             raise Exception('key not found in term map or E')
     return E
 
