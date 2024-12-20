@@ -112,10 +112,12 @@ class System:
     # Reuse evaluators that have been stored
     evaluator_key = ','.join(['%s:%s'%(k,params[k]) \
       for k in sorted(params.keys())])
-    if evaluator_key in self._evaluators.keys():
-      self.top.universe._evaluator[(None,None,None)] = \
-        self._evaluators[evaluator_key]
-      return
+    if MMTK:
+      if evaluator_key in self._evaluators.keys():
+        self.top.universe._evaluator[(None,None,None)] = \
+          self._evaluators[evaluator_key]
+    #TODO: If we don't use MMTK, think of a way to associate these evaluators with the compound
+        return
 
     # Otherwise create a new evaluator
     fflist = []
@@ -317,25 +319,27 @@ class System:
         self._forceFields['ExternalRestraint'].set_k_angular(\
           params['k_angular_ext'])
 
-    compoundFF = fflist[0]
-    for ff in fflist[1:]:
-      compoundFF += ff
-    self.top.universe.setForceField(compoundFF)
+    if MMTK:
+      compoundFF = fflist[0]
+      for ff in fflist[1:]:
+        compoundFF += ff
+      self.top.universe.setForceField(compoundFF)
 
-    if self.top_RL.universe is not None:
-      if 'OBC_RL' in params.keys():
-        if not 'OBC_RL' in self._forceFields.keys():
-          from AlGDock.ForceFields.OBC.OBC import OBCForceField
-          self._forceFields['OBC_RL'] = OBCForceField()
-        self._forceFields['OBC_RL'].set_strength(params['OBC_RL'])
-        if (params['OBC_RL'] > 0):
-          self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
+      if self.top_RL.universe is not None:
+        if 'OBC_RL' in params.keys():
+          if not 'OBC_RL' in self._forceFields.keys():
+            from AlGDock.ForceFields.OBC.OBC import OBCForceField
+            self._forceFields['OBC_RL'] = OBCForceField()
+          self._forceFields['OBC_RL'].set_strength(params['OBC_RL'])
+          if (params['OBC_RL'] > 0):
+            self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
 
-    eval = ForceField.EnergyEvaluator(\
-      self.top.universe, self.top.universe._forcefield, None, None, None, None)
-    eval.key = evaluator_key
-    self.top.universe._evaluator[(None, None, None)] = eval
-    self._evaluators[evaluator_key] = eval
+      eval = ForceField.EnergyEvaluator(\
+        self.top.universe, self.top.universe._forcefield, None, None, None, None)
+      eval.key = evaluator_key
+      self.top.universe._evaluator[(None, None, None)] = eval
+      self._evaluators[evaluator_key] = eval
+    #TODO: need to create EnergyEvaluator using openmm
 
   def energyTerms(self, confs, E=None, process='CD'):
     """Calculates energy terms for a series of configurations
