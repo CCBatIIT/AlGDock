@@ -522,6 +522,8 @@ class System:
     self.setParams({'MM': True, 'ELE': 1})
     gd = self._forceFields['ELE'].grid_data
     dims = gd['counts']
+    #TODO: what is this factor? Temporarily set it to 1.
+    factor = 1
     center = factor * (gd['counts'] * gd['spacing'] / 2. + gd['origin'])
     spacing = factor * gd['spacing'][0]
     return (dims, center, spacing)
