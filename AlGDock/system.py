@@ -1,11 +1,21 @@
 import os, sys
 import numpy as np
-
 import copy
 
-import MMTK
-from MMTK.ParticleProperties import Configuration
-from MMTK.ForceFields import ForceField
+try:
+  import MMTK
+  from MMTK.ParticleProperties import Configuration
+  from MMTK.ForceFields import ForceField
+  from MMTK.ForceFields import Amber12SBForceField
+except ImportError:
+  MMTK = None
+
+try:
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+  from openmm.unit import *
+except ImportError:
+  openmm = None
 
 from AlGDock.BindingPMF import scalables
 from AlGDock.BindingPMF import R
@@ -81,10 +91,12 @@ class System:
     self._forceFields = {}
 
     # Molecular mechanics force fields
-    from MMTK.ForceFields import Amber12SBForceField
-    self._forceFields['gaff'] = Amber12SBForceField(
+    if MMTK:
+      self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self.args.FNs['forcefield'],
       mod_files=self.args.FNs['frcmodList'])
+    else:
+      self._forceFields['gaff'] = None # Use ambertools to generate topology files, which include GAFF parameters.
 
   def setParams(self, params):
     """Sets the universe evaluator to values appropriate for the parameters.
