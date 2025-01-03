@@ -18,8 +18,13 @@ except ImportError:
   openmm = None
 
 from AlGDock.BindingPMF import scalables
-from AlGDock.BindingPMF import R
 from AlGDock.BindingPMF import HMStime
+import AlGDock.IO
+prmtop_IO = AlGDock.IO.prmtop()
+varnames = ['POINTERS','TITLE','ATOM_NAME','AMBER_ATOM_TYPE','CHARGE','MASS',\
+            'NONBONDED_PARM_INDEX','LENNARD_JONES_ACOEF','LENNARD_JONES_BCOEF',\
+            'ATOM_TYPE_INDEX','BONDS_INC_HYDROGEN','BONDS_WITHOUT_HYDROGEN',\
+            'RADII','SCREEN']
 
 term_map = {
   'cosine dihedral angle': 'MM',
@@ -220,48 +225,49 @@ class System:
                 scaling_factors_ELE = []
                 scaling_factors_LJr = []
                 ligand_prmtop = self.args.FNs['prmtop']['L']
-                ligand_inpcrd = self.args.FNs['inpcrd']['L']
                 prmtop = AmberPrmtopFile(ligand_prmtop)
-                inpcrd = AmberInpcrdFile(ligand_inpcrd)
                 topology = prmtop.topology
-                positions = inpcrd.positions  # angstrom
 
-                r_distance = dict()
-                for bond in topology.bonds():
-                  atom1, atom2 = bond
-                  atom1_position = list(positions[atom1.index].value_in_unit(nanometer))
-                  atom2_position = list(positions[atom2.index].value_in_unit(nanometer))
-                  dist = ((atom1_position[0] - atom2_position[0]) ** 2 +
-                        (atom1_position[1] - atom2_position[1]) ** 2 +
-                        (atom1_position[2] - atom2_position[2]) ** 2) ** 0.5
-                  dist = round(dist, 6)
-                  r_distance[atom1.name] = (atom2.name, dist)
-                  r_distance[atom2.name] = (atom1.name, dist)
+                prmtop_alg = prmtop_IO.read(ligand_prmtop, varnames)
+                NATOM = prmtop_alg['POINTERS'][0]
+                NTYPES = prmtop_alg['POINTERS'][1]
+                LJ_radius = np.ndarray(shape=(NTYPES), dtype=float)
+                LJ_depth = np.ndarray(shape=(NTYPES), dtype=float)
+                for i in range(NTYPES):
+                  LJ_index = prmtop_alg['NONBONDED_PARM_INDEX'][NTYPES * i + i] - 1
+                  if prmtop_alg['LENNARD_JONES_ACOEF'][LJ_index] < 1.0e-6:
+                    LJ_radius[i] = 0
+                    LJ_depth[i] = 0
+                  else:
+                    factor = 2 * prmtop_alg['LENNARD_JONES_ACOEF'][LJ_index] / prmtop_alg['LENNARD_JONES_BCOEF'][
+                      LJ_index]
+                    LJ_radius[i] = pow(factor, 1.0 / 6.0) * 0.5
+                    LJ_depth[i] = prmtop_alg['LENNARD_JONES_BCOEF'][LJ_index] / 2 / factor
+                root_LJ_depth = np.sqrt(LJ_depth)
+                LJ_diameter = LJ_radius * 2
+                atom_type_indicies = [prmtop_alg['ATOM_TYPE_INDEX'][atom_index] - 1 for atom_index in range(NATOM)]
+                scaling_factor_LJr_dict = dict()
+                for (name, type_index) in zip(prmtop_alg['ATOM_NAME'], atom_type_indicies):
+                  scaling_factor_LJr_dict[name.strip()] = round(
+                    4.184 * root_LJ_depth[type_index] * (LJ_diameter[type_index] ** 6), 6)
+
                 atoms_name = [a.name for a in topology.atoms()]
                 atoms_elements = dict()
                 for a in topology.atoms():
                   atoms_elements[a.name] = a.element.symbol
-
                 system = prmtop.createSystem(nonbondedMethod=NoCutoff, nonbondedCutoff=1.0 * nanometer,
                                              constraints=None)
                 force = system.getForce(3)
                 assert force.getName() == 'NonbondedForce'
-
                 for i in range(system.getNumParticles()):
                   atom_name = atoms_name[i]
                   charge, sigma, epsilon = force.getParticleParameters(i)
                   charge_val = charge.value_in_unit(elementary_charge)
-                  sigma_val = round(sigma.value_in_unit(nanometer), 6)
                   epsilon = epsilon.value_in_unit(kilojoule / mole)
                   if epsilon == 0:
                     continue
-                  r = r_distance[atom_name][1]
-                  lj_potential = 4 * epsilon * ((sigma_val / r) ** 12 - (sigma_val / r) ** 6)
-                  # print(atoms_name[i], '4 *', epsilon, '* ((', sigma_val, '/r ))**12 -', sigma_val, '/r ))**6 =',
-                  #       ljr_data[atom_name])
-                  scaling_factors_LJr.append(lj_potential)
                   scaling_factors_ELE.append(round(charge_val * 4.184, 6))
-
+                  scaling_factors_LJr.append(scaling_factor_LJr_dict[atom_name])
                 scaling_factors_ELE = np.array(scaling_factors_ELE)
                 scaling_factors_LJr = np.array(scaling_factors_LJr)
 
