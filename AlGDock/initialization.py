@@ -18,47 +18,47 @@ except:
 from AlGDock.BindingPMF import R, scalables
 
 class Initialization():
-  """Establishes the initial protocol of thermodynamic states
+    """Establishes the initial protocol of thermodynamic states
 
-  Attributes
-  ----------
-  args : AlGDock.simulation_arguments.SimulationArguments
-    Simulation arguments
-  log : AlGDock.logger.Logger
-    Simulation log
-  top : AlGDock.topology.Topology
-    Topology of the ligand
-  system : AlGDock.system.System
-    Simulation system
-  _get_confs_to_rescore : function
-    Returns the configurations to rescore
-  iterator : AlGDock.simulation_iterator.SimulationIterator
-    Performs an iteration on one thermodynamic state
-  data : AlGDock.simulation_data.SimulationData
-    Stores results from the simulation
-  """
-  def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
-    """Initializes the class
-
-    Parameters
+    Attributes
     ----------
     args : AlGDock.simulation_arguments.SimulationArguments
       Simulation arguments
     log : AlGDock.logger.Logger
       Simulation log
-    top : AlGDock.topology.Topology
+    top : AlGDock.topology.TopologyMMTK
       Topology of the ligand
     system : AlGDock.system.System
       Simulation system
+    _get_confs_to_rescore : function
+      Returns the configurations to rescore
     iterator : AlGDock.simulation_iterator.SimulationIterator
       Performs an iteration on one thermodynamic state
     data : AlGDock.simulation_data.SimulationData
       Stores results from the simulation
-    save : AlGDock.BindingPMF.save
-      Saves the data
-    _u_kln : AlGDock.BindingPMF._u_kln
-      Evaluates energies in different thermodynamic states
     """
+  def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
+      """Initializes the class
+
+      Parameters
+      ----------
+      args : AlGDock.simulation_arguments.SimulationArguments
+        Simulation arguments
+      log : AlGDock.logger.Logger
+        Simulation log
+      top : AlGDock.topology.TopologyMMTK
+        Topology of the ligand
+      system : AlGDock.system.System
+        Simulation system
+      iterator : AlGDock.simulation_iterator.SimulationIterator
+        Performs an iteration on one thermodynamic state
+      data : AlGDock.simulation_data.SimulationData
+        Stores results from the simulation
+      save : AlGDock.BindingPMF.save
+        Saves the data
+      _u_kln : AlGDock.BindingPMF._u_kln
+        Evaluates energies in different thermodynamic states
+      """
     self.args = args
     self.log = log
     self.top = top

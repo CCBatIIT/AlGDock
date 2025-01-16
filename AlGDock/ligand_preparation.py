@@ -20,7 +20,7 @@ class LigandPreparation():
       Simulation arguments
     log : AlGDock.logger.Logger
       Simulation log
-    top : AlGDock.topology.Topology
+    top : AlGDock.topology.TopologyMMTK
       Topology of the ligand
     system : AlGDock.system.System
       Simulation system
@@ -42,7 +42,7 @@ class LigandPreparation():
           Simulation arguments
         log : AlGDock.logger.Logger
           Simulation log
-        top : AlGDock.topology.Topology
+        top : AlGDock.topology.TopologyMMTK
           Topology of the ligand
         system : AlGDock.system.System
           Simulation system

@@ -19,7 +19,7 @@ except ImportError:
 
 from AlGDock.logger import NullDevice
 
-class Topology:
+class TopologyMMTK:
   """Describes the system to simulate
 
   ...

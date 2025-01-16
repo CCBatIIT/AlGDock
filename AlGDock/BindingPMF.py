@@ -120,9 +120,9 @@ class BPMF:
   def _setup(self):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
 
-    from AlGDock.topology import Topology
-    self.top = Topology(self.args)
-    self.top_RL = Topology(self.args, includeReceptor=True)
+    from AlGDock.topology import TopologyMMTK
+    self.top = TopologyMMTK(self.args)
+    self.top_RL = TopologyMMTK(self.args, includeReceptor=True)
 
     # Initialize rmsd calculation function
     from AlGDock.RMSD import hRMSD

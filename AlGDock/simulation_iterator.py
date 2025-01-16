@@ -7,32 +7,32 @@ import time
 
 
 class SimulationIterator:
-  """SimulationIterators take a molecular configuration and generate a new one.
+    """SimulationIterators take a molecular configuration and generate a new one.
 
-  ...
+    ...
 
-  Attributes
-  ----------
-  args : AlGDock.simulation_arguments.SimulationArguments
-    Simulation arguments
-  top : AlGDock.topology.Topology
-    Topology with ligand
-  system : AlGDock.system.System
-    System
-  _sampler : dict
-  """
-  def __init__(self, args, top, system):
-    """Initializes the class
-
-    Parameters
+    Attributes
     ----------
     args : AlGDock.simulation_arguments.SimulationArguments
       Simulation arguments
-    top : AlGDock.topology.Topology
+    top : AlGDock.topology.TopologyMMTK
       Topology with ligand
     system : AlGDock.system.System
       System
+    _sampler : dict
     """
+  def __init__(self, args, top, system):
+      """Initializes the class
+
+      Parameters
+      ----------
+      args : AlGDock.simulation_arguments.SimulationArguments
+        Simulation arguments
+      top : AlGDock.topology.TopologyMMTK
+        Topology with ligand
+      system : AlGDock.system.System
+        System
+      """
     self.args = args
     self.top = top
     self.system = system
