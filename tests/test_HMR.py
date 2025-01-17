@@ -15,7 +15,7 @@ for atom in molecule.atoms:
 import numpy as np
 import openmm
 from openmm.app import AmberPrmtopFile, NoCutoff
-#from AlGDock.HMR import hydrogen_mass_repartitioning_openmm
+from AlGDock.HMR import hydrogen_mass_repartitioning_openmm
 H_mass = 4
 
 prmtopL = AmberPrmtopFile("ligand.prmtop")
