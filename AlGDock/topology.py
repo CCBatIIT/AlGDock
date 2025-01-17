@@ -145,17 +145,20 @@ class TopologyUsingOpenMM:
     original_stderr = sys.stderr
     sys.stderr = NullDevice()
     prmtopL = AmberPrmtopFile(self.args.FNs['prmtop']["L"])
+    inpcrdL = AmberInpcrdFile(self.args.FNs['inpcrd']["L"])
     self.OMM_systemL = prmtopL.createSystem(nonbondedMethod=NoCutoff, constraints=None)
     self.molecule = prmtopL.topology
 
     if includeReceptor:
       prmtopR = AmberPrmtopFile(self.args.FNs['prmtop']["R"])
+      inpcrdR = AmberInpcrdFile(self.args.FNs['inpcrd']["R"])
       self.OMM_systemR = prmtopR.createSystem(nonbondedMethod=NoCutoff, constraints=None)
       self.molecule_R = prmtopR.topology
     else:
       self.molecule_R = None
 
     sys.stderr = original_stderr
+    dummy_integrator = openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
 
     # Hydrogen Mass Repartitioning
     # (sets hydrogen mass to H_mass and scales other masses down)
@@ -163,11 +166,15 @@ class TopologyUsingOpenMM:
       from AlGDock.HMR import hydrogen_mass_repartitioning_openmm
       self.OMM_systemL = hydrogen_mass_repartitioning_openmm(self.molecule,  self.OMM_systemL,\
         args.params['BC']['H_mass'])
-
+    self.OMM_simulaitonL = openmm.app.Simulation(prmtopL.topology, self.OMM_systemL, dummy_integrator)
+    self.OMM_simulaitonL.context.setPositions(inpcrdL.positions)
     self.inv_prmtop_atom_order_L = self.prmtop_atom_order_L = np.array([atom.index \
       for atom in self.molecule.atoms()], dtype=int)
 
     if includeReceptor:
+      self.OMM_simulaitonR = openmm.app.Simulation(prmtopR.topology, self.OMM_systemR, dummy_integrator)
+      self.OMM_simulaitonR.context.setPositions(inpcrdR.positions)
+
       if (args.FNs['prmtop']['R'] is not None) and \
          (args.FNs['prmtop']['RL'] is not None):
         prmtopRL = AmberPrmtopFile(self.args.FNs['prmtop']["RL"])
