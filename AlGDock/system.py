@@ -11,9 +11,10 @@ except ImportError:
   MMTK = None
 
 try:
+  import openmm
+  import openmm.unit as unit
   from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
   from openmm import *
-  from openmm.unit import *
 except ImportError:
   openmm = None
 
@@ -88,7 +89,7 @@ class System:
     """
     self.args = args
     self.log = log
-    self.top = top
+    self.top = top   # old-> AlGDock.topology.TopologyMMTK, now: AlGDock.topology.TopologyUsingOpenMM
     self.top_RL = top_RL
     self.starting_pose = starting_pose
 
@@ -133,8 +134,8 @@ class System:
       if evaluator_key in self._evaluators.keys():
         self.top.universe._evaluator[(None,None,None)] = \
           self._evaluators[evaluator_key]
-    #TODO: If we don't use MMTK, think of a way to associate these evaluators with the compound
-        return
+    # In MMTK, these evaluators were associated with the universe (equal to OpenMM system)
+    return
 
     # Otherwise create a new evaluator
     fflist = []
@@ -208,7 +209,6 @@ class System:
               # The maximum value is set so that the electrostatic energy
               # less than or equal to the Lennard-Jones repulsive energy
               # for every heavy atom at every grid point
-              # TODO: For conversion to OpenMM, get ParticleProperties from the Force object
 
               if MMTK:
                 scaling_factors_ELE = np.array([ \
@@ -303,16 +303,24 @@ class System:
        ('k_angular_ext' in params.keys()):
 
       # Load the force field if it has not been loaded
-      if not ('ExternalRestraint' in self._forceFields.keys()):
-        Xo = np.copy(self.top.universe.configuration().array)
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, self.starting_pose))
-        import AlGDock.rigid_bodies
-        rb = AlGDock.rigid_bodies.identifier(self.top.universe,
-                                             self.top.molecule)
-        (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
-        self.top.universe.setConfiguration(Configuration(
-          self.top.universe, Xo))
+      if MMTK:
+        if not ('ExternalRestraint' in self._forceFields.keys()):
+          Xo = np.copy(self.top.universe.configuration().array)
+          self.top.universe.setConfiguration(
+            Configuration(self.top.universe, self.starting_pose))
+          import AlGDock.rigid_bodies
+          rb = AlGDock.rigid_bodies.identifier(self.top.universe,
+                                               self.top.molecule)
+          (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
+          self.top.universe.setConfiguration(Configuration(
+            self.top.universe, Xo))
+      else:
+        if not ('ExternalRestraint' in self._forceFields.keys()):
+          import AlGDock.rigid_bodies
+          # TODO, modify rigid_bodies using openmm
+          # rb = AlGDock.rigid_bodies.identifier(self.top.universe,
+          #                                      self.top.molecule)
+          self.top.OMM_simulationL.context.setPositions(self.starting_pose)
 
         # Create force fields
         from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
@@ -358,6 +366,12 @@ class System:
       self.top.universe._evaluator[(None, None, None)] = eval
       self._evaluators[evaluator_key] = eval
     #TODO: need to create EnergyEvaluator using openmm
+    else:
+      # e.g. fflist=[self._forceFields['OBC']]
+      # self._forceFields['OBC'] = OBCForceField()
+      compoundFF = fflist[0]
+      for ff in fflist[1:]:
+        compoundFF += ff
 
   def energyTerms(self, confs, E=None, process='CD'):
     """Calculates energy terms for a series of configurations
@@ -404,26 +418,45 @@ class System:
       if self.isForce('ExternalRestraint'):
         E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
         E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
-    for c in range(len(confs)):
-      self.top.universe.setConfiguration(
-        Configuration(self.top.universe, confs[c]))
-      eT = self.top.universe.energyTerms()
-      for (key, value) in eT.iteritems():
-        if key == 'electrostatic':
-          pass  # For some reason, MMTK double-counts electrostatic energies
-        elif key.startswith('pose'):
-          # For pose restraints, the energy is per spring constant unit
-          E[term_map[key]][c] += value / params_full[term_map[key]]
-        else:
+    if MMTK:
+      for c in range(len(confs)):
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, confs[c]))
+        eT = self.top.universe.energyTerms()
+        for (key, value) in eT.iteritems():
+          if key == 'electrostatic':
+            pass  # For some reason, MMTK double-counts electrostatic energies
+          elif key.startswith('pose'):
+            # For pose restraints, the energy is per spring constant unit
+            E[term_map[key]][c] += value / params_full[term_map[key]]
+          else:
+            try:
+              E[term_map[key]][c] += value
+            except KeyError:
+              print(key)
+              print('Keys in eT', eT.keys())
+              print('Keys in term map', term_map.keys())
+              print('Keys in E', E.keys())
+              raise Exception('key not found in term map or E')
+      return E
+    else:
+      for c in range(len(confs)):
+        self.top.OMM_simulationL.context.setPositions(confs[c])
+        state = self.top.OMM_simulationL.context.getState(getEnergy=True)
+        force_groups = self.top.OMM_systemL.getNumForces()
+        for i in range(force_groups):
+          self.top.OMM_systemL.getForce(i).setForceGroup(i)
+          group_state = self.top.OMM_simulationL.context.getState(getEnergy=True, groups={i})
+          group_energy = group_state.getPotentialEnergy()
+          force_name = self.top.OMM_systemL.getForce(i).__class__.__name__
           try:
-            E[term_map[key]][c] += value
+            E[term_map[force_name]][c] += group_energy
           except KeyError:
-            print(key)
-            print('Keys in eT', eT.keys())
+            print(force_name)
             print('Keys in term map', term_map.keys())
             print('Keys in E', E.keys())
             raise Exception('key not found in term map or E')
-    return E
+      return E
 
   def paramsFromAlpha(self,
                        alpha,
