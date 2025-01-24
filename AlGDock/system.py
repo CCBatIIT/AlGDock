@@ -320,7 +320,7 @@ class System:
           # TODO, modify rigid_bodies using openmm
           # rb = AlGDock.rigid_bodies.identifier(self.top.universe,
           #                                      self.top.molecule)
-          self.top.OMM_simulationL.context.setPositions(self.starting_pose)
+          self.top.OMM_simulation.context.setPositions(self.starting_pose)
 
         # Create force fields
         from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
@@ -441,14 +441,14 @@ class System:
       return E
     else:
       for c in range(len(confs)):
-        self.top.OMM_simulationL.context.setPositions(confs[c])
-        state = self.top.OMM_simulationL.context.getState(getEnergy=True)
-        force_groups = self.top.OMM_systemL.getNumForces()
+        self.top.OMM_simulation.context.setPositions(confs[c])
+        state = self.top.OMM_simulation.context.getState(getEnergy=True)
+        force_groups = self.top.OMM_system.getNumForces()
         for i in range(force_groups):
-          self.top.OMM_systemL.getForce(i).setForceGroup(i)
-          group_state = self.top.OMM_simulationL.context.getState(getEnergy=True, groups={i})
+          self.top.OMM_system.getForce(i).setForceGroup(i)
+          group_state = self.top.OMM_simulation.context.getState(getEnergy=True, groups={i})
           group_energy = group_state.getPotentialEnergy()
-          force_name = self.top.OMM_systemL.getForce(i).__class__.__name__
+          force_name = self.top.OMM_system.getForce(i).__class__.__name__
           try:
             E[term_map[force_name]][c] += group_energy
           except KeyError:

@@ -21,10 +21,23 @@ from collections import OrderedDict
 
 from AlGDock import dictionary_tools
 
-import MMTK
-import MMTK.Units
-from MMTK.ParticleProperties import Configuration
-from MMTK.ForceFields import ForceField
+try:
+  import MMTK
+  import MMTK.Units
+  from MMTK.ParticleProperties import Configuration
+  from MMTK.ForceFields import ForceField
+except ImportError:
+  MMTK = None
+
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+  import parmed as pmd # need to install ParmEd
+
+except ImportError:
+  openmm = None
 
 import Scientific
 try:
@@ -119,11 +132,14 @@ class BPMF:
 
   def _setup(self):
     """Creates an MMTK InfiniteUniverse and adds the ligand"""
-
-    from AlGDock.topology import TopologyMMTK
-    self.top = TopologyMMTK(self.args)
-    self.top_RL = TopologyMMTK(self.args, includeReceptor=True)
-
+    if MMTK:
+      from AlGDock.topology import TopologyMMTK
+      self.top = TopologyMMTK(self.args)
+      self.top_RL = TopologyMMTK(self.args, includeReceptor=True)
+    else:
+      from AlGDock.topology import TopologyUsingOpenMM
+      self.top = TopologyUsingOpenMM(self.args)
+      self.top_RL = TopologyUsingOpenMM(self.args, includeReceptor=True)
     # Initialize rmsd calculation function
     from AlGDock.RMSD import hRMSD
     self.get_rmsds = hRMSD(self.args.FNs['prmtop']['L'], \
@@ -172,9 +188,16 @@ class BPMF:
           coms = []
           for (conf, E) in reversed(zip(confs, Es['total'])):
             if E <= cutoffE:
-              self.top.universe.setConfiguration(
+              if MMTK:
+                self.top.universe.setConfiguration(
                 Configuration(self.top.universe, conf))
-              coms.append(np.array(self.top.universe.centerOfMass()))
+                coms.append(np.array(self.top.universe.centerOfMass()))
+
+              else:
+                self.top.OMM_simulaiton.context.setPositions(conf)
+                structure = pmd.openmm.load_topology(self.top.molecule, self.top.OMM_system)
+                coms.append(np.array(structure.center_of_mass) * 0.1) # Convert from Å to nm
+
             else:
               break
           print '  %d configurations fit in the binding site' % len(coms)
@@ -185,8 +208,12 @@ class BPMF:
               (coms - center)**2, 1))) * 10.) / 10., 0.6)
           self.args.params['CD']['site_max_R'] = max_R
           self.args.params['CD']['site_center'] = center
-          self.top.universe.setConfiguration(
+          if MMTK:
+            self.top.universe.setConfiguration(
             Configuration(self.top.universe, confs[-1]))
+          else:
+            self.top.OMM_simulaiton.context.setPositions(confs[-1])
+
         if ((self.args.params['CD']['site_max_R'] is None) or \
             (self.args.params['CD']['site_center'] is None)):
           raise Exception('No binding site parameters!')
@@ -205,11 +232,19 @@ class BPMF:
         self.args.FNs['inpcrd']['R'], multiplier=0.1)
     elif self.args.FNs['inpcrd']['RL'] is not None:
       complex_crd = IO_crd.read(self.args.FNs['inpcrd']['RL'], multiplier=0.1)
-      lig_crd = complex_crd[self.top_RL.L_first_atom:self.top_RL.L_first_atom + \
+      if MMTK:
+        lig_crd = complex_crd[self.top_RL.L_first_atom:self.top_RL.L_first_atom + \
         self.top.universe.numberOfAtoms(),:]
-      self.data['CD'].confs['receptor'] = np.vstack(\
+        self.data['CD'].confs['receptor'] = np.vstack(\
         (complex_crd[:self.top_RL.L_first_atom,:],\
          complex_crd[self.top_RL.L_first_atom + self.top.universe.numberOfAtoms():,:]))
+      else:
+        natoms = sum(1 for _ in self.top.OMM_simulaiton.topology.atoms())
+        lig_crd = complex_crd[self.top_RL.L_first_atom:self.top_RL.L_first_atom + natoms,:]
+        self.data['CD'].confs['receptor'] = np.vstack(\
+        (complex_crd[:self.top_RL.L_first_atom,:],\
+         complex_crd[self.top_RL.L_first_atom + natoms:,:]))
+
     elif self.args.FNs['inpcrd']['L'] is not None:
       self.data['CD'].confs['receptor'] = None
       if os.path.isfile(self.args.FNs['inpcrd']['L']):
@@ -218,14 +253,22 @@ class BPMF:
       lig_crd = None
 
     if lig_crd is not None:
-      self.data['CD'].confs['ligand'] = lig_crd[self.top.
-                                                inv_prmtop_atom_order_L, :]
-      self.top.universe.setConfiguration(\
+      if MMTK:
+        self.data['CD'].confs['ligand'] = lig_crd[self.top.inv_prmtop_atom_order_L, :]
+        self.top.universe.setConfiguration(\
         Configuration(self.top.universe,self.data['CD'].confs['ligand']))
-      if self.top_RL.universe is not None:
-        self.top_RL.universe.setConfiguration(\
+      else:
+        self.data['CD'].confs['ligand'] = lig_crd
+        self.top.OMM_simulaiton.context.setPositions(self.data['CD'].confs['ligand'])
+      if MMTK:
+        if self.top_RL.universe is not None:
+          self.top_RL.universe.setConfiguration(\
           Configuration(self.top_RL.universe, \
           np.vstack((self.data['CD'].confs['receptor'],self.data['CD'].confs['ligand']))))
+      else:
+        if self.top_RL.OMM_simulaiton is not None:
+          self.top.OMM_simulaiton.context.setPositions(self.data['CD'], \
+          np.vstack((self.data['CD'].confs['receptor'],self.data['CD'].confs['ligand'])))
 
     if self.args.params['CD']['rmsd'] is not False:
       if self.args.params['CD']['rmsd'] is True:
@@ -234,9 +277,13 @@ class BPMF:
         else:
           raise Exception('Reference structure for rmsd calculations unknown')
       else:
-        rmsd_crd = IO_crd.read(self.args.params['CD']['rmsd'], \
+        if MMTK:
+          rmsd_crd = IO_crd.read(self.args.params['CD']['rmsd'], \
           natoms=self.top.universe.numberOfAtoms(), multiplier=0.1)
-        rmsd_crd = rmsd_crd[self.top.inv_prmtop_atom_order_L, :]
+          rmsd_crd = rmsd_crd[self.top.inv_prmtop_atom_order_L, :]
+        else:
+          n_atoms = sum(1 for _ in self.top.OMM_simulaiton.topology.atoms())
+          rmsd_crd = IO_crd.read(self.args.params['CD']['rmsd'], natoms=n_atoms, multiplier=0.1)
       self.data['CD'].confs['rmsd'] = rmsd_crd
 
       self.get_rmsds.set_ref_configuration(self.data['CD'].confs['rmsd'])
@@ -244,8 +291,11 @@ class BPMF:
     # If configurations are being rescored, start with a docked structure
     (confs, Es) = self._get_confs_to_rescore(site=False, minimize=False)
     if len(confs) > 0:
-      self.top.universe.setConfiguration(
+      if MMTK:
+        self.top.universe.setConfiguration(
         Configuration(self.top.universe, confs[-1]))
+      else:
+        self.top.OMM_simulaiton.context.setPositions(confs[-1])
 
     from AlGDock.simulation_iterator import SimulationIterator
     self.iterator = SimulationIterator(self.args, self.top, self.system)

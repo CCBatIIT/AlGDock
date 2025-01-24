@@ -18,7 +18,7 @@ except:
 from AlGDock.BindingPMF import R, scalables
 
 class Initialization():
-    """Establishes the initial protocol of thermodynamic states
+  """Establishes the initial protocol of thermodynamic states
 
     Attributes
     ----------
@@ -36,9 +36,9 @@ class Initialization():
       Performs an iteration on one thermodynamic state
     data : AlGDock.simulation_data.SimulationData
       Stores results from the simulation
-    """
+  """
   def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
-      """Initializes the class
+    """Initializes the class
 
       Parameters
       ----------
@@ -58,7 +58,7 @@ class Initialization():
         Saves the data
       _u_kln : AlGDock.BindingPMF._u_kln
         Evaluates energies in different thermodynamic states
-      """
+    """
     self.args = args
     self.log = log
     self.top = top
