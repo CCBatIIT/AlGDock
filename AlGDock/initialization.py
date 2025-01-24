@@ -4,10 +4,20 @@ import time
 import numpy as np
 
 import copy
+try:
+  import MMTK
+  import MMTK.Units
+  from MMTK.ParticleProperties import Configuration
+except ImportError:
+  MMTK = None
 
-import MMTK
-import MMTK.Units
-from MMTK.ParticleProperties import Configuration
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+except ImportError:
+  OpenMM = None
 
 import Scientific
 try:
@@ -106,9 +116,15 @@ class Initialization():
       # Get initial potential energy
       Es_o = []
       for seed in seeds:
-        self.top.universe.setConfiguration(
+        if MMTK:
+          self.top.universe.setConfiguration(
           Configuration(self.top.universe, seed))
-        Es_o.append(self.top.universe.energy())
+          Es_o.append(self.top.universe.energy())
+        else:
+          self.top.OMM_simulaiton.context.setPositions(seed)
+          state = self.top.OMM_simulation.context.getState(getEnergy=True)
+          Es_o.append(state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)) #kj/mol
+
       Es_o = np.array(Es_o)
       # Perform simulation
       results = []
@@ -145,9 +161,16 @@ class Initialization():
       delta_t = np.array([result['delta_t'] for result in results])
       if np.std(delta_t) > 1E-3:
         # If the integrator adapts the time step, take an average
-        delta_t = min(max(np.mean(delta_t), \
+        if MMTK:
+          delta_t = min(max(np.mean(delta_t), \
           self.args.params[process]['delta_t']/5.0*MMTK.Units.fs), \
           self.args.params[process]['delta_t']*0.1*MMTK.Units.fs)
+        else:
+          delta_t = min(max(np.mean(delta_t), \
+          self.args.params[process]['delta_t'] / 5.0 * unit.femtosecond), \
+          self.args.params[process]['delta_t'] * 0.1 * unit.femtosecond)
+
+
       else:
         delta_t = delta_t[0]
 
@@ -157,26 +180,44 @@ class Initialization():
         acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
           np.sum([r['att_Sampler'] for r in results])
         if acc_rate > 0.8:
-          delta_t += 0.125 * MMTK.Units.fs
+          if MMTK:
+            delta_t += 0.125 * MMTK.Units.fs
+          else:
+            delta_t += 0.125 * unit.femtosecond
+
         elif acc_rate < 0.4:
-          if delta_t < 2.0 * MMTK.Units.fs:
-            params_k['steps_per_trial'] = max(
-              int(params_k['steps_per_trial'] / 2.), 1)
-          delta_t -= 0.25 * MMTK.Units.fs
-          if acc_rate < 0.1:
+          if MMTK:
+            if delta_t < 2.0 * MMTK.Units.fs:
+              params_k['steps_per_trial'] = max(
+                int(params_k['steps_per_trial'] / 2.), 1)
             delta_t -= 0.25 * MMTK.Units.fs
+            if acc_rate < 0.1:
+              delta_t -= 0.25 * MMTK.Units.fs
+          else:
+            if delta_t < 2.0 * unit.femtosecond:
+              params_k['steps_per_trial'] = max(
+                int(params_k['steps_per_trial'] / 2.), 1)
+            delta_t -= 0.25 * unit.femtosecond
+            if acc_rate < 0.1:
+              delta_t -= 0.25 * unit.femtosecond
         else:
           attempts_left = 0
       else:
         # For other integrators, make sure the time step
         # is small enough to see changes in the energy
         if (np.std(deltaEs) < 1E-3):
-          delta_t -= 0.25 * MMTK.Units.fs
+          if MMTK:
+            delta_t -= 0.25 * MMTK.Units.fs
+          else:
+            delta_t -= 0.25 * unit.femtosecond
         else:
           attempts_left = 0
-
-      if delta_t < 0.1 * MMTK.Units.fs:
-        delta_t = 0.1 * MMTK.Units.fs
+      if MMTK:
+        if delta_t < 0.1 * MMTK.Units.fs:
+          delta_t = 0.1 * MMTK.Units.fs
+      else:
+        if delta_t < 0.1 * unit.femtosecond:
+          delta_t = 0.1 * unit.femtosecond
 
       params_k['delta_t'] = delta_t
 
