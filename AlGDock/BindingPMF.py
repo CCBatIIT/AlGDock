@@ -1521,8 +1521,9 @@ class BPMF:
     elif self.args.FNs['score'].endswith('.mol2') or \
          self.args.FNs['score'].endswith('.mol2.gz'):
       import AlGDock.IO
-      IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
-      (confs, Es) = IO_dock6_mol2.read(self.args.FNs['score'], \
+      #IO_dock6_mol2 = AlGDock.IO.dock6_mol2() # removed as part of refactor
+      IO_dock_parser = AlGDock.IO.dock_parser()
+      (confs, Es) = IO_dock_parser.read(self.args.FNs['score'], \
         reorder=self.top.inv_prmtop_atom_order_L,
         multiplier=0.1) # to convert Angstroms to nanometers
       count['dock6'] = len(confs)

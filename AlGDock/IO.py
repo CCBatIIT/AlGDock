@@ -325,6 +325,255 @@ class crd:
 
     F.close()
 
+class dock_parser:
+    """Handles mol2 and pdbqt files from UCSF DOCK 6
+    
+    Reads output files and writes similar formatted files.
+    Detects format based on file extension.
+    """
+    def __init__(self):
+        pass
+
+    def read(self, FN, reorder=None, multiplier=None):
+        """Read a mol2 or pdbqt file and extract conformations and energies"""
+        confs = []
+        E = {}
+
+        if (FN is None) or (not os.path.isfile(FN)):
+            return (confs, E)
+
+        if FN.endswith('.mol2') or FN.endswith('.mol2.gz'):
+            return self._read_mol2(FN, reorder, multiplier)
+        elif FN.endswith('.pdbqt') or FN.endswith('.pdbqt.gz'):
+            return self._read_pdbqt(FN, reorder, multiplier)
+        else:
+            raise Exception('Unknown file type - must be .mol2[.gz] or .pdbqt[.gz]')
+
+    def write(self, templateFN, confs, FN, energies=None, reorder=None, multiplier=None):
+        """Write conformations to a mol2 or pdbqt file"""
+        if (templateFN is None) or not os.path.isfile(templateFN):
+            raise Exception('Template required')
+
+        if FN.endswith('.mol2'):
+            self._write_mol2(templateFN, confs, FN, reorder, multiplier)
+        elif FN.endswith('.pdbqt'):
+            self._write_pdbqt(templateFN, confs, FN, energies, reorder, multiplier)
+        else:
+            raise Exception('Unknown output format - must be .mol2 or .pdbqt')
+
+    def _read_mol2(self, FN, reorder=None, multiplier=None):
+        """Read a mol2 file"""
+        confs = []
+        E = {}
+
+        # Open file
+        if FN.endswith('.mol2'):
+            mol2F = open(FN, 'r')
+        else:  # .mol2.gz
+            mol2F = gzip.open(FN, 'r')
+
+        models = mol2F.read().strip().split('########## Name:')
+        mol2F.close()
+        models.pop(0)
+
+        if len(models) > 0:
+            for line in models[0].split('\n'):
+                if line.startswith('##########'):
+                    label = line[11:line.find(':')].strip()
+                    E[label] = []
+
+            for model in models:
+                fields = model.split('<TRIPOS>')
+
+                conf = np.array([l.split()[2:5] for l in fields[2].split('\n')[1:-1]],
+                               dtype=float)
+                if multiplier is not None:
+                    conf = multiplier * conf
+                if reorder is not None:
+                    conf = conf[reorder, :]
+
+                for line in fields[0].split('\n'):
+                    if line.startswith('##########'):
+                        label = line[11:line.find(':')].strip()
+                        if not label in E.keys():
+                            E[label] = [0] * len(confs)
+                        E[label].append(float(line.split()[-1]))
+
+                confs.append(conf)
+        return (confs, E)
+
+    def _write_mol2(self, templateFN, confs, FN, reorder=None, multiplier=None):
+        """Write conformations to a mol2 file"""
+        # Read template
+        if templateFN.endswith('.mol2'):
+            mol2F = open(templateFN, 'r')
+        else:  # .mol2.gz
+            mol2F = gzip.open(templateFN, 'r')
+        template = mol2F.read().strip()
+        mol2F.close()
+
+        if template.find('########## Name:') > -1:
+            template = template.split('########## Name:')[1]
+        template = template[template.find('@<TRIPOS>'):]
+
+        header = template[template.find('@<TRIPOS>MOLECULE'):template.find('@<TRIPOS>ATOM') + 14]
+        body = template[template.find('@<TRIPOS>ATOM') +
+                       14:template.find('\n@<TRIPOS>BOND')].split('\n')
+        footer = template[template.find('\n@<TRIPOS>BOND'):] + '\n'
+
+        # Write output
+        with open(FN, 'w') as F:
+            for conf in confs:
+                if multiplier is not None:
+                    conf = multiplier * conf
+                if reorder is not None:
+                    conf = conf[reorder, :]
+                F.write(header + \
+                    '\n'.join([body[ind][:16] + \
+                               ''.join(['%10.4f'%x for x in conf[ind]]) + \
+                               body[ind][46:] for ind in range(len(body))]) \
+                    + footer)
+
+    def _read_pdbqt(self, FN, reorder=None, multiplier=None):
+        """Read a pdbqt file"""
+        confs = []
+        E = {'ENERGY': []}
+    
+        # Open file
+        if FN.endswith('.pdbqt'):
+            pdbqtF = open(FN, 'r')
+        else:  # .pdbqt.gz
+            pdbqtF = gzip.open(FN, 'r')
+    
+        content = pdbqtF.read()
+        pdbqtF.close()
+    
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
+    
+        # Process the file line by line
+        current_atoms = []
+        seen_atoms = set()
+        current_conf = None
+        
+        lines = content.split('\n')
+        for line in lines:
+            if line.startswith('MODEL'):
+                # Reset state for new model
+                current_atoms = []
+                seen_atoms = set()
+                current_conf = None
+                
+            elif line.startswith('ROOT') or line.startswith('BRANCH'):
+                # Both ROOT and BRANCH sections can contain atoms
+                pass
+                
+            elif line.startswith('REMARK VINA RESULT:'):
+                energy = float(line.split()[3])
+                if len(E['ENERGY']) < 20:  # Only take first 20 energies
+                    E['ENERGY'].append(energy)
+                
+            elif line.startswith('ATOM') or line.startswith('HETATM'):
+                atom_num = int(line[6:11])
+                if atom_num not in seen_atoms:
+                    seen_atoms.add(atom_num)
+                    x = float(line[30:38])
+                    y = float(line[38:46])
+                    z = float(line[46:54])
+                    current_atoms.append([x, y, z])
+                    
+            elif line.startswith('ENDMDL'):
+                if current_atoms and len(confs) < 20:  # Only take first 20 conformations
+                    conf = np.array(current_atoms, dtype=float)
+                    if multiplier is not None:
+                        conf = multiplier * conf
+                    if reorder is not None:
+                        conf = conf[reorder, :]
+                    confs.append(conf)
+                current_atoms = []
+                seen_atoms = set()
+    
+        return (confs, E)
+
+    def _write_pdbqt(self, templateFN, confs, FN, energies=None, reorder=None, multiplier=None):
+        """Write conformations to a pdbqt file"""
+        # Read template
+        if templateFN.endswith('.pdbqt'):
+            pdbqtF = open(templateFN, 'r')
+        else:  # .pdbqt.gz
+            pdbqtF = gzip.open(templateFN, 'r')
+        
+        template = pdbqtF.read()
+        if isinstance(template, bytes):
+            template = template.decode('utf-8')
+        pdbqtF.close()
+
+        # Extract remarks section
+        lines = template.split('\n')
+        remark_template = []
+        root_start = -1
+        for i, line in enumerate(lines):
+            if line.startswith('ROOT'):
+                root_start = i
+                break
+            if line.startswith('REMARK'):
+                if not line.startswith('REMARK VINA RESULT:'):  # Skip energy remark
+                    remark_template.append(line)
+        
+        # Write output file
+        with open(FN, 'w') as F:
+            for i, conf in enumerate(confs):
+                if multiplier is not None:
+                    conf = multiplier * conf
+                if reorder is not None:
+                    conf = conf[reorder, :]
+
+                # Write model marker
+                F.write('MODEL {0}\n'.format(i+1))
+                
+                # Write VINA energy first
+                if energies and 'ENERGY' in energies:
+                    F.write('REMARK VINA RESULT:      {0:7.3f}      0.000      0.000\n'.format(
+                        energies['ENERGY'][i]
+                    ))
+                # Write fixed remarks
+                if len(remark_template) > 0:
+                    for remark in remark_template:
+                        F.write(remark + '\n')
+                
+                # Copy structure of template (ROOT/BRANCH sections)
+                atom_idx = 0
+                seen_atoms = set()
+                in_atom_block = False
+                for j in range(root_start, len(lines)):
+                    line = lines[j]
+                    # Write structure markers
+                    if (line.startswith('ROOT') or line.startswith('ENDROOT') or 
+                        line.startswith('BRANCH') or line.startswith('ENDBRANCH')):
+                        F.write(line + '\n')
+                        continue
+                        
+                    # Handle atom lines
+                    if line.startswith('ATOM') or line.startswith('HETATM'):
+                        atom_num = int(line[6:11])
+                        if atom_num not in seen_atoms:
+                            seen_atoms.add(atom_num)
+                            # Update coordinates while preserving rest of line
+                            new_line = '{0}{1:8.3f}{2:8.3f}{3:8.3f}{4}'.format(
+                                line[:30],
+                                conf[atom_idx][0],
+                                conf[atom_idx][1],
+                                conf[atom_idx][2],
+                                line[54:]
+                            )
+                            F.write(new_line + '\n')
+                            atom_idx += 1
+                        else:
+                            F.write(line + '\n')
+                    elif line.strip():  # Write other non-empty lines
+                        F.write(line + '\n')
+                
+                F.write('ENDMDL\n')
 
 class dock6_mol2:
   """Handles mol2 from UCSF DOCK 6

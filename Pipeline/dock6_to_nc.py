@@ -11,8 +11,8 @@ if os.path.isfile(outFN):
   sys.exit()
 
 import AlGDock.IO
-IO_dock6_mol2 = AlGDock.IO.dock6_mol2()
-(confs, Es) = IO_dock6_mol2.read(inFN)
+IO_dock6_mol2 = AlGDock.IO.dock_parser()
+(confs, Es) = IO_dock_parser.read(inFN)
 
 if confs==[]:
   F = open(inFN,'w')
