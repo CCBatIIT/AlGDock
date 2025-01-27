@@ -112,7 +112,7 @@ ef_evaluator(PyFFEnergyTermObject *self,
   }
   else {
     energy->energy_terms[self->index] =
-      computeBornEnergy(obc, obcParameters, &Igrid, coordinates);
+      computeBornEnergy(obc, obcParameters, (const double*)Igrid, coordinates);
   }
 }
 

@@ -7,19 +7,19 @@ import cPickle as pickle
 import gzip
 import copy
 import sys
-sys.path.insert(0, '/anvil/projects/x-mcb150144/ellanguyen/Targets/Installers/AlGDock-0.0.1/AlGDock')
 
-import IO 
-from IO import load_pkl_gz
-from IO import write_pkl_gz
-from logger import NullDevice
+
+import AlGDock.IO 
+from AlGDock.IO import load_pkl_gz
+from AlGDock.IO import write_pkl_gz
+from AlGDock.logger import NullDevice
 
 import time
 import numpy as np
 
 from collections import OrderedDict
 
-import dictionary_tools
+from AlGDock import dictionary_tools
 
 import MMTK
 import MMTK.Units
@@ -147,8 +147,7 @@ class BPMF:
     else:
       starting_pose = None
     
-    from system import System
-    #from AlGDock.system import System
+    from AlGDock.system import System
     self.system = System(self.args,
                          self.log,
                          self.top,
@@ -581,7 +580,6 @@ class BPMF:
                               self._get_confs_to_rescore, self.iterator,
                               self.data).run('CD')
     
-    print ('Volume of the sphere: ', self.system._forceFields['site'].volume)
     from AlGDock.initialization import Initialization
     Initialization(self.args, self.log, self.top, self.system,
                   self.iterator, self.data, self.save, self._u_kln).run('CD', seeds)
@@ -1244,7 +1242,7 @@ class BPMF:
         self.log.tee("\n>>> Reinitializing replica exchange configurations")
         self.system.setParams(self.system.paramsFromAlpha(1.0, 'CD'))
         confs = self._get_confs_to_rescore(\
-          nconfs=len(self.data['CD'].protocol), site=True, minimize=True)[0]
+          nconfs=len(self.data['CD'].protocol), site=True, minimize=True)[0] 
         self.log.clear_lock('CD')
         if len(confs) > 0:
           self.data['CD'].confs['replicas'] = confs

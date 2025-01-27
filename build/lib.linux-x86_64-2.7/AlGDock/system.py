@@ -196,10 +196,13 @@ class System:
               scaling_factors_LJr = np.array([ \
                 self.top.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
                   for a in self.top.molecule.atomList()],dtype=float)
+
               toKeep = np.logical_and(scaling_factors_LJr > 10.,
                                       abs(scaling_factors_ELE) > 0.1)
+            
               scaling_factors_ELE = scaling_factors_ELE[toKeep]
               scaling_factors_LJr = scaling_factors_LJr[toKeep]
+            
               grid_thresh = min(
                 abs(scaling_factors_LJr * 10.0 / scaling_factors_ELE))
             else:
