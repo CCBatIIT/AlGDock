@@ -1,13 +1,22 @@
-import MMTK
-from MMTK.ParticleProperties import Configuration
-
 import numpy as np
-
 import time
+try:
+  import MMTK
+  import MMTK.Units
+  from MMTK.ParticleProperties import Configuration
+except ImportError:
+  MMTK = None
 
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+except ImportError:
+  OpenMM = None
 
 class SimulationIterator:
-    """SimulationIterators take a molecular configuration and generate a new one.
+  """SimulationIterators take a molecular configuration and generate a new one.
 
     ...
 
@@ -20,9 +29,9 @@ class SimulationIterator:
     system : AlGDock.system.System
       System
     _sampler : dict
-    """
+  """
   def __init__(self, args, top, system):
-      """Initializes the class
+    """Initializes the class
 
       Parameters
       ----------
@@ -32,7 +41,7 @@ class SimulationIterator:
         Topology with ligand
       system : AlGDock.system.System
         System
-      """
+    """
     self.args = args
     self.top = top
     self.system = system
@@ -43,10 +52,16 @@ class SimulationIterator:
     # Uses python class
     from AlGDock.Integrators.SmartDarting.SmartDarting \
       import SmartDartingIntegrator # @UnresolvedImport
-    self._samplers['BC_SmartDarting'] = SmartDartingIntegrator(\
+    if MMTK:
+      self._samplers['BC_SmartDarting'] = SmartDartingIntegrator(\
       self.top.universe, self.top.molecule, False)
-    self._samplers['CD_SmartDarting'] = SmartDartingIntegrator(\
+      self._samplers['CD_SmartDarting'] = SmartDartingIntegrator(\
       self.top.universe, self.top.molecule, True)
+    else:
+      self._samplers['BC_SmartDarting'] = SmartDartingIntegrator(\
+      self.top.OMM_simulation, self.top.molecule, False)
+      self._samplers['CD_SmartDarting'] = SmartDartingIntegrator(\
+      self.top.OMM_simulation, self.top.molecule, True)
 
     from AlGDock.Integrators.ExternalMC.ExternalMC import ExternalMCIntegrator
     self._samplers['ExternalMC'] = ExternalMCIntegrator(\
@@ -80,8 +95,11 @@ class SimulationIterator:
     params_k : dict of float
       Parameters describing a thermodynamic state
     """
-
-    self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
+    if MMTK:
+      self.top.universe.setConfiguration(Configuration(self.top.universe, seed))
+    else:
+      #TODO: CHECK seed atom orders
+      self.top.OMM_simulation.context.setPositions(seed)
 
     self.system.setParams(params_k)
     if 'delta_t' in params_k.keys():

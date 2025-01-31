@@ -1,8 +1,20 @@
 # This module implements a Smart Darting "integrator"
-
-from MMTK import Configuration, Dynamics, Environment, Features, Trajectory, Units
-import MMTK_dynamics
 import numpy as np
+from Cython.Debugger.libpython import get_inferior_unicode_postfix
+
+try:
+  from MMTK import Configuration, Dynamics, Environment, Features, Trajectory, Units
+  import MMTK_dynamics
+except ImportError:
+  MMTK = None
+
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+except ImportError:
+  OpenMM = None
 
 R = 8.3144621*Units.J/Units.mol/Units.K
 twoPi = 2*np.pi
@@ -24,8 +36,11 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     self.extended = extended
     
     # Converter between Cartesian and BAT coordinates
+    #TODO: MODIFY RIDIGBODY
     import AlGDock.RigidBodies
     id = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
+    #e.g.  id, <AlGDock.RigidBodies.identifier instance at 0x7faed3cce550>,
+    #e.g.  id.initial_atom, Atom ligand.db.H4i3
     from BAT import converter
     self._BAT_util = converter(self.universe, self.molecule, \
       initial_atom = id.initial_atom)
@@ -34,6 +49,7 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       else self.universe.configuration().array.shape[0]*3 - 6
     self._BAT_to_perturb = range(6) if extended else []
     self._BAT_to_perturb += self._BAT_util.getFirstTorsionInds(extended)
+    print('DEBUGGING !!!! _BAT_to_perturb', self._BAT_to_perturb)
 
     if confs is None:
       self.confs = None
@@ -54,29 +70,55 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       nconfs_o = 0
 
     # Minimize configurations
-    from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
-    minimizer = SteepestDescentMinimizer(self.universe)
+    if MMTK:
+      from MMTK.Minimization import SteepestDescentMinimizer # @UnresolvedImport
+      minimizer = SteepestDescentMinimizer(self.universe)
 
-    minimized_confs = []
-    minimized_energies = []
-    for conf in confs:
-      self.universe.setConfiguration(Configuration(self.universe, conf))
-      x_o = np.copy(self.universe.configuration().array)
-      e_o = self.universe.energy()
-      for rep in range(50):
-        minimizer(steps = 25)
-        x_n = np.copy(self.universe.configuration().array)
-        e_n = self.universe.energy()
-        diff = abs(e_o-e_n)
-        if np.isnan(e_n) or diff<0.05 or diff>1000.:
-          self.universe.setConfiguration(Configuration(self.universe, x_o))
-          break
-        else:
-          x_o = x_n
-          e_o = e_n
-      if not np.isnan(e_o):
-        minimized_confs.append(x_o)
-        minimized_energies.append(e_o)
+      minimized_confs = []
+      minimized_energies = []
+      for conf in confs:
+        self.universe.setConfiguration(Configuration(self.universe, conf))
+        x_o = np.copy(self.universe.configuration().array)
+        e_o = self.universe.energy()
+        for rep in range(50):
+          minimizer(steps = 25)
+          x_n = np.copy(self.universe.configuration().array)
+          e_n = self.universe.energy()
+          diff = abs(e_o-e_n)
+          if np.isnan(e_n) or diff<0.05 or diff>1000.:
+            self.universe.setConfiguration(Configuration(self.universe, x_o))
+            break
+          else:
+            x_o = x_n
+            e_o = e_n
+        if not np.isnan(e_o):
+          minimized_confs.append(x_o)
+          minimized_energies.append(e_o)
+    else:
+      minimized_confs = []
+      minimized_energies = []
+      for conf in confs:
+        #universe = top.OMM_simulation
+        self.universe.context.setPositions(conf)
+        state = self.universe.context.getState(getEnergy=True, getPositions=True)
+        current_energy = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+        max_iterations = 1000
+        tolerance = 0.01 * unit.kilojoule/unit.mole
+        for _ in range(max_iterations):
+          openmm.LocalEnergyMinimizer.minimize(self.universe.context, tolerance, max_iterations)
+          state = self.universe.context.getState(getEnergy=True, getPositions=True)
+          new_energy = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+          energy_diff = abs(current_energy - new_energy)
+
+          if np.isnan(new_energy) or energy_diff < 0.05 or energy_diff > 1000.0:
+            break
+          else:
+            current_energy = new_energy
+
+        if not np.isnan(current_energy):
+          minimized_confs.append(state.getPositions(asNumpy=True))
+          minimized_energies.append(current_energy)
+
     confs = minimized_confs
     energies = minimized_energies
     
@@ -120,8 +162,15 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       confs_BAT = [confs_BAT[i] for i in inds_to_keep]
       confs_BAT_tp = [confs_BAT_tp[i] for i in inds_to_keep]
       energies = [energies[i] for i in inds_to_keep]
-
-    confs_ha = [confs[c][self.molecule.heavy_atoms,:] \
+    if MMTK:
+      confs_ha = [confs[c][self.molecule.heavy_atoms,:] \
+      for c in range(len(confs))]
+    else:
+      heavy_atoms = []
+      for atom in self.molecule.atoms():
+        if atom.element is not None and atom.element.atomic_number > 1:
+          heavy_atoms.append(atom.index)
+      confs_ha = [confs[c][heavy_atoms,:] \
       for c in range(len(confs))]
 
     if len(confs)>1:
@@ -157,8 +206,10 @@ class SmartDartingIntegrator(Dynamics.Integrator):
       self.epsilon = 0.
 
     # Set the universe to the lowest-energy configuration
-    self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
-
+    if MMTK:
+      self.universe.setConfiguration(Configuration(self.universe,np.copy(confs[0])))
+    else:
+      self.universe.context.setPositions(np.copy(confs[0]))
     self.confs = confs
     self.confs_ha = confs_ha
     self.confs_BAT = confs_BAT
@@ -229,8 +280,13 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     acc = 0.
     energies = []
     closest_poses = []
+    if MMTK:
+      xo_Cartesian = np.copy(self.universe.configuration().array)
+    else:
+      state = self.universe.context.getState(getPositions=True, getEnergy=True)
+      xo_Cartesian = state.getPositions(asNumpy=True)  # Returns positions as a NumPy array
+      energy = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
 
-    xo_Cartesian = np.copy(self.universe.configuration().array)
     if self.extended:
       (closest_pose_o, distance_o) = self._closest_pose_Cartesian(\
         xo_Cartesian[self.molecule.heavy_atoms,:])
@@ -241,12 +297,19 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     # Only attempt smart darting within
     # a sphere of radius epsilon of the minimum
     if distance_o > self.epsilon:
-      return ([self.universe.configuration().array], [self.universe.energy()], \
+      if MMTK:
+        return ([self.universe.configuration().array], [self.universe.energy()], \
+        0, 0, 0.0)
+      else:
+        return ([xo_Cartesian], [energy], \
         0, 0, 0.0)
 
     if self.extended:
       xo_BAT = self._BAT_util.BAT(xo_Cartesian, extended=self.extended)
-    eo = self.universe.energy()
+    if MMTK:
+      eo = self.universe.energy()
+    else:
+      eo = energy
 
 #    report = ''
     for t in range(ntrials):
@@ -279,9 +342,14 @@ class SmartDartingIntegrator(Dynamics.Integrator):
         xn_Cartesian = self._BAT_util.Cartesian(xn_BAT)
 
       # Determine energy of new state
-      self.universe.setConfiguration(Configuration(self.universe, xn_Cartesian))
-      en = self.universe.energy()
-#      report += 'Attempting move from near pose %d with energy %f to pose %d with energy %f. '%(closest_pose_o,eo,closest_pose_n,en)
+      if MMTK:
+        self.universe.setConfiguration(Configuration(self.universe, xn_Cartesian))
+        en = self.universe.energy()
+      else:
+        self.universe.context.setPositions(xn_Cartesian)
+        state = self.universe.context.getState(getPositions=True, getEnergy=True)
+        en = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+      #      report += 'Attempting move from near pose %d with energy %f to pose %d with energy %f. '%(closest_pose_o,eo,closest_pose_n,en)
 
       # Accept or reject the trial move
       if (abs(en-eo)<1000) and \
@@ -299,5 +367,8 @@ class SmartDartingIntegrator(Dynamics.Integrator):
 #        report += 'Rejected.\n'
 #
 #    print report
-    self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
+    if MMTK:
+      self.universe.setConfiguration(Configuration(self.universe, xo_Cartesian))
+    else:
+      self.universe.context.setPositions(xo_Cartesian)
     return ([np.copy(xo_Cartesian)], [eo], acc, ntrials, 0.0)
