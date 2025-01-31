@@ -196,7 +196,7 @@ class BPMF:
               else:
                 self.top.OMM_simulaiton.context.setPositions(conf)
                 structure = pmd.openmm.load_topology(self.top.molecule, self.top.OMM_system)
-                coms.append(np.array(structure.center_of_mass) * 0.1) # Convert from Å to nm
+                coms.append(np.array(structure.center_of_mass) * 0.1)
 
             else:
               break

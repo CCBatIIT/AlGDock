@@ -6,10 +6,20 @@ import sys
 import time
 import numpy as np
 
-import MMTK
-import MMTK.Units
-from MMTK.ParticleProperties import Configuration
+try:
+  import MMTK
+  import MMTK.Units
+  from MMTK.ParticleProperties import Configuration
+except ImportError:
+  MMTK = None
 
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+except ImportError:
+  OpenMM = None
 
 class LigandPreparation():
     """Minimizes and equilibrates the ligand
@@ -111,10 +121,15 @@ class LigandPreparation():
             if os.path.isfile(minimizedB_FN):
                 from netCDF4 import Dataset
                 dock6_nc = Dataset(minimizedB_FN, 'r')
-                minimizedConfigurations = [
+                if MMTK:
+                    minimizedConfigurations = [
                     dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :]
                     for n in range(dock6_nc.variables['confs'].shape[0])
-                ]
+                    ]
+                else:
+                    minimizedConfigurations = [
+                    dock6_nc.variables['confs'][n] for n in range(dock6_nc.variables['confs'].shape[0])]
+
                 Es = dict([(key, dock6_nc.variables[key][:])
                            for key in dock6_nc.variables.keys() if key != 'confs'])
                 dock6_nc.close()
@@ -141,11 +156,19 @@ class LigandPreparation():
 
             # initializes smart darting for BC
             # and sets the universe to the lowest energy configuration
-            self.iterator.initializeSmartDartingConfigurations(
+            if MMTK:
+                self.iterator.initializeSmartDartingConfigurations(
                 minimizedConfigurations, 'BC', self.log, self.data)
-            if len(minimizedConfigurations) > 0:
-                self.top.universe.setConfiguration(
+                if len(minimizedConfigurations) > 0:
+                    self.top.universe.setConfiguration(
                     Configuration(self.top.universe, minimizedConfigurations[-1]))
+            else:
+                #TODO: NEED TO MINIMIZE the data
+                self.iterator.initializeSmartDartingConfigurations(
+                minimizedConfigurations, 'BC', self.log, self.data) # minimize the date
+                if len(minimizedConfigurations) > 0:
+                    self.top.OMM_simulation.context.setPositions(minimizedConfigurations[-1])
+
             self.data['BC'].confs['starting_poses'] = minimizedConfigurations
 
             # Ramp the temperature from 0 to the desired starting temperature using HMC
@@ -183,12 +206,20 @@ class LigandPreparation():
             else:
                 # initializes smart darting for CD and sets the universe
                 # to the lowest energy configuration
-                self.iterator.initializeSmartDartingConfigurations(
+                if MMTK:
+                    self.iterator.initializeSmartDartingConfigurations(
                     seeds, 'CD', self.log, self.data)
-                if len(seeds) > 0:
-                    self.top.universe.setConfiguration(
+                    if len(seeds) > 0:
+                        self.top.universe.setConfiguration(
                         Configuration(self.top.universe, np.copy(seeds[-1])))
-                
+                else:
+                    # TODO: NEED TO MINIMIZE the data
+                    self.iterator.initializeSmartDartingConfigurations(
+                    seeds, 'CD', self.log, self.data)
+                    if len(seeds) > 0:
+                        self.top.OMM_simulation.context.setPositions(
+                        np.copy(seeds[-1]))
+
                 print ('RAMPING UP')
                 # Ramp up the temperature using HMC
                 self._ramp_T(self.args.params['BC']
