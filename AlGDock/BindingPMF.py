@@ -961,7 +961,7 @@ class BPMF:
     # TODO: Check this
     if ('rmsd_matrix' in self.stats_RL.keys()) and \
         (len(self.stats_RL['rmsd_matrix'])==(nsamples*(nsamples-1)/2)):
-      rmsd_matrix = stats_RL['rmsd_matrix']
+      rmsd_matrix = self.stats_RL['rmsd_matrix']
     else:
       # Create a new matrix
       rmsd_matrix = []

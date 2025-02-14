@@ -1,6 +1,6 @@
 # This module implements a Smart Darting "integrator"
 import numpy as np
-from Cython.Debugger.libpython import get_inferior_unicode_postfix
+# from Cython.Debugger.libpython import get_inferior_unicode_postfix
 
 try:
   from MMTK import Configuration, Dynamics, Environment, Features, Trajectory, Units
@@ -37,11 +37,11 @@ class SmartDartingIntegrator(Dynamics.Integrator):
     
     # Converter between Cartesian and BAT coordinates
     #TODO: MODIFY RIDIGBODY
-    import AlGDock.RigidBodies
-    id = AlGDock.RigidBodies.identifier(self.universe, self.molecule)
+    import AlGDock.rigid_bodies
+    id = AlGDock.rigid_bodies.identifier(self.universe, self.molecule)
     #e.g.  id, <AlGDock.RigidBodies.identifier instance at 0x7faed3cce550>,
     #e.g.  id.initial_atom, Atom ligand.db.H4i3
-    from BAT import converter
+    from AlGDock.BAT import converter
     self._BAT_util = converter(self.universe, self.molecule, \
       initial_atom = id.initial_atom)
     # BAT coordinates to perturb: external coordinates and primary torsions

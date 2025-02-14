@@ -16,7 +16,7 @@ import multiprocessing
 from multiprocessing import Process
 
 class ReplicaExchange():
-    """Runs replica exchange
+  """Runs replica exchange
 
     Attributes
     ----------
@@ -34,9 +34,9 @@ class ReplicaExchange():
       Performs an iteration on one thermodynamic state
     data : AlGDock.simulation_data.SimulationData
       Stores results from the simulation
-    """
+  """
   def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
-      """Initializes the class
+    """Initializes the class
 
       Parameters
       ----------
@@ -56,7 +56,7 @@ class ReplicaExchange():
         Saves the data
       _u_kln : AlGDock.BindingPMF._u_kln
         Evaluates energies in different thermodynamic states
-      """
+    """
     self.args = args
     self.log = log
     self.top = top
@@ -430,7 +430,7 @@ class ReplicaExchange():
     if self.args.params[process]['darts_per_sweep'] > 0:
       self.system.setParams(self.data[process].protocol[-1])
       new_confs = [np.copy(conf) \
-        for conf in data[process].confs['samples'][k][-1]]
+        for conf in self.data[process].confs['samples'][k][-1]]
       self.iterator.addSmartDartingConfigurations(new_confs, process,
                                                   self.log, self.data)
 

@@ -107,8 +107,12 @@ class Initialization():
     """
 
     if not 'delta_t' in params_k.keys():
-      params_k[
+      if MMTK:
+        params_k[
         'delta_t'] = 1. * self.args.params[process]['delta_t'] * MMTK.Units.fs
+      else:
+        params_k[
+        'delta_t'] = 1. * self.args.params[process]['delta_t'] * unit.femtosecond
     params_k['steps_per_trial'] = self.args.params[process]['steps_per_sweep']
 
     attempts_left = 12

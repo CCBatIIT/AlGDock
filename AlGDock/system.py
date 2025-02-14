@@ -135,7 +135,7 @@ class System:
         self.top.universe._evaluator[(None,None,None)] = \
           self._evaluators[evaluator_key]
     # In MMTK, these evaluators were associated with the universe (equal to OpenMM system)
-    return
+        return
 
     # Otherwise create a new evaluator
     fflist = []
@@ -274,10 +274,10 @@ class System:
               #---------
               toKeep = np.logical_and(scaling_factors_LJr > 10.,
                                       abs(scaling_factors_ELE) > 0.1)
-            
+
               scaling_factors_ELE = scaling_factors_ELE[toKeep]
               scaling_factors_LJr = scaling_factors_LJr[toKeep]
-            
+
               grid_thresh = min(
                 abs(scaling_factors_LJr * 10.0 / scaling_factors_ELE))
             else:
@@ -316,7 +316,7 @@ class System:
             self.top.universe, Xo))
       else:
         if not ('ExternalRestraint' in self._forceFields.keys()):
-          import AlGDock.rigid_bodies
+          #import AlGDock.rigid_bodies
           # TODO, modify rigid_bodies using openmm
           # rb = AlGDock.rigid_bodies.identifier(self.top.universe,
           #                                      self.top.molecule)
