@@ -310,7 +310,7 @@ class LigandPreparation():
         else:
             from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
                 import HamiltonianMonteCarloIntegratorUsingOpenMM
-            sampler = HamiltonianMonteCarloIntegratorUsingOpenMM(self.top.universe)
+            sampler = HamiltonianMonteCarloIntegratorUsingOpenMM(self.top.molecule, self.top, self.top.OMM_system)
 
 
         # e_o = self.top.universe.energy()

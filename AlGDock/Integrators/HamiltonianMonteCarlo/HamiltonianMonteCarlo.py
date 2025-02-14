@@ -39,7 +39,8 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
         self.setCallOptions(options)
         # Check if the universe has features not supported by the integrator
         Features.checkFeatures(self, self.universe)
-      
+        print('options:', options)
+
         RT = R*self.getOption('T')
         delta_t = self.getOption('delta_t')
         
@@ -128,29 +129,33 @@ class HamiltonianMonteCarloIntegrator(Dynamics.Integrator):
 
 
 class HamiltonianMonteCarloIntegratorUsingOpenMM:
-    #def __init__(self, args, top, system):
-    def __init__(self, self.top.OMM_simulaiton.context, **options):
-        self.features = []
-
-    def __call__(self, **options):
+    def __init__(self, molecule, top, OMM_system):
+        self.options = {'first_step': 0, 'steps': 100, 'delta_t': 1. * Units.fs,
+                           'background': False, 'threads': None,
+                           'mpi_communicator': None, 'actions': []}
+        self.top = top
+        self.molecule = molecule
+        self.OMM_system = OMM_system
+        self.main()
+    def main(self):
         RT = R *  self.options['T']
-        delta_t = self.options('delta_t')
+        delta_t = self.options['delta_t']
 
         if 'steps_per_trial' in self.options.keys():
-            steps_per_trial = self.options('steps_per_trial')
-            ntrials = self.options('steps') / steps_per_trial
+            steps_per_trial = self.options['steps_per_trial']
+            ntrials = self.options['steps'] / steps_per_trial
         else:
-            steps_per_trial = self.options('steps')
+            steps_per_trial = self.options['steps']
             ntrials = 1
 
         if 'normalize' in self.options.keys():
-            normalize = self.options('normalize')
+            normalize = self.options['normalize']
         else:
             normalize = False
 
             # Seed the random number generator
         if 'random_seed' in self.options.keys():
-            np.random.seed(self.options('random_seed'))
+            np.random.seed(self.options['random_seed'])
 
         context = self.top.OMM_simulaiton.context
         context.setVelocitiesToTemperature(self.options['T'] * unit.kelvin)
@@ -164,24 +169,23 @@ class HamiltonianMonteCarloIntegratorUsingOpenMM:
         masses = np.array(masses)
 
         # fixed = self.universe.getAtomBooleanArray('fixed')
-        # TODO: What is fixed?
+        # What is fixed? It's [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-        nt = self.options('threads')
-        comm = self.options('mpi_communicator')
+        nt = self.options['threads']
+        comm = self.options['mpi_communicator']
         # evaluator = self.universe.energyEvaluator(threads=nt,
         #                                           mpi_communicator=comm)
         # evaluator = evaluator.CEvaluator()
-        #TODO: what is the evaluator?
 
-        late_args = (
-            masses.array, #fixed.array, evaluator,
-            N.zeros((0, 2), N.Int), N.zeros((0,), N.Float),
-            N.zeros((1,), N.Int),
-            N.zeros((0,), N.Float), N.zeros((2,), N.Float),
-            N.zeros((0,), N.Float), N.zeros((1,), N.Float),
-            delta_t, self.options('first_step'),
-            steps_per_trial, self.getActions(),
-            'Hamiltonian Monte Carlo step')
+        # late_args = (
+        #     masses.array, #fixed.array, evaluator,
+        #     N.zeros((0, 2), N.Int), N.zeros((0,), N.Float),
+        #     N.zeros((1,), N.Int),
+        #     N.zeros((0,), N.Float), N.zeros((2,), N.Float),
+        #     N.zeros((0,), N.Float), N.zeros((1,), N.Float),
+        #     delta_t, options('first_step'),
+        #     steps_per_trial, getActions(),
+        #     'Hamiltonian Monte Carlo step')
 
         # Variables for velocity assignment
         m3 = np.repeat(np.expand_dims(masses.array, 1), 3, axis=1)
