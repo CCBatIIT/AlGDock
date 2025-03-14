@@ -202,7 +202,10 @@ class HamiltonianMonteCarloIntegratorUsingOpenMM:
         pe_o = state.getPotentialEnergy().value_in_unit(openmm.unit.kilojoule_per_mole)
 
         acc = 0
-        for t in range(ntrials):
+        #for t in range(ntrials):
+        for t in [20, 21, 24, 26, 29, 31, 35, 38, 42, 46, 50,
+                  55, 61, 67, 73, 81, 89, 97, 107,  117, 129,
+                  142, 156, 171, 188, 206, 226, 248,  273, 300]:
             # Initialize the velocity
             v = state.getVelocities()
 
@@ -222,7 +225,7 @@ class HamiltonianMonteCarloIntegratorUsingOpenMM:
 
             # Set initial positions & velocities
             simulation.context.setPositions(xo)
-            simulation.context.setVelocitiesToTemperature(300 * unit.kelvin)
+            simulation.context.setVelocitiesToTemperature(t * unit.kelvin)
 
             # Decide whether to accept the move
             state = simulation.context.getState(getEnergy=True, getPositions=True)
