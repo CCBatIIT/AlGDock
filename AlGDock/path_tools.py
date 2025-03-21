@@ -8,7 +8,7 @@ dir_external_paths = os.path.dirname(os.path.abspath(\
 try:
   import requests  # for downloading additional files
 except:
-  print '  no requests module for downloading additional files'
+  print ('  no requests module for downloading additional files')
 
 def download_file_from_google_drive(id, destination):
   URL = "https://docs.google.com/uc?export=download"
@@ -56,7 +56,7 @@ def findPath(locations):
     if os.path.exists(location):
       return os.path.abspath(location)
   if len(locations) > 0:
-    print '  failed to find file in: ' + ', '.join(locations)
+    print ('  failed to find file in: ' + ', '.join(locations))
   return None
 
 
@@ -79,7 +79,7 @@ def findPaths(keys):
         else:
           import time
           download_start_time = time.time()
-          print 'Downloading and installing ' + key
+          print ('Downloading and installing ' + key)
           os.system('wget --no-verbose --no-check-certificate ' + \
             'http://stash.osgconnect.net/+daveminh/%s'%(FN))
           # Commented out to not have to update the folder.
@@ -89,11 +89,11 @@ def findPaths(keys):
           if command != '':
             os.system(command)
           if os.path.isfile(path):
-            print '  ' + key + ' downloaded and installed in %f s'%(\
-              time.time() - download_start_time)
+            print ('  ' + key + ' downloaded and installed in %f s'%(\
+              time.time() - download_start_time))
             paths[key] = os.path.abspath(path)
           else:
-            print 'Could not download ' + key
+            print ('Could not download ' + key)
             raise Exception('Could not download ' + key)
       else:
         raise Exception('Missing file for ' + key)

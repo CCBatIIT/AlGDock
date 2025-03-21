@@ -19,8 +19,12 @@ from glob import glob
 class Dummy:
     pass
 pkginfo = Dummy()
-execfile('AlGDock/__pkginfo__.py', pkginfo.__dict__)
-execfile('AlGDock/path_tools.py')
+#execfile('AlGDock/__pkginfo__.py', pkginfo.__dict__)
+#execfile('AlGDock/path_tools.py')
+
+exec(open("AlGDock/__pkginfo__.py").read(), pkginfo.__dict__)
+exec(open("AlGDock/path_tools.py").read())
+
 
 from site import USER_BASE as userbase
 
@@ -33,7 +37,7 @@ try:
 except ImportError:
   cython_ok = False
 if not cython_ok:
-  print 'AlGDock requires Cython'
+  print ('AlGDock requires Cython')
   raise SystemExit
 
 # Check that we have Scientific 2.6 or higher
@@ -47,7 +51,7 @@ try:
 except ImportError:
     scientific_ok = False
 if not scientific_ok:
-    print "AlGDock needs ScientificPython 2.6 or higher"
+    print ("AlGDock needs ScientificPython 2.6 or higher")
     raise SystemExit
 
 # Check that we have MMTK 2.6 or higher
@@ -59,7 +63,7 @@ try:
 except ImportError:
   mmtk_ok = False
 if not mmtk_ok:
-  print "AlGDock requires MMTK version 2.6 or higher"
+  print ("AlGDock requires MMTK version 2.6 or higher")
   raise SystemExit
 
 MMTK_source_path = findPath(search_paths['MMTK'])
@@ -279,7 +283,7 @@ if sphinx:
             try:
                 sphinx.setup_command.BuildDoc.run(self)
             except UnicodeDecodeError:
-                print >>sys.stderr, "ERROR: unable to build documentation because Sphinx do not handle source path with non-ASCII characters. Please try to move the source package to another location (path with *only* ASCII characters)."
+                print("ERROR: unable to build documentation because Sphinx do not handle source path with non-ASCII characters. Please try to move the source package to another location (path with *only* ASCII characters).")
             sys.path.pop(0)
 
     cmdclass['build_sphinx'] = BuildDoc
