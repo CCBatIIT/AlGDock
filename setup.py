@@ -2,15 +2,14 @@
 
 package_name = "AlGDock"
 
-from distutils.core import setup, Command, Extension
-from distutils.command.build import build
-from distutils.command.sdist import sdist
-from distutils.command.install_data import install_data
-from distutils.command.install import install
-from distutils import dir_util
-from distutils.filelist import FileList, translate_pattern
-import distutils.sysconfig
-sysconfig = distutils.sysconfig.get_config_vars()
+from setuptools import setup, Command, Extension
+from setuptools.command.build import build
+from setuptools.command.sdist import sdist
+from setuptools.command.install_data import install_data
+from setuptools.command.install import install
+from setuptools._distutils.filelist import FileList, translate_pattern
+import sysconfig
+sysconfig = sysconfig.get_config_vars()
 
 import os, sys, types
 import ctypes, ctypes.util
@@ -187,9 +186,13 @@ class modified_sdist(sdist):
         self.make_distribution()
 
     def make_release_tree (self, base_dir, files):
-        self.mkpath(base_dir)
-        dir_util.create_tree(base_dir, files,
-                             verbose=self.verbose, dry_run=self.dry_run)
+        def create_tree(base_dir, subdirs):
+            for subdir in subdirs:
+                os.makedirs(os.path.join(base_dir, subdir), exist_ok=True)
+
+        #self.mkpath(base_dir)
+        os.makedirs(base_dir, exist_ok=True)
+        create_tree(base_dir, files, verbose=self.verbose, dry_run=self.dry_run)
         if hasattr(os, 'link'):         # can make hard links on this system
             link = 'hard'
             msg = "making hard links in %s..." % base_dir
