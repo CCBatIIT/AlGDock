@@ -18,44 +18,44 @@ from multiprocessing import Process
 class ReplicaExchange():
   """Runs replica exchange
 
-  Attributes
-  ----------
-  args : AlGDock.simulation_arguments.SimulationArguments
-    Simulation arguments
-  log : AlGDock.logger.Logger
-    Simulation log
-  top : AlGDock.topology.Topology
-    Topology of the ligand
-  system : AlGDock.system.System
-    Simulation system
-  _get_confs_to_rescore : function
-    Returns the configurations to rescore
-  iterator : AlGDock.simulation_iterator.SimulationIterator
-    Performs an iteration on one thermodynamic state
-  data : AlGDock.simulation_data.SimulationData
-    Stores results from the simulation
-  """
-  def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
-    """Initializes the class
-
-    Parameters
+    Attributes
     ----------
     args : AlGDock.simulation_arguments.SimulationArguments
       Simulation arguments
     log : AlGDock.logger.Logger
       Simulation log
-    top : AlGDock.topology.Topology
+    top : AlGDock.topology.TopologyMMTK
       Topology of the ligand
     system : AlGDock.system.System
       Simulation system
+    _get_confs_to_rescore : function
+      Returns the configurations to rescore
     iterator : AlGDock.simulation_iterator.SimulationIterator
       Performs an iteration on one thermodynamic state
     data : AlGDock.simulation_data.SimulationData
       Stores results from the simulation
-    save : AlGDock.BindingPMF.save
-      Saves the data
-    _u_kln : AlGDock.BindingPMF._u_kln
-      Evaluates energies in different thermodynamic states
+  """
+  def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
+    """Initializes the class
+
+      Parameters
+      ----------
+      args : AlGDock.simulation_arguments.SimulationArguments
+        Simulation arguments
+      log : AlGDock.logger.Logger
+        Simulation log
+      top : AlGDock.topology.TopologyMMTK
+        Topology of the ligand
+      system : AlGDock.system.System
+        Simulation system
+      iterator : AlGDock.simulation_iterator.SimulationIterator
+        Performs an iteration on one thermodynamic state
+      data : AlGDock.simulation_data.SimulationData
+        Stores results from the simulation
+      save : AlGDock.BindingPMF.save
+        Saves the data
+      _u_kln : AlGDock.BindingPMF._u_kln
+        Evaluates energies in different thermodynamic states
     """
     self.args = args
     self.log = log
@@ -430,7 +430,7 @@ class ReplicaExchange():
     if self.args.params[process]['darts_per_sweep'] > 0:
       self.system.setParams(self.data[process].protocol[-1])
       new_confs = [np.copy(conf) \
-        for conf in data[process].confs['samples'][k][-1]]
+        for conf in self.data[process].confs['samples'][k][-1]]
       self.iterator.addSmartDartingConfigurations(new_confs, process,
                                                   self.log, self.data)
 

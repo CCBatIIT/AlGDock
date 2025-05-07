@@ -1,15 +1,31 @@
 import os, sys
 import numpy as np
-
 import copy
 
-import MMTK
-from MMTK.ParticleProperties import Configuration
-from MMTK.ForceFields import ForceField
+try:
+  import MMTK
+  from MMTK.ParticleProperties import Configuration
+  from MMTK.ForceFields import ForceField
+  from MMTK.ForceFields import Amber12SBForceField
+except ImportError:
+  MMTK = None
+
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+except ImportError:
+  openmm = None
 
 from AlGDock.BindingPMF import scalables
-from AlGDock.BindingPMF import R
 from AlGDock.BindingPMF import HMStime
+import AlGDock.IO
+prmtop_IO = AlGDock.IO.prmtop()
+varnames = ['POINTERS','TITLE','ATOM_NAME','AMBER_ATOM_TYPE','CHARGE','MASS',\
+            'NONBONDED_PARM_INDEX','LENNARD_JONES_ACOEF','LENNARD_JONES_BCOEF',\
+            'ATOM_TYPE_INDEX','BONDS_INC_HYDROGEN','BONDS_WITHOUT_HYDROGEN',\
+            'RADII','SCREEN']
 
 term_map = {
   'cosine dihedral angle': 'MM',
@@ -73,7 +89,7 @@ class System:
     """
     self.args = args
     self.log = log
-    self.top = top
+    self.top = top   # old-> AlGDock.topology.TopologyMMTK, now: AlGDock.topology.TopologyUsingOpenMM
     self.top_RL = top_RL
     self.starting_pose = starting_pose
 
@@ -81,10 +97,12 @@ class System:
     self._forceFields = {}
 
     # Molecular mechanics force fields
-    from MMTK.ForceFields import Amber12SBForceField
-    self._forceFields['gaff'] = Amber12SBForceField(
+    if MMTK:
+      self._forceFields['gaff'] = Amber12SBForceField(
       parameter_file=self.args.FNs['forcefield'],
       mod_files=self.args.FNs['frcmodList'])
+    else:
+      self._forceFields['gaff'] = None # Use ambertools to generate topology files, which include GAFF parameters.
 
   def setParams(self, params):
     """Sets the universe evaluator to values appropriate for the parameters.
@@ -112,10 +130,12 @@ class System:
     # Reuse evaluators that have been stored
     evaluator_key = ','.join(['%s:%s'%(k,params[k]) \
       for k in sorted(params.keys())])
-    if evaluator_key in self._evaluators.keys():
-      self.top.universe._evaluator[(None,None,None)] = \
-        self._evaluators[evaluator_key]
-      return
+    if MMTK:
+      if evaluator_key in self._evaluators.keys():
+        self.top.universe._evaluator[(None,None,None)] = \
+          self._evaluators[evaluator_key]
+    # In MMTK, these evaluators were associated with the universe (equal to OpenMM system)
+        return
 
     # Otherwise create a new evaluator
     fflist = []
@@ -125,7 +145,7 @@ class System:
       # Set up the binding site in the force field
       append_site = True  # Whether to append the binding site to the force field
       if not 'site' in self._forceFields.keys():
-        print (self.args.params['CD']['site'], self.args.params['CD']['site_center'], self.args.params['CD']['site_max_R'])
+        print(self.args.params['CD']['site'], self.args.params['CD']['site_center'], self.args.params['CD']['site_max_R'])
         if (self.args.params['CD']['site']=='Sphere') and \
            (self.args.params['CD']['site_center'] is not None) and \
            (self.args.params['CD']['site_max_R'] is not None):
@@ -146,7 +166,7 @@ class System:
             name='site')
         else:
           # Do not append the site if it is not defined
-          print 'Binding site not defined!'
+          print('Binding site not defined!')
           append_site = False
       if append_site:
         fflist.append(self._forceFields['site'])
@@ -189,20 +209,75 @@ class System:
               # The maximum value is set so that the electrostatic energy
               # less than or equal to the Lennard-Jones repulsive energy
               # for every heavy atom at every grid point
-              # TODO: For conversion to OpenMM, get ParticleProperties from the Force object
-              scaling_factors_ELE = np.array([ \
+
+              if MMTK:
+                scaling_factors_ELE = np.array([ \
                 self.top.molecule.getAtomProperty(a, 'scaling_factor_electrostatic') \
                   for a in self.top.molecule.atomList()],dtype=float)
-              scaling_factors_LJr = np.array([ \
+                scaling_factors_LJr = np.array([ \
                 self.top.molecule.getAtomProperty(a, 'scaling_factor_LJr') \
                   for a in self.top.molecule.atomList()],dtype=float)
+              else:
+                """
+                get the scaling_factors_ELE and scaling_factors_LJr using openmm instead of MMTK.
+                Note that MMTK may provide the values in a different atom order compared to OpenMM.
+                """
+                scaling_factors_ELE = []
+                scaling_factors_LJr = []
+                ligand_prmtop = self.args.FNs['prmtop']['L']
+                prmtop = AmberPrmtopFile(ligand_prmtop)
+                topology = prmtop.topology
 
+                prmtop_alg = prmtop_IO.read(ligand_prmtop, varnames)
+                NATOM = prmtop_alg['POINTERS'][0]
+                NTYPES = prmtop_alg['POINTERS'][1]
+                LJ_radius = np.ndarray(shape=(NTYPES), dtype=float)
+                LJ_depth = np.ndarray(shape=(NTYPES), dtype=float)
+                for i in range(NTYPES):
+                  LJ_index = prmtop_alg['NONBONDED_PARM_INDEX'][NTYPES * i + i] - 1
+                  if prmtop_alg['LENNARD_JONES_ACOEF'][LJ_index] < 1.0e-6:
+                    LJ_radius[i] = 0
+                    LJ_depth[i] = 0
+                  else:
+                    factor = 2 * prmtop_alg['LENNARD_JONES_ACOEF'][LJ_index] / prmtop_alg['LENNARD_JONES_BCOEF'][
+                      LJ_index]
+                    LJ_radius[i] = pow(factor, 1.0 / 6.0) * 0.5
+                    LJ_depth[i] = prmtop_alg['LENNARD_JONES_BCOEF'][LJ_index] / 2 / factor
+                root_LJ_depth = np.sqrt(LJ_depth)
+                LJ_diameter = LJ_radius * 2
+                atom_type_indicies = [prmtop_alg['ATOM_TYPE_INDEX'][atom_index] - 1 for atom_index in range(NATOM)]
+                scaling_factor_LJr_dict = dict()
+                for (name, type_index) in zip(prmtop_alg['ATOM_NAME'], atom_type_indicies):
+                  scaling_factor_LJr_dict[name.strip()] = round(
+                    4.184 * root_LJ_depth[type_index] * (LJ_diameter[type_index] ** 6), 6)
+
+                atoms_name = [a.name for a in topology.atoms()]
+                atoms_elements = dict()
+                for a in topology.atoms():
+                  atoms_elements[a.name] = a.element.symbol
+                system = prmtop.createSystem(nonbondedMethod=NoCutoff, nonbondedCutoff=1.0 * nanometer,
+                                             constraints=None)
+                force = system.getForce(3)
+                assert force.getName() == 'NonbondedForce'
+                for i in range(system.getNumParticles()):
+                  atom_name = atoms_name[i]
+                  charge, sigma, epsilon = force.getParticleParameters(i)
+                  charge_val = charge.value_in_unit(elementary_charge)
+                  epsilon = epsilon.value_in_unit(kilojoule / mole)
+                  if epsilon == 0:
+                    continue
+                  scaling_factors_ELE.append(round(charge_val * 4.184, 6))
+                  scaling_factors_LJr.append(scaling_factor_LJr_dict[atom_name])
+                scaling_factors_ELE = np.array(scaling_factors_ELE)
+                scaling_factors_LJr = np.array(scaling_factors_LJr)
+
+              #---------
               toKeep = np.logical_and(scaling_factors_LJr > 10.,
                                       abs(scaling_factors_ELE) > 0.1)
-            
+
               scaling_factors_ELE = scaling_factors_ELE[toKeep]
               scaling_factors_LJr = scaling_factors_LJr[toKeep]
-            
+
               grid_thresh = min(
                 abs(scaling_factors_LJr * 10.0 / scaling_factors_ELE))
             else:
@@ -228,16 +303,24 @@ class System:
        ('k_angular_ext' in params.keys()):
 
       # Load the force field if it has not been loaded
-      if not ('ExternalRestraint' in self._forceFields.keys()):
-        Xo = np.copy(self.top.universe.configuration().array)
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, self.starting_pose))
-        import AlGDock.rigid_bodies
-        rb = AlGDock.rigid_bodies.identifier(self.top.universe,
-                                             self.top.molecule)
-        (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
-        self.top.universe.setConfiguration(Configuration(
-          self.top.universe, Xo))
+      if MMTK:
+        if not ('ExternalRestraint' in self._forceFields.keys()):
+          Xo = np.copy(self.top.universe.configuration().array)
+          self.top.universe.setConfiguration(
+            Configuration(self.top.universe, self.starting_pose))
+          import AlGDock.rigid_bodies
+          rb = AlGDock.rigid_bodies.identifier(self.top.universe,
+                                               self.top.molecule)
+          (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
+          self.top.universe.setConfiguration(Configuration(
+            self.top.universe, Xo))
+      else:
+        if not ('ExternalRestraint' in self._forceFields.keys()):
+          #import AlGDock.rigid_bodies
+          # TODO, modify rigid_bodies using openmm
+          # rb = AlGDock.rigid_bodies.identifier(self.top.universe,
+          #                                      self.top.molecule)
+          self.top.OMM_simulation.context.setPositions(self.starting_pose)
 
         # Create force fields
         from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
@@ -262,25 +345,33 @@ class System:
         self._forceFields['ExternalRestraint'].set_k_angular(\
           params['k_angular_ext'])
 
-    compoundFF = fflist[0]
-    for ff in fflist[1:]:
-      compoundFF += ff
-    self.top.universe.setForceField(compoundFF)
+    if MMTK:
+      compoundFF = fflist[0]
+      for ff in fflist[1:]:
+        compoundFF += ff
+      self.top.universe.setForceField(compoundFF)
 
-    if self.top_RL.universe is not None:
-      if 'OBC_RL' in params.keys():
-        if not 'OBC_RL' in self._forceFields.keys():
-          from AlGDock.ForceFields.OBC.OBC import OBCForceField
-          self._forceFields['OBC_RL'] = OBCForceField()
-        self._forceFields['OBC_RL'].set_strength(params['OBC_RL'])
-        if (params['OBC_RL'] > 0):
-          self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
+      if self.top_RL.universe is not None:
+        if 'OBC_RL' in params.keys():
+          if not 'OBC_RL' in self._forceFields.keys():
+            from AlGDock.ForceFields.OBC.OBC import OBCForceField
+            self._forceFields['OBC_RL'] = OBCForceField()
+          self._forceFields['OBC_RL'].set_strength(params['OBC_RL'])
+          if (params['OBC_RL'] > 0):
+            self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
 
-    eval = ForceField.EnergyEvaluator(\
-      self.top.universe, self.top.universe._forcefield, None, None, None, None)
-    eval.key = evaluator_key
-    self.top.universe._evaluator[(None, None, None)] = eval
-    self._evaluators[evaluator_key] = eval
+      eval = ForceField.EnergyEvaluator(\
+        self.top.universe, self.top.universe._forcefield, None, None, None, None)
+      eval.key = evaluator_key
+      self.top.universe._evaluator[(None, None, None)] = eval
+      self._evaluators[evaluator_key] = eval
+    #TODO: need to create EnergyEvaluator using openmm
+    else:
+      # e.g. fflist=[self._forceFields['OBC']]
+      # self._forceFields['OBC'] = OBCForceField()
+      compoundFF = fflist[0]
+      for ff in fflist[1:]:
+        compoundFF += ff
 
   def energyTerms(self, confs, E=None, process='CD'):
     """Calculates energy terms for a series of configurations
@@ -327,26 +418,45 @@ class System:
       if self.isForce('ExternalRestraint'):
         E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
         E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
-    for c in range(len(confs)):
-      self.top.universe.setConfiguration(
-        Configuration(self.top.universe, confs[c]))
-      eT = self.top.universe.energyTerms()
-      for (key, value) in eT.iteritems():
-        if key == 'electrostatic':
-          pass  # For some reason, MMTK double-counts electrostatic energies
-        elif key.startswith('pose'):
-          # For pose restraints, the energy is per spring constant unit
-          E[term_map[key]][c] += value / params_full[term_map[key]]
-        else:
+    if MMTK:
+      for c in range(len(confs)):
+        self.top.universe.setConfiguration(
+          Configuration(self.top.universe, confs[c]))
+        eT = self.top.universe.energyTerms()
+        for (key, value) in eT.iteritems():
+          if key == 'electrostatic':
+            pass  # For some reason, MMTK double-counts electrostatic energies
+          elif key.startswith('pose'):
+            # For pose restraints, the energy is per spring constant unit
+            E[term_map[key]][c] += value / params_full[term_map[key]]
+          else:
+            try:
+              E[term_map[key]][c] += value
+            except KeyError:
+              print(key)
+              print('Keys in eT', eT.keys())
+              print('Keys in term map', term_map.keys())
+              print('Keys in E', E.keys())
+              raise Exception('key not found in term map or E')
+      return E
+    else:
+      for c in range(len(confs)):
+        self.top.OMM_simulation.context.setPositions(confs[c])
+        state = self.top.OMM_simulation.context.getState(getEnergy=True)
+        force_groups = self.top.OMM_system.getNumForces()
+        for i in range(force_groups):
+          self.top.OMM_system.getForce(i).setForceGroup(i)
+          group_state = self.top.OMM_simulation.context.getState(getEnergy=True, groups={i})
+          group_energy = group_state.getPotentialEnergy()
+          force_name = self.top.OMM_system.getForce(i).__class__.__name__
           try:
-            E[term_map[key]][c] += value
+            E[term_map[force_name]][c] += group_energy
           except KeyError:
-            print key
-            print 'Keys in eT', eT.keys()
-            print 'Keys in term map', term_map.keys()
-            print 'Keys in E', E.keys()
+            print(force_name)
+            print('Keys in term map', term_map.keys())
+            print('Keys in E', E.keys())
             raise Exception('key not found in term map or E')
-    return E
+      return E
 
   def paramsFromAlpha(self,
                        alpha,
@@ -463,6 +573,8 @@ class System:
     self.setParams({'MM': True, 'ELE': 1})
     gd = self._forceFields['ELE'].grid_data
     dims = gd['counts']
+    #TODO: what is this factor? Temporarily set it to 1.
+    factor = 1
     center = factor * (gd['counts'] * gd['spacing'] / 2. + gd['origin'])
     spacing = factor * gd['spacing'][0]
     return (dims, center, spacing)

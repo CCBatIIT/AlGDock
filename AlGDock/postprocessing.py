@@ -27,9 +27,9 @@ class Postprocessing:
     Simulation arguments
   log : AlGDock.logger.Logger
     Simulation log
-  top : AlGDock.topology.Topology
+  top : AlGDock.topology.TopologyMMTK
     Topology of the ligand
-  top_RL : AlGDock.topology.Topology
+  top_RL : AlGDock.topology.TopologyMMTK
     Topology of the complex
   system : AlGDock.system.System
     Simulation system
@@ -45,9 +45,9 @@ class Postprocessing:
       Simulation arguments
     log : AlGDock.logger.Logger
       Simulation log
-    top : AlGDock.topology.Topology
+    top : AlGDock.topology.TopologyMMTK
       Topology of the ligand
-    top_RL : AlGDock.topology.Topology
+    top_RL : AlGDock.topology.TopologyMMTK
       Topology of the complex
     system : AlGDock.system.System
       Simulation system

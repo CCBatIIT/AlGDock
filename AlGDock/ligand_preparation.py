@@ -6,10 +6,21 @@ import sys
 import time
 import numpy as np
 
-import MMTK
-import MMTK.Units
-from MMTK.ParticleProperties import Configuration
+try:
+  import MMTK
+  import MMTK.Units
+  from MMTK.ParticleProperties import Configuration
+except ImportError:
+  MMTK = None
 
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import LocalEnergyMinimizer
+  from openmm import *
+except ImportError:
+  OpenMM = None
 
 class LigandPreparation():
     """Minimizes and equilibrates the ligand
@@ -20,7 +31,7 @@ class LigandPreparation():
       Simulation arguments
     log : AlGDock.logger.Logger
       Simulation log
-    top : AlGDock.topology.Topology
+    top : AlGDock.topology.TopologyMMTK
       Topology of the ligand
     system : AlGDock.system.System
       Simulation system
@@ -42,7 +53,7 @@ class LigandPreparation():
           Simulation arguments
         log : AlGDock.logger.Logger
           Simulation log
-        top : AlGDock.topology.Topology
+        top : AlGDock.topology.TopologyMMTK
           Topology of the ligand
         system : AlGDock.system.System
           Simulation system
@@ -111,10 +122,15 @@ class LigandPreparation():
             if os.path.isfile(minimizedB_FN):
                 from netCDF4 import Dataset
                 dock6_nc = Dataset(minimizedB_FN, 'r')
-                minimizedConfigurations = [
+                if MMTK:
+                    minimizedConfigurations = [
                     dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :]
                     for n in range(dock6_nc.variables['confs'].shape[0])
-                ]
+                    ]
+                else:
+                    minimizedConfigurations = [
+                    dock6_nc.variables['confs'][n] for n in range(dock6_nc.variables['confs'].shape[0])]
+
                 Es = dict([(key, dock6_nc.variables[key][:])
                            for key in dock6_nc.variables.keys() if key != 'confs'])
                 dock6_nc.close()
@@ -141,11 +157,19 @@ class LigandPreparation():
 
             # initializes smart darting for BC
             # and sets the universe to the lowest energy configuration
-            self.iterator.initializeSmartDartingConfigurations(
+            if MMTK:
+                self.iterator.initializeSmartDartingConfigurations(
                 minimizedConfigurations, 'BC', self.log, self.data)
-            if len(minimizedConfigurations) > 0:
-                self.top.universe.setConfiguration(
+                if len(minimizedConfigurations) > 0:
+                    self.top.universe.setConfiguration(
                     Configuration(self.top.universe, minimizedConfigurations[-1]))
+            else:
+                #TODO: NEED TO MINIMIZE the data
+                self.iterator.initializeSmartDartingConfigurations(
+                minimizedConfigurations, 'BC', self.log, self.data) # minimize the date
+                if len(minimizedConfigurations) > 0:
+                    self.top.OMM_simulation.context.setPositions(minimizedConfigurations[-1])
+
             self.data['BC'].confs['starting_poses'] = minimizedConfigurations
 
             # Ramp the temperature from 0 to the desired starting temperature using HMC
@@ -183,12 +207,20 @@ class LigandPreparation():
             else:
                 # initializes smart darting for CD and sets the universe
                 # to the lowest energy configuration
-                self.iterator.initializeSmartDartingConfigurations(
+                if MMTK:
+                    self.iterator.initializeSmartDartingConfigurations(
                     seeds, 'CD', self.log, self.data)
-                if len(seeds) > 0:
-                    self.top.universe.setConfiguration(
+                    if len(seeds) > 0:
+                        self.top.universe.setConfiguration(
                         Configuration(self.top.universe, np.copy(seeds[-1])))
-                
+                else:
+                    # TODO: NEED TO MINIMIZE the data
+                    self.iterator.initializeSmartDartingConfigurations(
+                    seeds, 'CD', self.log, self.data)
+                    if len(seeds) > 0:
+                        self.top.OMM_simulation.context.setPositions(
+                        np.copy(seeds[-1]))
+
                 print ('RAMPING UP')
                 # Ramp up the temperature using HMC
                 self._ramp_T(self.args.params['BC']
@@ -213,46 +245,92 @@ class LigandPreparation():
         self.log.recordStart('T_ramp')
 
         # First minimize the energy
-        from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
-        minimizer = SteepestDescentMinimizer(self.top.universe)
+        if MMTK:
+            from MMTK.Minimization import SteepestDescentMinimizer  # @UnresolvedImport
+            minimizer = SteepestDescentMinimizer(self.top.universe)
 
-        original_stderr = sys.stderr
-        sys.stderr = NullDevice()  # Suppresses warnings for minimization
+            original_stderr = sys.stderr
+            sys.stderr = NullDevice()  # Suppresses warnings for minimization
 
-        x_o = np.copy(self.top.universe.configuration().array)
-        e_o = self.top.universe.energy()
-        for rep in range(5000):
-            minimizer(steps=10)
-            x_n = np.copy(self.top.universe.configuration().array)
-            e_n = self.top.universe.energy()
-            diff = abs(e_o - e_n)
-            if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
-                self.top.universe.setConfiguration(
-                    Configuration(self.top.universe, x_o))
-                break
-            else:
-                x_o = x_n
-                e_o = e_n
+            x_o = np.copy(self.top.universe.configuration().array)
+            e_o = self.top.universe.energy()
+            for rep in range(5000):
+                minimizer(steps=10)
+                x_n = np.copy(self.top.universe.configuration().array)
+                e_n = self.top.universe.energy()
+                diff = abs(e_o - e_n)
+                if np.isnan(e_n) or diff < 0.05 or diff > 1000.:
+                    self.top.universe.setConfiguration(
+                        Configuration(self.top.universe, x_o))
+                    break
+                else:
+                    x_o = x_n
+                    e_o = e_n
 
-        sys.stderr = original_stderr
-        self.log.tee("  minimized to %.3g kcal/mol over %d steps" % (e_o, 10 *
-                                                                     (rep + 1)))
+            sys.stderr = original_stderr
+            self.log.tee("  minimized to %.3g kcal/mol over %d steps" % (e_o, 10 *
+                                                                         (rep + 1)))
+        else:
+            context = self.top.OMM_simulation.context
 
+            # Suppress warnings during minimization
+            original_stderr = sys.stderr
+            sys.stderr = NullDevice()
+
+            # Get the initial positions and energy
+            state = context.getState(getPositions=True, getEnergy=True)
+            x_o = np.array(state.getPositions(asNumpy=True))
+            e_o = state.getPotentialEnergy().value_in_unit(openmm.unit.kilocalories_per_mole)
+
+            # Perform iterative energy minimization
+            for rep in range(5000):
+                LocalEnergyMinimizer.minimize(context, tolerance=10.0, maxIterations=10)
+                state = context.getState(getPositions=True, getEnergy=True)
+                x_n = np.array(state.getPositions(asNumpy=True))
+                e_n = state.getPotentialEnergy().value_in_unit(openmm.unit.kilocalories_per_mole)
+                diff = abs(e_o - e_n)
+                if np.isnan(e_n) or diff < 0.05 or diff > 1000.0:
+                    context.setPositions(x_o)  # Restore previous configuration
+                    break
+                else:
+                    x_o = x_n
+                    e_o = e_n
+
+            # Restore stderr
+            sys.stderr = original_stderr
+
+            # Logging the final minimized energy
+            self.log.tee("minimized to %.3g kcal/mol over %d steps" % (e_o, 10 * (rep + 1)))
+        #-----------------------------------------------------------------------
         # Then ramp the energy to the starting temperature
-        from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
-            import HamiltonianMonteCarloIntegrator
-        sampler = HamiltonianMonteCarloIntegrator(self.top.universe)
+        if MMTK:
+            from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+                import HamiltonianMonteCarloIntegrator
+            sampler = HamiltonianMonteCarloIntegrator(self.top.universe)
+        else:
+            from AlGDock.Integrators.HamiltonianMonteCarlo.HamiltonianMonteCarlo \
+                import HamiltonianMonteCarloIntegratorUsingOpenMM
+            sampler = HamiltonianMonteCarloIntegratorUsingOpenMM(self.top.molecule, self.top, self.top.OMM_system)
 
-        e_o = self.top.universe.energy()
+
+        # e_o = self.top.universe.energy()
         T_LOW = 20.
         T_SERIES = T_LOW * (T_START / T_LOW)**(np.arange(30) / 29.)
         for T in T_SERIES:
-            delta_t = 2.0 * MMTK.Units.fs
+            if MMTK:
+                delta_t = 2.0 * MMTK.Units.fs
+            else:
+                delta_t = 2.0 * unit.femtosecond
             steps_per_trial = 10
             attempts_left = 10
             while attempts_left > 0:
-                random_seed = int(T*10000) + attempts_left + \
+                if MMTK:
+                    random_seed = int(T*10000) + attempts_left + \
                     int(self.top.universe.configuration().array[0][0]*10000)
+                else:
+                    state = self.top.OMM_simulation.context.getState(getPositions=True)
+                    positions = np.array(state.getPositions(asNumpy=True))
+                    random_seed = int(T * 10000) + attempts_left + int(positions[0][0]*10000)
                 if self.args.random_seed == 0:
                     random_seed += int(time.time() * 1000)
                 random_seed = random_seed % 32767
@@ -262,20 +340,44 @@ class LigandPreparation():
                 attempts_left -= 1
                 acc_rate = float(acc) / ntrials
                 if acc_rate < 0.4:
-                    delta_t -= 0.25 * MMTK.Units.fs
+                    if MMTK:
+                        delta_t -= 0.25 * MMTK.Units.fs
+                    else:
+                        delta_t -= 0.25 * unit.femtosecond
                 else:
                     attempts_left = 0
-                if delta_t < 0.1 * MMTK.Units.fs:
-                    delta_t = 0.1 * MMTK.Units.fs
-                    steps_per_trial = max(int(steps_per_trial / 2), 1)
+
+                if MMTK:
+                    if delta_t < 0.1 * MMTK.Units.fs:
+                        delta_t = 0.1 * MMTK.Units.fs
+                        steps_per_trial = max(int(steps_per_trial / 2), 1)
+                else:
+                    if delta_t < 0.1 * unit.femtosecond:
+                        delta_t = 0.1 * unit.femtosecond
+                        steps_per_trial = max(int(steps_per_trial / 2), 1)
+
             fmt = "  T = %d, delta_t = %.3f fs, steps_per_trial = %d, acc_rate = %.3f"
             if acc_rate < 0.01:
-                print self.top.universe.energyTerms()
+                if MMTK:
+                    print self.top.universe.energyTerms()
             self.log.tee(fmt % (T, delta_t * 1000, steps_per_trial, acc_rate))
+
         if normalize:
-            self.top.universe.normalizePosition()
-        e_f = self.top.universe.energy()
+            if MMTK:
+                self.top.universe.normalizePosition()
+            else:
+                state = self.top.OMM_simulation.context.getState(getPositions=True,
+                                                                 enforcePeriodicBox=True)
+                positions = state.getPositions(asNumpy=True)
+                self.top.OMM_simulation.context.setPositions(positions)
+
+        if MMTK:
+            e_f = self.top.universe.energy()
+        else:
+            state = self.top.OMM_simulation.context.getState(getEnergy=True)
+            e_f = state.getPotentialEnergy().value_in_unit(openmm.unit.kilocalories_per_mole)
 
         self.log.tee("  ramped temperature from %d to %d K in %s, " % (
             T_LOW, T_START, HMStime(self.log.timeSince('T_ramp'))) +
             "changing energy to %.3g kcal/mol\n" % (e_f))
+        # TODO: CHECK if the energy after normalize position makes sense

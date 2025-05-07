@@ -2,15 +2,14 @@
 
 package_name = "AlGDock"
 
-from distutils.core import setup, Command, Extension
-from distutils.command.build import build
-from distutils.command.sdist import sdist
-from distutils.command.install_data import install_data
-from distutils.command.install import install
-from distutils import dir_util
-from distutils.filelist import FileList, translate_pattern
-import distutils.sysconfig
-sysconfig = distutils.sysconfig.get_config_vars()
+from setuptools import setup, Command, Extension
+from setuptools.command.build import build
+from setuptools.command.sdist import sdist
+from setuptools.command.install_data import install_data
+from setuptools.command.install import install
+from setuptools._distutils.filelist import FileList, translate_pattern
+import sysconfig
+sysconfig = sysconfig.get_config_vars()
 
 import os, sys, types
 import ctypes, ctypes.util
@@ -19,8 +18,12 @@ from glob import glob
 class Dummy:
     pass
 pkginfo = Dummy()
-execfile('AlGDock/__pkginfo__.py', pkginfo.__dict__)
-execfile('AlGDock/path_tools.py')
+#execfile('AlGDock/__pkginfo__.py', pkginfo.__dict__)
+#execfile('AlGDock/path_tools.py')
+
+exec(open("AlGDock/__pkginfo__.py").read(), pkginfo.__dict__)
+exec(open("AlGDock/path_tools.py").read())
+
 
 from site import USER_BASE as userbase
 
@@ -33,7 +36,7 @@ try:
 except ImportError:
   cython_ok = False
 if not cython_ok:
-  print 'AlGDock requires Cython'
+  print ('AlGDock requires Cython')
   raise SystemExit
 
 # Check that we have Scientific 2.6 or higher
@@ -47,7 +50,7 @@ try:
 except ImportError:
     scientific_ok = False
 if not scientific_ok:
-    print "AlGDock needs ScientificPython 2.6 or higher"
+    print ("AlGDock needs ScientificPython 2.6 or higher")
     raise SystemExit
 
 # Check that we have MMTK 2.6 or higher
@@ -59,7 +62,7 @@ try:
 except ImportError:
   mmtk_ok = False
 if not mmtk_ok:
-  print "AlGDock requires MMTK version 2.6 or higher"
+  print ("AlGDock requires MMTK version 2.6 or higher")
   raise SystemExit
 
 MMTK_source_path = findPath(search_paths['MMTK'])
@@ -183,9 +186,13 @@ class modified_sdist(sdist):
         self.make_distribution()
 
     def make_release_tree (self, base_dir, files):
-        self.mkpath(base_dir)
-        dir_util.create_tree(base_dir, files,
-                             verbose=self.verbose, dry_run=self.dry_run)
+        def create_tree(base_dir, subdirs):
+            for subdir in subdirs:
+                os.makedirs(os.path.join(base_dir, subdir), exist_ok=True)
+
+        #self.mkpath(base_dir)
+        os.makedirs(base_dir, exist_ok=True)
+        create_tree(base_dir, files, verbose=self.verbose, dry_run=self.dry_run)
         if hasattr(os, 'link'):         # can make hard links on this system
             link = 'hard'
             msg = "making hard links in %s..." % base_dir
@@ -279,7 +286,7 @@ if sphinx:
             try:
                 sphinx.setup_command.BuildDoc.run(self)
             except UnicodeDecodeError:
-                print >>sys.stderr, "ERROR: unable to build documentation because Sphinx do not handle source path with non-ASCII characters. Please try to move the source package to another location (path with *only* ASCII characters)."
+                print("ERROR: unable to build documentation because Sphinx do not handle source path with non-ASCII characters. Please try to move the source package to another location (path with *only* ASCII characters).")
             sys.path.pop(0)
 
     cmdclass['build_sphinx'] = BuildDoc

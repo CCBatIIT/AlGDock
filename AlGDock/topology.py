@@ -1,12 +1,25 @@
 import os, sys
 import numpy as np
 
-import MMTK
+try:
+  import MMTK
+  from MMTK.ParticleProperties import Configuration
+  from MMTK.ForceFields import ForceField
+  from MMTK.ForceFields import Amber12SBForceField
+except ImportError:
+  MMTK = None
+
+try:
+  import openmm
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  import openmm.unit as unit
+
+except ImportError:
+  openmm = None
 
 from AlGDock.logger import NullDevice
 
-
-class Topology:
+class TopologyMMTK:
   """Describes the system to simulate
 
   ...
@@ -108,3 +121,74 @@ class Topology:
         self.L_first_atom = 0
     else:
       self.L_first_atom = 0
+
+class TopologyUsingOpenMM:
+  """Describes the system to simulate using OpenMM
+  ...
+  Attributes
+  ----------
+  molecule : MMTK.Molecule
+    Ligand molecule, like an OpenMM Chain
+  molecule_R : MMTK.Molecule
+    If includeReceptor, Receptor molecule, like an OpenMM Chain
+  universe : MMTK.InfiniteUniverse
+    A universe containing all the molecules
+
+  L_first_atom : int
+    Index of the first ligand atom in the AMBER prmtop file
+  inv_prmtop_atom_order_L : np.array
+    Indices to convert from prmtop to MMTK ordering
+  prmtop_atom_order_L : np.array
+    Indices to convert from prmtop to MMTK ordering
+  """
+  def __init__(self, args, includeReceptor=False):
+    original_stderr = sys.stderr
+    sys.stderr = NullDevice()
+    prmtopL = AmberPrmtopFile(self.args.FNs['prmtop']["L"])
+    inpcrdL = AmberInpcrdFile(self.args.FNs['inpcrd']["L"])
+    self.OMM_system = prmtopL.createSystem(nonbondedMethod=NoCutoff, constraints=None)
+    self.molecule = prmtopL.topology
+
+    if includeReceptor:
+      prmtopRL = AmberPrmtopFile(self.args.FNs['prmtop']["RL"])
+      inpcrdRL = AmberInpcrdFile(self.args.FNs['inpcrd']["RL"])
+
+      self.OMM_system = prmtopRL.createSystem(nonbondedMethod=NoCutoff, constraints=None)
+      self.molecule = prmtopRL.topology
+    else:
+      self.molecule = None
+
+    sys.stderr = original_stderr
+    dummy_integrator = openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
+
+    # Hydrogen Mass Repartitioning
+    # (sets hydrogen mass to H_mass and scales other masses down)
+    if args.params['BC']['H_mass'] > 0.:
+      from AlGDock.HMR import hydrogen_mass_repartitioning_openmm
+      self.OMM_system = hydrogen_mass_repartitioning_openmm(self.molecule,  self.OMM_system,\
+        args.params['BC']['H_mass'])
+    self.OMM_simulaiton = openmm.app.Simulation(prmtopL.topology, self.OMM_system, dummy_integrator)
+    self.OMM_simulaiton.context.setPositions(inpcrdL.positions)
+    self.inv_prmtop_atom_order_L = self.prmtop_atom_order_L = np.array([atom.index \
+      for atom in self.molecule.atoms()], dtype=int)
+
+    if includeReceptor: # this is complex
+      self.OMM_simulaiton = openmm.app.Simulation(prmtopRL.topology, self.OMM_system, dummy_integrator)
+      self.OMM_simulaiton.context.setPositions(inpcrdRL.positions)
+
+      if (args.FNs['prmtop']['R'] is not None) and \
+         (args.FNs['prmtop']['RL'] is not None):
+        prmtopRL = AmberPrmtopFile(self.args.FNs['prmtop']["RL"])
+        receptor_atoms = set(atom.index for atom in prmtopRL.topology.atoms())
+        complex_atoms = set(atom.index for atom in prmtopRL.topology.atoms())
+        ligand_atoms = complex_atoms - receptor_atoms
+        if ligand_atoms:
+          self.L_first_atom = min(ligand_atoms)
+        else:
+          print("No ligand atoms found in complex prmtop file.")
+          self.L_first_atom = 0
+      else:
+        self.L_first_atom = 0
+    else:
+      self.L_first_atom = 0
+

@@ -4,10 +4,20 @@ import time
 import numpy as np
 
 import copy
+try:
+  import MMTK
+  import MMTK.Units
+  from MMTK.ParticleProperties import Configuration
+except ImportError:
+  MMTK = None
 
-import MMTK
-import MMTK.Units
-from MMTK.ParticleProperties import Configuration
+try:
+  import openmm
+  import openmm.unit as unit
+  from openmm.app import AmberPrmtopFile, AmberInpcrdFile, Simulation, NoCutoff
+  from openmm import *
+except ImportError:
+  OpenMM = None
 
 import Scientific
 try:
@@ -20,44 +30,44 @@ from AlGDock.BindingPMF import R, scalables
 class Initialization():
   """Establishes the initial protocol of thermodynamic states
 
-  Attributes
-  ----------
-  args : AlGDock.simulation_arguments.SimulationArguments
-    Simulation arguments
-  log : AlGDock.logger.Logger
-    Simulation log
-  top : AlGDock.topology.Topology
-    Topology of the ligand
-  system : AlGDock.system.System
-    Simulation system
-  _get_confs_to_rescore : function
-    Returns the configurations to rescore
-  iterator : AlGDock.simulation_iterator.SimulationIterator
-    Performs an iteration on one thermodynamic state
-  data : AlGDock.simulation_data.SimulationData
-    Stores results from the simulation
-  """
-  def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
-    """Initializes the class
-
-    Parameters
+    Attributes
     ----------
     args : AlGDock.simulation_arguments.SimulationArguments
       Simulation arguments
     log : AlGDock.logger.Logger
       Simulation log
-    top : AlGDock.topology.Topology
+    top : AlGDock.topology.TopologyMMTK
       Topology of the ligand
     system : AlGDock.system.System
       Simulation system
+    _get_confs_to_rescore : function
+      Returns the configurations to rescore
     iterator : AlGDock.simulation_iterator.SimulationIterator
       Performs an iteration on one thermodynamic state
     data : AlGDock.simulation_data.SimulationData
       Stores results from the simulation
-    save : AlGDock.BindingPMF.save
-      Saves the data
-    _u_kln : AlGDock.BindingPMF._u_kln
-      Evaluates energies in different thermodynamic states
+  """
+  def __init__(self, args, log, top, system, iterator, data, save, _u_kln):
+    """Initializes the class
+
+      Parameters
+      ----------
+      args : AlGDock.simulation_arguments.SimulationArguments
+        Simulation arguments
+      log : AlGDock.logger.Logger
+        Simulation log
+      top : AlGDock.topology.TopologyMMTK
+        Topology of the ligand
+      system : AlGDock.system.System
+        Simulation system
+      iterator : AlGDock.simulation_iterator.SimulationIterator
+        Performs an iteration on one thermodynamic state
+      data : AlGDock.simulation_data.SimulationData
+        Stores results from the simulation
+      save : AlGDock.BindingPMF.save
+        Saves the data
+      _u_kln : AlGDock.BindingPMF._u_kln
+        Evaluates energies in different thermodynamic states
     """
     self.args = args
     self.log = log
@@ -97,8 +107,12 @@ class Initialization():
     """
 
     if not 'delta_t' in params_k.keys():
-      params_k[
+      if MMTK:
+        params_k[
         'delta_t'] = 1. * self.args.params[process]['delta_t'] * MMTK.Units.fs
+      else:
+        params_k[
+        'delta_t'] = 1. * self.args.params[process]['delta_t'] * unit.femtosecond
     params_k['steps_per_trial'] = self.args.params[process]['steps_per_sweep']
 
     attempts_left = 12
@@ -106,9 +120,15 @@ class Initialization():
       # Get initial potential energy
       Es_o = []
       for seed in seeds:
-        self.top.universe.setConfiguration(
+        if MMTK:
+          self.top.universe.setConfiguration(
           Configuration(self.top.universe, seed))
-        Es_o.append(self.top.universe.energy())
+          Es_o.append(self.top.universe.energy())
+        else:
+          self.top.OMM_simulaiton.context.setPositions(seed)
+          state = self.top.OMM_simulation.context.getState(getEnergy=True)
+          Es_o.append(state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)) #kj/mol
+
       Es_o = np.array(Es_o)
       # Perform simulation
       results = []
@@ -145,9 +165,16 @@ class Initialization():
       delta_t = np.array([result['delta_t'] for result in results])
       if np.std(delta_t) > 1E-3:
         # If the integrator adapts the time step, take an average
-        delta_t = min(max(np.mean(delta_t), \
+        if MMTK:
+          delta_t = min(max(np.mean(delta_t), \
           self.args.params[process]['delta_t']/5.0*MMTK.Units.fs), \
           self.args.params[process]['delta_t']*0.1*MMTK.Units.fs)
+        else:
+          delta_t = min(max(np.mean(delta_t), \
+          self.args.params[process]['delta_t'] / 5.0 * unit.femtosecond), \
+          self.args.params[process]['delta_t'] * 0.1 * unit.femtosecond)
+
+
       else:
         delta_t = delta_t[0]
 
@@ -157,26 +184,44 @@ class Initialization():
         acc_rate = float(np.sum([r['acc_Sampler'] for r in results]))/\
           np.sum([r['att_Sampler'] for r in results])
         if acc_rate > 0.8:
-          delta_t += 0.125 * MMTK.Units.fs
+          if MMTK:
+            delta_t += 0.125 * MMTK.Units.fs
+          else:
+            delta_t += 0.125 * unit.femtosecond
+
         elif acc_rate < 0.4:
-          if delta_t < 2.0 * MMTK.Units.fs:
-            params_k['steps_per_trial'] = max(
-              int(params_k['steps_per_trial'] / 2.), 1)
-          delta_t -= 0.25 * MMTK.Units.fs
-          if acc_rate < 0.1:
+          if MMTK:
+            if delta_t < 2.0 * MMTK.Units.fs:
+              params_k['steps_per_trial'] = max(
+                int(params_k['steps_per_trial'] / 2.), 1)
             delta_t -= 0.25 * MMTK.Units.fs
+            if acc_rate < 0.1:
+              delta_t -= 0.25 * MMTK.Units.fs
+          else:
+            if delta_t < 2.0 * unit.femtosecond:
+              params_k['steps_per_trial'] = max(
+                int(params_k['steps_per_trial'] / 2.), 1)
+            delta_t -= 0.25 * unit.femtosecond
+            if acc_rate < 0.1:
+              delta_t -= 0.25 * unit.femtosecond
         else:
           attempts_left = 0
       else:
         # For other integrators, make sure the time step
         # is small enough to see changes in the energy
         if (np.std(deltaEs) < 1E-3):
-          delta_t -= 0.25 * MMTK.Units.fs
+          if MMTK:
+            delta_t -= 0.25 * MMTK.Units.fs
+          else:
+            delta_t -= 0.25 * unit.femtosecond
         else:
           attempts_left = 0
-
-      if delta_t < 0.1 * MMTK.Units.fs:
-        delta_t = 0.1 * MMTK.Units.fs
+      if MMTK:
+        if delta_t < 0.1 * MMTK.Units.fs:
+          delta_t = 0.1 * MMTK.Units.fs
+      else:
+        if delta_t < 0.1 * unit.femtosecond:
+          delta_t = 0.1 * unit.femtosecond
 
       params_k['delta_t'] = delta_t
 
