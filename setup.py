@@ -96,125 +96,117 @@ for p_dir in paths:
     if files_in_dir:
         data_files.append((p_dir, files_in_dir))
 
-# Customized distutils sources
-
-class ModifiedFileList(FileList):
-
+from setuptools._distutils.filelist import FileList as DistutilsFileList # Use the one from distutils
+class ModifiedFileList(DistutilsFileList):  # Changed inheritance
     def findall(self, dir=os.curdir):
         from stat import ST_MODE, S_ISREG, S_ISDIR, S_ISLNK
-        list = []
+        file_list = []
         stack = [dir]
         pop = stack.pop
         push = stack.append
         while stack:
-            dir = pop()
-            names = os.listdir(dir)
+            current_dir = pop()
+            try:
+                names = os.listdir(current_dir)
+            except OSError:
+                continue
             for name in names:
-                if dir != os.curdir:
-                    fullname = os.path.join(dir, name)
+                if current_dir != os.curdir:
+                    fullname = os.path.join(current_dir, name)
                 else:
                     fullname = name
-                stat = os.stat(fullname)
-                mode = stat[ST_MODE]
+
+                try:
+                    stat_info = os.stat(fullname)
+                except OSError:
+                    continue
+
+                mode = stat_info[ST_MODE]
                 if S_ISREG(mode):
-                    list.append(fullname)
+                    file_list.append(fullname)
                 elif S_ISDIR(mode) and not S_ISLNK(mode):
-                    list.append(fullname)
+                    file_list.append(fullname)
                     push(fullname)
-        self.allfiles = list
-
-
-class modified_build(build):
-
-    def has_sphinx(self):
-        if sphinx is None:
-            return False
-        setup_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.isdir(os.path.join(setup_dir, 'Doc'))
-
-    sub_commands = build.sub_commands + [('build_sphinx', has_sphinx)]
+        self.allfiles = file_list
 
 class modified_sdist(sdist):
-
-    def run (self):
-
+    def run(self):
         self.filelist = ModifiedFileList()
         self.check_metadata()
         self.get_file_list()
-        if self.manifest_only:
+        if getattr(self, 'manifest_only', False):
             return
         self.make_distribution()
 
-    def make_release_tree (self, base_dir, files):
-        def create_tree(base_dir, subdirs):
-            for subdir in subdirs:
-                os.makedirs(os.path.join(base_dir, subdir), exist_ok=True)
+    def make_release_tree(self, base_dir, files):
+        self.mkpath(base_dir)
+        dir_util.create_tree(base_dir, files, dry_run=self.dry_run)  # Use distutils dir_util
 
-        #self.mkpath(base_dir)
-        os.makedirs(base_dir, exist_ok=True)
-        create_tree(base_dir, files, verbose=self.verbose, dry_run=self.dry_run)
-        if hasattr(os, 'link'):         # can make hard links on this system
-            link = 'hard'
-            msg = "making hard links in %s..." % base_dir
-        else:                           # nope, have to copy
-            link = None
-            msg = "copying files to %s..." % base_dir
         if not files:
             self.warn("no files to distribute -- empty manifest?")
-        else:
-            self.announce(msg)
-        for file in files:
-            if os.path.isfile(file):
-                dest = os.path.join(base_dir, file)
-                self.copy_file(file, dest, link=link)
-            elif os.path.isdir(file):
-                dir_util.mkpath(os.path.join(base_dir, file))
-            else:
-                self.warn("'%s' not a regular file or directory -- skipping"
-                          % file)
+            return
 
-#  class modified_install(install):
-#      def run(self):
-#          setup_dir = os.path.dirname(os.path.abspath(__file__))
-#          dest_dir = os.path.join(self.install_lib,'AlGDock',sys.platform)
-#          import glob
-#          so_FNs = glob.glob(os.path.join(setup_dir, 'AlGDock', 'Integrators', 'CDHMC','*.so.*'))
-#          for so_FN in so_FNs:
-#            print 'Copying %s to %s'%(so_FN, dest_dir)
-#            os.system('cp %s %s'%(so_FN, dest_dir))
-#          return install.run(self)
+        self.announce(f"making hard links in {base_dir}..."
+                      if hasattr(os, 'link') else f"copying files to {base_dir}...")
+
+        for file_path in files:
+            dest = os.path.join(base_dir, file_path)
+            if os.path.isfile(file_path):
+                parent_dest_dir = os.path.dirname(dest)
+                if not os.path.exists(parent_dest_dir):
+                    self.mkpath(parent_dest_dir)
+                self.copy_file(file_path, dest, link='hard' if hasattr(os, 'link') else None)
+            elif os.path.isdir(file_path):
+                # If ModifiedFileList includes dirs, ensure they are created if not already by copy_file's dest
+                # dir_util.create_tree should generally handle this, but explicit mkpath can be a fallback.
+                self.mkpath(dest)
+            else:
+                self.warn(f"'{file_path}' not a regular file or directory -- skipping")
+
+
+class modified_build(build):
+    def has_sphinx(self):
+        setup_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.isdir(os.path.join(setup_dir, 'Doc'))
+    sub_commands = build.sub_commands + [('build_sphinx', has_sphinx)]
+
 
 class modified_install_data(install_data):
-
     def run(self):
         install_cmd = self.get_finalized_command('install')
         self.install_dir = getattr(install_cmd, 'install_lib')
-        return install_data.run(self)
+        return super().run()  # Use super() for Python 3
+
 
 class test(Command):
-
     user_options = []
+
     def initialize_options(self):
         self.build_lib = None
+
     def finalize_options(self):
-        self.set_undefined_options('build',
-                                   ('build_lib', 'build_lib'))
+        self.set_undefined_options('build', ('build_lib', 'build_lib'))
 
     def run(self):
-        import sys, subprocess
+        import subprocess  # sys is already imported
         self.run_command('build_py')
         self.run_command('build_ext')
-        ff = sum((fns for dir, fns in data_files if 'ForceFields' in dir), [])
-        for fn in ff:
-            self.copy_file(fn,
-                           os.path.join(self.build_lib, fn),
-                           preserve_mode=False)
-#        subprocess.call([sys.executable, 'Tests/all_tests.py'],
-#                        env={'PYTHONPATH': self.build_lib,
-#                             'MMTKDATABASE': 'MMTK/Database'})
+
+        # Flatten the list of force field data files
+        ff_files_to_copy = []
+        for _, fns in data_files:  # Iterate through (dir, files_in_dir)
+            if 'ForceFields' in _:  # Check if the directory string contains 'ForceFields'
+                ff_files_to_copy.extend(fns)
+
+        for fn in ff_files_to_copy:
+            dest_file = os.path.join(self.build_lib, fn)
+            dest_dir = os.path.dirname(dest_file)
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir)
+            self.copy_file(fn, dest_file, preserve_mode=False)
 
 cmdclass = {
-    'build' : modified_build,
+    'build': modified_build,
     'sdist': modified_sdist,
     'install_data': modified_install_data,
     'build_ext': build_ext,
@@ -224,76 +216,67 @@ cmdclass = {
 # Build the sphinx documentation if Sphinx is available
 try:
     import sphinx
-except ImportError:
-    sphinx = None
-
-if sphinx:
     from sphinx.setup_command import BuildDoc as _BuildDoc
+
 
     class BuildDoc(_BuildDoc):
         def run(self):
-            # make sure the python path is pointing to the newly built
-            # code so that the documentation is built on this and not a
-            # previously installed version
             build = self.get_finalized_command('build')
             sys.path.insert(0, os.path.abspath(build.build_lib))
-            ff = sum((fns for dir, fns in data_files if 'ForceFields' in dir),
-                     [])
-            for fn in ff:
-                self.copy_file(fn,
-                               os.path.join(build.build_lib, fn),
-                               preserve_mode=False)
+
+            ff_files_to_copy = []
+            for _, fns in data_files:
+                if 'ForceFields' in _:
+                    ff_files_to_copy.extend(fns)
+
+            for fn in ff_files_to_copy:
+                dest_file = os.path.join(build.build_lib, fn)
+                dest_dir = os.path.dirname(dest_file)
+                if not os.path.exists(dest_dir):
+                    os.makedirs(dest_dir)
+                self.copy_file(fn, dest_file, preserve_mode=False)
+
             try:
-                sphinx.setup_command.BuildDoc.run(self)
+                super().run()
             except UnicodeDecodeError:
-                print("ERROR: unable to build documentation because Sphinx do not handle source path with non-ASCII characters. Please try to move the source package to another location (path with *only* ASCII characters).")
+                print(
+                    "ERROR: unable to build documentation because Sphinx may not handle source paths with non-ASCII characters. Please try moving the source package to a path with only ASCII characters.")
             sys.path.pop(0)
 
     cmdclass['build_sphinx'] = BuildDoc
-
-#################################################################
-# Check various compiler/library properties
+except ImportError:
+    sphinx = None
 
 libraries = []
-if sysconfig['LIBM'] != '':
+if config_vars.get('LIBM') and config_vars['LIBM'] != '':
     libraries.append('m')
 
 macros = []
-try:
-    from Scientific.MPI import world
-except ImportError:
-    world = None
-if world is not None:
-    if type(world) == types.InstanceType:
-        world = None
-if world is not None:
-    macros.append(('WITH_MPI', None))
 
-if hasattr(ctypes.CDLL(ctypes.util.find_library('m')), 'erfc'):
-    macros.append(('LIBM_HAS_ERFC', None))
+try:
+    libm_path = ctypes.util.find_library('m')
+    if libm_path:
+        libm = ctypes.CDLL(libm_path)
+        if hasattr(libm, 'erfc'):
+            macros.append(('LIBM_HAS_ERFC', None))
+except (OSError, AttributeError):
+    print("Warning: Could not check for erfc in libm.")
 
 if sys.platform != 'win32':
-    if ctypes.sizeof(ctypes.c_long) == 8:
+    if ctypes.sizeof(ctypes.c_long) == 8:  # Check for 64-bit long type
         macros.append(('_LONG64_', None))
 
-if sys.version_info[0] == 2 and sys.version_info[1] >= 2:
-    macros.append(('EXTENDED_TYPES', None))
-
-#################################################################
-# System-specific optimization options
-
 low_opt = []
-if sys.platform != 'win32' and 'gcc' in sysconfig['CC']:
+cc_name = os.path.basename(config_vars.get('CC', 'gcc'))  # Default to 'gcc' if CC not found
+if sys.platform != 'win32' and 'gcc' in cc_name or 'clang' in cc_name:
     low_opt = ['-O0']
-low_opt.append('-g')
+low_opt.append('-g')  # Debug symbols
 
 high_opt = []
-if sys.platform[:5] == 'linux' and 'gcc' in sysconfig['CC']:
-    high_opt = ['-O3', '-ffast-math', '-fomit-frame-pointer',
-                '-fkeep-inline-functions']
-if sys.platform == 'darwin' and 'gcc' in sysconfig['CC']:
-    high_opt = ['-O3', '-ffast-math', '-fomit-frame-pointer',
-                '-fkeep-inline-functions', '-falign-loops=16']
+if sys.platform.startswith('linux') and ('gcc' in cc_name or 'clang' in cc_name):
+    high_opt = ['-O3', '-ffast-math', '-fomit-frame-pointer']
+if sys.platform == 'darwin' and ('gcc' in cc_name or 'clang' in cc_name):
+    high_opt = ['-O3', '-ffast-math', '-fomit-frame-pointer']
 if sys.platform == 'aix4':
     high_opt = ['-O4']
 if sys.platform == 'odf1V4':
@@ -301,136 +284,88 @@ if sys.platform == 'odf1V4':
 
 high_opt.append('-g')
 
-#################################################################
+ext_module_name_and_path = [
+    ('MMTK_sphere', ['AlGDock/ForceFields/Sphere/MMTK_sphere.pyx']),
+    ('MMTK_cylinder', ['AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx']),
+    ('MMTK_trilinear_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_grid.c']),
+    ('MMTK_trilinear_one_fourth_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid.c']),
+    ('MMTK_OBC', ['AlGDock/ForceFields/OBC/MMTK_OBC.c',
+                  'AlGDock/ForceFields/OBC/ObcParameters.cpp',
+                  'AlGDock/ForceFields/OBC/ObcWrapper.cpp',
+                  'AlGDock/ForceFields/OBC/ReferenceForce.cpp',
+                  'AlGDock/ForceFields/OBC/ReferenceObc.cpp']),
+    ('MMTK_OBC_desolv', ['AlGDock/ForceFields/OBC/MMTK_OBC_desolv.c',
+                         'AlGDock/ForceFields/OBC/ObcParameters.cpp',
+                         'AlGDock/ForceFields/OBC/ObcWrapper.cpp',
+                         'AlGDock/ForceFields/OBC/ReferenceForce.cpp',
+                         'AlGDock/ForceFields/OBC/ReferenceObc.cpp']),
+    ('MMTK_pose', ['AlGDock/ForceFields/Pose/MMTK_pose.c',
+                   'AlGDock/ForceFields/Pose/pose.c']),
+    ('MMTK_electric_field', ['AlGDock/ForceFields/ElectricField/MMTK_electric_field.c']),
+    ('MMTK_electric_field_z', ['AlGDock/ForceFields/ElectricField/MMTK_electric_field_z.c']),
+    ('NUTS', ['AlGDock/Integrators/NUTS/NUTS.pyx']),
+    ('SmartDarting', ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx']),
+    ('BAT', ['Src/BAT.pyx']),
+    ('repX', ['Src/repX.pyx'])
+]
 
-ext_module_name_and_path = [\
-  ('MMTK_sphere', ['AlGDock/ForceFields/Sphere/MMTK_sphere.pyx']), \
-  ('MMTK_cylinder', \
-        ['AlGDock/ForceFields/Cylinder/MMTK_cylinder.pyx']), \
-  ('MMTK_trilinear_grid', ['AlGDock/ForceFields/Grid/MMTK_trilinear_grid.c']), \
-  ('MMTK_trilinear_one_fourth_grid', \
-    ['AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid.c']), \
-  ('MMTK_OBC', ['AlGDock/ForceFields/OBC/MMTK_OBC.c', \
-                'AlGDock/ForceFields/OBC/ObcParameters.cpp', \
-                'AlGDock/ForceFields/OBC/ObcWrapper.cpp', \
-                'AlGDock/ForceFields/OBC/ReferenceForce.cpp', \
-                'AlGDock/ForceFields/OBC/ReferenceObc.cpp']), \
-  ('MMTK_OBC_desolv', ['AlGDock/ForceFields/OBC/MMTK_OBC_desolv.c', \
-                'AlGDock/ForceFields/OBC/ObcParameters.cpp', \
-                'AlGDock/ForceFields/OBC/ObcWrapper.cpp', \
-                'AlGDock/ForceFields/OBC/ReferenceForce.cpp', \
-                'AlGDock/ForceFields/OBC/ReferenceObc.cpp']), \
-  ('MMTK_pose', ['AlGDock/ForceFields/Pose/MMTK_pose.c', \
-    'AlGDock/ForceFields/Pose/pose.c', \
-    os.path.join(MMTK_source_path, 'Src', 'bonded.c'), \
-    os.path.join(MMTK_source_path, 'Src', 'nonbonded.c'), \
-    os.path.join(MMTK_source_path, 'Src', 'ewald.c'), \
-    os.path.join(MMTK_source_path, 'Src', 'sparsefc.c')]), \
-  ('MMTK_electric_field', \
-    ['AlGDock/ForceFields/ElectricField/MMTK_electric_field.c']), \
-  ('MMTK_electric_field_z', \
-    ['AlGDock/ForceFields/ElectricField/MMTK_electric_field_z.c']), \
-  ('NUTS', ['AlGDock/Integrators/NUTS/NUTS.pyx']), \
-  ('SmartDarting', ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx']), \
-  ('BAT', ['Src/BAT.pyx']),
-  ('repX', ['Src/repX.pyx'])]
+# Conditional compilation blocks for unused/obsolete modules are kept as is (all False).
 
-if False:
-  # These extension modules are not used in the current code,
-  # but may be used in the future.
-  ext_module_name_and_path.extend(\
-    [('MMTK_trilinear_thresh_grid', \
-        ['AlGDock/ForceFields/Grid/MMTK_trilinear_thresh_grid.pyx']), \
-     ('MMTK_trilinear_transform_grid', \
-        ['AlGDock/ForceFields/Grid/MMTK_trilinear_transform_grid.pyx']), \
-     ('MMTK_BSpline_grid', \
-        ['AlGDock/ForceFields/Grid/MMTK_BSpline_grid.pyx']), \
-     ('MMTK_BSpline_transform_grid', \
-        ['AlGDock/ForceFields/Grid/MMTK_BSpline_transform_grid.pyx'])])
+setup(name=package_name,
+      version=pkginfo.__version__,
+      description="Molecular docking with an adaptive alchemical interaction grid",
+      long_description=
+      """
+       AlGDock is an Open Source program for molecular docking. In addition to
+       low-energy poses, AlGDock also provides an estimate of the binding potential
+       of mean force, or free energy of binding between a (flexible) ligand and
+       rigid receptor.
+       """,
+      author="David Minh",
+      author_email="dminh@iit.edu",
+      url="TBA",  # Consider updating this
+      license="MIT",
 
-if False:
-  # These extension modules are obsolete but are kept as references
-  ext_module_name_and_path.extend(\
-    [('MMTK_trilinear_grid_cython', \
-        ['AlGDock/ForceFields/Grid/MMTK_trilinear_grid_cython.pyx']),
-     ('MMTK_OpenMM', \
-        ['AlGDock/ForceFields/OpenMM/MMTK_OpenMM.pyx']),
-     ('MMTK_trilinear_one_fourth_grid', \
-        ['AlGDock/ForceFields/Grid/MMTK_trilinear_one_fourth_grid_cython.pyx'])])
+      packages=['AlGDock',
+                'AlGDock.ForceFields',
+                'AlGDock.ForceFields.Cylinder',
+                'AlGDock.ForceFields.Sphere',
+                'AlGDock.ForceFields.Grid',
+                'AlGDock.ForceFields.OBC',
+                'AlGDock.ForceFields.OpenMM',
+                'AlGDock.ForceFields.Pose',
+                'AlGDock.ForceFields.ElectricField',
+                'AlGDock.Integrators',
+                'AlGDock.Integrators.ExternalMC',
+                'AlGDock.Integrators.HamiltonianMonteCarlo',
+                'AlGDock.Integrators.NUTS',
+                'AlGDock.Integrators.SmartDarting',
+                'AlGDock.Integrators.VelocityVerlet'],
+      # ext_package defines where the .so files will be placed within the package structure
+      ext_package='AlGDock',
+      ext_modules=[Extension(f"AlGDock.{name}",  # Prepend AlGDock for proper packaging.
+                             path,
+                             extra_compile_args=compile_args + high_opt,
+                             include_dirs=include_dirs,
+                             define_macros=[('SERIAL', None), ('VIRIAL', None), ('MACROSCOPIC', None)] + macros,
+                             libraries=libraries,
+                             language='c++' if any(s.endswith('.cpp') for s in path) else 'c'
+                             )
+                   for (name, path) in ext_module_name_and_path],
+      data_files=data_files,
+      scripts=[],
 
-# if False:
-#  These extension modules need to be debugged.
-#  ext_module_name_and_path.extend(\
-#    [('MMTK_CatmullRom_grid', ['AlGDock/ForceFields/Grid/MMTK_CatmullRom_grid.pyx']), \
-#     ('MMTK_CatmullRom_transform_grid', ['AlGDock/ForceFields/Grid/MMTK_CatmullRom_transform_grid.pyx']), \
-#     ('MMTK_tricubic_grid', ['AlGDock/ForceFields/Grid/MMTK_tricubic_grid.pyx']), \
-#     ('MMTK_tricubic_transform_grid', ['AlGDock/ForceFields/Grid/MMTK_tricubic_transformgrid.pyx'])])
+      cmdclass=cmdclass,
 
-setup (name = package_name,
-       version = pkginfo.__version__,
-       description = "Molecular docking with an adaptive alchemical interaction grid",
-       long_description=
-"""
-AlGDock is an Open Source program for molecular docking. In addition to
-low-energy poses, AlGDock also provides an estimate of the binding potential
-of mean force, or free energy of binding between a (flexible) ligand and
-rigid receptor.
-""",
-       author = "David Minh",
-       author_email = "dminh@iit.edu",
-       url = "TBA",
-       license = "MIT",
-
-       packages = ['AlGDock',
-                   'AlGDock.ForceFields',
-                   'AlGDock.ForceFields.Cylinder',
-                   'AlGDock.ForceFields.Sphere',
-                   'AlGDock.ForceFields.Grid',
-                   'AlGDock.ForceFields.OBC',
-                   'AlGDock.ForceFields.OpenMM',
-                   'AlGDock.ForceFields.Pose',
-                   'AlGDock.ForceFields.ElectricField',
-                   'AlGDock.Integrators',
-                   'AlGDock.Integrators.ExternalMC',
-                   'AlGDock.Integrators.HamiltonianMonteCarlo',
-                   'AlGDock.Integrators.NUTS',
-                   'AlGDock.Integrators.SmartDarting',
-                   'AlGDock.Integrators.VelocityVerlet'],
-       ext_package = 'AlGDock.'+sys.platform,
-       ext_modules = [Extension(name, path, \
-        extra_compile_args = compile_args + high_opt, \
-        include_dirs = include_dirs, \
-        define_macros = \
-          [('SERIAL', None), ('VIRIAL', None), ('MACROSCOPIC', None)] \
-          + macros,
-        libraries=libraries) \
-          for (name,path) in ext_module_name_and_path]
-,
-       data_files = data_files,
-       scripts = [],
-
-       cmdclass = cmdclass,
-
-       command_options = {
-           'build_sphinx': {
-               'source_dir' : ('setup.py', 'Doc')}
-           },
-       )
-
-try:
-    import numpy
-    import numpy.distutils.misc_util
-    include_dirs.extend(numpy.distutils.misc_util.get_numpy_include_dirs())
-    compile_args.append("-DNUMPY=1")
-except ImportError:
-    print("AlGDock requires NumPy.")
-    sys.exit(1)
-
-import numpy
-include_dirs_config = ['Include']
-numpy_include_path = numpy.get_include()
-include_dirs_config.append(numpy_include_path)
-print(f"Successfully added NumPy include path: {numpy_include_path}")
-
-import numpy.distutils.misc_util
-include_dirs.extend(numpy.distutils.misc_util.get_numpy_include_dirs())
+      command_options={
+          'build_sphinx': {
+              'source_dir': ('setup.py', 'Doc'),
+              'build_dir': ('setup.py', os.path.join('build', 'sphinx'))
+          }
+      },
+      python_requires='>=3.8',
+      install_requires=[
+          'numpy',
+          'cython',
+      ],
+      )
