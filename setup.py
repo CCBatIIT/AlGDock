@@ -5,15 +5,21 @@ package_name = "AlGDock"
 from setuptools import setup, Command, Extension
 from setuptools.command.build import build
 from setuptools.command.sdist import sdist
-from setuptools.command.install_data import install_data
-from setuptools.command.install import install
-from setuptools._distutils.filelist import FileList, translate_pattern
-import sysconfig
-sysconfig = sysconfig.get_config_vars()
+try:
+    from setuptools.command.install_data import install_data
+except ModuleNotFoundError:
+    from setuptools._distutils.command.install_data import install_data
 
-import os, sys, types
-import ctypes, ctypes.util
+from distutils import dir_util
+import sysconfig as python_sysconfig
+
+import os
+import sys
+import ctypes
+import ctypes.util
 from glob import glob
+
+config_vars = python_sysconfig.get_config_vars()
 
 class Dummy:
     pass
@@ -21,9 +27,14 @@ pkginfo = Dummy()
 #execfile('AlGDock/__pkginfo__.py', pkginfo.__dict__)
 #execfile('AlGDock/path_tools.py')
 
-exec(open("AlGDock/__pkginfo__.py").read(), pkginfo.__dict__)
-exec(open("AlGDock/path_tools.py").read())
-
+try:
+    with open("AlGDock/__pkginfo__.py") as f:
+        exec(f.read(), pkginfo.__dict__)
+    with open("AlGDock/path_tools.py") as f:
+        exec(f.read())
+except FileNotFoundError as e:
+    print(f"Error: Required file not found: {e}. Make sure AlGDock/__pkginfo__.py and AlGDock/path_tools.py exist.")
+    sys.exit(1)
 
 from site import USER_BASE as userbase
 
@@ -36,8 +47,8 @@ try:
 except ImportError:
   cython_ok = False
 if not cython_ok:
-  print ('AlGDock requires Cython')
-  raise SystemExit
+  print('AlGDock requires Cython')
+  sys.exit(1) # Changed to sys.exit(1) for a non-zero exit code
 
 # Check that we have Scientific 2.6 or higher
 try:
@@ -456,3 +467,21 @@ rigid receptor.
                'source_dir' : ('setup.py', 'Doc')}
            },
        )
+
+try:
+    import numpy
+    import numpy.distutils.misc_util
+    include_dirs.extend(numpy.distutils.misc_util.get_numpy_include_dirs())
+    compile_args.append("-DNUMPY=1")
+except ImportError:
+    print("AlGDock requires NumPy.")
+    sys.exit(1)
+
+import numpy
+include_dirs_config = ['Include']
+numpy_include_path = numpy.get_include()
+include_dirs_config.append(numpy_include_path)
+print(f"Successfully added NumPy include path: {numpy_include_path}")
+
+import numpy.distutils.misc_util
+include_dirs.extend(numpy.distutils.misc_util.get_numpy_include_dirs())
