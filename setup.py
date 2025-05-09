@@ -50,80 +50,27 @@ if not cython_ok:
   print('AlGDock requires Cython')
   sys.exit(1) # Changed to sys.exit(1) for a non-zero exit code
 
-# Check that we have Scientific 2.6 or higher
-try:
-    from Scientific import __version__ as scientific_version
-    if scientific_version[-2:] == 'hg':
-        scientific_version = scientific_version[:-2]
-    scientific_version = scientific_version.split('.')
-    scientific_ok = int(scientific_version[0]) >= 2 and \
-                    int(scientific_version[1]) >= 6
-except ImportError:
-    scientific_ok = False
-if not scientific_ok:
-    print ("AlGDock needs ScientificPython 2.6 or higher")
-    raise SystemExit
-
-# Check that we have MMTK 2.6 or higher
-try:
-  from MMTK import __version__ as mmtk_version
-  mmtk_version = mmtk_version.split('.')
-  mmtk_ok = int(mmtk_version[0]) >= 2 and \
-            int(mmtk_version[1]) >= 6
-except ImportError:
-  mmtk_ok = False
-if not mmtk_ok:
-  print ("AlGDock requires MMTK version 2.6 or higher")
-  raise SystemExit
-
-MMTK_source_path = findPath(search_paths['MMTK'])
-
-# Configure compile arguments and include directories
 compile_args = ['-fdiagnostics-color=always']
-include_dirs = ['Include',
-                os.path.join(MMTK_source_path,'Include'),
-                os.path.join(MMTK_source_path,'include', \
-                  'python%d.%d'%sys.version_info[:2],'MMTK')]
+include_dirs = ['Include'] # Base include directory
 
-from Scientific import N
-assert N.package == "NumPy"
+import numpy
+include_dirs_config = ['Include']
+numpy_include_path = numpy.get_include()
+include_dirs_config.append(numpy_include_path)
 
-compile_args.append("-DNUMPY=1")
-import numpy.distutils.misc_util
-include_dirs.extend(numpy.distutils.misc_util.get_numpy_include_dirs())
+if os.path.exists('/usr/local/include/netcdf.h'):   #Generic NetCDF path checks
+    include_dirs.append('/usr/local/include')
 
-if (int(scientific_version[1]) >= 8 or \
-    (int(scientific_version[1]) == 7 and int(scientific_version[2]) >= 8)):
-    netcdf_h = os.path.join(sys.prefix, 'include',
-                            'python%d.%d' % sys.version_info[:2],
-                            'Scientific', 'netcdf.h')
-    if os.path.exists(netcdf_h):
-        compile_args.append("-DUSE_NETCDF_H_FROM_SCIENTIFIC=1")
-        include_dirs.append(os.path.join(sys.prefix, 'include',
-                            'python%d.%d' % sys.version_info[:2]))
+if ('NETCDF_PREFIX' in os.environ):
+  include_dirs.append(os.path.join(os.environ['NETCDF_PREFIX'],'include'))
 
-    userbase_netcdf_h = os.path.join(userbase, 'include',
-                            'python%d.%d' % sys.version_info[:2],
-                            'Scientific', 'netcdf.h')
-    if os.path.exists(userbase_netcdf_h):
-        compile_args.append("-DUSE_NETCDF_H_FROM_SCIENTIFIC=1")
-        include_dirs.append(os.path.join(sys.prefix, 'include',
-                            'python%d.%d' % sys.version_info[:2]))
-else:
-    # Take care of the common problem that netcdf is in /usr/local but
-    # /usr/local/include is not on $CPATH.
-    if os.path.exists('/usr/local/include/netcdf.h'):
-        include_dirs.append('/usr/local/include')
-        # netcdf is in /opt/local/include/netcdf.h
-        # include_dirs.append('/opt/local/include')
-    if ('NETCDF_PREFIX' in os.environ):
-      include_dirs.append(os.path.join(os.environ['NETCDF_PREFIX'],'include'))
+py_version_short = f"python{sys.version_info.major}.{sys.version_info.minor}"
+user_include_path_python = os.path.join(userbase, 'include', py_version_short)
+if os.path.exists(user_include_path_python):
+    include_dirs.append(user_include_path_python)
 
-for user_include_path in [
-    os.path.join(userbase, 'include',
-       'python%d.%d' % sys.version_info[:2])]:
-  if os.path.exists(user_include_path):
-    include_dirs.append(user_include_path)
+# Remove duplicates from include_dirs
+include_dirs = sorted(list(set(include_dirs)))
 
 headers = []
 paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
@@ -140,12 +87,14 @@ paths = [os.path.join('AlGDock', 'ForceFields', 'Cylinder'),
          os.path.join('AlGDock', 'Integrators', 'VelocityVerlet')]
 
 data_files = []
-for dir in paths:
-    files = []
-    for f in glob(os.path.join(dir, '*')):
-        if f[-3:] != '.py' and f[-4:-1] != '.py' and os.path.isfile(f):
-            files.append(f)
-    data_files.append((dir, files))
+for p_dir in paths:
+    files_in_dir = []
+    if os.path.isdir(p_dir):
+        for f_path in glob(os.path.join(p_dir, '*')):
+            if os.path.isfile(f_path) and not f_path.endswith(('.py', '.pyc', '.so', '.dylib', '.pyd')):
+                files_in_dir.append(f_path)
+    if files_in_dir:
+        data_files.append((p_dir, files_in_dir))
 
 # Customized distutils sources
 
