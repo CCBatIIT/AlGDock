@@ -11,13 +11,39 @@ at points on a grid.
 
 import os, time, gzip
 import numpy as np
+import netCDF4 as nc
 
-class gridCalculation:
-  def __init__(self, \
-    prmtop_FN='apo.prmtop', inpcrd_FN=None, pqr_FN=None, \
-    header_FN=None, site_FN=None, \
-    PB_FN=None, ele_FN=None, LJa_FN=None, LJr_FN=None, \
-    spacing=None, counts=None, PB_spacing=None,
+# def get_grid_pos(center, dims, spacing, flatten=False):
+    
+#     def get_pos(center, dim, space, point_i):
+#         return center - ((dim / 2) - point_i) * (space)
+    
+#     xyz = np.empty(tuple(np.append(dims, 3)))
+#     for i in range(dims[0]):
+#         for j in range(dims[1]):
+#             for k in range(dims[2]):
+#                 xyz[i,j,k,:] = get_pos(center, dims, spacing, [i,j,k])
+
+#     if flatten:
+#         return xyz.reshape(np.prod(dims), 3)
+#     else:
+#         return xyz
+
+
+class gridCalculation():
+  def __init__(self, 
+    prmtop_FN='apo.prmtop', 
+    inpcrd_FN=None, 
+    pqr_FN=None, 
+    header_FN=None, 
+    site_FN=None,
+    PB_FN=None, 
+    ele_FN=None, 
+    LJa_FN=None, 
+    LJr_FN=None, 
+    spacing=None, 
+    counts=None, 
+    PB_spacing=None,
     calcType='All'):
   
     ### Parse parameters
@@ -32,6 +58,10 @@ class gridCalculation:
       'ele':{True:'ele.nc',False:ele_FN}[ele_FN is None], \
       'LJa':{True:'LJa.nc',False:LJa_FN}[LJa_FN is None], \
       'LJr':{True:'LJr.nc',False:LJr_FN}[LJr_FN is None]}
+
+    print 'DETECTED FILEPATHS:'
+    for (key, item) in self.FNs.items():
+        print'\t', key, '\n', "\t\t", item
     del prmtop_FN, inpcrd_FN, header_FN, ele_FN, LJa_FN, LJr_FN
 
     for key in self.FNs.keys():
@@ -89,9 +119,11 @@ class gridCalculation:
       PB_spacing = 0.5
 
     spacing = np.array(spacing)
-    counts = np.array(counts)
+    counts = np.array(counts, int)
 
     # Loads coordinates
+    import sys
+    sys.path.append('..')
     import AlGDock.IO
     IO_crd = AlGDock.IO.crd()
     self.crd = IO_crd.read(self.FNs['inpcrd'])
@@ -125,7 +157,7 @@ class gridCalculation:
             os.path.isfile(self.FNs['LJr'])):
       if calcType in ['All','Direct']:
         print 'Calculating direct alchemical grids'
-        self.direct_grids(spacing, counts)
+        self.direct_grids(spacing, counts, no_ele=False)
     else:
       print 'Direct alchemical grids already calculated'
 
@@ -133,12 +165,10 @@ class gridCalculation:
     """
     Calculates direct grids (Lennard Jones and electrostatic)
     """
-    
+
     import AlGDock.IO
     IO_prmtop = AlGDock.IO.prmtop()
-    prmtop = IO_prmtop.read(self.FNs['prmtop'], \
-      varnames=['POINTERS','CHARGE','ATOM_TYPE_INDEX','NONBONDED_PARM_INDEX',\
-                'LENNARD_JONES_ACOEF','LENNARD_JONES_BCOEF'])
+    prmtop = IO_prmtop.read(self.FNs['prmtop'], varnames=['POINTERS','CHARGE','ATOM_TYPE_INDEX', 'NONBONDED_PARM_INDEX', 'LENNARD_JONES_ACOEF','LENNARD_JONES_BCOEF'])
                 
     prmtop['CHARGE'] = prmtop['CHARGE']/18.2223 # Convert to units of electric charge
 
@@ -157,6 +187,7 @@ class gridCalculation:
         factor = 2 * prmtop['LENNARD_JONES_ACOEF'][LJ_index] / prmtop['LENNARD_JONES_BCOEF'][LJ_index]
         LJ_radius[i] = pow(factor, 1.0/6.0) * 0.5 # R_min/2
         LJ_depth[i] = prmtop['LENNARD_JONES_BCOEF'][LJ_index] / 2 / factor # epsilon
+          
     # More useful for later calculations
     root_LJ_depth = np.sqrt(LJ_depth)
     LJ_diameter = LJ_radius*2
@@ -165,7 +196,7 @@ class gridCalculation:
     ### Coordinates of grid points
     print 'Calculating grid coordinates'
     startTime = time.time()
-
+    # xyz = get_grid_pos(center, counts, spacing)
     grid = {}
     grid['x'] = np.zeros(shape=tuple(counts), dtype=float)
     grid['y'] = np.zeros(shape=tuple(counts), dtype=float)
@@ -176,6 +207,7 @@ class gridCalculation:
           grid['x'][i,j,k] = i*spacing[0]
           grid['y'][i,j,k] = j*spacing[1]
           grid['z'][i,j,k] = k*spacing[2]
+    
 
     endTime = time.time()
     print ' in %3.2f s'%(endTime-startTime)
@@ -240,12 +272,13 @@ class gridCalculation:
     IO_Grid = AlGDock.IO.Grid()
     print 'Writing grid output'
     if not no_ele:
-      IO_Grid.write(self.FNs['ele'], \
-        {'origin':np.array([0., 0., 0.]), 'spacing':spacing, 'counts':counts, 'vals':grid['ele'].flatten()})
-    IO_Grid.write(self.FNs['LJr'], \
-      {'origin':np.array([0., 0., 0.]), 'spacing':spacing, 'counts':counts, 'vals':grid['LJr'].flatten()})
-    IO_Grid.write(self.FNs['LJa'], \
-      {'origin':np.array([0., 0., 0.]), 'spacing':spacing, 'counts':counts, 'vals':grid['LJa'].flatten()})
+      IO_Grid.write(self.FNs['ele'], {'origin':np.array([0,0,0]), 'spacing':spacing, 'counts':counts, 'vals':grid['ele'].flatten()})
+      IO_Grid.write(os.path.join(os.path.dirname(self.FNs['ele']), os.path.basename(self.FNs['ele']).split('.nc')[0] + '.dx'), {'origin':np.array([0,0,0]), 'spacing':spacing, 'counts':counts, 'vals':grid['ele'].flatten()})
+    IO_Grid.write(self.FNs['LJr'], {'origin':np.array([0,0,0]), 'spacing':spacing, 'counts':counts, 'vals':grid['LJr'].flatten()})
+    IO_Grid.write(os.path.join(os.path.dirname(self.FNs['LJr']), os.path.basename(self.FNs['LJr']).split('.nc')[0] + '.dx'), {'origin':np.array([0,0,0]), 'spacing':spacing, 'counts':counts, 'vals':grid['LJr'].flatten()})
+    IO_Grid.write(self.FNs['LJa'], {'origin':np.array([0,0,0]), 'spacing':spacing, 'counts':counts, 'vals':grid['LJa'].flatten()})
+    IO_Grid.write(os.path.join(os.path.dirname(self.FNs['LJa']), os.path.basename(self.FNs['LJa']).split('.nc')[0] + '.dx'), {'origin':np.array([0,0,0]), 'spacing':spacing, 'counts':counts, 'vals':grid['LJa'].flatten()})
+
 
   def PB_grid(self, edge_length, PB_spacing):
     """
@@ -256,6 +289,8 @@ class gridCalculation:
     import inspect
     import _external_paths
     dirs = {'current':os.getcwd()}
+
+    print 'EDGE LENGTH', edge_length
 
     # Sets up pqr file
     added_pqr = False
@@ -282,7 +317,10 @@ class gridCalculation:
 
     #   The final grid spans the same space as the other grids
     final_dims = np.array(np.ceil(edge_length/focus_spacing),dtype=int)
+    print 'FINAL_DIMS', final_dims
     final_center = edge_length/2.
+    # final_center = center
+    print 'FINAL_CENTER', final_center
 
     def roundUpDime(x):
       return (np.ceil((x.astype(float)-1)/32)*32+1).astype(int)
@@ -291,8 +329,7 @@ class gridCalculation:
     focus_dims = roundUpDime(final_dims)
     focus_center = final_center
 
-    #   The full grid spans 1.5 times the molecule range
-    #                             and the focus grid, whatever is larger
+    #   The full grid spans 1.5 times the molecule range and the focus grid, whatever is larger
     min_xyz = np.array([min(self.crd[a,:]) for a in range(3)])
     max_xyz = np.array([max(self.crd[a,:]) for a in range(3)])
     mol_range = max_xyz - min_xyz
@@ -324,7 +361,7 @@ class gridCalculation:
     print '  Center',final_center
     print '  Spacing',final_spacing
     print '  Points per dimension',final_dims
-    
+
     # Writes APBS script
     apbsF = open('apbs.in','w')
     apbsF.write('''READ
@@ -367,6 +404,10 @@ END'''.format(self.FNs['pqr'], \
               focus_dims, focus_center, focus_spacing))
     apbsF.close()
 
+    # Calculate grid xyz
+    # focus_xyz = get_grid_pos(focus_center, focus_dims, focus_spacing, flatten=True)
+    # final_xyz = get_grid_pos(final_center, final_dims, final_spacing, flatten=True)
+
     # Execute APBS
     if not (os.path.isfile('apbs_focus.dx') or os.path.isfile(self.FNs['PB'])):
       try:
@@ -383,9 +424,10 @@ END'''.format(self.FNs['pqr'], \
     if not os.path.isfile(self.FNs['PB']):
       import AlGDock.IO
       IO_Grid = AlGDock.IO.Grid()
-      print final_dims
-      IO_Grid.truncate('apbs_focus.dx', self.FNs['PB'], \
-        final_dims, multiplier=0.596)
+      IO_Grid.truncate('apbs_focus.dx', self.FNs['PB'], final_dims, multiplier=0.596) #, in_xyz=focus_xyz, out_xyz=final_xyz)
+        
+      data = IO_Grid.read(self.FNs['PB'])
+      IO_Grid.write(os.path.join(os.path.dirname(self.FNs['PB']), os.path.basename(self.FNs['PB']).split('.nc')[0] + '.dx'), data)
 
     # Remove intermediate files
     toClear = ['io.mc', 'apbs.in', 'apbs.out','apbs_focus.dx']
@@ -394,7 +436,7 @@ END'''.format(self.FNs['pqr'], \
     for FN in toClear:
       if os.path.isfile(FN):
         os.remove(FN)
-
+      
     os.chdir(os.path.dirname(self.FNs['PB']))
     if os.path.isdir(tempdir):
       os.rmdir(tempdir)
@@ -422,6 +464,7 @@ if __name__ == '__main__':
       help='Grid spacing (overrides header)')
     parser.add_argument('--counts', nargs=3, type=int, \
       help='Number of point in each direction (overrides header)')
+    # parser.add_argument('--center', nargs=3, type=float, help='Center of the box (Angstrom')
     parser.add_argument('--PB_spacing', type=float, \
       help='PB Grid spacing (equal in all dimensions)')
     parser.add_argument('--calcType', choices=['All','PB','Direct'],
@@ -442,9 +485,10 @@ if __name__ == '__main__':
     parser.add_option('--LJr_FN', help='Output for repulsive Lennard-Jones grid')
     parser.add_option('--spacing', nargs=3, type="float", help='Grid spacing')
     parser.add_option('--counts', nargs=3, type="float", help='Grid dimensions')
+    # parser.add_option('--center', nargs=3, type=float, help='Center of the box (Angstrom')
     parser.add_option('--PB_spacing', type="float", \
       help='PB Grid spacing (equal in all dimensions)')
-    parser.add_argument('--calcType', choices=['All','PB','Direct'],
+    parser.add_option('--calcType', choices=['All','PB','Direct'],
       help='Type of calculation to perform')
     (args,options) = parser.parse_args()
 
