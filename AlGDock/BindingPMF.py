@@ -1891,6 +1891,15 @@ class BPMF:
           os.remove(FN)
           print '  removed ' + os.path.relpath(FN, self.args.dir['start'])
 
+  def write_lig_dcd(self):
+    import AlGDock.IO, os
+    process = 'CD'
+    IO_dcd = AlGDock.IO.dcd(self.top.molecule, ligand_atom_order = self.top.prmtop_atom_order_L, receptorConf = self.data['CD'].confs['receptor'], ligand_first_atom = self.top_RL.L_first_atom)
+    lig_dcd_FN = os.path.join(self.args.dir['CD'], 'lig_poses.dcd')
+    confs = [self.data['CD'].confs['samples'][-1][cycle][-1] for cycle in range(len(self.data['CD'].confs['samples'][-1]))]
+    IO_dcd.write(lig_dcd_FN, confs, includeLigand=True, includeReceptor=True)
+    print 'Wrote', len(confs), 'conformers to', lig_dcd_FN
+
 
 if __name__ == '__main__':
   import argparse
@@ -1907,3 +1916,4 @@ if __name__ == '__main__':
     self = BPMF_plots(**vars(args))
   else:
     self = BPMF(**vars(args))
+    self.write_lig_dcd()
