@@ -189,7 +189,7 @@ object 3 class array type double rank 0 items {3} data follows
       grid_nc.variables[key][:] = data[key]
     grid_nc.close()
 
-  def truncate(self, in_FN, out_FN, counts, multiplier=None):
+  def truncate(self, in_FN, out_FN, counts, multiplier=None, in_xyz=None, out_xyz=None):
     """
     Truncates the grid at the origin and
     with a limited number of counts per dimension
@@ -197,29 +197,56 @@ object 3 class array type double rank 0 items {3} data follows
     multiplier is for the values, not the grid scaling
     """
     data_o = self.read(in_FN)
-    nyz_o = data_o['counts'][1] * data_o['counts'][2]
-    nz_o = data_o['counts'][2]
 
-    min_i = int(-data_o['origin'][0] / data_o['spacing'][0])
-    min_j = int(-data_o['origin'][1] / data_o['spacing'][1])
-    min_k = int(-data_o['origin'][2] / data_o['spacing'][2])
+    if (in_xyz is None and out_xyz is None):
+        nyz_o = data_o['counts'][1] * data_o['counts'][2]
+        nz_o = data_o['counts'][2]
+    
+        print 'origin', data_o['origin']
+        print 'spacing', data_o['spacing']
+    
+        min_i = int(-data_o['origin'][0] / data_o['spacing'][0])
+        min_j = int(-data_o['origin'][1] / data_o['spacing'][1])
+        min_k = int(-data_o['origin'][2] / data_o['spacing'][2])
+    
+        print 'min_i', min_i
+        print 'min_j', min_j
+        print 'min_k', min_k
+        print 'vals.shape', data_o['vals'].shape
+    
+        # vals = np.ndarray(shape=tuple(counts), dtype=float)
+        # print 'vals.shape', vals.shape 
+        # for i in range(counts[0]):
+        #   for j in range(counts[1]):
+        #     for k in range(counts[2]):
+        #       # print 'i,j,k', i, j, k, (i+min_i)*nyz_o + (j+min_j)*nz_o + (k+min_k)
+        #       vals[i,j,k] = data_o['vals'][(i+min_i)*nyz_o + (j+min_j)*nz_o + (k+min_k)]
 
-    #    vals = np.ndarray(shape=tuple(counts), dtype=float)
-    #    for i in range(counts[0]):
-    #      for j in range(counts[1]):
-    #        for k in range(counts[2]):
-    #          vals[i,j,k] = data_o['vals'][(i+min_i)*nyz_o + (j+min_j)*nz_o + (k+min_k)]
+        vals = np.array([[[data_o['vals'][(i + min_i) * nyz_o + (j + min_j) * nz_o + (k + min_k)] for k in range(counts[2]) ] for j in range(counts[1])] for i in range(counts[0])])
 
-    vals = np.array([[[
-      data_o['vals'][(i + min_i) * nyz_o + (j + min_j) * nz_o + (k + min_k)]
-      for k in range(counts[2])
-    ] for j in range(counts[1])] for i in range(counts[0])])
+    else:
+        matching_inds = np.empty(out_xyz.shape[0], dtype=int)
+        for i, (x, y, z) in enumerate(out_xyz):
+            same_x_inds = np.where(in_xyz[:,0] == x)[0]
+            same_y_inds = np.where(in_xyz[:,1] == y)[0]
+            same_z_inds = np.where(in_xyz[:,2] == z)[0]
+            xy_ind = np.intersect1d(same_x_inds, same_y_inds)
+            ind = np.intersect1d(same_z_inds, xy_ind)
+            assert len(ind) == 1
+            matching_inds[i] = ind[0]
+
+        vals = data_o['vals'][matching_inds]
+        
 
     if multiplier is not None:
       vals = vals * multiplier
 
-    data_n = {'origin':np.array([0., 0., 0.]), \
-      'counts':counts, 'spacing':data_o['spacing'], 'vals':vals.flatten()}
+    if out_xyz is not None:
+        data_n = {'origin': out_xyz[0], \
+          'counts':counts, 'spacing':data_o['spacing'], 'vals':vals.flatten()}
+    else:
+        data_n = {'origin': np.array([0,0,0]), \
+          'counts':counts, 'spacing':data_o['spacing'], 'vals':vals.flatten()}
     self.write(out_FN, data_n)
 
 
@@ -756,43 +783,64 @@ class prmtop:
     pass
 
   def read(self, FN, varnames=['RESIDUE_LABEL', 'RESIDUE_POINTER']):
-    """
-    Reads an AMBER prmtop file, returning a dictionary
-    """
-    if not os.path.isfile(FN):
-      raise Exception('prmtop file %s does not exist!' % FN)
-    if FN.endswith('.gz'):
-      import gzip
-      F = gzip.open(FN, 'r')
-    else:
-      F = open(FN, 'r')
-    data = F.read().split('%FLAG ')
-    F.close()
+      """
+      Reads an AMBER prmtop file, returning a dictionary
+      """
+      if not os.path.isfile(FN):
+        raise Exception('prmtop file %s does not exist!' % FN)
 
-    prmtop = {}
-    for record in data:
-      name = record[:record.find('\n')].strip()
-      if name in varnames:
-        prmtop[name] = self._load_record(record)
-    return prmtop
+      # Load with parmed
+      import parmed as pmd
+      parm = pmd.load_file(FN)
+    
+      prmtop = {}
+      for name in varnames:
+          if name == 'CHARGE':
+              prmtop[name] = np.array(parm.parm_data[name]) * 18.2223
+          else:
+              prmtop[name] = np.array(parm.parm_data[name])
+      return prmtop
 
-  def _load_record(self, record):
-    items = []
-    lines = record.split('\n')
-    lines.pop(0)  # Name
-    FORMAT = lines.pop(0).strip()[8:-1]  # Format
-    if FORMAT.find('a') > -1:  # Text
-      w = int(FORMAT[FORMAT.find('a') + 1:])
-      for line in lines:
-        items = items + [line[x:x + w] for x in range(0, len(line), w)]
-      return np.array(items)
-    elif FORMAT.find('I') > -1:  # Integer
-      w = int(FORMAT[FORMAT.find('I') + 1:])
-      for line in lines:
-        items = items + [int(line[x:x + w]) for x in range(0, len(line), w)]
-      return np.array(items, dtype=int)
-    elif FORMAT.find('E') > -1:  # Scientific
-      w = int(FORMAT[FORMAT.find('E') + 1:FORMAT.find('.')])
-      for line in lines:
-        items = items + [float(line[x:x + w]) for x in range(0, len(line), w)]
-      return np.array(items, dtype=float)
+
+
+# def read(self, FN, varnames=['RESIDUE_LABEL', 'RESIDUE_POINTER']):
+  #   """
+  #   Reads an AMBER prmtop file, returning a dictionary
+  #   """
+  #   if not os.path.isfile(FN):
+  #     raise Exception('prmtop file %s does not exist!' % FN)
+  #   if FN.endswith('.gz'):
+  #     import gzip
+  #     F = gzip.open(FN, 'r')
+  #   else:
+  #     F = open(FN, 'r')
+  #   data = F.read().split('%FLAG ')
+  #   F.close()
+
+  #   prmtop = {}
+  #   for record in data:
+  #     name = record[:record.find('\n')].strip()
+  #     if name in varnames:
+  #       prmtop[name] = self._load_record(record)
+  #   return prmtop
+
+  # def _load_record(self, record):
+  #   items = []
+  #   lines = record.split('\n')
+  #   lines.pop(0)  # Name
+  #   FORMAT = lines.pop(0).strip()[8:-1]  # Format
+  #   if FORMAT.find('a') > -1:  # Text
+  #     w = int(FORMAT[FORMAT.find('a') + 1:])
+  #     for line in lines:
+  #       items = items + [line[x:x + w] for x in range(0, len(line), w)]
+  #     return np.array(items)
+  #   elif FORMAT.find('I') > -1:  # Integer
+  #     w = int(FORMAT[FORMAT.find('I') + 1:])
+  #     for line in lines:
+  #       items = items + [int(line[x:x + w]) for x in range(0, len(line), w)]
+  #     return np.array(items, dtype=int)
+  #   elif FORMAT.find('E') > -1:  # Scientific
+  #     w = int(FORMAT[FORMAT.find('E') + 1:FORMAT.find('.')])
+  #     for line in lines:
+  #       items = items + [float(line[x:x + w]) for x in range(0, len(line), w)]
+  #     return np.array(items, dtype=float)
