@@ -46,11 +46,8 @@ class SimulationData:
 
     """
     if self.process == 'CD' and self.pose > -1:
-      progress_FN = os.path.join(
-        self.dir,
-        '%s_progress_self.pose%03d.pkl.gz' % (self.process, self.pose))
-      data_FN = os.path.join(
-        self.dir, '%s_data_self.pose%03d.pkl.gz' % (self.process, self.pose))
+      progress_FN = os.path.join(self.dir, '%s_progress_pose%03d.pkl.gz' % (self.process, self.pose)) # Removed _self because this did not match save_pkl_gz naming format
+      data_FN = os.path.join(self.dir, '%s_data_self.pose%03d.pkl.gz' % (self.process, self.pose))
     else:
       progress_FN = os.path.join(self.dir,
                                  '%s_progress.pkl.gz' % (self.process))
@@ -60,6 +57,7 @@ class SimulationData:
       'progress': load_pkl_gz(progress_FN),
       'data': load_pkl_gz(data_FN)
     }
+        
     if (saved['progress'] is None) or (saved['data'] is None):
       if os.path.isfile(progress_FN):
         os.remove(progress_FN)
@@ -68,7 +66,7 @@ class SimulationData:
       if self.process == 'CD' and self.pose > -1:
         progress_FN = os.path.join(
           self.dir,
-          '%s_progress_self.pose%03d.pkl.gz.BAK' % (self.process, self.pose))
+          '%s_progress_pose%03d.pkl.gz' % (self.process, self.pose))
         data_FN = os.path.join(
           self.dir,
           '%s_data_self.pose%03d.pkl.gz.BAK' % (self.process, self.pose))

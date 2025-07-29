@@ -1222,22 +1222,16 @@ class BPMF:
     As necessary, first conduct an initial BC or CD
     and then run a desired number of replica exchange cycles.
     """
-    if (self.data[process].protocol==[]) or \
-       (not self.data[process].protocol[-1]['crossed']):
+    if (self.data[process].protocol==[]) or (not self.data[process].protocol[-1]['crossed']):
       time_left = getattr(self, 'initial_' + process)()
       if not time_left:
         return False
 
     # Main loop for replica exchange
-    if (self.args.params[process]['repX_cycles'] is not None) and \
-       ((self.data[process].cycle < \
-         self.args.params[process]['repX_cycles'])):
+    if (self.args.params[process]['repX_cycles'] is not None) and ((self.data[process].cycle < self.args.params[process]['repX_cycles'])):
 
       # Load configurations to score from another program
-      if (process=='CD') and (self.data['CD'].cycle==1) and \
-         (self.args.params['CD']['pose'] == -1) and \
-         (self.args.FNs['score'] is not None) and \
-         (self.args.FNs['score']!='default'):
+      if (process=='CD') and (self.data['CD'].cycle==1) and (self.args.FNs['score'] is not None) and (self.args.FNs['score']!='default'): # Removed (self.args.params['CD']['pose'] == -1), not sure why this is here?? - DC
         self.log.set_lock('CD')
         self.log.tee("\n>>> Reinitializing replica exchange configurations")
         self.system.setParams(self.system.paramsFromAlpha(1.0, 'CD'))
@@ -1253,8 +1247,7 @@ class BPMF:
       self.log.recordStart(process + '_repX_start')
       start_cycle = self.data[process].cycle
       cycle_times = []
-      while (self.data[process].cycle <
-             self.args.params[process]['repX_cycles']):
+      while (self.data[process].cycle < self.args.params[process]['repX_cycles']):
         from AlGDock.replica_exchange import ReplicaExchange
         ReplicaExchange(self.args, self.log, self.top, self.system,
                       self.iterator, self.data, self.save, self._u_kln).run(process)
@@ -1893,10 +1886,36 @@ class BPMF:
 
   def write_lig_dcd(self):
     import AlGDock.IO, os
-    process = 'CD'
-    IO_dcd = AlGDock.IO.dcd(self.top.molecule, ligand_atom_order = self.top.prmtop_atom_order_L, receptorConf = self.data['CD'].confs['receptor'], ligand_first_atom = self.top_RL.L_first_atom)
-    lig_dcd_FN = os.path.join(self.args.dir['CD'], 'lig_poses.dcd')
-    confs = [self.data['CD'].confs['samples'][-1][cycle][-1] for cycle in range(len(self.data['CD'].confs['samples'][-1]))]
+    processes = ['CD']
+    for process in processes:
+      IO_dcd = AlGDock.IO.dcd(self.top.molecule, ligand_atom_order = self.top.prmtop_atom_order_L, receptorConf = self.data[process].confs['receptor'], ligand_first_atom = self.top_RL.L_first_atom)
+      lig_dcd_FN = os.path.join(self.args.dir[process], 'lig_poses.dcd')
+      confs = [self.data[process].confs['samples'][-1][cycle][-1] for cycle in range(len(self.data[process].confs['samples'][-1]))]
+      IO_dcd.write(lig_dcd_FN, confs, includeLigand=True, includeReceptor=True)
+      print 'Wrote', len(confs), 'conformers to', lig_dcd_FN
+
+  def show_pose_prediction(self, failed_already=False):
+    # Calculate weights
+    try:
+      ws = np.exp(-self.stats_RL['scores'][score] / (R*self.T_TARGET))
+    except:
+      self._get_pose_prediction()
+      if failed_already:
+          print self.stats_RL.keys()
+          raise Exception('Issue w/ self.stats_RL')
+      else:
+        self.show_pose_prediction()
+    ws = ws / sum(ws)
+    toShow = np.arange(len(ws))[ws > p]
+
+    # Get conformers
+    confs = [self.data['CD'].confs['samples'][-1][cycle][n] for (cycle,n) in self.stats_RL['pose_inds']]
+    confs = [confs[n] for n in np.arange(len(ws))[toShow]]
+
+    # Write DCD
+    import AlGDock.IO, os
+    IO_dcd = AlGDock.IO.dcd(self.top.molecule, ligand_atom_order = self.top.prmtop_atom_order_L, receptorConf = self.data[process].confs['receptor'], ligand_first_atom = self.top_RL.L_first_atom)
+    lig_dcd_FN = os.path.join(self.args.dir[process], 'lig_poses_weighted.dcd')
     IO_dcd.write(lig_dcd_FN, confs, includeLigand=True, includeReceptor=True)
     print 'Wrote', len(confs), 'conformers to', lig_dcd_FN
 
@@ -1917,3 +1936,4 @@ if __name__ == '__main__':
   else:
     self = BPMF(**vars(args))
     self.write_lig_dcd()
+    # self.show_pose_prediction() NOT WORKING
