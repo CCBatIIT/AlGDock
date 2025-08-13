@@ -366,7 +366,8 @@ ext_module_name_and_path = [\
   ('NUTS', ['AlGDock/Integrators/NUTS/NUTS.pyx']), \
   ('SmartDarting', ['AlGDock/Integrators/SmartDarting/SmartDarting.pyx']), \
   ('BAT', ['Src/BAT.pyx']),
-  ('repX', ['Src/repX.pyx'])]
+  ('repX', ['Src/repX.pyx']),
+  ('HarmonicCMTrapTerm', ['AlGDock/ForceFields/Pose/HarmonicCMTrapTerm.pyx'])]
 
 if False:
   # These extension modules are not used in the current code,

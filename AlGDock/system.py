@@ -30,7 +30,8 @@ term_map = {
   'pose dihedral angle': 'k_angular_int',
   'pose external dihedral': 'k_angular_ext',
   'pose external distance': 'k_spatial_ext',
-  'pose external angle': 'k_angular_ext'
+  'pose external angle': 'k_angular_ext',
+  'harmonic_cm_trap': 'k_cart_ext'
 }
 
 class System:
@@ -226,41 +227,41 @@ class System:
     if ('k_angular_int' in params.keys()) or \
        ('k_spatial_ext' in params.keys()) or \
        ('k_angular_ext' in params.keys()):
-
+        
       # Load the force field if it has not been loaded
       if not ('ExternalRestraint' in self._forceFields.keys()):
         Xo = np.copy(self.top.universe.configuration().array)
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, self.starting_pose))
+        self.top.universe.setConfiguration(Configuration(self.top.universe, self.starting_pose))
         import AlGDock.rigid_bodies
-        rb = AlGDock.rigid_bodies.identifier(self.top.universe,
-                                             self.top.molecule)
+        rb = AlGDock.rigid_bodies.identifier(self.top.universe, self.top.molecule)
         (TorsionRestraintSpecs, ExternalRestraintSpecs) = rb.poseInp()
-        self.top.universe.setConfiguration(Configuration(
-          self.top.universe, Xo))
-
+        self.top.universe.setConfiguration(Configuration(self.top.universe, Xo))
+          
         # Create force fields
         from AlGDock.ForceFields.Pose.PoseFF import InternalRestraintForceField
-        self._forceFields['InternalRestraint'] = \
-          InternalRestraintForceField(TorsionRestraintSpecs)
+        self._forceFields['InternalRestraint'] = InternalRestraintForceField(TorsionRestraintSpecs)
         from AlGDock.ForceFields.Pose.PoseFF import ExternalRestraintForceField
-        self._forceFields['ExternalRestraint'] = \
-          ExternalRestraintForceField(*ExternalRestraintSpecs)
-
+        self._forceFields['ExternalRestraint'] = ExternalRestraintForceField(*ExternalRestraintSpecs)
+          
       # Set parameter values
       if ('k_angular_int' in params.keys()):
-        self._forceFields['InternalRestraint'].set_k(\
-          params['k_angular_int'])
+        self._forceFields['InternalRestraint'].set_k(params['k_angular_int'])
         fflist.append(self._forceFields['InternalRestraint'])
 
       if ('k_spatial_ext' in params.keys()):
-        self._forceFields['ExternalRestraint'].set_k_spatial(\
-          params['k_spatial_ext'])
+        self._forceFields['ExternalRestraint'].set_k_spatial(params['k_spatial_ext'])
         fflist.append(self._forceFields['ExternalRestraint'])
 
       if ('k_angular_ext' in params.keys()):
-        self._forceFields['ExternalRestraint'].set_k_angular(\
-          params['k_angular_ext'])
+        self._forceFields['ExternalRestraint'].set_k_angular(params['k_angular_ext'])
+
+
+      # Add cartesian restraint to all atoms
+      from AlGDock.ForceFields.Pose.HarmonicTrapForceField import HarmonicTrapForceField
+      from Scientific.Geometry import Vector
+      for i, (atom, atom_xyz) in enumerate(zip(self.top.universe.atomList(), self.starting_pose)):
+          self._forceFields['HarmonicTrapForceField{:03d}'.format(i)] = HarmonicTrapForceField(obj=atom, center=Vector(atom_xyz), force_constant=params['k_spatial_ext'])
+          fflist.append(self._forceFields['HarmonicTrapForceField{:03d}'.format(i)])
 
     compoundFF = fflist[0]
     for ff in fflist[1:]:
@@ -276,8 +277,7 @@ class System:
         if (params['OBC_RL'] > 0):
           self.top_RL.universe.setForceField(self._forceFields['OBC_RL'])
 
-    eval = ForceField.EnergyEvaluator(\
-      self.top.universe, self.top.universe._forcefield, None, None, None, None)
+    eval = ForceField.EnergyEvaluator(self.top.universe, self.top.universe._forcefield, None, None, None, None)
     eval.key = evaluator_key
     self.top.universe._evaluator[(None, None, None)] = eval
     self._evaluators[evaluator_key] = eval
@@ -327,6 +327,8 @@ class System:
       if self.isForce('ExternalRestraint'):
         E['k_angular_ext'] = np.zeros(len(confs), dtype=float)
         E['k_spatial_ext'] = np.zeros(len(confs), dtype=float)
+      if self.isForce('HarmonicTrapForceField000'):
+        E['k_cart_ext'] = np.zeros(len(confs), dtype=float)
     for c in range(len(confs)):
       self.top.universe.setConfiguration(
         Configuration(self.top.universe, confs[c]))
@@ -336,7 +338,7 @@ class System:
           pass  # For some reason, MMTK double-counts electrostatic energies
         elif key.startswith('pose'):
           # For pose restraints, the energy is per spring constant unit
-          E[term_map[key]][c] += value / params_full[term_map[key]]
+          E[term_map[key]][c] += value / params_full[term_map[key]]  
         else:
           try:
             E[term_map[key]][c] += value
