@@ -141,9 +141,8 @@ class BPMF:
           starting_pose = np.copy(confs[self.args.params['CD']['pose']])
           self.data['CD'].confs['starting_poses'] = [np.copy(starting_pose)]
         else:
-          self._clear('CD')
-          self._store_infinite_f_RL()
           raise Exception('Pose index greater than number of poses')
+          
     else:
       starting_pose = None
     
@@ -1231,7 +1230,7 @@ class BPMF:
     if (self.args.params[process]['repX_cycles'] is not None) and ((self.data[process].cycle < self.args.params[process]['repX_cycles'])):
 
       # Load configurations to score from another program
-      if (process=='CD') and (self.data['CD'].cycle==1) and (self.args.FNs['score'] is not None) and (self.args.FNs['score']!='default'): # Removed (self.args.params['CD']['pose'] == -1), not sure why this is here?? - DC
+      if (process=='CD') and (self.data['CD'].cycle==1) and (self.args.FNs['score'] is not None) and (self.args.FNs['score']!='default') and self.args.params['CD']['pose'] == 1: 
         self.log.set_lock('CD')
         self.log.tee("\n>>> Reinitializing replica exchange configurations")
         self.system.setParams(self.system.paramsFromAlpha(1.0, 'CD'))
@@ -1507,12 +1506,10 @@ class BPMF:
       Es = {}
       if nconfs is None:
         nconfs = 1
-    elif (self.args.FNs['score'] is None) or (not os.path.isfile(
-        self.args.FNs['score'])):
+    elif (self.args.FNs['score'] is None) or (not os.path.isfile(self.args.FNs['score'])):
       confs = []
       Es = {}
-    elif self.args.FNs['score'].endswith('.mol2') or \
-         self.args.FNs['score'].endswith('.mol2.gz'):
+    elif self.args.FNs['score'].endswith('.mol2') or self.args.FNs['score'].endswith('.mol2.gz'):
       import AlGDock.IO
       #IO_dock6_mol2 = AlGDock.IO.dock6_mol2() # removed as part of refactor
       IO_dock_parser = AlGDock.IO.dock_parser()
@@ -1532,12 +1529,8 @@ class BPMF:
     elif self.args.FNs['score'].endswith('.nc'):
       from netCDF4 import Dataset
       dock6_nc = Dataset(self.args.FNs['score'], 'r')
-      confs = [
-        dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :]
-        for n in range(dock6_nc.variables['confs'].shape[0])
-      ]
-      Es = dict([(key, dock6_nc.variables[key][:])
-                 for key in dock6_nc.variables.keys() if key != 'confs'])
+      confs = [dock6_nc.variables['confs'][n][self.top.inv_prmtop_atom_order_L, :] for n in range(dock6_nc.variables['confs'].shape[0])]
+      Es = dict([(key, dock6_nc.variables[key][:]) for key in dock6_nc.variables.keys() if key != 'confs'])
       dock6_nc.close()
       count['dock6'] = len(confs)
     elif self.args.FNs['score'].endswith('.pkl.gz'):
@@ -1593,8 +1586,7 @@ class BPMF:
       # Evaluate energies
       energies = []
       for conf in confs:
-        self.top.universe.setConfiguration(
-          Configuration(self.top.universe, conf))
+        self.top.universe.setConfiguration(Configuration(self.top.universe, conf))
         energies.append(self.top.universe.energy())
 
     if sort and len(confs) > 0:
