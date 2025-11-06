@@ -196,6 +196,8 @@ class LigandPreparation():
 
                 seeds = [np.copy(self.top.universe.configuration().array)
                          for n in range(self.args.params['CD']['seeds_per_state'])]
+        else:
+            raise Exception('CD not in self.data')
         return seeds
 
     def _ramp_T(self, T_START, T_LOW=20., normalize=False):

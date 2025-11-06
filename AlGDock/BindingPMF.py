@@ -580,8 +580,7 @@ class BPMF:
                               self.data).run('CD')
     
     from AlGDock.initialization import Initialization
-    Initialization(self.args, self.log, self.top, self.system,
-                  self.iterator, self.data, self.save, self._u_kln).run('CD', seeds)
+    Initialization(self.args, self.log, self.top, self.system, self.iterator, self.data, self.save, self._u_kln).run('CD', seeds)
 
     return True
 
@@ -1248,10 +1247,13 @@ class BPMF:
       cycle_times = []
       while (self.data[process].cycle < self.args.params[process]['repX_cycles']):
         from AlGDock.replica_exchange import ReplicaExchange
+        print 'Starting RE'
         ReplicaExchange(self.args, self.log, self.top, self.system,
                       self.iterator, self.data, self.save, self._u_kln).run(process)
+        print 'Finished RE, Starting SIRS'
         self.SIRS(process)
         cycle_times.append(self.log.timeSince('repX cycle'))
+        print 'Finished SIRS, starting interpolation'
         if process == 'CD':
           self._insert_CD_state_between_low_acc()
         if not self.log.isTimeForTask(cycle_times):
@@ -1553,6 +1555,8 @@ class BPMF:
 
     if len(confs) == 0:
       return ([], {})
+    else:
+      print '\n\nFOUND NCONFS', len(confs), '\n\n'
 
     if site:
       # Filters out configurations not in the binding site
